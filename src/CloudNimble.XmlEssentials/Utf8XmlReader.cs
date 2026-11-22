@@ -75,6 +75,12 @@ namespace CloudNimble.Text.Xml
         internal const int ElementHasChild = 1 << 29;
 
         /// <summary>
+        /// How many bytes of a text node <see cref="ReadText"/> reads one at a time before it switches to
+        /// vectorized searches.
+        /// </summary>
+        internal const int ShortTextBytes = 16;
+
+        /// <summary>
         /// Slot flag: character data has been reported inside this element, so later whitespace is significant.
         /// </summary>
         internal const int ElementHasText = 1 << 28;

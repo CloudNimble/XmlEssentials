@@ -1164,58 +1164,6 @@ public static object Deserialize(CloudNimble.Text.Xml.Nodes.XmlNode node, System
 Type: `object?`
 The value.
 
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a pipe, read to its end, as *TValue*. Blocks until the pipe completes.
-
-#### Syntax
-
-```csharp
-public static TValue Deserialize<TValue>(System.IO.Pipelines.PipeReader utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-
-#### Returns
-
-Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a pipe, read to its end, as *TValue*. Blocks until the pipe completes.
-
-#### Syntax
-
-```csharp
-public static TValue Deserialize<TValue>(System.IO.Pipelines.PipeReader utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-
-#### Returns
-
-Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
 
 Deserializes a UTF-8 stream without blocking on it as *TValue*.
@@ -1413,7 +1361,7 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
+| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
 
@@ -1440,7 +1388,7 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
+| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
 | `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each document in the stream is a value; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each child of the document element is a value. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
@@ -1468,7 +1416,7 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
+| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
 | `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
 
@@ -1495,7 +1443,7 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
+| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
 | `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each document in the stream is a value; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each child of the document element is a value. |
 | `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
@@ -1511,8 +1459,10 @@ The values.
 
 #### Remarks
 
-The stream is read to its end without blocking and parsed before the first value is returned, so a
-malformed document fails on the first `MoveNextAsync` and nothing is returned from it.
+Values are returned as the stream delivers them. Each read from the stream is followed by every
+value that is now complete, so the buffer holds one read plus at most one unfinished value, not the
+whole stream. A malformed document fails when the bad part is reached; values before it have
+already been returned.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
 
@@ -1528,7 +1478,7 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader, read to its end. |
+| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader, read as values are requested. |
 | `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each document in the pipe is a value; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each child of the document element is a value. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
@@ -1556,7 +1506,7 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader, read to its end. |
+| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader, read as values are requested. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
 | `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
 
@@ -2005,50 +1955,6 @@ public static void Serialize(System.Buffers.IBufferWriter<byte> bufferWriter, ob
 | `inputType` | `System.Type` | The CLR type to serialize *value* as. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
 
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *utf8Xml*. The pipe is not flushed.
-
-#### Syntax
-
-```csharp
-public static void Serialize<TValue>(System.IO.Pipelines.PipeWriter utf8Xml, TValue value, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeWriter` | The pipe writer. |
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *utf8Xml*. The pipe is not flushed.
-
-#### Syntax
-
-```csharp
-public static void Serialize<TValue>(System.IO.Pipelines.PipeWriter utf8Xml, TValue value, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeWriter` | The pipe writer. |
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
 
 Serializes *value* to *utf8Xml* without blocking on the stream.
@@ -2210,6 +2116,11 @@ A task that completes when the pipe has been flushed.
 #### Type Parameters
 
 - `TValue` - The CLR type.
+
+#### Remarks
+
+To write to a pipe without flushing it, pass the [PipeWriter](https://learn.microsoft.com/dotnet/api/system.io.pipelines.pipewriter) to the
+[IBufferWriter`1](https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1) overload of `Serialize`.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsyncEnumerable
 

@@ -133,6 +133,78 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow("", DisplayName = "XML 1.0")]
+        [DataRow("<?xml version=\"1.1\"?>", DisplayName = "XML 1.1")]
+        public void ShortText_ReadsTheSame_OnEitherSideOfTheBulkScan(string declaration)
+        {
+            string[] texts =
+            [
+                "1",
+                "fifteen bytes..",
+                "sixteen bytes...",
+                "seventeen bytes..",
+                "a text that is a good deal longer than the short scan",
+                "a b\tc",
+                "x\ny",
+                "sixteen bytes...\nand a line",
+                "a>b",
+                "tail]]",
+                " lead and trail ",
+            ];
+            var xml = declaration + "<r>\n  <a>" + string.Join("</a>\n  <a>", texts) + "</a>\n  <a>a&amp;b</a>\n  <a>line\r\nend</a>\n</r>";
+            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml));
+            var read = new System.Collections.Generic.List<string>();
+            while (reader.Read())
+            {
+                if (reader.TokenType is XmlTokenType.Text)
+                {
+                    read.Add(reader.GetString()!);
+                }
+            }
+
+            read.Should().Equal([.. texts, "a&b", "line\nend"]);
+        }
+
+        [TestMethod]
+        public void ShortText_Xml11LineEnd_BecomesALineFeed()
+        {
+            var xml = "<?xml version=\"1.1\"?><r>ab" + (char)0x85 + "cd" + (char)0x2028 + "ef</r>";
+            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml));
+            reader.Read().Should().BeTrue();
+            reader.Read().Should().BeTrue();
+            reader.Read().Should().BeTrue();
+            reader.GetString().Should().Be("ab\ncd\nef");
+        }
+
+        [TestMethod]
+        [DataRow("<r>a]]>b</r>", DisplayName = "CDATA end in short text")]
+        [DataRow("<r>ab\u0001</r>", DisplayName = "control character in short text")]
+        [DataRow("<r>a&b</r>", DisplayName = "bare ampersand in short text")]
+        public void ShortText_RejectsWhatLongTextRejects(string xml)
+        {
+            XmlReaderHarness.MustThrow(xml);
+        }
+
+        [TestMethod]
+        public void ShortText_CountsItsLineFeeds()
+        {
+            var line = (long?)null;
+            try
+            {
+                var reader = new Utf8XmlReader("<r>\n  <a>x\ny</a>\n  <a>z</a>\n<</r>"u8);
+                while (reader.Read())
+                {
+                }
+            }
+            catch (XmlException ex)
+            {
+                line = ex.LineNumber;
+            }
+
+            line.Should().Be(5);
+        }
+
+        [TestMethod]
         public void UsualDeclaration_IsReadLikeAnyOther()
         {
             var usual = new Utf8XmlReader("<?xml version=\"1.0\" encoding=\"utf-8\"?><r/>"u8);

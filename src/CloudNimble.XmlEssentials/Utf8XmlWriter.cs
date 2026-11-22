@@ -563,9 +563,7 @@ namespace CloudNimble.Text.Xml
                     WriteIndent(_depth - 1);
                 }
 
-                WriteRaw("</"u8);
-                WriteFrameName(frame);
-                WriteRawByte((byte)'>');
+                WriteTagClose(frame);
             }
 
             PopNs(_depth);
@@ -2292,14 +2290,7 @@ namespace CloudNimble.Text.Xml
             }
 
             BeginStartElement();
-            WriteRawByte((byte)'<');
-            if (!prefix.IsEmpty)
-            {
-                WriteRaw(prefix);
-                WriteRawByte((byte)':');
-            }
-
-            WriteRaw(local);
+            WriteTagOpen(prefix, local);
             PushFrame(AppendName(local), AppendName(prefix));
             _depth++;
             _seenRoot = true;
@@ -2532,6 +2523,11 @@ namespace CloudNimble.Text.Xml
         /// <param name="name">The UTF-8 name.</param>
         internal void ValidateNcName(ReadOnlySpan<byte> name)
         {
+            if (XmlChars.IsShortAsciiNcName(name, Math.Min(_maxNameBytes, 16)))
+            {
+                return;
+            }
+
             ValidateName(name);
             if (!_options.SkipValidation && name.IndexOf((byte)':') >= 0)
             {
@@ -3248,25 +3244,13 @@ namespace CloudNimble.Text.Xml
             }
 
             WriteElementIndent(_depth);
-            WriteRawByte((byte)'<');
             byte[]? autoPrefix = null;
-            if (!prefix.IsEmpty)
+            if (prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is { Length: > 0 } bound)
             {
-                WriteRaw(prefix);
-                WriteRaw(":"u8);
-            }
-            else if (!nsUri.IsEmpty)
-            {
-                var bound = LookupPrefix(nsUri);
-                if (bound is { Length: > 0 })
-                {
-                    WriteRaw(bound);
-                    WriteRaw(":"u8);
-                    autoPrefix = bound;
-                }
+                autoPrefix = bound;
             }
 
-            WriteRaw(local);
+            WriteTagOpen(autoPrefix is null ? prefix : autoPrefix, local);
             var declarePrefixed = !prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is null;
             var declareDefault = prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is null;
             if (empty)
@@ -3651,6 +3635,63 @@ namespace CloudNimble.Text.Xml
             }
 
             WriteRaw(NameSpan(frame.Local));
+        }
+
+        /// <summary>
+        /// Writes the end tag of <paramref name="frame"/>.
+        /// </summary>
+        /// <param name="frame">The element's frame.</param>
+        /// <remarks>
+        /// A name held in the name buffer is written with <c>&lt;/</c> and <c>&gt;</c> in one step, because
+        /// each separate write looks up the output span again.
+        /// </remarks>
+        internal void WriteTagClose(in XmlWriterFrame frame)
+        {
+            if (frame.LocalChars is not null || frame.PrefixChars is not null)
+            {
+                WriteRaw("</"u8);
+                WriteFrameName(frame);
+                WriteRawByte((byte)'>');
+                return;
+            }
+
+            var prefix = NameSpan(frame.Prefix);
+            var local = NameSpan(frame.Local);
+            var prefixed = prefix.Length > 0 ? prefix.Length + 1 : 0;
+            Ensure(prefixed + local.Length + 3);
+            var destination = _memory.Span[_buffered..];
+            destination[0] = (byte)'<';
+            destination[1] = (byte)'/';
+            if (prefixed > 0)
+            {
+                prefix.CopyTo(destination[2..]);
+                destination[prefixed + 1] = (byte)':';
+            }
+
+            local.CopyTo(destination[(prefixed + 2)..]);
+            destination[prefixed + local.Length + 2] = (byte)'>';
+            _buffered += prefixed + local.Length + 3;
+        }
+
+        /// <summary>
+        /// Writes <c>&lt;</c>, the prefix and its colon when there is one, and the local name, in one step.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="local">The local name.</param>
+        internal void WriteTagOpen(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> local)
+        {
+            var prefixed = prefix.Length > 0 ? prefix.Length + 1 : 0;
+            Ensure(prefixed + local.Length + 1);
+            var destination = _memory.Span[_buffered..];
+            destination[0] = (byte)'<';
+            if (prefixed > 0)
+            {
+                prefix.CopyTo(destination[1..]);
+                destination[prefixed] = (byte)':';
+            }
+
+            local.CopyTo(destination[(prefixed + 1)..]);
+            _buffered += prefixed + local.Length + 1;
         }
 
         /// <summary>

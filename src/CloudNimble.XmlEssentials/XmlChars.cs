@@ -198,6 +198,38 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Returns true if <paramref name="name"/> is at most <paramref name="maxLength"/> bytes of ASCII that
+        /// form an NCName.
+        /// </summary>
+        /// <param name="name">The UTF-8 name.</param>
+        /// <param name="maxLength">The longest name to check here.</param>
+        /// <returns>
+        /// <see langword="true"/> if the name is a valid NCName in both XML versions; <see langword="false"/> if
+        /// it is not, or if deciding needs more than a look at each byte.
+        /// </returns>
+        /// <remarks>
+        /// Element and attribute names are short, and a byte loop over a short name costs less than starting
+        /// a vectorized search.
+        /// </remarks>
+        public static bool IsShortAsciiNcName(ReadOnlySpan<byte> name, int maxLength)
+        {
+            if ((uint)(name.Length - 1) >= (uint)maxLength || !IsAsciiNameStart(name[0]) || name[0] is (byte)':')
+            {
+                return false;
+            }
+
+            for (var i = 1; i < name.Length; i++)
+            {
+                if (!IsAsciiNcNameChar(name[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Returns true if <paramref name="b"/> is an ASCII NCName character (no colon).
         /// </summary>
         /// <param name="b">The UTF-8 byte.</param>

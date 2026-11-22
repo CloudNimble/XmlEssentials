@@ -219,6 +219,75 @@ namespace CloudNimble.XmlEssentials.Tests
             Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<e/>");
         }
 
+        [TestMethod]
+        [DataRow(1)]
+        [DataRow(15)]
+        [DataRow(16)]
+        [DataRow(17)]
+        [DataRow(40)]
+        public void Write_Utf8Name_OfAnyLength_WritesBothTags(int length)
+        {
+            var name = new string('n', length);
+            var utf8 = Encoding.UTF8.GetBytes(name);
+            ToXml(w =>
+            {
+                w.WriteStartElement(utf8);
+                w.WriteNumberValue(1);
+                w.WriteEndElement();
+            }, omitDeclaration: true).Should().Be($"<{name}>1</{name}>");
+        }
+
+        [TestMethod]
+        public void Write_Utf8Names_WithPrefixes_WritesBothTags()
+        {
+            ToXml(w =>
+            {
+                w.WriteStartElement("p"u8, "item"u8, "urn:x"u8);
+                w.WriteStartElement("child"u8, "urn:x"u8);
+                w.WriteNumberValue(1);
+                w.WriteEndElement();
+                w.WriteStartElement("plain"u8);
+                w.WriteNumberValue(2);
+                w.WriteEndElement();
+                w.WriteEndElement();
+            }, omitDeclaration: true).Should().Be("<p:item xmlns:p=\"urn:x\"><p:child>1</p:child><plain>2</plain></p:item>");
+        }
+
+        [TestMethod]
+        public void Write_Utf8Name_ThatIsNotAnNcName_Throws()
+        {
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement(""u8));
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement("1a"u8));
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement("-a"u8));
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement("a b"u8));
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement("a:b"u8));
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement("a<"u8));
+            XmlWriterHarness.MustThrow(w => w.WriteStartElement("abcdefghijklmnopqrs t"u8));
+        }
+
+        [TestMethod]
+        public void Write_Utf8Name_HonoursMaxNameByteCount_BelowTheShortPath()
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, MaxNameByteCount = 4 };
+            ToXml(w =>
+            {
+                w.WriteStartElement("abcd"u8);
+                w.WriteEndElement();
+            }, options).Should().Be("<abcd/>");
+
+            var message = "";
+            try
+            {
+                ToXml(w => w.WriteStartElement("abcde"u8), options);
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("MaxNameByteCount exceeded (4).");
+        }
+
         #endregion
 
         #region Private Methods

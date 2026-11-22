@@ -1744,6 +1744,39 @@ namespace CloudNimble.Text.Xml
             var needsDecode = false;
             var stops = _version is XmlVersion.Version11 ? XmlChars.TextStops11 : XmlChars.TextStops10;
             Span<byte> entityScratch = stackalloc byte[8];
+
+            // Most text is short: a number, a word, the indentation between two tags. A vectorized search
+            // costs more to set up than those few bytes cost to read, so the first bytes are read one at a
+            // time. Only bytes that mean the same in both XML versions are taken here: printable ASCII
+            // other than '<', '&' and '>', the blank, the tab, and the line feed. Anything else, and
+            // anything longer, is left to the loop below.
+            var head = _pos;
+            var headEnd = Math.Min(_span.Length, head + ShortTextBytes);
+            while (head < headEnd)
+            {
+                var b = _span[head];
+                if (b is > (byte)' ' and < 0x7F and not (byte)'<' and not (byte)'&' and not (byte)'>')
+                {
+                    hasNonWs = true;
+                    head++;
+                }
+                else if (b is (byte)' ' or (byte)'\t')
+                {
+                    head++;
+                }
+                else if (b is (byte)'\n')
+                {
+                    head++;
+                    _lineNumber++;
+                    _lineStart = head;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            _pos = head;
             while (_pos < _span.Length && _span[_pos] is not (byte)'<')
             {
                 var rest = _span[_pos..];

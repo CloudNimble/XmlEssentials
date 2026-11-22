@@ -160,6 +160,25 @@ Type: `System.Type`
 
 ## Methods
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CheckRoot <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
+
+Checks that the start tag *reader* is on is the document element
+of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type).
+
+#### Syntax
+
+```csharp
+internal void CheckRoot(ref CloudNimble.Text.Xml.Utf8XmlReader reader)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader. |
+
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
 <Note>Inherited from `object`</Note>
@@ -242,25 +261,6 @@ protected internal object MemberwiseClone()
 #### Returns
 
 Type: `object`
-
-### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MoveToRoot <Badge color="gray">Inherited</Badge>
-
-<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
-
-Moves *reader* to the next start tag and checks that it is the document element
-of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type).
-
-#### Syntax
-
-```csharp
-internal void MoveToRoot(ref CloudNimble.Text.Xml.Utf8XmlReader reader)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReadRootAsObject <Badge color="gray">Inherited</Badge> <Badge color="orange">Abstract</Badge>
 

@@ -475,7 +475,8 @@ Type: `CloudNimble.Text.Xml.XmlTokenType`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueIsEscaped
 
-Gets a value indicating whether the current value contained character or entity references.
+Gets a value indicating whether the current value differs from its bytes in the input: it held
+character or entity references, or line ends that were normalized.
 
 #### Syntax
 
@@ -1783,6 +1784,11 @@ public bool TrySkip()
 Type: `bool`
 [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the element was skipped;
 [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if more data is required.
+
+#### Remarks
+
+When the element is not all in the current block, the reader is put back on its start tag, as
+`Utf8JsonReader.TrySkip` does, so the caller can supply more data and skip or read it again.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueTextEquals
 
