@@ -15,7 +15,7 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 2d | xmlconf subset | **Done** (`47e7fd1`) |
 | 3 | Utf8XmlWriter | **Done** (`e211820`) |
 | 4 | DOM | **Done** (`7a7d8da`; real-document speed work in `26a0d03`) |
-| 5 | Options, converters, primitive serialize | Not started |
+| 5 | Options, converters, primitive serialize | Implemented and optimized (uncommitted); scalar roots are 0.06 to 0.29 of BCL; the two streaming rows are level with BCL ([optimization](23-optimization.md)) |
 | 6a–6e | POCO mapping | Not started |
 | 7 | Source generator + context | Not started |
 | 7b | XSD generator | Not started |
@@ -106,6 +106,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 5: Options, converters, primitive serialize
 
+- **Status:** Implemented and optimized (uncommitted)
 - **Title:** `feat: XmlSerializerOptions, XmlConverter, primitive XmlSerializer`
 - **Depends on:** PR 4
 - **Description:** Scalars. Root name via policy (`<Int32>42</Int32>` identity). Null root = xsi:nil. Full [07](07-api-serializer.md) overload families including TValue+context deserialize.

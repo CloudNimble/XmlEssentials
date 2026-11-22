@@ -1,0 +1,42 @@
+---
+title: XmlIgnoreCondition
+description: "When a member is skipped during serialize or deserialize."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml.Serialization
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition
+```
+
+## Summary
+
+When a member is skipped during serialize or deserialize.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `Never` | 0 | The member is always written and read. |
+| `Always` | 1 | The member is always ignored. |
+| `WhenWritingDefault` | 2 | Skip when the value equals the default for its type. |
+| `WhenWritingNull` | 3 | Skip when the value is null. |
+
+## Related APIs
+
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
+

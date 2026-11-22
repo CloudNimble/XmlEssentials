@@ -5,9 +5,11 @@ namespace CloudNimble.Text.Xml
     /// One xmlns binding in the in-progress document.
     /// </summary>
     /// <remarks>
-    /// Prefix and URI are either slices of the current buffer (<see cref="PrefixStart"/> /
-    /// <see cref="UriStart"/> ≥ 0) or owned copies for resume. An empty prefix is the default
-    /// xmlns. An empty URI undeclares that prefix (1.1) or the default namespace.
+    /// The record holds no object reference, so the reader's inline slots for it need not be cleared when a
+    /// reader is constructed. A prefix or URI is a slice of the current buffer when its start is zero or
+    /// greater. A negative start names bytes the reader owns: -1 is empty, and other values are resolved by
+    /// <c>Utf8XmlReader.Owned</c> to a well-known namespace or an interned copy kept for resume. An empty
+    /// prefix is the default xmlns. An empty URI undeclares that prefix (1.1) or the default namespace.
     /// </remarks>
     internal readonly struct NamespaceBinding
     {
@@ -20,75 +22,44 @@ namespace CloudNimble.Text.Xml
         public int Depth { get; }
 
         /// <summary>
-        /// Gets the owned prefix bytes when <see cref="PrefixStart"/> is negative.
-        /// </summary>
-        public byte[] PrefixOwned { get; }
-
-        /// <summary>
-        /// Gets the prefix byte offset in the current buffer, or -1 when owned.
-        /// </summary>
-        public int PrefixStart { get; }
-
-        /// <summary>
-        /// Gets the prefix UTF-8 byte length.
+        /// Gets the prefix length in bytes.
         /// </summary>
         public int PrefixLength { get; }
 
         /// <summary>
-        /// Gets the owned URI bytes when <see cref="UriStart"/> is negative.
+        /// Gets the prefix offset in the current buffer, or a negative value naming owned bytes.
         /// </summary>
-        public byte[] UriOwned { get; }
+        public int PrefixStart { get; }
 
         /// <summary>
-        /// Gets the URI byte offset in the current buffer, or -1 when owned.
-        /// </summary>
-        public int UriStart { get; }
-
-        /// <summary>
-        /// Gets the URI UTF-8 byte length.
+        /// Gets the URI length in bytes.
         /// </summary>
         public int UriLength { get; }
+
+        /// <summary>
+        /// Gets the URI offset in the current buffer, or a negative value naming owned bytes.
+        /// </summary>
+        public int UriStart { get; }
 
         #endregion
 
         #region Constructors
 
         /// <summary>
-        /// Creates an owned binding (resume / interned).
+        /// Creates a binding.
         /// </summary>
         /// <param name="depth">The owning element depth.</param>
-        /// <param name="prefix">The prefix bytes. Empty for the default xmlns.</param>
-        /// <param name="uri">The URI bytes. Empty when unbound.</param>
-        public NamespaceBinding(int depth, byte[] prefix, byte[] uri)
-        {
-            Depth = depth;
-            PrefixOwned = prefix;
-            PrefixStart = -1;
-            PrefixLength = prefix.Length;
-            UriOwned = uri;
-            UriStart = -1;
-            UriLength = uri.Length;
-        }
-
-        /// <summary>
-        /// Creates a buffer-backed binding.
-        /// </summary>
-        /// <param name="depth">The owning element depth.</param>
-        /// <param name="prefixStart">Prefix offset in the current buffer, or -1 when owned.</param>
-        /// <param name="prefixLength">Prefix UTF-8 length.</param>
-        /// <param name="prefixOwned">Owned prefix when <paramref name="prefixStart"/> is -1.</param>
-        /// <param name="uriStart">URI offset in the current buffer, or -1 when owned.</param>
-        /// <param name="uriLength">URI UTF-8 length.</param>
-        /// <param name="uriOwned">Owned URI when <paramref name="uriStart"/> is -1.</param>
-        public NamespaceBinding(int depth, int prefixStart, int prefixLength, byte[] prefixOwned, int uriStart, int uriLength, byte[] uriOwned)
+        /// <param name="prefixStart">The prefix offset, or a negative value naming owned bytes.</param>
+        /// <param name="prefixLength">The prefix length.</param>
+        /// <param name="uriStart">The URI offset, or a negative value naming owned bytes.</param>
+        /// <param name="uriLength">The URI length.</param>
+        public NamespaceBinding(int depth, int prefixStart, int prefixLength, int uriStart, int uriLength)
         {
             Depth = depth;
             PrefixStart = prefixStart;
             PrefixLength = prefixLength;
-            PrefixOwned = prefixOwned;
             UriStart = uriStart;
             UriLength = uriLength;
-            UriOwned = uriOwned;
         }
 
         #endregion

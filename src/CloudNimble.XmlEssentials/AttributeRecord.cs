@@ -6,8 +6,9 @@ namespace CloudNimble.Text.Xml
     /// </summary>
     /// <remarks>
     /// Name and value offsets are into the reader's current UTF-8 buffer.
-    /// <see cref="Decoded"/> is set only when entities or attribute-value normalization
-    /// produced a buffer distinct from the raw slice.
+    /// <see cref="DecodedStart"/> is zero or greater only when entities or attribute-value normalization
+    /// produced bytes distinct from the raw slice. The record holds no object reference, so the reader's
+    /// inline slots for it need not be cleared when a reader is constructed.
     /// </remarks>
     internal struct AttributeRecord
     {
@@ -40,17 +41,13 @@ namespace CloudNimble.Text.Xml
         public const int XmlnsNamespace = 1;
 
         /// <summary>
-        /// Decoded attribute value when entities or whitespace normalization produced a new buffer.
-        /// </summary>
-        public byte[]? Decoded;
-
-        /// <summary>
-        /// Number of bytes of <see cref="Decoded"/> that belong to this attribute.
+        /// Number of decoded bytes that belong to this attribute.
         /// </summary>
         public int DecodedLength;
 
         /// <summary>
-        /// Offset of this attribute's value in <see cref="Decoded"/>, which is shared by the start tag's attributes.
+        /// Offset of this attribute's decoded value in the buffer the start tag's attributes share, or -1 when the
+        /// value needed no decoding and is read from the input.
         /// </summary>
         public int DecodedStart;
 

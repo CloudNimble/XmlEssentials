@@ -356,8 +356,10 @@ namespace CloudNimble.Text.Xml
         {
             if (_attributeDecoded is null || _attributeDecodedLength + length > _attributeDecoded.Length)
             {
-                _attributeDecoded = new byte[Math.Max(Math.Max(256, length), (_attributeDecoded?.Length ?? 0) * 2)];
-                _attributeDecodedLength = 0;
+                // Earlier attributes of this start tag keep their offsets, so what they decoded moves with them.
+                var grown = new byte[Math.Max(Math.Max(256, _attributeDecodedLength + length), (_attributeDecoded?.Length ?? 0) * 2)];
+                _attributeDecoded.AsSpan(0, _attributeDecodedLength).CopyTo(grown);
+                _attributeDecoded = grown;
             }
 
             return _attributeDecoded.AsSpan(_attributeDecodedLength, length);
@@ -503,15 +505,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Expands entities in a text node into <c>_decodedValue</c> when the slice contains <c>&amp;</c>.
+        /// Normalizes line ends, and expands references when asked to, into <c>_decodedValue</c>. A value that
+        /// needs neither stays in the input.
         /// </summary>
         /// <param name="start">Byte offset of the raw text in the current buffer.</param>
         /// <param name="length">UTF-8 byte length of the raw text.</param>
-        internal void DecodeValueSpan(int start, int length)
+        /// <param name="expandReferences">
+        /// <see langword="true"/> for text; <see langword="false"/> for CDATA, comments, and processing
+        /// instructions, where <c>&amp;</c> is an ordinary character.
+        /// </param>
+        internal void DecodeValueSpan(int start, int length, bool expandReferences)
         {
             var slice = _span.Slice(start, length);
             var needsEol = slice.IndexOf((byte)'\r') >= 0 || (_version is XmlVersion.Version11 && ContainsXml11LineEnding(slice));
-            if (slice.IndexOf((byte)'&') < 0 && !needsEol)
+            if ((!expandReferences || slice.IndexOf((byte)'&') < 0) && !needsEol)
             {
                 _valueIsEscaped = false;
                 return;
@@ -523,7 +530,7 @@ namespace CloudNimble.Text.Xml
             Span<byte> entityScratch = stackalloc byte[8];
             while (i < slice.Length)
             {
-                if (slice[i] is (byte)'&')
+                if (expandReferences && slice[i] is (byte)'&')
                 {
                     var saved = _pos;
                     _pos = start + i;
@@ -1046,8 +1053,7 @@ namespace CloudNimble.Text.Xml
 
             var record = new AttributeRecord
             {
-                Decoded = decoded,
-                DecodedStart = decodedStart,
+                DecodedStart = decoded is null ? -1 : decodedStart,
                 DecodedLength = decodedLength,
                 NameLength = nameLength,
                 NameStart = nameStart,
@@ -1104,6 +1110,7 @@ namespace CloudNimble.Text.Xml
                         throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
                     }
 
+                    DecodeValueSpan(start, _valueLength, expandReferences: false);
                     _nameLength = 0;
                     _prefixLength = 0;
                     if (_elementCount > 0)
@@ -1115,7 +1122,17 @@ namespace CloudNimble.Text.Xml
                     return true;
                 }
 
-                AdvanceChar();
+                // A run of plain ASCII that cannot start the terminator needs no per-character check.
+                // Line ends, ']' and everything else go through AdvanceChar.
+                var plain = _span[_pos..].IndexOfAnyExcept(XmlChars.CDataPlainChars);
+                if (plain == 0)
+                {
+                    AdvanceChar();
+                }
+                else
+                {
+                    _pos = plain < 0 ? _span.Length : _pos + plain;
+                }
             }
 
             return NeedMore();
@@ -1152,13 +1169,24 @@ namespace CloudNimble.Text.Xml
                         throw Error($"{nameof(XmlReaderOptions.MaxCommentByteCount)} exceeded ({_maxCommentBytes}).");
                     }
 
+                    DecodeValueSpan(start, _valueLength, expandReferences: false);
                     _nameLength = 0;
                     _prefixLength = 0;
                     _tokenType = XmlTokenType.Comment;
                     return true;
                 }
 
-                AdvanceChar();
+                // A run of plain ASCII that cannot start the terminator needs no per-character check.
+                // Line ends, '-' and everything else go through AdvanceChar.
+                var plain = _span[_pos..].IndexOfAnyExcept(XmlChars.CommentPlainChars);
+                if (plain == 0)
+                {
+                    AdvanceChar();
+                }
+                else
+                {
+                    _pos = plain < 0 ? _span.Length : _pos + plain;
+                }
             }
 
             return NeedMore();
@@ -1477,6 +1505,23 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         internal bool ReadPiOrDeclaration()
         {
+            // The declaration Utf8XmlWriter writes, and most other producers too, is recognized with one
+            // comparison. It declares version 1.0, which is what the reader starts with, and UTF-8. Any other
+            // spelling takes the general path below.
+            ReadOnlySpan<byte> usual = "<?xml version=\"1.0\" encoding=\"utf-8\"?>"u8;
+            if (_xmlDeclarationAllowed && _span[_pos..].StartsWith(usual))
+            {
+                _nameStart = _pos + 2;
+                _nameLength = 3;
+                _prefixLength = 0;
+                _valueStart = _pos + 6;
+                _valueLength = usual.Length - 8;
+                _pos += usual.Length;
+                _tokenType = XmlTokenType.XmlDeclaration;
+                _xmlDeclarationAllowed = false;
+                return true;
+            }
+
             _pos += 2;
             if (!ReadName(out var targetPrefixLength, out var targetLength))
             {
@@ -1504,6 +1549,15 @@ namespace CloudNimble.Text.Xml
 
             SkipWhitespaceBytes();
             var valueStart = _pos;
+
+            // The usual data, an XML declaration above all, is plain ASCII on one line: find its end with one
+            // search and check it with another. Anything else is left to the loop, one character at a time.
+            var close = _span[_pos..].IndexOf("?>"u8);
+            if (close > 0 && !_span.Slice(_pos, close).ContainsAnyExcept(XmlChars.PlainAsciiChars))
+            {
+                _pos += close;
+            }
+
             while (_pos + 1 < _span.Length)
             {
                 if (_span[_pos] is (byte)'?' && _span[_pos + 1] is (byte)'>')
@@ -1532,6 +1586,7 @@ namespace CloudNimble.Text.Xml
                         return true;
                     }
 
+                    DecodeValueSpan(valueStart, _valueLength, expandReferences: false);
                     _xmlDeclarationAllowed = false;
                     _tokenType = XmlTokenType.ProcessingInstruction;
                     _nameStart = targetStart;
@@ -1778,7 +1833,7 @@ namespace CloudNimble.Text.Xml
 
             if (needsDecode)
             {
-                DecodeValueSpan(start, _valueLength);
+                DecodeValueSpan(start, _valueLength, expandReferences: true);
             }
             else
             {
@@ -1795,6 +1850,63 @@ namespace CloudNimble.Text.Xml
             SetElementSlot(_elementCount - 1, ElementSlot(_elementCount - 1) | ElementHasText);
             _tokenType = XmlTokenType.Text;
             return true;
+        }
+
+        /// <summary>
+        /// Reports where the reader is, in the three numbers a state snapshot keeps about position.
+        /// </summary>
+        /// <param name="documentBytesConsumed">The document offset after the current token.</param>
+        /// <param name="lineNumber">The line number.</param>
+        /// <param name="lineStart">The line start.</param>
+        /// <remarks>
+        /// Pass them to <c>XmlReaderStateSnapshot.At</c> on a snapshot captured in the same scope to get the
+        /// state to resume from here without capturing a new snapshot.
+        /// </remarks>
+        internal readonly void GetResumePoint(out long documentBytesConsumed, out long lineNumber, out long lineStart)
+        {
+            documentBytesConsumed = _documentBytesConsumedBase + _pos;
+            lineNumber = _lineNumber;
+            lineStart = _lineStart;
+        }
+
+        /// <summary>
+        /// Reads from a start tag to its matching end tag.
+        /// </summary>
+        /// <returns><see langword="false"/> when the block ended first.</returns>
+        internal bool SkipChildren()
+        {
+            var target = _depth;
+            while (Read())
+            {
+                if (_tokenType == XmlTokenType.EndElement && _depth < target)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Skips the current element when the block may end before the element does, and puts the reader back
+        /// on the start tag if it does.
+        /// </summary>
+        /// <returns><see langword="false"/> when more data is required.</returns>
+        /// <remarks>
+        /// Kept out of <see cref="TrySkip"/> on purpose: the copy of the reader is a large local, and a method
+        /// that declares one clears it on every call, including the final-block calls that never use it.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal bool TrySkipPartial()
+        {
+            var restore = this;
+            if (SkipChildren())
+            {
+                return true;
+            }
+
+            this = restore;
+            return false;
         }
 
         /// <summary>

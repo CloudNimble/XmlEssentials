@@ -18,6 +18,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         [DataRow("<a><b><c><d><e><f><g><h><i><j k=\"v\">deep</j></i></h></g></f></e></d></c></b></a>", DisplayName = "ten levels, no namespaces")]
         [DataRow("<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<!--c--><p:r xmlns:p=\"urn:p\" xmlns=\"urn:d\" a=\"1&amp;2\" p:b='x y'>\r\n  <c>text &lt;here&gt; caf\u00E9</c><![CDATA[raw <x>]]><?pi data?>\n  <p:e xmlns:q=\"urn:q\" q:z=\"9\"><q:f/></p:e><d xmlns=\"\">t</d>\n</p:r>\n<!--tail-->", DisplayName = "prefixes, default namespace, undeclaration, CDATA, PI, comments")]
+        [DataRow("<r><![CDATA[plain run ] ]] ]>x <&\r\nnext\rline é中😀 a\u0085b\u2028c]]]><!--plain run - x -\r\nnext\rline é中😀 a\u0085b\u2028c--></r>", DisplayName = "CDATA and comment with plain runs, lone terminator characters, and line ends")]
+        [DataRow("<?xml version=\"1.1\"?><r><![CDATA[plain run ] ]] ]>x <&\r\nnext\rline é中😀 a\u0085b\u2028c]]]><!--plain run - x -\r\nnext\rline é中😀 a\u0085b\u2028c--></r>", DisplayName = "XML 1.1 CDATA and comment with plain runs, NEL, and LS")]
         [DataRow("<r xmlns=\"urn:a\"><x xmlns=\"urn:b\"><y xmlns=\"\"><z/></y><w>1</w></x><v>2</v></r>", DisplayName = "nested default namespaces")]
         [DataRow("<a:r xmlns:a=\"urn:u\" xmlns:b=\"urn:u\"><a:e>1</b:e><b:f a:k=\"v\" b:j=\"w\"/></b:r>", DisplayName = "two prefixes on one namespace")]
         [DataRow("<r xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><e xsi:nil=\"true\"/><f xml:lang=\"en\" xml:space=\"preserve\"> x </f></r>", DisplayName = "xsi and xml prefixes")]

@@ -166,8 +166,8 @@ public sealed class XmlSerializerOptions
     public void MakeReadOnly();
     public XmlTypeInfo GetTypeInfo(Type type);
     public XmlTypeInfo<T> GetTypeInfo<T>();
-    public bool TryGetTypeInfo(Type type, out XmlTypeInfo typeInfo);
-    public bool TryGetTypeInfo<T>(out XmlTypeInfo<T> typeInfo);
+    public bool TryGetTypeInfo(Type type, [NotNullWhen(true)] out XmlTypeInfo? typeInfo);
+    public bool TryGetTypeInfo<T>([NotNullWhen(true)] out XmlTypeInfo<T>? typeInfo);
 
     public bool OmitXmlDeclaration { get; set; }
     public bool EmitByteOrderMark { get; set; }
@@ -353,12 +353,7 @@ public static class XmlSerializer
     public static ValueTask<object?> DeserializeAsync(Stream utf8Xml, Type returnType, XmlSerializerContext context, CancellationToken cancellationToken = default);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static void Serialize<TValue>(PipeWriter utf8Xml, TValue value, XmlSerializerOptions? options = null);
-    public static void Serialize<TValue>(PipeWriter utf8Xml, TValue value, XmlTypeInfo<TValue> xmlTypeInfo);
     public static Task SerializeAsync<TValue>(PipeWriter utf8Xml, TValue value, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
-    [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static TValue? Deserialize<TValue>(PipeReader utf8Xml, XmlSerializerOptions? options = null);
-    public static TValue? Deserialize<TValue>(PipeReader utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
     public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
     public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
@@ -409,7 +404,31 @@ public static class XmlSerializer
 
 `Serialize(null)`: [K31](01-identity-and-decisions.md#key-decisions) — nillable root with `xsi:nil`.
 
-`topLevelValues`: `false` (default) = children of one document element (STJ array). `true` = successive XML documents in the stream (STJ JSON Lines analogue).
+`topLevelValues`: `false` (default) = children of one document element (STJ array). `true` = successive XML documents in the stream (STJ JSON Lines analogue). Each document may carry its own XML declaration and documents may be separated by white space; the serializer reads each with its own `Utf8XmlReader`, so this does not rely on the reader's `AllowMultipleRoots` (which is for fragments and rejects a second declaration).
+
+### Behavior every overload shares
+
+All reading goes through `Utf8XmlReader` and all writing through `Utf8XmlWriter`. Every overload resolves an `XmlTypeInfo` and calls one internal read or write path; the `object` + `Type` overloads use the same path and unbox once.
+
+| Topic | Rule |
+| --- | --- |
+| Unsupported type | `NotSupportedException` (`The type 'X' is not supported.`), as STJ. `TryGetTypeInfo` returns `false`. A payload problem is `XmlException`. |
+| Misconfigured converter | `InvalidOperationException`: `[XmlConverter]` naming a type that is not a converter, a factory that returns `null` or another factory, a converter whose `T` is not the requested type, a resolver that answers with another type. These are never reported as "not supported". |
+| Read-only | Options become read-only on first `GetTypeInfo` / `TryGetTypeInfo` or first serializer call (not on `GetConverter`). Every setter and both lists then throw `InvalidOperationException`. |
+| `TypeInfoResolver` | Unset: `DefaultXmlTypeInfoResolver.Instance` when `IsReflectionEnabledByDefault`, else `null` (and using the options throws `InvalidOperationException`). An explicitly set resolver, the default one included, works with the switch off. |
+| `TypeInfoResolverChain` | A view of `TypeInfoResolver`, as STJ: empty until a resolver is set, the single resolver or the items of a chain afterwards. Changing the list makes it the resolver; setting the resolver replaces the list's content. It is not a second list searched before the resolver. |
+| `XmlSerializerContext` | The constructor makes the context the `TypeInfoResolver` of its options (new options when `null`), as STJ. Read-only options are rejected. |
+| Root name | Must match on read: local name, and namespace when `DefaultNamespace` is set. |
+| Whole-document sources | String, chars, UTF-8, sequence, stream, pipe, DOM: after the root, the rest of the document is read, so trailing junk or a second root is an `XmlException`. The `ref Utf8XmlReader` overload reads one element and leaves the reader on its end. |
+| Character content | Text, CDATA, and character or entity references inside one element are joined; comments and processing instructions are ignored. `<Int32>4<!--c-->2</Int32>` is 42, as `XmlElement.GetInt32()` reads it. A child element is an `XmlException`. |
+| Empty element | The empty string. Valid for `string`, `Uri`, and `byte[]`; an `XmlException` for every other built-in type (XSD has no empty `xs:int`). |
+| `xsi:nil` | Handled once, by `XmlTypeInfo<T>`, before any converter (unless `HandleNull`). Nil on a non-nillable type is an `XmlException`. |
+| `NumberHandling.Strict` | Writing or reading any non-finite `float` / `double` is an `XmlException`. |
+| Enums | Written as the member name, or the number under `EnumHandling.Integer`; `[Flags]` as space-separated names; a value with no name as its number. Read from a name or a number in either mode. A number must fit the underlying type and, without `[Flags]`, be a declared member. |
+| Stream and pipe sources | Read to the end into a pooled buffer; `MaxDocumentByteCount` stops the read as soon as it is exceeded. `DeserializeAsync` does not block on the stream. A pipe is consumed as it is read, so a bounded pipe cannot stall. |
+| Failure while writing | What the writer still holds is dropped. A document that fits the writer buffer (16 KB by default) never reaches the destination half written; a longer one may have been passed on in part. |
+| DOM sources | The element or node is written to a pooled buffer as XML 1.1, with the namespace declarations it inherits, and read back. Content from a 1.0 or 1.1 document is unchanged. |
+| Async sequences | `SerializeAsyncEnumerable` writes each value as it arrives and flushes between values. `DeserializeAsyncEnumerable` returns each value as soon as the stream has delivered all of it: after every read it yields the values that are complete and keeps only the unfinished tail, so memory is one read plus at most one value, not the stream. A malformed part throws when it is reached; earlier values have already been returned. |
 
 ```csharp
 namespace CloudNimble.Text.Xml.Serialization;
@@ -446,7 +465,7 @@ Feature switch:
 | --- | --- |
 | Serialize/Deserialize T + options/typeInfo/context for string, utf8, span, ROS, stream, writer, IBufferWriter, async | yes, rectangular |
 | object+Type + context, including DOM | yes |
-| `PipeReader` / `PipeWriter` | yes |
+| `PipeReader` / `PipeWriter` | async only, as STJ. A `PipeWriter` is an `IBufferWriter<byte>`, so the synchronous `Serialize(IBufferWriter<byte>, …)` overload takes one |
 | `DeserializeAsyncEnumerable` / `SerializeAsyncEnumerable` (`topLevelValues`) | yes |
 | `ReferenceHandler` | `XmlReferenceHandler` |
 | `Dictionary<,>` | mapped |

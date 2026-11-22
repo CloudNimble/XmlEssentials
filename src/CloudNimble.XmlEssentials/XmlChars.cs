@@ -90,6 +90,22 @@ namespace CloudNimble.Text.Xml
         public static readonly SearchValues<byte> TextRunChars = SearchValues.Create(CreateTextRunChars());
 
         /// <summary>
+        /// <see cref="PlainAsciiChars"/> without <c>]</c>, which may start the end of a CDATA section.
+        /// </summary>
+        public static readonly SearchValues<byte> CDataPlainChars = SearchValues.Create("\t !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// <see cref="PlainAsciiChars"/> without <c>-</c>, which may start the end of a comment.
+        /// </summary>
+        public static readonly SearchValues<byte> CommentPlainChars = SearchValues.Create("\t !\"#$%&'()*+,./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// Tab and every printable ASCII character. A run made only of these bytes holds legal characters in
+        /// both XML versions and no line ends, so it needs no per-character check and moves no line counter.
+        /// </summary>
+        public static readonly SearchValues<byte> PlainAsciiChars = SearchValues.Create("\t !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
         /// ASCII text that needs no EOL, entity, or Char check: tab and printable ASCII except <c>&lt;</c> and <c>&amp;</c>.
         /// </summary>
         public static readonly SearchValues<byte> AsciiTextChars = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);

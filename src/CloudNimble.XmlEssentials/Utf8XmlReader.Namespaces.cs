@@ -195,9 +195,9 @@ namespace CloudNimble.Text.Xml
         /// <returns>UTF-8 value bytes.</returns>
         internal readonly ReadOnlySpan<byte> AttributeValue(AttributeRecord attribute)
         {
-            if (attribute.Decoded is { } decoded)
+            if (attribute.DecodedStart >= 0)
             {
-                return decoded.AsSpan(attribute.DecodedStart, attribute.DecodedLength);
+                return _attributeDecoded.AsSpan(attribute.DecodedStart, attribute.DecodedLength);
             }
 
             return _span.Slice(attribute.ValueStart, attribute.ValueLength);
@@ -295,7 +295,7 @@ namespace CloudNimble.Text.Xml
                 return _span.Slice(binding.PrefixStart, binding.PrefixLength);
             }
 
-            return binding.PrefixOwned;
+            return Owned(binding.PrefixStart);
         }
 
         /// <summary>
@@ -310,7 +310,7 @@ namespace CloudNimble.Text.Xml
                 return _span.Slice(binding.UriStart, binding.UriLength);
             }
 
-            return binding.UriOwned;
+            return Owned(binding.UriStart);
         }
 
         /// <summary>
@@ -457,13 +457,13 @@ namespace CloudNimble.Text.Xml
             var length = prefix.Length;
             if (length == 3 && prefix.SequenceEqual("xml"u8))
             {
-                binding = new NamespaceBinding(0, XmlUtf8.XmlPrefix, XmlUtf8.Xml);
+                binding = new NamespaceBinding(0, OwnedEmpty, 0, OwnedXml, XmlUtf8.Xml.Length);
                 return true;
             }
 
             if (length == 5 && prefix.SequenceEqual("xmlns"u8))
             {
-                binding = new NamespaceBinding(0, XmlUtf8.XmlnsPrefix, XmlUtf8.Xmlns);
+                binding = new NamespaceBinding(0, OwnedEmpty, 0, OwnedXmlns, XmlUtf8.Xmlns.Length);
                 return true;
             }
 
@@ -667,7 +667,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="uri">The URI bytes. Empty when unbound.</param>
         internal void PushBinding(int depth, byte[] prefix, byte[] uri)
         {
-            StoreBinding(new NamespaceBinding(depth, prefix, uri));
+            StoreBinding(new NamespaceBinding(depth, OwnedStart(prefix), prefix.Length, OwnedStart(uri), uri.Length));
         }
 
         /// <summary>
@@ -790,7 +790,7 @@ namespace CloudNimble.Text.Xml
         {
             _currentNsStart = binding.UriStart;
             _currentNsLength = binding.UriLength;
-            _currentNsOwned = binding.UriStart >= 0 ? XmlUtf8.Empty : binding.UriOwned;
+            _currentNsOwned = binding.UriStart >= 0 ? XmlUtf8.Empty : Owned(binding.UriStart);
         }
 
         /// <summary>
@@ -933,34 +933,62 @@ namespace CloudNimble.Text.Xml
         /// <returns>The binding.</returns>
         internal NamespaceBinding CreateBinding(int depth, scoped ReadOnlySpan<byte> prefix, scoped ReadOnlySpan<byte> uri)
         {
-            var prefixStart = -1;
-            var prefixOwned = XmlUtf8.Empty;
+            var prefixStart = OwnedEmpty;
             if (!prefix.IsEmpty)
             {
                 // The prefix of a declaration is the local name of an xmlns attribute, always a slice of the buffer.
                 TryGetBufferOffset(prefix, out prefixStart);
             }
 
-            var uriStart = -1;
-            var uriOwned = XmlUtf8.Empty;
+            var uriStart = OwnedEmpty;
             if (!uri.IsEmpty)
             {
                 var known = XmlUtf8.TryInternKnown(uri);
                 if (known is not null)
                 {
-                    uriOwned = known;
+                    uriStart = OwnedStart(known);
                 }
-                else if (TryGetBufferOffset(uri, out var u))
+                else if (!TryGetBufferOffset(uri, out uriStart))
                 {
-                    uriStart = u;
-                }
-                else
-                {
-                    uriOwned = InternUri(uri);
+                    uriStart = OwnedStart(InternUri(uri));
                 }
             }
 
-            return new NamespaceBinding(depth, prefixStart, prefix.Length, prefixOwned, uriStart, uri.Length, uriOwned);
+            return new NamespaceBinding(depth, prefixStart, prefix.Length, uriStart, uri.Length);
+        }
+
+        /// <summary>
+        /// Returns the bytes a negative binding start names.
+        /// </summary>
+        /// <param name="start">A negative <see cref="NamespaceBinding.PrefixStart"/> or <see cref="NamespaceBinding.UriStart"/>.</param>
+        /// <returns>The owned bytes.</returns>
+        internal readonly byte[] Owned(int start)
+        {
+            return start switch
+            {
+                OwnedEmpty => XmlUtf8.Empty,
+                OwnedXml => XmlUtf8.Xml,
+                OwnedXmlns => XmlUtf8.Xmlns,
+                OwnedXsi => XmlUtf8.Xsi,
+                _ => _internedUris![OwnedFirstInterned - start],
+            };
+        }
+
+        /// <summary>
+        /// Returns the negative binding start that names <paramref name="owned"/>.
+        /// </summary>
+        /// <param name="owned">Empty, the <c>xsi</c> namespace, or an array returned by <see cref="InternUri"/>.</param>
+        /// <returns>The start to store in a <see cref="NamespaceBinding"/>.</returns>
+        internal readonly int OwnedStart(byte[] owned)
+        {
+            if (owned.Length == 0)
+            {
+                return OwnedEmpty;
+            }
+
+            return ReferenceEquals(owned, XmlUtf8.Xsi)
+                ? OwnedXsi
+                : OwnedFirstInterned - Array.IndexOf(_internedUris!, owned);
         }
 
         #endregion

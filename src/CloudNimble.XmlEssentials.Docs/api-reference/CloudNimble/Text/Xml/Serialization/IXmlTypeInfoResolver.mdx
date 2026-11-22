@@ -1,0 +1,47 @@
+---
+title: IXmlTypeInfoResolver
+description: "Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type."
+icon: plug
+keywords: ['IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization', 'interface']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml.Serialization
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver
+```
+
+## Summary
+
+Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type.
+
+## Methods
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo <Badge color="orange">Abstract</Badge>
+
+Returns type info for *type*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this resolver does not handle it.
+
+#### Syntax
+
+```csharp
+CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(System.Type type, CloudNimble.Text.Xml.XmlSerializerOptions options)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | The CLR type. |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serializer options. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?`
+The type info, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+

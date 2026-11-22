@@ -1,0 +1,41 @@
+---
+title: XmlNilHandling
+description: "How a nillable null value is written."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlNilHandling', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlNilHandling
+```
+
+## Summary
+
+How a nillable null value is written.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `WriteXsiNil` | 0 | Write `xsi:nil="true"` on an empty element. |
+| `WriteEmptyElement` | 1 | Write an empty element without `xsi:nil`. |
+| `Omit` | 2 | Omit the member. A null document root throws. |
+
+## Related APIs
+
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
+

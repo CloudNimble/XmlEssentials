@@ -1,0 +1,1004 @@
+---
+title: XmlSerializerOptions
+description: "Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`."
+icon: lock
+tag: "SEALED"
+keywords: ['XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml', 'class']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlSerializerOptions
+```
+
+## Summary
+
+Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`.
+
+## Remarks
+
+An instance becomes read-only the first time it is used to serialize or deserialize, or when
+[XmlSerializerOptions.MakeReadOnly](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#makereadonly) is called. Create one instance and reuse it: the converters and type info it
+resolves are cached on the instance.
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options with the general defaults.
+
+#### Syntax
+
+```csharp
+public XmlSerializerOptions()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options from a named default set.
+
+#### Syntax
+
+```csharp
+public XmlSerializerOptions(CloudNimble.Text.Xml.XmlSerializerDefaults defaults)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `defaults` | `CloudNimble.Text.Xml.XmlSerializerDefaults` | The default set. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Copies *options*. The copy is not read-only and shares no cached state with the source.
+
+#### Syntax
+
+```csharp
+public XmlSerializerOptions(CloudNimble.Text.Xml.XmlSerializerOptions options)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The source. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AllowDuplicateProperties
+
+Gets or sets whether duplicate properties are allowed on deserialize.
+
+#### Syntax
+
+```csharp
+public bool AllowDuplicateProperties { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AllowOutOfOrderMetadataProperties
+
+Gets or sets whether metadata properties may arrive out of order.
+
+#### Syntax
+
+```csharp
+public bool AllowOutOfOrderMetadataProperties { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeNamingPolicy
+
+Gets or sets the naming policy for attributes, falling back to [XmlSerializerOptions.PropertyNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#propertynamingpolicy).
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlNamingPolicy AttributeNamingPolicy { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Converters
+
+Gets the converter list. Looked up before [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) on the type and before the built-in converters.
+
+#### Syntax
+
+```csharp
+public System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.XmlConverter> Converters { get; }
+```
+
+#### Property Value
+
+Type: `System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.XmlConverter>`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Default
+
+Gets a read-only instance with the general defaults.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlSerializerOptions Default { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultBufferSize
+
+Gets or sets the size of the first buffer rented when serializing. 0 means 16384.
+
+#### Syntax
+
+```csharp
+public int DefaultBufferSize { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultIgnoreCondition
+
+Gets or sets when members are ignored.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition DefaultIgnoreCondition { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultNamespace
+
+Gets or sets the default namespace of the document element.
+
+#### Syntax
+
+```csharp
+public string DefaultNamespace { get; set; }
+```
+
+#### Property Value
+
+Type: `string?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DictionaryKeyPolicy
+
+Gets or sets the naming policy for dictionary keys.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlNamingPolicy DictionaryKeyPolicy { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementNamingPolicy
+
+Gets or sets the naming policy for elements, falling back to [XmlSerializerOptions.PropertyNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#propertynamingpolicy).
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlNamingPolicy ElementNamingPolicy { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmitByteOrderMark
+
+Gets or sets whether to emit a UTF-8 BOM.
+
+#### Syntax
+
+```csharp
+public bool EmitByteOrderMark { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumHandling
+
+Gets or sets how enums are written.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlEnumHandling EnumHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlEnumHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyFields
+
+Gets or sets whether read-only fields are ignored.
+
+#### Syntax
+
+```csharp
+public bool IgnoreReadOnlyFields { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyProperties
+
+Gets or sets whether read-only properties are ignored.
+
+#### Syntax
+
+```csharp
+public bool IgnoreReadOnlyProperties { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IncludeFields
+
+Gets or sets whether public fields are included.
+
+#### Syntax
+
+```csharp
+public bool IncludeFields { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentCharacter
+
+Gets or sets the indent character.
+
+#### Syntax
+
+```csharp
+public char IndentCharacter { get; set; }
+```
+
+#### Property Value
+
+Type: `char`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentSize
+
+Gets or sets the indent size. 0 means 2.
+
+#### Syntax
+
+```csharp
+public int IndentSize { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InferClosedTypePolymorphism
+
+Gets or sets whether closed generic polymorphism is inferred.
+
+#### Syntax
+
+```csharp
+public bool InferClosedTypePolymorphism { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsReadOnly
+
+Gets whether this instance can no longer be changed.
+
+#### Syntax
+
+```csharp
+public bool IsReadOnly { get; private set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
+
+Gets or sets the maximum attributes on one element. 0 means 1000.
+
+#### Syntax
+
+```csharp
+public int MaxAttributeCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxCommentByteCount
+
+Gets or sets the maximum comment payload. 0 means 1,048,576.
+
+#### Syntax
+
+```csharp
+public int MaxCommentByteCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
+
+Gets or sets the maximum element depth. 0 means 64.
+
+#### Syntax
+
+```csharp
+public int MaxDepth { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDocumentByteCount
+
+Gets or sets the maximum document size. 0 stays unbounded.
+
+#### Syntax
+
+```csharp
+public int MaxDocumentByteCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
+
+Gets or sets the maximum name length. 0 means 1024.
+
+#### Syntax
+
+```csharp
+public int MaxNameByteCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
+
+Gets or sets the maximum text node. 0 means 16,777,216.
+
+#### Syntax
+
+```csharp
+public int MaxTextByteCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
+
+Gets or sets the newline used when indented.
+
+#### Syntax
+
+```csharp
+public string NewLine { get; set; }
+```
+
+#### Property Value
+
+Type: `string`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NilHandling
+
+Gets or sets how null values are written.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlNilHandling NilHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNilHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NumberHandling
+
+Gets or sets whether `INF`, `-INF` and `NaN` are read and written.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlNumberHandling NumberHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlNumberHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
+
+Gets or sets whether the XML declaration is omitted.
+
+#### Syntax
+
+```csharp
+public bool OmitXmlDeclaration { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PreferredObjectCreationHandling
+
+Gets or sets how objects are created when populating an existing instance.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyNameCaseInsensitive
+
+Gets or sets whether property names are compared case-insensitively.
+
+#### Syntax
+
+```csharp
+public bool PropertyNameCaseInsensitive { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyNamingPolicy
+
+Gets or sets the fallback naming policy for properties, elements, and attributes.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlNamingPolicy PropertyNamingPolicy { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReadCommentHandling
+
+Gets or sets how comments are handled when deserializing.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlCommentHandling ReadCommentHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlCommentHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceHandler
+
+Gets or sets the reference handler.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlReferenceHandler ReferenceHandler { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RespectNullableAnnotations
+
+Gets or sets whether nullable annotations are respected.
+
+#### Syntax
+
+```csharp
+public bool RespectNullableAnnotations { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RespectRequiredConstructorParameters
+
+Gets or sets whether missing required constructor parameters throw.
+Default is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Syntax
+
+```csharp
+public bool RespectRequiredConstructorParameters { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Strict
+
+Gets a read-only instance with the strict defaults.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlSerializerOptions Strict { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeInfoResolver
+
+Gets or sets the resolver that supplies [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo).
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver TypeInfoResolver { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver?`
+
+#### Remarks
+
+When none has been set, this is [DefaultXmlTypeInfoResolver.Instance](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver#instance) if
+[XmlSerializer.IsReflectionEnabledByDefault](/api-reference/CloudNimble/Text/Xml/XmlSerializer#isreflectionenabledbydefault) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) and
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) otherwise. [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) is a view of this resolver.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeInfoResolverChain
+
+Gets the resolvers that make up [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver), in the order they are asked.
+
+#### Syntax
+
+```csharp
+public System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver> TypeInfoResolverChain { get; }
+```
+
+#### Property Value
+
+Type: `System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver>`
+
+#### Remarks
+
+The list is empty until a resolver has been set. Changing the list makes it the
+[XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver); setting [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) replaces the list's content.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnknownTypeHandling
+
+Gets or sets how [Object](https://learn.microsoft.com/dotnet/api/system.object) members without a converter are materialized.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnmappedMemberHandling
+
+Gets or sets how unmapped members are treated.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling UnmappedMemberHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Web
+
+Gets a read-only instance with the web defaults (camelCase, no declaration).
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlSerializerOptions Web { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
+
+Gets or sets whitespace handling forwarded to the reader on deserialize.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlWhitespaceHandling WhitespaceHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlWhitespaceHandling`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteIndented
+
+Gets or sets whether output is indented.
+
+#### Syntax
+
+```csharp
+public bool WriteIndented { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> XmlVersion
+
+Gets or sets the XML version written in the declaration.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlVersion XmlVersion { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlVersion`
+
+## Methods
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetConverter
+
+Returns the converter for *typeToConvert*.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlConverter GetConverter(System.Type typeToConvert)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `typeToConvert` | `System.Type` | The CLR type. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlConverter`
+The converter.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | No converter handles *typeToConvert*. |
+| `InvalidOperationException` | An [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) or converter factory is misconfigured. |
+
+#### Remarks
+
+The first match wins: [XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters) in list order, then [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute)
+on the type, then the built-in converters.
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo
+
+Returns the type info for *type* and makes this instance read-only.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(System.Type type)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | The CLR type. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`
+The type info.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *type*. |
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo
+
+Returns the type info for *T* and makes this instance read-only.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> GetTypeInfo<T>()
+```
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>`
+The type info.
+
+#### Type Parameters
+
+- `T` - The CLR type.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *T*. |
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MakeReadOnly
+
+Makes this instance read-only. Every setter and both lists throw [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception) afterwards.
+
+#### Syntax
+
+```csharp
+public void MakeReadOnly()
+```
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetTypeInfo
+
+Tries to get the type info for *type*, and makes this instance read-only.
+
+#### Syntax
+
+```csharp
+public bool TryGetTypeInfo(System.Type type, out CloudNimble.Text.Xml.Serialization.XmlTypeInfo typeInfo)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | The CLR type. |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?` | When this method returns [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the type info. |
+
+#### Returns
+
+Type: `bool`
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) when [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *type*.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetTypeInfo
+
+Tries to get the type info for *T*, and makes this instance read-only.
+
+#### Syntax
+
+```csharp
+public bool TryGetTypeInfo<T>(out CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>?` | When this method returns [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the type info. |
+
+#### Returns
+
+Type: `bool`
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) when [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *T*.
+
+#### Type Parameters
+
+- `T` - The CLR type.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
+

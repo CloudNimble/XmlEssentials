@@ -195,58 +195,7 @@ namespace CloudNimble.Text.Xml
         public static XmlDocument Parse(Stream utf8Xml, XmlDocumentOptions options = default)
         {
             ArgumentNullException.ThrowIfNull(utf8Xml);
-            var cap = options.MaxDocumentByteCount;
-            var rented = ArrayPool<byte>.Shared.Rent(XmlLimits.DefaultBufferSize);
-            var length = 0;
-            Span<byte> probe = stackalloc byte[1];
-            try
-            {
-                while (true)
-                {
-                    if (length == rented.Length)
-                    {
-                        var next = rented.Length * 2;
-                        if (cap > 0 && next > cap)
-                        {
-                            next = cap;
-                        }
-
-                        if (next <= rented.Length)
-                        {
-                            var extra = utf8Xml.Read(probe);
-                            if (extra > 0)
-                            {
-                                throw new XmlException($"{nameof(XmlDocumentOptions.MaxDocumentByteCount)} exceeded ({cap}).");
-                            }
-
-                            break;
-                        }
-
-                        var grown = ArrayPool<byte>.Shared.Rent(next);
-                        rented.AsSpan(0, length).CopyTo(grown);
-                        ReturnBuffer(rented, length);
-                        rented = grown;
-                    }
-
-                    var read = utf8Xml.Read(rented, length, rented.Length - length);
-                    if (read == 0)
-                    {
-                        break;
-                    }
-
-                    length += read;
-                    if (cap > 0 && length > cap)
-                    {
-                        throw new XmlException($"{nameof(XmlDocumentOptions.MaxDocumentByteCount)} exceeded ({cap}).");
-                    }
-                }
-            }
-            catch
-            {
-                ReturnBuffer(rented, length);
-                throw;
-            }
-
+            var rented = XmlStreamBuffer.ReadToEnd(utf8Xml, options.MaxDocumentByteCount, out var length);
             return ParseOwned(rented, length, options);
         }
 

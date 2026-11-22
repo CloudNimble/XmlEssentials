@@ -3,7 +3,7 @@ title: Overview
 description: "Summary of the CloudNimble.Text.Xml Namespace"
 icon: folder-tree
 mode: wide
-keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'Utf8XmlWriter', 'XmlAttributes', 'XmlCommentHandling', 'XmlDeclarationInfo', 'XmlDocument', 'XmlDocumentOptions', 'XmlElement', 'XmlEncodedText', 'XmlException']
+keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'Utf8XmlWriter', 'XmlAttributes', 'XmlCommentHandling', 'XmlDeclarationInfo', 'XmlDiscriminatorPlacement', 'XmlDocument', 'XmlDocumentOptions', 'XmlElement', 'XmlEncodedText']
 ---
 
 ## Summary
@@ -114,6 +114,9 @@ while (reader.Read())
 | [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) | An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`. |
 | [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) | Thrown when XML is not well-formed or a DoS limit is exceeded. |
 | [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) | Well-known XML namespace URIs used by XmlEssentials. |
+| [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) | Converts CLR member and type names to XML local names. |
+| [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | Serializes CLR values to UTF-8 XML and back. Analogous to `JsonSerializer`. |
+| [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) | Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`. |
 
 ### <Icon icon="cubes" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Structs
 
@@ -134,6 +137,10 @@ while (reader.Read())
 | Name | Summary |
 | ---- | ------- |
 | [XmlCommentHandling](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens. |
+| [XmlDiscriminatorPlacement](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement) | Where a polymorphic type discriminator is written. |
+| [XmlEnumHandling](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling) | How enum values are written. |
+| [XmlNilHandling](/api-reference/CloudNimble/Text/Xml/XmlNilHandling) | How a nillable null value is written. |
+| [XmlSerializerDefaults](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults) | Named default sets for [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions). |
 | [XmlTokenType](/api-reference/CloudNimble/Text/Xml/XmlTokenType) | Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document. |
 | [XmlValueKind](/api-reference/CloudNimble/Text/Xml/XmlValueKind) | Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree. |
 | [XmlVersion](/api-reference/CloudNimble/Text/Xml/XmlVersion) | XML recommendation version in force for the current document. |

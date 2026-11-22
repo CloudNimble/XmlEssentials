@@ -1,0 +1,43 @@
+---
+title: Overview
+description: "Summary of the CloudNimble.Text.Xml.Serialization Namespace"
+icon: folder-tree
+mode: wide
+keywords: ['CloudNimble.Text.Xml.Serialization', 'namespace', 'DefaultXmlTypeInfoResolver', 'IXmlTypeInfoResolver', 'XmlConverter', 'XmlConverterAttribute', 'XmlConverterFactory', 'XmlIgnoreCondition', 'XmlKnownNamingPolicy', 'XmlNumberHandling', 'XmlObjectCreationHandling']
+---
+
+## Types
+
+### <Icon icon="file-brackets-curly" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Classes
+
+| Name | Summary |
+| ---- | ------- |
+| [DefaultXmlTypeInfoResolver](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver) | Resolves type info from the converters of an [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions): its  [XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters), [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) on the type, and the built-in converters. |
+| [XmlConverter](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter) | Converts a CLR type to and from XML. |
+| [XmlConverter](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter) | Converts *T* to and from XML. |
+| [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) | Specifies a converter for a type or member. |
+| [XmlConverterFactory](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterFactory) | Creates converters for a family of types, such as every enum or every closed form of a generic type. |
+| [XmlReferenceHandler](/api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceHandler) | Creates resolvers that track object identity across a serialize or deserialize operation. |
+| [XmlReferenceResolver](/api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceResolver) | Maps objects to reference ids for one serialize or deserialize operation. |
+| [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) | Base class for source-generated serialization metadata. Analogous to `JsonSerializerContext`. |
+| [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) | Metadata for serializing a CLR type. |
+| [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) | Metadata for serializing *T*. |
+
+### <Icon icon="plug" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Interfaces
+
+| Name | Summary |
+| ---- | ------- |
+| [IXmlTypeInfoResolver](/api-reference/CloudNimble/Text/Xml/Serialization/IXmlTypeInfoResolver) | Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type. |
+
+### <Icon icon="list-ol" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Enums
+
+| Name | Summary |
+| ---- | ------- |
+| [XmlIgnoreCondition](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition) | When a member is skipped during serialize or deserialize. |
+| [XmlKnownNamingPolicy](/api-reference/CloudNimble/Text/Xml/Serialization/XmlKnownNamingPolicy) | Built-in naming policies selectable from source-generation options. |
+| [XmlNumberHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNumberHandling) | How floating-point named literals are treated. |
+| [XmlObjectCreationHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectCreationHandling) | How objects are created when deserializing into an existing instance. |
+| [XmlSourceGenerationMode](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode) | What the source generator emits for a context. |
+| [XmlUnknownTypeHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnknownTypeHandling) | How a member of type [Object](https://learn.microsoft.com/dotnet/api/system.object) is materialized when it has no converter. |
+| [XmlUnmappedMemberHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnmappedMemberHandling) | How unknown elements and attributes are treated on deserialize. |
+

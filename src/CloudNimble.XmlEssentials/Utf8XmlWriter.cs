@@ -57,10 +57,10 @@ namespace CloudNimble.Text.Xml
         private XmlWriterFrame[]? _frames;
         private XmlWriterFrame8 _framesInline;
         private bool _inAttribute;
-        private readonly int _indentSize;
-        private readonly int _maxAttributes;
-        private readonly int _maxDepth;
-        private readonly int _maxNameBytes;
+        private int _indentSize;
+        private int _maxAttributes;
+        private int _maxDepth;
+        private int _maxNameBytes;
         private Memory<byte> _memory;
         private byte[] _names;
         private int _namesLength;
@@ -74,7 +74,7 @@ namespace CloudNimble.Text.Xml
         private XmlWriterOptions _options;
         private bool _seenRoot;
         private Stream? _stream;
-        private readonly XmlVersion _version;
+        private XmlVersion _version;
         private bool _wroteDeclaration;
 
         #endregion
@@ -116,12 +116,7 @@ namespace CloudNimble.Text.Xml
             _bufferWriter = bufferWriter;
             _buffer = [];
             _names = [];
-            _options = options;
-            _indentSize = XmlLimits.Resolve(options.IndentSize, 2);
-            _maxAttributes = XmlLimits.Resolve(options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
-            _maxDepth = XmlLimits.Resolve(options.MaxDepth, XmlLimits.DefaultMaxDepth);
-            _maxNameBytes = XmlLimits.Resolve(options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
-            _version = options.Version;
+            Configure(in options);
         }
 
         /// <summary>
@@ -136,12 +131,7 @@ namespace CloudNimble.Text.Xml
             _buffer = ArrayPool<byte>.Shared.Rent(XmlLimits.DefaultBufferSize);
             _memory = _buffer;
             _names = [];
-            _options = options;
-            _indentSize = XmlLimits.Resolve(options.IndentSize, 2);
-            _maxAttributes = XmlLimits.Resolve(options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
-            _maxDepth = XmlLimits.Resolve(options.MaxDepth, XmlLimits.DefaultMaxDepth);
-            _maxNameBytes = XmlLimits.Resolve(options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
-            _version = options.Version;
+            Configure(in options);
         }
 
         #endregion
@@ -1275,7 +1265,7 @@ namespace CloudNimble.Text.Xml
                 DateTimeKind.Local => "yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz",
                 _ => "yyyy-MM-ddTHH:mm:ss.FFFFFFF",
             };
-            WriteStringValue(value.ToString(format, CultureInfo.InvariantCulture));
+            WriteFormatted(value, format);
         }
 
         /// <summary>
@@ -1284,7 +1274,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(DateTimeOffset value)
         {
-            WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz", CultureInfo.InvariantCulture));
+            WriteFormatted(value, "yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz");
         }
 
         /// <summary>
@@ -1293,7 +1283,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(DateOnly value)
         {
-            WriteStringValue(value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            WriteFormatted(value, "yyyy-MM-dd");
         }
 
         /// <summary>
@@ -1302,7 +1292,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(TimeOnly value)
         {
-            WriteStringValue(value.ToString("HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture));
+            WriteFormatted(value, "HH:mm:ss.FFFFFFF");
         }
 
         /// <summary>
@@ -1320,7 +1310,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(Guid value)
         {
-            WriteStringValue(value.ToString("D"));
+            WriteFormatted(value, "D");
         }
 
         /// <summary>
@@ -2079,6 +2069,39 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Applies <paramref name="options"/> to the writer.
+        /// </summary>
+        /// <param name="options">The options.</param>
+        internal void Configure(in XmlWriterOptions options)
+        {
+            _options = options;
+            _indentSize = XmlLimits.Resolve(options.IndentSize, 2);
+            _maxAttributes = XmlLimits.Resolve(options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
+            _maxDepth = XmlLimits.Resolve(options.MaxDepth, XmlLimits.DefaultMaxDepth);
+            _maxNameBytes = XmlLimits.Resolve(options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
+            _newLineUtf8 = null;
+            _version = options.Version;
+        }
+
+        /// <summary>
+        /// Drops everything not yet flushed, forgets the destination, returns rented arrays, and leaves the
+        /// writer ready for <see cref="Reset(IBufferWriter{byte})"/> or <see cref="Reset(Stream)"/>.
+        /// </summary>
+        /// <remarks>
+        /// The serializer calls this when a write fails part way through a document, so the half-written
+        /// bytes still in the buffer never reach the destination, and when it puts a writer back in its cache,
+        /// so the cache keeps neither the caller's destination nor a pooled array alive.
+        /// </remarks>
+        internal void Detach()
+        {
+            _buffered = 0;
+            Reset();
+            _bufferWriter = null;
+            _stream = null;
+            ReturnBuffer();
+        }
+
+        /// <summary>
         /// Marks the current element as having content.
         /// </summary>
         internal void MarkContent()
@@ -2167,6 +2190,20 @@ namespace CloudNimble.Text.Xml
                 frame.HasContent = true;
                 frame.HasText = true;
             }
+        }
+
+        /// <summary>
+        /// Formats <paramref name="value"/> as UTF-8 on the stack with the invariant culture and writes it as a value.
+        /// </summary>
+        /// <typeparam name="T">The value type.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <param name="format">The format string. Its longest output must fit in 64 bytes.</param>
+        internal void WriteFormatted<T>(T value, ReadOnlySpan<char> format)
+            where T : struct, IUtf8SpanFormattable
+        {
+            Span<byte> utf8 = stackalloc byte[64];
+            value.TryFormat(utf8, out var written, format, CultureInfo.InvariantCulture);
+            WriteStringValue(utf8[..written]);
         }
 
         /// <summary>
@@ -2263,12 +2300,7 @@ namespace CloudNimble.Text.Xml
             }
 
             WriteRaw(local);
-            PushFrame(new XmlWriterFrame
-            {
-                Local = AppendName(local),
-                Prefix = AppendName(prefix),
-                TagOpen = true,
-            });
+            PushFrame(AppendName(local), AppendName(prefix));
             _depth++;
             _seenRoot = true;
         }
@@ -3127,7 +3159,7 @@ namespace CloudNimble.Text.Xml
                     return;
                 }
 
-                PushFrame(new XmlWriterFrame { TagOpen = true });
+                PushFrame(default, default(XmlWriterName));
                 _depth++;
                 _seenRoot = true;
                 if (declarePrefixed)
@@ -3143,12 +3175,7 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            PushFrame(new XmlWriterFrame
-            {
-                Local = AppendNameFromChars(local),
-                Prefix = autoPrefix is null ? AppendNameFromChars(prefix) : AppendName(autoPrefix),
-                TagOpen = true,
-            });
+            PushFrame(AppendNameFromChars(local), autoPrefix is null ? AppendNameFromChars(prefix) : AppendName(autoPrefix));
             _depth++;
             _seenRoot = true;
             if (declarePrefixed)
@@ -3251,7 +3278,7 @@ namespace CloudNimble.Text.Xml
                     return;
                 }
 
-                PushFrame(new XmlWriterFrame { TagOpen = true });
+                PushFrame(default, default(XmlWriterName));
                 _depth++;
                 _seenRoot = true;
                 if (declarePrefixed)
@@ -3267,12 +3294,7 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            PushFrame(new XmlWriterFrame
-            {
-                Local = AppendName(local),
-                Prefix = AppendName(autoPrefix ?? prefix),
-                TagOpen = true,
-            });
+            PushFrame(AppendName(local), AppendName(autoPrefix ?? prefix));
             _depth++;
             _seenRoot = true;
             if (declarePrefixed)
@@ -3494,15 +3516,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Pushes <paramref name="frame"/> onto the element stack.
+        /// Returns the slot the next element's frame goes in, growing the stack when it is full.
         /// </summary>
-        /// <param name="frame">The frame.</param>
-        internal void PushFrame(XmlWriterFrame frame)
+        /// <returns>The slot at the current depth. It still holds whatever frame used it last.</returns>
+        internal ref XmlWriterFrame NextFrame()
         {
             if (_depth < 8)
             {
-                _framesInline[_depth] = frame;
-                return;
+                return ref _framesInline[_depth];
             }
 
             if (_frames is null)
@@ -3518,7 +3539,39 @@ namespace CloudNimble.Text.Xml
                 Array.Resize(ref _frames, _frames.Length * 2);
             }
 
-            _frames[_depth] = frame;
+            return ref _frames[_depth];
+        }
+
+        /// <summary>
+        /// Pushes the frame of an element whose name is in the name buffer.
+        /// </summary>
+        /// <param name="local">Where the local name is in the name buffer.</param>
+        /// <param name="prefix">Where the prefix is in the name buffer; empty for none.</param>
+        /// <remarks>
+        /// The frame is built in its slot. Passing a whole frame and storing it copies a struct that holds
+        /// references, which goes through the collector's block move on every start tag.
+        /// </remarks>
+        internal void PushFrame(XmlWriterName local, XmlWriterName prefix)
+        {
+            ref var frame = ref NextFrame();
+            frame = default;
+            frame.Local = local;
+            frame.Prefix = prefix;
+            frame.TagOpen = true;
+        }
+
+        /// <summary>
+        /// Pushes the frame of an element whose name is held as strings.
+        /// </summary>
+        /// <param name="localChars">The local name.</param>
+        /// <param name="prefixChars">The prefix, or <see langword="null"/> for none.</param>
+        internal void PushFrame(string localChars, string? prefixChars)
+        {
+            ref var frame = ref NextFrame();
+            frame = default;
+            frame.LocalChars = localChars;
+            frame.PrefixChars = prefixChars;
+            frame.TagOpen = true;
         }
 
         /// <summary>
@@ -3642,12 +3695,7 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            PushFrame(new XmlWriterFrame
-            {
-                LocalChars = localName,
-                PrefixChars = prefix,
-                TagOpen = true,
-            });
+            PushFrame(localName, prefix);
             _depth++;
             _seenRoot = true;
         }

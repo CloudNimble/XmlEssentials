@@ -223,7 +223,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var reader = new Utf8XmlReader("<e>a&amp;b</e>"u8);
             reader.ReadStartElement();
             var start = (int)reader.BytesConsumed;
-            reader.DecodeValueSpan(start, "a&amp;b"u8.Length);
+            reader.DecodeValueSpan(start, "a&amp;b"u8.Length, expandReferences: true);
             reader.ValueIsEscaped.Should().BeTrue();
             reader.CurrentValueText().Should().Be("a&b");
         }
@@ -234,7 +234,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var reader = new Utf8XmlReader("<e>ab</e>"u8);
             reader.ReadStartElement();
             var start = (int)reader.BytesConsumed;
-            reader.DecodeValueSpan(start, 2);
+            reader.DecodeValueSpan(start, 2, expandReferences: true);
             reader.ValueIsEscaped.Should().BeFalse();
         }
 

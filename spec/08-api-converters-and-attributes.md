@@ -32,7 +32,11 @@ public abstract class XmlConverterFactory : XmlConverter
 }
 ```
 
-`HandleNull`: when **false** (default), the serializer does not call `Read` for `xsi:nil` / omitted-null; it returns `default`. When **true**, `Read` is invoked on the nil element (STJ analogue).
+`HandleNull`: when **false** (default), the serializer does not call `Read` for `xsi:nil` / omitted-null; it returns `default`. When **true**, `Read` is invoked on the nil element (STJ analogue). The nil check lives in one place, `XmlTypeInfo<T>`, so a converter with `HandleNull` false never sees a nil element, and the `Nullable<T>` converter only ever handles a value.
+
+`XmlConverter` cannot be derived from directly (its constructor is `private protected`); derive from `XmlConverter<T>` or `XmlConverterFactory`, as with `JsonConverter`. A factory's `CreateConverter` must return an `XmlConverter<T>` for exactly the requested type. `GetConverter` throws `NotSupportedException` when nothing handles the type and `InvalidOperationException` when a converter is misconfigured ([serializer](07-api-serializer.md#behavior-every-overload-shares)).
+
+`Nullable<T>` wraps whatever converter the options have for `T`, including one from `options.Converters` or `[XmlConverter]`. The built-in nullable primitives are constructed without reflection; `Nullable<T>` of an enum or of a caller-defined value type closes a generic converter at run time, so Native AOT callers need a context for those (PR 7 / PR 8).
 
 **Lookup order** (first match wins):
 

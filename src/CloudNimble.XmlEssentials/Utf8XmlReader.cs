@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace CloudNimble.Text.Xml
@@ -42,6 +43,31 @@ namespace CloudNimble.Text.Xml
         /// <c>_nsDefaultIndex</c> value meaning the default-namespace binding has not been looked up since the bindings last changed.
         /// </summary>
         internal const int NsIndexUnknown = -2;
+
+        /// <summary>
+        /// Binding start that names no bytes.
+        /// </summary>
+        internal const int OwnedEmpty = -1;
+
+        /// <summary>
+        /// Binding start that names the first interned array; each later array is one lower.
+        /// </summary>
+        internal const int OwnedFirstInterned = -5;
+
+        /// <summary>
+        /// Binding start that names the <c>xml</c> namespace.
+        /// </summary>
+        internal const int OwnedXml = -2;
+
+        /// <summary>
+        /// Binding start that names the <c>xmlns</c> namespace.
+        /// </summary>
+        internal const int OwnedXmlns = -3;
+
+        /// <summary>
+        /// Binding start that names the XML Schema instance namespace.
+        /// </summary>
+        internal const int OwnedXsi = -4;
 
         /// <summary>
         /// Slot flag: a child element has started inside this element.
@@ -273,7 +299,8 @@ namespace CloudNimble.Text.Xml
         public readonly XmlTokenType TokenType => _inAttribute ? XmlTokenType.Attribute : _tokenType;
 
         /// <summary>
-        /// Gets a value indicating whether the current value contained character or entity references.
+        /// Gets a value indicating whether the current value differs from its bytes in the input: it held
+        /// character or entity references, or line ends that were normalized.
         /// </summary>
         public readonly bool ValueIsEscaped => _inAttribute ? CurrentAttribute().ValueIsEscaped : _valueIsEscaped;
 
@@ -292,8 +319,8 @@ namespace CloudNimble.Text.Xml
                 if (_inAttribute)
                 {
                     var a = CurrentAttribute();
-                    return a.Decoded is { } decoded
-                        ? decoded.AsSpan(a.DecodedStart, a.DecodedLength)
+                    return a.DecodedStart >= 0
+                        ? _attributeDecoded.AsSpan(a.DecodedStart, a.DecodedLength)
                         : _span.Slice(a.ValueStart, a.ValueLength);
                 }
 
@@ -402,7 +429,11 @@ namespace CloudNimble.Text.Xml
             _attributes = null;
             _attributeDecoded = null;
             _attributeDecodedLength = 0;
-            _attributesInline = default;
+            // The inline slots hold no object references and each is written before it is read (a count or a
+            // mask guards every read), so they are left as they are. Clearing them was most of the cost of
+            // constructing a reader. The two element-namespace stacks are the exception: a slot there is
+            // written only once a namespace is in scope and read as "no namespace" before that.
+            Unsafe.SkipInit(out _attributesInline);
             _currentNsLength = 0;
             _currentNsOwned = XmlUtf8.Empty;
             _currentNsStart = -1;
@@ -418,11 +449,11 @@ namespace CloudNimble.Text.Xml
             _elementNsStored = false;
             _elementNsUris = null;
             _elementNameLengths = null;
-            _elementNameLengthsInline = default;
+            Unsafe.SkipInit(out _elementNameLengthsInline);
             _elementNameStarts = null;
-            _elementNameStartsInline = default;
+            Unsafe.SkipInit(out _elementNameStartsInline);
             _elementPrefixLengths = null;
-            _elementPrefixLengthsInline = default;
+            Unsafe.SkipInit(out _elementPrefixLengthsInline);
             _finished = false;
             _hasNamespaceAttribute = false;
             _hasUnresolvedAttribute = false;
@@ -444,13 +475,13 @@ namespace CloudNimble.Text.Xml
             _nameLength = 0;
             _nameStart = 0;
             _nsBindings = null;
-            _nsBindingsInline = default;
+            Unsafe.SkipInit(out _nsBindingsInline);
             _nsCount = 0;
             _nsDefaultIndex = NsIndexUnknown;
-            _nsPrefixCacheIndexes = default;
-            _nsPrefixCacheLengths = default;
+            Unsafe.SkipInit(out _nsPrefixCacheIndexes);
+            Unsafe.SkipInit(out _nsPrefixCacheLengths);
             _nsPrefixCacheMask = 0;
-            _nsPrefixCacheStarts = default;
+            Unsafe.SkipInit(out _nsPrefixCacheStarts);
             _options = state.Options;
             _pendingEmptyNsDepth = 0;
             _pos = 0;
@@ -1286,6 +1317,10 @@ namespace CloudNimble.Text.Xml
         /// <see langword="true"/> if the element was skipped;
         /// <see langword="false"/> if more data is required.
         /// </returns>
+        /// <remarks>
+        /// When the element is not all in the current block, the reader is put back on its start tag, as
+        /// <c>Utf8JsonReader.TrySkip</c> does, so the caller can supply more data and skip or read it again.
+        /// </remarks>
         public bool TrySkip()
         {
             if (_tokenType != XmlTokenType.StartElement)
@@ -1298,16 +1333,13 @@ namespace CloudNimble.Text.Xml
                 return true;
             }
 
-            var target = _depth;
-            while (Read())
+            if (_isFinalBlock)
             {
-                if (_tokenType == XmlTokenType.EndElement && _depth < target)
-                {
-                    return true;
-                }
+                SkipChildren();
+                return true;
             }
 
-            return _isFinalBlock;
+            return TrySkipPartial();
         }
 
         /// <summary>

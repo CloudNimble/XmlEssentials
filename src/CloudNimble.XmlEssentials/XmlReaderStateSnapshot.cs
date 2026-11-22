@@ -114,6 +114,48 @@ namespace CloudNimble.Text.Xml
 
         #endregion
 
+        #region Private Methods
+
+        /// <summary>
+        /// Returns this snapshot moved to another place in the document.
+        /// </summary>
+        /// <param name="documentBytesConsumed">The document offset of the new place.</param>
+        /// <param name="lineNumber">The line number there.</param>
+        /// <param name="lineStart">The line start there.</param>
+        /// <returns>A snapshot that differs only in position.</returns>
+        /// <remarks>
+        /// Two places in a document have the same snapshot apart from position when the same elements are open
+        /// and the same namespaces are in scope at both: the start of each child of one element, for example.
+        /// <c>XmlSerializer.DeserializeAsyncEnumerable</c> captures the state at the first child once and moves
+        /// it to each later one, instead of capturing a new snapshot per value.
+        /// </remarks>
+        internal XmlReaderStateSnapshot At(long documentBytesConsumed, long lineNumber, long lineStart)
+        {
+            return new XmlReaderStateSnapshot
+            {
+                CurrentNamespaceUri = CurrentNamespaceUri,
+                Depth = Depth,
+                DocumentBytesConsumed = documentBytesConsumed,
+                ElementLocalNames = ElementLocalNames,
+                ElementFlags = ElementFlags,
+                ElementNamespaceUris = ElementNamespaceUris,
+                Finished = Finished,
+                IsEmptyElement = IsEmptyElement,
+                LineNumber = lineNumber,
+                LineStart = lineStart,
+                NamespaceDepths = NamespaceDepths,
+                NamespacePrefixes = NamespacePrefixes,
+                NamespaceUris = NamespaceUris,
+                PendingEmptyNsDepth = PendingEmptyNsDepth,
+                SeenRoot = SeenRoot,
+                TokenType = TokenType,
+                Version = Version,
+                XmlDeclarationAllowed = XmlDeclarationAllowed,
+            };
+        }
+
+        #endregion
+
     }
 
 }

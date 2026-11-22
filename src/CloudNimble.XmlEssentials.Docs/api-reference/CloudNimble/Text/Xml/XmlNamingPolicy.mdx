@@ -1,0 +1,268 @@
+---
+title: XmlNamingPolicy
+description: "Converts CLR member and type names to XML local names."
+icon: shapes
+tag: "ABSTRACT"
+keywords: ['XmlNamingPolicy', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml', 'class']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlNamingPolicy
+```
+
+## Summary
+
+Converts CLR member and type names to XML local names.
+
+## Remarks
+
+Identity is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) on [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), matching
+`System.Text.Json.JsonNamingPolicy`.
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CamelCase
+
+Gets a policy that lowercases the first character.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlNamingPolicy CamelCase { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> KebabCaseLower
+
+Gets a policy that joins words with `-` in lowercase.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlNamingPolicy KebabCaseLower { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> KebabCaseUpper
+
+Gets a policy that joins words with `-` in uppercase.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlNamingPolicy KebabCaseUpper { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PascalCase
+
+Gets a policy that uppercases the first character.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlNamingPolicy PascalCase { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SnakeCaseLower
+
+Gets a policy that joins words with `_` in lowercase.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlNamingPolicy SnakeCaseLower { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SnakeCaseUpper
+
+Gets a policy that joins words with `_` in uppercase.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlNamingPolicy SnakeCaseUpper { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+
+## Methods
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConvertName <Badge color="orange">Abstract</Badge>
+
+Converts *name* to an XML local name.
+
+#### Syntax
+
+```csharp
+public abstract string ConvertName(string name)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `name` | `string` | The CLR name. |
+
+#### Returns
+
+Type: `string`
+The XML local name.
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
