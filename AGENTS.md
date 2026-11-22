@@ -59,6 +59,26 @@ If you create any temporary new files, scripts, or helper files for iteration, c
 * Copy existing style in nearby files for test method names and capitalization.
 * Always prefer `.NotBeNullOrWhiteSpace()` over `.NotBeNullOrEmpty()` for testing strings.
 * Do not parse expected XML with `XDocument` / `System.Xml` in unit tests.
+
+## Assertions are exact
+
+**Assert the whole value. Never assert that output merely contains, starts with, or ends with something.**
+
+* Output from the writer, the DOM, a node's `ToString()`, a getter, or an exception message is compared with `.Should().Be(...)` against the complete expected string, or with `SequenceEqual` / `.Should().Equal(...)` against the complete expected bytes or token list.
+* `.Contain(...)`, `.StartWith(...)`, `.EndWith(...)`, `.Match(...)`, `IndexOf(...) >= 0`, and length-only checks on XML output are **not allowed**. A substring assertion passes when attributes are reordered, namespaces are dropped, whitespace is injected, or text is double-escaped. Every one of those was a real bug in this repo that a `Contain` assertion hid.
+* The only exception is a search through a **large fixture document** (tens of kilobytes) for one specific portion. Even then, prefer pinning a count or a SHA-256 digest of the part you care about, as `XmlFixtureDocumentTests` does.
+* If the expected value depends on the machine (local UTC offset, current time), compute the expected string in the test and still compare the whole thing. Do not fall back to a prefix.
+* When a value is expected to be rejected, assert the exact exception message when the message is part of the contract (encoding, DTD), and otherwise that an `XmlException` is thrown.
+* A test named `..._WellFormed...` or `MustRead` must only hold documents that are well formed by the XML specification. If the parser accepts something the specification rejects, fix the parser, not the test.
+* Do not write a test whose only purpose is to reach a line or branch. If a branch cannot be reached by a meaningful input, it is dead code: delete it.
+
+## What a change must be tested against
+
+* **Specifications first.** Behavior follows XML 1.0 Fifth Edition, XML 1.1 Second Edition, Namespaces in XML 1.0 and 1.1, and XML Schema Part 2 (datatypes), in that order of authority. `spec/02-xml-fidelity.md` records every deliberate departure. A test may not encode behavior that contradicts those documents.
+* **W3C conformance.** `XmlConformanceSuiteTests` runs the W3C XML Conformance Test Suite manifests in `Fixtures/w3c-xmlconf`. A reader change must keep every case passing.
+* **Real documents.** `XmlFixtureDocumentTests` reads documents taken from other parsers' test suites and compares them with counts and digests produced by an independent reader. Add a fixture (and its `Fixtures/README.md` entry) when a new document shape matters.
+* **Properties, not just examples.** Reader changes must hold under `Utf8XmlReaderSplitTests` (every byte offset) and the chunked reads in the fixture tests. Writer and DOM changes must hold under `XmlRoundTripTests` (what is written is read back exactly; what is parsed is written back byte for byte).
+* Typed values go through `XmlLexical` only. Do not parse a value anywhere else; add the case to `XmlLexicalTests`, which runs it through the reader and the DOM together.
 * Baseline testing: `D:\GitHub\Breakdance\specs\baseline-testing.md`
   * Add `<AssemblyAttribute Include="CloudNimble.Breakdance.Assemblies.BreakdanceTestAssembly" />` to the test csproj.
   * Use `[BreakdanceManifestGenerator]` methods and `dotnet breakdance generate` to create or update baselines.

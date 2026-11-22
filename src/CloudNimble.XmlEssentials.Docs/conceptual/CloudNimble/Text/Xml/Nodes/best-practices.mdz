@@ -1,0 +1,5 @@
+# Best Practices
+
+- Use `XmlDocument` when you only read. Use this namespace when you must edit.
+- Do not move a node to a second parent; clone it.
+- Keep prefixes and namespace URIs in sync on elements and attributes you write.

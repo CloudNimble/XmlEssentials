@@ -1,0 +1,8 @@
+# Related APIs
+
+- `XmlDocument`
+- `XmlValueKind`
+- `XmlTokenType`
+- `CloudNimble.Text.Xml.Nodes.XmlNode`
+- `Utf8XmlWriter`
+- `System.Text.Json.JsonElement`

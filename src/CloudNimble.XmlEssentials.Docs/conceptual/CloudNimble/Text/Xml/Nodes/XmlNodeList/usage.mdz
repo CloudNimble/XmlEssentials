@@ -1,0 +1,8 @@
+# Usage
+
+`XmlElementNode.Children` is an `IList<XmlNode>` of mixed content.
+
+```csharp
+root.Children.Add(new XmlTextNode("hi"));
+root.Children.Insert(0, new XmlCommentNode("c"));
+```

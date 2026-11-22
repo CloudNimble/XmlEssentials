@@ -90,8 +90,8 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteStartElement("p", "e", "urn:x");
                 w.WriteEndElement();
             });
-            xml.Should().StartWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-            xml.Should().Contain("<p:e xmlns:p=\"urn:x\"/>");
+            xml.Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\"?><p:e xmlns:p=\"urn:x\"/>");
+            xml.Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\"?><p:e xmlns:p=\"urn:x\"/>");
         }
 
         [TestMethod]
@@ -108,8 +108,8 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Write_NilElement()
         {
             var xml = ToXml(w => w.WriteNilElement("e"), omitDeclaration: true);
-            xml.Should().Contain("xsi:nil=\"true\"");
-            xml.Should().Contain("xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"");
+            xml.Should().Be("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
+            xml.Should().Be("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
         }
 
         [TestMethod]
@@ -190,7 +190,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Write_BooleanAndBase64()
         {
             ToXml(w => w.WriteElementBoolean("b", true), omitDeclaration: true).Should().Be("<b>true</b>");
-            ToXml(w => w.WriteElementBase64String("b", "hi"u8), omitDeclaration: true).Should().Contain("aGk=");
+            ToXml(w => w.WriteElementBase64String("b", "hi"u8), omitDeclaration: true).Should().Be("<b>aGk=</b>");
         }
 
         [TestMethod]

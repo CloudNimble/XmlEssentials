@@ -1,0 +1,9 @@
+# Usage
+
+```csharp
+var attribute = new XmlAttributeNode("id", "1");
+element.Attributes.Add(attribute);
+attribute.Value = "2";
+```
+
+Prefixed attributes take `namespaceUri` and `prefix`. `WriteTo` must run while a start tag is open.

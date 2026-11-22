@@ -51,4 +51,17 @@ using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDecl
 }
 ```
 
-`XmlSerializer` is not in this release. The reader and writer are the current public entry points.
+Parse a whole document with `XmlDocument` (dispose it; the parse buffer is pooled):
+
+```csharp
+using var document = XmlDocument.Parse("""
+    <Person id="1">
+      <Name>Ada</Name>
+    </Person>
+    """);
+Console.WriteLine(document.RootElement.GetChild("Name").GetString());
+```
+
+Mutate a tree with `CloudNimble.Text.Xml.Nodes.XmlNode.Parse` and `XmlElementNode`.
+
+`XmlSerializer` is not in this release. The reader, writer, and DOM are the current public entry points.

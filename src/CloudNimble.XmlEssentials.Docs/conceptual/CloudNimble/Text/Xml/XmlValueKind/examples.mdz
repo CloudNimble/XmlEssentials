@@ -1,0 +1,3 @@
+# Examples
+
+`TokenType` maps element kinds to `StartElement`, attributes to `Attribute`, and leaves to their token. Unknown kinds map to `None`.

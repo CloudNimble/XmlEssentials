@@ -1,0 +1,3 @@
+# Best Practices
+
+Do not assume every child is an element. Check `ValueKind` is `Element`, `EmptyElement`, or `Nil` before `GetChild`-style navigation on a cursor you enumerated.

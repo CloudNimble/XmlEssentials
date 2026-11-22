@@ -1,0 +1,6 @@
+# Usage
+
+```csharp
+root.Add(new XmlTextNode("Ada"));
+root.InnerText = "Ada"; // replaces children with one text node
+```

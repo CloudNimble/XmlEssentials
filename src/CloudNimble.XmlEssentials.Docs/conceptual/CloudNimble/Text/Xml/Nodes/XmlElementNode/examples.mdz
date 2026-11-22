@@ -1,0 +1,9 @@
+# Examples
+
+Prefixed element:
+
+```csharp
+var root = new XmlElementNode("e", "urn:x", "p");
+root.SetAttribute("a", "1", "urn:x");
+root.ToString(); // <p:e xmlns:p="urn:x" ...>
+```

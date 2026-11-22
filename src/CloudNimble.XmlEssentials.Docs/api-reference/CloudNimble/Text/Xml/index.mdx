@@ -3,34 +3,31 @@ title: Overview
 description: "Summary of the CloudNimble.Text.Xml Namespace"
 icon: folder-tree
 mode: wide
-keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'Utf8XmlWriter', 'XmlAttributes', 'XmlCommentHandling', 'XmlEncodedText', 'XmlException', 'XmlName', 'XmlNamespaces', 'XmlReaderOptions', 'XmlReaderState']
+keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'Utf8XmlWriter', 'XmlAttributes', 'XmlCommentHandling', 'XmlDeclarationInfo', 'XmlDocument', 'XmlDocumentOptions', 'XmlElement', 'XmlEncodedText', 'XmlException']
 ---
 
 ## Summary
 
 # Summary
 
-`CloudNimble.Text.Xml` is the UTF-8 XML pipeline for XmlEssentials. It is shaped like `System.Text.Json`: a `ref struct` reader, later a writer, DOM, and static serializer. There is no `System.Xml` dependency.
+`CloudNimble.Text.Xml` is the UTF-8 XML pipeline for XmlEssentials. It is shaped like `System.Text.Json`: a `ref struct` reader, a writer, an immutable `XmlDocument` / `XmlElement` DOM, a mutable `Nodes.XmlNode` tree, and a later static serializer. There is no `System.Xml` dependency.
 
-This release ships `Utf8XmlReader` with namespace binding and resumable `IsFinalBlock` splits, plus options, tokens, names, and `XmlException`. The writer, DOM, and `XmlSerializer` are not in this surface yet.
+This release ships `Utf8XmlReader`, `Utf8XmlWriter`, and the DOM. `XmlSerializer` is not in this surface yet.
 
 ## Usage
 
 # Usage
 
-Add the `XmlEssentials` package and import `CloudNimble.Text.Xml`. Feed UTF-8 bytes to `Utf8XmlReader` and call `Read` until it returns false.
+Add the `XmlEssentials` package and import `CloudNimble.Text.Xml`. Tokenize with `Utf8XmlReader`, write with `Utf8XmlWriter`, or parse a whole document with `XmlDocument`.
 
 ```csharp
 using CloudNimble.Text.Xml;
 
-var reader = new Utf8XmlReader("<Person id=\"1\">Ada</Person>"u8);
-while (reader.Read())
-{
-    // inspect TokenType, LocalNameSpan, ValueSpan
-}
+using var document = XmlDocument.Parse("<Person id=\"1\">Ada</Person>");
+Console.WriteLine(document.RootElement.GetAttribute("id").GetInt32());
 ```
 
-Construct options with `new XmlReaderOptions()`. A max-* of `0` means the documented default, except `MaxDocumentByteCount`, which stays unbounded.
+Construct options with `new XmlDocumentOptions()` / `new XmlReaderOptions()`. A max-* of `0` means the documented default, except `MaxDocumentByteCount`, which stays unbounded.
 
 ## Examples
 
@@ -89,17 +86,22 @@ while (reader.Read())
 - `xmlns` attributes bind before the element's own name is resolved. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`.
 - The XML declaration, when present, must be the first token after an optional BOM.
 - DTDs (`<!DOCTYPE`, `<!ENTITY`, and other `<!` markup that is not a comment or CDATA) throw `XmlException`.
-- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`.
+- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`. The same constructor pitfall applies to `XmlDocumentOptions`.
+- `XmlDocument` is pooled. Dispose it. `XmlElement` cursors are invalid after dispose. Mutate with `CloudNimble.Text.Xml.Nodes`.
 
 ## Related APIs
 
 - # Related APIs
 - - `Utf8XmlReader`
+- - `Utf8XmlWriter`
+- - `XmlDocument`
+- - `XmlElement`
+- - `CloudNimble.Text.Xml.Nodes.XmlNode`
 - - `XmlReaderOptions`
 - - `XmlTokenType`
 - - `XmlException`
 - - `XmlName`
-- - `Utf8JsonReader` (shape analogue in `System.Text.Json`)
+- - `Utf8JsonReader` / `JsonDocument` (shape analogues in `System.Text.Json`)
 
 ## Types
 
@@ -109,6 +111,7 @@ while (reader.Read())
 | ---- | ------- |
 | [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | A UTF-8 XML writer analogous to `Utf8JsonWriter`. |
 | [XmlAttributes](/api-reference/CloudNimble/Text/Xml/XmlAttributes) | Well-known XML attribute local names used by XmlEssentials. |
+| [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) | An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`. |
 | [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) | Thrown when XML is not well-formed or a DoS limit is exceeded. |
 | [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) | Well-known XML namespace URIs used by XmlEssentials. |
 
@@ -117,6 +120,9 @@ while (reader.Read())
 | Name | Summary |
 | ---- | ------- |
 | [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`. |
+| [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) | Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed. |
+| [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) | Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse). |
+| [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) | A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`. |
 | [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) | Cached escaped UTF-8 for hot element and attribute names. |
 | [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) | A namespace-qualified XML name: local name, namespace URI, and optional prefix. |
 | [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) | Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
@@ -129,6 +135,7 @@ while (reader.Read())
 | ---- | ------- |
 | [XmlCommentHandling](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens. |
 | [XmlTokenType](/api-reference/CloudNimble/Text/Xml/XmlTokenType) | Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document. |
+| [XmlValueKind](/api-reference/CloudNimble/Text/Xml/XmlValueKind) | Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree. |
 | [XmlVersion](/api-reference/CloudNimble/Text/Xml/XmlVersion) | XML recommendation version in force for the current document. |
 | [XmlWhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements. |
 

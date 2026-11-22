@@ -1,0 +1,9 @@
+# Considerations
+
+The default cursor (`default(XmlElement)`) has `ValueKind` `Undefined`. Any other member throws `InvalidOperationException`.
+
+Empty elements are `XmlValueKind.EmptyElement` with `IsEmptyElement` true. `xsi:nil="true"` is `XmlValueKind.Nil` and `GetString` returns null.
+
+Enumerators are nested types (`XmlElement.Enumerator`, `XmlElement.AttributeEnumerator`) to match `JsonElement`. `GetEnumerator` returns the same struct so `foreach` works.
+
+`GetInnerText` concatenates descendant text and CDATA. Comments and PIs are omitted from inner text.

@@ -1,0 +1,7 @@
+# Patterns
+
+**Named child.** `TryGetChild(localName, out var child)` then `GetInt32` / `GetString`. Missing names return false; `GetChild` throws `XmlException`.
+
+**Attributes.** `GetAttribute("id")` for a required attribute. `EnumerateAttributes` walks in document order, including `xmlns*` that the writer will skip on `WriteTo`.
+
+**Write.** `WriteTo(writer)` or `GetRawXml()` for a fragment. `xmlns*` attributes are not written as attributes; `Utf8XmlWriter` redeclares namespaces from the element URI and prefix.

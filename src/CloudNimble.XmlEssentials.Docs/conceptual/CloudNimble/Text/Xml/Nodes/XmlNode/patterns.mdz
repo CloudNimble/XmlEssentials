@@ -1,0 +1,3 @@
+# Patterns
+
+**Read then edit.** `XmlDocument.Parse` → `CloneNode` → mutate. Or `XmlNode.Parse` when you do not need the pooled document.

@@ -38,8 +38,30 @@ namespace CloudNimble.Text.Xml
 
         #region Fields
 
+        /// <summary>
+        /// Slot flag: a child element has started inside this element.
+        /// </summary>
+        internal const int ElementHasChild = 1 << 29;
+
+        /// <summary>
+        /// Slot flag: character data has been reported inside this element, so later whitespace is significant.
+        /// </summary>
+        internal const int ElementHasText = 1 << 28;
+
+        /// <summary>
+        /// Mask for the prefix length stored in the low bits of an element-stack slot.
+        /// </summary>
+        internal const int ElementPrefixLengthMask = (1 << 28) - 1;
+
+        /// <summary>
+        /// Slot flag: <c>xml:space="preserve"</c> is in force for this element.
+        /// </summary>
+        internal const int ElementPreserveSpace = 1 << 30;
+
         private int _attributeCount;
         private int _attributeIndex;
+        private byte[]? _attributeDecoded;
+        private int _attributeDecodedLength;
         private AttributeRecord[]? _attributes;
         private AttributeRecord8 _attributesInline;
         private int _currentNsLength;
@@ -54,6 +76,7 @@ namespace CloudNimble.Text.Xml
         private Int8Buffer _elementNsLengthsInline;
         private int[]? _elementNsStarts;
         private Int8Buffer _elementNsStartsInline;
+        private bool _elementNsStored;
         private byte[][]? _elementNsUris;
         private int[]? _elementNameLengths;
         private Int8Buffer _elementNameLengthsInline;
@@ -63,6 +86,7 @@ namespace CloudNimble.Text.Xml
         private Int8Buffer _elementPrefixLengthsInline;
         private bool _finished;
         private bool _hasNamespaceAttribute;
+        private bool _hasXmlSpaceAttribute;
         private readonly bool _hasSequence;
         private bool _inAttribute;
         private bool _incomplete;
@@ -261,7 +285,7 @@ namespace CloudNimble.Text.Xml
                 {
                     var a = CurrentAttribute();
                     return a.Decoded is { } decoded
-                        ? decoded.AsSpan(0, a.DecodedLength)
+                        ? decoded.AsSpan(a.DecodedStart, a.DecodedLength)
                         : _span.Slice(a.ValueStart, a.ValueLength);
                 }
 
@@ -368,6 +392,8 @@ namespace CloudNimble.Text.Xml
             _attributeCount = 0;
             _attributeIndex = -1;
             _attributes = null;
+            _attributeDecoded = null;
+            _attributeDecodedLength = 0;
             _attributesInline = default;
             _currentNsLength = 0;
             _currentNsOwned = XmlUtf8.Empty;
@@ -381,6 +407,7 @@ namespace CloudNimble.Text.Xml
             _elementNsLengthsInline = default;
             _elementNsStarts = null;
             _elementNsStartsInline = default;
+            _elementNsStored = false;
             _elementNsUris = null;
             _elementNameLengths = null;
             _elementNameLengthsInline = default;
@@ -390,6 +417,7 @@ namespace CloudNimble.Text.Xml
             _elementPrefixLengthsInline = default;
             _finished = false;
             _hasNamespaceAttribute = false;
+            _hasXmlSpaceAttribute = false;
             _hasSequence = hasSequence;
             _inAttribute = false;
             _incomplete = false;
@@ -474,18 +502,12 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException">The value is not <c>true</c>, <c>false</c>, <c>1</c>, or <c>0</c>.</exception>
         public bool GetBoolean()
         {
-            var s = TrimXmlWhitespace(ValueSpan);
-            if (s.SequenceEqual("true"u8) || s.SequenceEqual("1"u8))
+            if (!XmlLexical.TryParseBoolean(ValueSpan, out var value))
             {
-                return true;
+                throw Error("Invalid boolean.");
             }
 
-            if (s.SequenceEqual("false"u8) || s.SequenceEqual("0"u8))
-            {
-                return false;
-            }
-
-            throw Error("Invalid boolean.");
+            return value;
         }
 
         /// <summary>
@@ -694,8 +716,7 @@ namespace CloudNimble.Text.Xml
                     if (LocalNameEquals(XmlAttributes.Nil)
                         && NamespaceUriEquals(XmlNamespaces.Xsi))
                     {
-                        var s = TrimXmlWhitespace(ValueSpan);
-                        return s.SequenceEqual("true"u8) || s.SequenceEqual("1"u8);
+                        return XmlLexical.TryParseBoolean(ValueSpan, out var nil) && nil;
                     }
                 }
 
@@ -1064,19 +1085,13 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Attempts to read the current value as an unsigned 8-bit integer.
+        /// Attempts to read the current value as an unsigned 8-bit integer (<c>xs:unsignedByte</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetByte(out byte value)
+        public readonly bool TryGetByte(out byte value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseByte(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1084,24 +1099,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the decoded bytes.</param>
         /// <returns><see langword="true"/> if decoding succeeded.</returns>
-        public bool TryGetBytesFromBase64([NotNullWhen(true)] out byte[]? value)
+        public readonly bool TryGetBytesFromBase64([NotNullWhen(true)] out byte[]? value)
         {
-            value = null;
-            var span = TrimXmlWhitespace(ValueSpan);
-            if (span.IsEmpty)
-            {
-                value = [];
-                return true;
-            }
-
-            var dest = new byte[Base64.GetMaxDecodedFromUtf8Length(span.Length)];
-            if (Base64.DecodeFromUtf8(span, dest, out _, out var written) is not OperationStatus.Done)
-            {
-                return false;
-            }
-
-            value = written == dest.Length ? dest : dest.AsSpan(0, written).ToArray();
-            return true;
+            return XmlLexical.TryDecodeBase64(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1109,12 +1109,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetDateOnly(out DateOnly value)
+        public readonly bool TryGetDateOnly(out DateOnly value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            Span<char> chars = stackalloc char[Math.Max(span.Length, 1)];
-            var n = Encoding.UTF8.GetChars(span, chars);
-            return DateOnly.TryParse(chars[..n], CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
+            return XmlLexical.TryParseDateOnly(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1122,12 +1119,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetDateTime(out DateTime value)
+        public readonly bool TryGetDateTime(out DateTime value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            Span<char> chars = stackalloc char[Math.Max(span.Length, 1)];
-            var n = Encoding.UTF8.GetChars(span, chars);
-            return DateTime.TryParse(chars[..n], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out value);
+            return XmlLexical.TryParseDateTime(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1135,12 +1129,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetDateTimeOffset(out DateTimeOffset value)
+        public readonly bool TryGetDateTimeOffset(out DateTimeOffset value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            Span<char> chars = stackalloc char[Math.Max(span.Length, 1)];
-            var n = Encoding.UTF8.GetChars(span, chars);
-            return DateTimeOffset.TryParse(chars[..n], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out value);
+            return XmlLexical.TryParseDateTimeOffset(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1148,16 +1139,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetDecimal(out decimal value)
+        public readonly bool TryGetDecimal(out decimal value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            if (span.IsEmpty || span[0] is (byte)'+' || span.IndexOfAny((byte)'e', (byte)'E') >= 0)
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseDecimal(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1165,28 +1149,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetDouble(out double value)
+        public readonly bool TryGetDouble(out double value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            if (Ascii.EqualsIgnoreCase(span, "INF"u8) || Ascii.EqualsIgnoreCase(span, "Infinity"u8))
-            {
-                value = double.PositiveInfinity;
-                return true;
-            }
-
-            if (Ascii.EqualsIgnoreCase(span, "-INF"u8) || Ascii.EqualsIgnoreCase(span, "-Infinity"u8))
-            {
-                value = double.NegativeInfinity;
-                return true;
-            }
-
-            if (Ascii.EqualsIgnoreCase(span, "NaN"u8))
-            {
-                value = double.NaN;
-                return true;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseDouble(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1194,75 +1159,50 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetGuid(out Guid value)
+        public readonly bool TryGetGuid(out Guid value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseGuid(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as a 16-bit integer.
+        /// Attempts to read the current value as a 16-bit integer (<c>xs:short</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetInt16(out short value)
+        public readonly bool TryGetInt16(out short value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseInt16(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as a 32-bit integer.
+        /// Attempts to read the current value as a 32-bit integer (<c>xs:int</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetInt32(out int value)
+        public readonly bool TryGetInt32(out int value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseInt32(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as a 64-bit integer.
+        /// Attempts to read the current value as a 64-bit integer (<c>xs:long</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetInt64(out long value)
+        public readonly bool TryGetInt64(out long value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseInt64(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as a signed 8-bit integer.
+        /// Attempts to read the current value as a signed 8-bit integer (<c>xs:byte</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
         [CLSCompliant(false)]
-        public bool TryGetSByte(out sbyte value)
+        public readonly bool TryGetSByte(out sbyte value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseSByte(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1270,16 +1210,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetSingle(out float value)
+        public readonly bool TryGetSingle(out float value)
         {
-            if (!TryGetDouble(out var d))
-            {
-                value = default;
-                return false;
-            }
-
-            value = (float)d;
-            return true;
+            return XmlLexical.TryParseSingle(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1287,12 +1220,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetTimeOnly(out TimeOnly value)
+        public readonly bool TryGetTimeOnly(out TimeOnly value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            Span<char> chars = stackalloc char[Math.Max(span.Length, 1)];
-            var n = Encoding.UTF8.GetChars(span, chars);
-            return TimeOnly.TryParse(chars[..n], CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
+            return XmlLexical.TryParseTimeOnly(ValueSpan, out value);
         }
 
         /// <summary>
@@ -1300,69 +1230,42 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        public bool TryGetTimeSpan(out TimeSpan value)
+        public readonly bool TryGetTimeSpan(out TimeSpan value)
         {
-            var span = TrimXmlWhitespace(ValueSpan);
-            if (span.IsEmpty)
-            {
-                value = default;
-                return false;
-            }
-
-            Span<char> chars = stackalloc char[span.Length];
-            var n = Encoding.UTF8.GetChars(span, chars);
-            return TryParseDuration(chars[..n], out value);
+            return XmlLexical.TryParseDuration(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as an unsigned 16-bit integer.
+        /// Attempts to read the current value as an unsigned 16-bit integer (<c>xs:unsignedShort</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
         [CLSCompliant(false)]
-        public bool TryGetUInt16(out ushort value)
+        public readonly bool TryGetUInt16(out ushort value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseUInt16(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as an unsigned 32-bit integer.
+        /// Attempts to read the current value as an unsigned 32-bit integer (<c>xs:unsignedInt</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
         [CLSCompliant(false)]
-        public bool TryGetUInt32(out uint value)
+        public readonly bool TryGetUInt32(out uint value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseUInt32(ValueSpan, out value);
         }
 
         /// <summary>
-        /// Attempts to read the current value as an unsigned 64-bit integer.
+        /// Attempts to read the current value as an unsigned 64-bit integer (<c>xs:unsignedLong</c>).
         /// </summary>
         /// <param name="value">When this method returns, the parsed value.</param>
         /// <returns><see langword="true"/> if parsing succeeded.</returns>
         [CLSCompliant(false)]
-        public bool TryGetUInt64(out ulong value)
+        public readonly bool TryGetUInt64(out ulong value)
         {
-            if (!TryGetIntegerUtf8(out var span))
-            {
-                value = default;
-                return false;
-            }
-
-            return Utf8Parser.TryParse(span, out value, out var consumed) && consumed == span.Length;
+            return XmlLexical.TryParseUInt64(ValueSpan, out value);
         }
 
         /// <summary>

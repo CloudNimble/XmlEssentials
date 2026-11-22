@@ -1,0 +1,12 @@
+# Usage
+
+`XmlElementNode` is a mutable element with `Attributes` and mixed `Children`.
+
+```csharp
+var root = new XmlElementNode("Person", namespaceUri: null, prefix: null);
+root.SetAttribute("id", "1");
+root.AddElement("Name").InnerText = "Ada";
+Console.WriteLine(root["Name"]!.InnerText);
+```
+
+Indexers return the first child element with that local name (and optional namespace), or null.

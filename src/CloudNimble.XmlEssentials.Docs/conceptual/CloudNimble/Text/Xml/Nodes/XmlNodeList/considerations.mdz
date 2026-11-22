@@ -1,0 +1,3 @@
+# Considerations
+
+A node may belong to one list. `Add` / `Insert` / indexer set throw if `Parent` is already set. `Remove` returns false when the node is not in the list.

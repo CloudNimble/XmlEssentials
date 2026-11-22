@@ -1,0 +1,7 @@
+# Examples
+
+```csharp
+var root = new XmlElementNode("e");
+root.Add(new XmlCDataNode("x"));
+root.ToString(); // <e><![CDATA[x]]></e>
+```

@@ -1,0 +1,7 @@
+# Best Practices
+
+- Always dispose. The extra buffer and row store are `ArrayPool` rentals.
+- Prefer `Parse(ReadOnlySpan<byte>)` when you already have UTF-8. `Parse(string)` encodes first.
+- Set `MaxDocumentByteCount`, `MaxDepth`, and `MaxAttributeCount` on untrusted input.
+- Use `CommentHandling.Allow` only when comments must round-trip. The default skips them.
+- For lookup, `TryGetChild` / `TryGetAttribute` avoid exceptions on missing names.

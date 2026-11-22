@@ -1,0 +1,3 @@
+# Considerations
+
+Comments containing `--` or ending in `-` throw on write. `XmlNode.Parse` discards prolog comments; parse with `XmlDocument` and `CommentHandling.Allow` when they must round-trip, then clone.

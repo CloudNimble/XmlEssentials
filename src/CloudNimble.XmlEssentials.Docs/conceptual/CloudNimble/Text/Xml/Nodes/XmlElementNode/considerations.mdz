@@ -1,0 +1,5 @@
+# Considerations
+
+`InnerText` get walks descendant text and CDATA. Set replaces all children. `WriteTo` skips attributes named `xmlns` or prefixed `xmlns` so the writer can declare namespaces from `Prefix` and `NamespaceUri`.
+
+`ValueKind` is always `Element` (there is no empty-element flag on the mutable node; empty vs paired end tag is decided at write time).

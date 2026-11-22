@@ -186,16 +186,26 @@ Namespace declarations: if the caller writes an element in a URI that is not in 
 
 ## Writer escaping
 
+The writer escapes whatever a reader would otherwise change, so a value is read back exactly as it was written. The full table and its reasons are in [XML fidelity](02-xml-fidelity.md#round-trip-guarantees).
+
 | Context | Escape |
 | --- | --- |
-| Element text | `&` → `&amp;`, `<` → `&lt;`, `]]>` → `]]&gt;` (via escaping `>` after `]]`) |
-| Attribute value (always double-quoted) | `&` → `&amp;`, `<` → `&lt;`, `"` → `&quot;` |
+| Element text | `&` → `&amp;`, `<` → `&lt;`, `]]>` → `]]&gt;`, CR → `&#xD;` |
+| Attribute value (always double-quoted) | `&` → `&amp;`, `<` → `&lt;`, `"` → `&quot;`, TAB → `&#x9;`, LF → `&#xA;`, CR → `&#xD;` |
+| Text and attribute values, 1.1 only | NEL → `&#x85;`, LS → `&#x2028;`, RestrictedChar → `&#xN;` |
 | CDATA | no escaping; `]]>` in input throws |
-| Comment | `--` in input throws |
-| Names | no escaping; invalid `Name` throws |
-| `>` in text | escaped as `&gt;` only when required (`]]>` case); otherwise may be literal `>` |
+| Comment | `--` in input, or a trailing `-`, throws |
+| Processing instruction | `?>` in data throws; the target is an NCName and not `xml` in any letter case |
+| Names | no escaping; an invalid name throws. An element name with the `xmlns` prefix throws. |
+| `>` in text | escaped as `&gt;` only when required (`]]>` case); otherwise literal `>` |
 
-Illegal characters in values throw. In 1.1, RestrictedChar is emitted as a numeric character reference, not as a literal.
+A character outside the `Char` production of the output version throws in every context. In a comment, CDATA section, or processing instruction a 1.1 RestrictedChar also throws, because references are not recognized there.
+
+Namespace declarations: `xmlns:xmlns` throws; `xmlns:xml` must name the XML namespace; no other prefix, and no default declaration, may name the `xml` or `xmlns` namespace.
+
+`Indented` inserts whitespace between elements only. An element that holds character data is written on one line.
+
+`XmlWriterOptions.SkipValidation` turns the name, namespace, and character checks off. Escaping still happens.
 
 Typed write lexical forms: [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant).
 

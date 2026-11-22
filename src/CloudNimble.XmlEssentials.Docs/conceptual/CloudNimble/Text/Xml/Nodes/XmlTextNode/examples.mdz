@@ -1,0 +1,7 @@
+# Examples
+
+```csharp
+var root = new XmlElementNode("e");
+root.Add(new XmlTextNode("a & b"));
+root.ToString(); // <e>a &amp; b</e>
+```

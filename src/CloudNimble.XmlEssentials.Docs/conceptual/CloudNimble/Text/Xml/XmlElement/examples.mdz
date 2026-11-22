@@ -1,0 +1,15 @@
+# Examples
+
+Namespaced lookup:
+
+```csharp
+using var document = XmlDocument.Parse("<r xmlns:p=\"urn:x\"><p:a>1</p:a></r>");
+document.RootElement.GetChild("a", "urn:x").GetInt32(); // 1
+```
+
+Typed values use XSD 1.0 lexical forms (`true`/`false`/`1`/`0`, `INF`/`NaN`, round-trip dateTime, GUID, base64).
+
+```csharp
+using var document = XmlDocument.Parse("<e>true</e>");
+document.RootElement.GetBoolean(); // true
+```

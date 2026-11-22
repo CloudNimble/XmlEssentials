@@ -5,4 +5,5 @@
 - `xmlns` attributes bind before the element's own name is resolved. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`.
 - The XML declaration, when present, must be the first token after an optional BOM.
 - DTDs (`<!DOCTYPE`, `<!ENTITY`, and other `<!` markup that is not a comment or CDATA) throw `XmlException`.
-- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`.
+- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`. The same constructor pitfall applies to `XmlDocumentOptions`.
+- `XmlDocument` is pooled. Dispose it. `XmlElement` cursors are invalid after dispose. Mutate with `CloudNimble.Text.Xml.Nodes`.

@@ -1,0 +1,3 @@
+# Considerations
+
+`WriteTo` emits a raw declaration. It must be the first output on that writer. `XmlDocument.WriteTo` uses `XmlDeclarationInfo`, not this type.

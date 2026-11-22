@@ -1,0 +1,3 @@
+# Best Practices
+
+Do not add `xmlns` / `xmlns:*` attributes unless you are mirroring an infoset; `WriteTo` skips them and the writer redeclares namespaces.

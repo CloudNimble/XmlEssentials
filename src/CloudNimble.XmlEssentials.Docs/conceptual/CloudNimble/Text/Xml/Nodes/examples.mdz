@@ -1,0 +1,10 @@
+# Examples
+
+Build a tree by hand:
+
+```csharp
+var person = new XmlElementNode("Person");
+person.SetAttribute("id", "1");
+person.AddElement("Name").InnerText = "Ada";
+person.Add(new XmlCommentNode("ok"));
+```

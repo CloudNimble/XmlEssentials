@@ -1,0 +1,5 @@
+# Best Practices
+
+- Construct with `new XmlDocumentOptions()`. Do not use `default`.
+- Set `MaxDocumentByteCount` on `Parse(Stream)` for untrusted sources.
+- Keep `CommentHandling` at `Skip` unless the infoset must round-trip comments.

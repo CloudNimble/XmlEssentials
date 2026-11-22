@@ -1,0 +1,3 @@
+# Best Practices
+
+Use `SetAttribute` instead of adding duplicate `XmlAttributeNode` instances. Remove from `Children` / `Attributes` before attaching a node to another parent.

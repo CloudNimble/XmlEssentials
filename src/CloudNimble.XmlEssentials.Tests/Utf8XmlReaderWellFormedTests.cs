@@ -80,10 +80,10 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Read_WellFormed_DeclarationEncodingEdgeForms()
+        public void Read_Declaration_MalformedEncoding_Throws()
         {
-            XmlReaderHarness.MustRead("<?xml version=\"1.0\" encoding=?><e/>");
-            XmlReaderHarness.MustRead("<?xml version=\"1.0\" encoding=\"\"?><e/>");
+            XmlReaderHarness.MustThrow("<?xml version=\"1.0\" encoding=?><e/>");
+            XmlReaderHarness.MustThrow("<?xml version=\"1.0\" encoding=\"\"?><e/>");
         }
 
         [TestMethod]

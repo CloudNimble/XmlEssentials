@@ -1,0 +1,11 @@
+# Usage
+
+`XmlNode` is the mutable base type. Parse a document to its root element, write it, or deep-clone it.
+
+```csharp
+XmlNode? root = XmlNode.Parse("<e a=\"1\">x</e>");
+root!.WriteTo(writer);
+var copy = root.DeepClone();
+```
+
+`ParseValue(ref Utf8XmlReader)` captures the current element. `ToString` is the XML markup for that node.

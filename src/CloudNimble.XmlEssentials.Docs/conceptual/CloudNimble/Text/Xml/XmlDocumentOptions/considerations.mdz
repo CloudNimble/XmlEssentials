@@ -1,0 +1,16 @@
+# Considerations
+
+`XmlDocumentOptions` is a struct. `new XmlDocumentOptions()` runs the constructor and sets `CommentHandling` to `Skip`. `default(XmlDocumentOptions)` leaves `CommentHandling` at `Disallow` (enum zero). Prefer `new`.
+
+A max-* of `0` means “use the table default”:
+
+| Property | When 0 |
+| --- | --- |
+| `MaxDepth` | 64 |
+| `MaxAttributeCount` | 1000 |
+| `MaxNameByteCount` | 1024 |
+| `MaxCommentByteCount` | 1,048,576 |
+| `MaxTextByteCount` | 16,777,216 |
+| `MaxDocumentByteCount` | unbounded (stays 0) |
+
+Limits are forwarded to `Utf8XmlReader`. `MaxDocumentByteCount` is also enforced on `Parse(Stream)` as the stream is read.

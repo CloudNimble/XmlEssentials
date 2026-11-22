@@ -1,0 +1,3 @@
+# Considerations
+
+`WriteTo` calls `WriteCData`. A payload containing `]]>` throws. CDATA is significant whitespace; it is not skipped by whitespace options on the mutable tree.

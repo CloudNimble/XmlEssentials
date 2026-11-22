@@ -557,7 +557,7 @@ namespace CloudNimble.Text.Xml
             else
             {
                 CloseStartTag();
-                if (_options.Indented)
+                if (_options.Indented && !frame.HasText)
                 {
                     WriteIndent(_depth - 1);
                 }
@@ -589,7 +589,7 @@ namespace CloudNimble.Text.Xml
 
             CloseStartTag();
             ref var frame = ref CurrentFrame();
-            if (_options.Indented && frame.HasContent)
+            if (_options.Indented && frame.HasContent && !frame.HasText)
             {
                 WriteIndent(_depth - 1);
             }
@@ -692,9 +692,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8Value">The UTF-8 value.</param>
         public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8Value)
         {
-            WriteStartElement(utf8LocalName);
-            WriteStringValue(utf8Value);
-            WriteEndElement();
+            WriteCompleteElementUtf8(utf8LocalName, [], LookupUri([]), utf8Value);
         }
 
         /// <summary>
@@ -1077,8 +1075,70 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
         public void WriteNamespaceDeclaration(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8NamespaceUri)
         {
+            RegisterNamespace(utf8Prefix, utf8NamespaceUri);
+            WriteRegisteredNamespace(utf8Prefix, utf8NamespaceUri);
+        }
+
+        /// <summary>
+        /// Validates a namespace declaration for the open start tag and puts it in scope without writing it.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
+        /// <param name="ns">The namespace URI. Empty undeclares.</param>
+        /// <remarks>
+        /// The DOM registers every declaration of a start tag first, then writes the tag's attributes in
+        /// document order with <see cref="WriteRegisteredNamespace"/>. A prefixed attribute that precedes
+        /// its own declaration (<c>&lt;e p:a="1" xmlns:p="u"/&gt;</c>) then finds the prefix bound instead
+        /// of triggering a second, automatic declaration.
+        /// </remarks>
+        internal void RegisterNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
             ThrowIfDisposed();
             RequireOpenTag();
+            if (prefix.IsEmpty)
+            {
+                if (!_options.SkipValidation && Utf8XmlReader.IsReservedNamespace(ns))
+                {
+                    throw new XmlException("The xml and xmlns namespaces cannot be declared as the default namespace.");
+                }
+
+                PushNs(_depth, [], ns);
+                return;
+            }
+
+            RegisterPrefixedNamespace(prefix, ns);
+        }
+
+        /// <summary>
+        /// Writes the text of a namespace declaration that <see cref="RegisterNamespace"/> already put in scope.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
+        /// <param name="ns">The namespace URI.</param>
+        internal void WriteRegisteredNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
+            if (prefix.IsEmpty)
+            {
+                TrackAttribute("xmlns"u8, XmlUtf8.Xmlns);
+                WriteRaw(" xmlns=\""u8);
+            }
+            else
+            {
+                TrackAttribute(prefix, XmlUtf8.Xmlns);
+                WriteRaw(" xmlns:"u8);
+                WriteRaw(prefix);
+                WriteRaw("=\""u8);
+            }
+
+            WriteAttributeText(ns);
+            WriteRaw("\""u8);
+        }
+
+        /// <summary>
+        /// Validates an <c>xmlns:prefix</c> declaration and puts it in scope.
+        /// </summary>
+        /// <param name="utf8Prefix">The prefix.</param>
+        /// <param name="utf8NamespaceUri">The namespace URI.</param>
+        internal void RegisterPrefixedNamespace(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
             ValidateNcName(utf8Prefix);
             if (!_options.SkipValidation && utf8NamespaceUri.IsEmpty && _version is XmlVersion.Version10)
             {
@@ -1095,13 +1155,14 @@ namespace CloudNimble.Text.Xml
                 throw new XmlException("The xmlns prefix cannot be declared.");
             }
 
-            TrackAttribute(utf8Prefix, XmlUtf8.Xmlns);
-            WriteRaw(" xmlns:"u8);
-            WriteRaw(utf8Prefix);
-            WriteRaw("=\""u8);
-            WriteAttributeText(utf8NamespaceUri);
-            WriteRaw("\""u8);
-            PushNs(_depth, utf8Prefix.ToArray(), utf8NamespaceUri.ToArray());
+            if (!_options.SkipValidation
+                && !utf8Prefix.SequenceEqual("xml"u8)
+                && Utf8XmlReader.IsReservedNamespace(utf8NamespaceUri))
+            {
+                throw new XmlException("The xml and xmlns namespaces cannot be bound to another prefix.");
+            }
+
+            PushNs(_depth, utf8Prefix, utf8NamespaceUri);
         }
 
         /// <summary>
@@ -1120,13 +1181,8 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
         public void WriteDefaultNamespace(ReadOnlySpan<byte> utf8NamespaceUri)
         {
-            ThrowIfDisposed();
-            RequireOpenTag();
-            TrackAttribute("xmlns"u8, XmlUtf8.Xmlns);
-            WriteRaw(" xmlns=\""u8);
-            WriteAttributeText(utf8NamespaceUri);
-            WriteRaw("\""u8);
-            PushNs(_depth, [], utf8NamespaceUri.ToArray());
+            RegisterNamespace([], utf8NamespaceUri);
+            WriteRegisteredNamespace([], utf8NamespaceUri);
         }
 
         /// <summary>
@@ -1149,8 +1205,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(ReadOnlySpan<char> value)
         {
-            if (Ascii.IsValid(value)
-                && value.IndexOfAny(_inAttribute ? "&<\"" : "&<]") < 0)
+            if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : XmlChars.PlainTextChars) < 0)
             {
                 if (_inAttribute)
                 {
@@ -1164,7 +1219,7 @@ namespace CloudNimble.Text.Xml
                 }
 
                 CloseStartTag();
-                MarkContent();
+                MarkText();
                 WriteCharsRaw(value);
                 return;
             }
@@ -1193,7 +1248,7 @@ namespace CloudNimble.Text.Xml
             }
 
             CloseStartTag();
-            MarkContent();
+            MarkText();
             WriteElementText(utf8Value);
         }
 
@@ -1382,12 +1437,12 @@ namespace CloudNimble.Text.Xml
                 }
 
                 CloseStartTag();
-                MarkContent();
+                MarkText();
             }
 
             var max = Base64.GetMaxEncodedToUtf8Length(bytes.Length);
             Ensure(max);
-            EnsureDone(Base64.EncodeToUtf8(bytes, _memory.Span[_buffered..], out _, out var written), "Base64 encode failed.");
+            Base64.EncodeToUtf8(bytes, _memory.Span[_buffered..], out _, out var written);
             _buffered += written;
         }
 
@@ -1460,8 +1515,10 @@ namespace CloudNimble.Text.Xml
                 throw new XmlException("CDATA must not contain ']]>'.");
             }
 
+            ValidateContentChars(utf8Value);
+
             CloseStartTag();
-            MarkContent();
+            MarkText();
             WriteRaw("<![CDATA["u8);
             WriteRaw(utf8Value);
             WriteRaw("]]>"u8);
@@ -1498,6 +1555,8 @@ namespace CloudNimble.Text.Xml
                 throw new XmlException("Comments must not contain '--' or end with '-'.");
             }
 
+            ValidateContentChars(utf8Value);
+
             if (_depth > 0)
             {
                 CloseStartTag();
@@ -1521,38 +1580,9 @@ namespace CloudNimble.Text.Xml
         public void WriteProcessingInstruction(string target, string? data)
         {
             ArgumentNullException.ThrowIfNull(target);
-            ThrowIfDisposed();
-            var utf8Target = EncodeUtf8(target, stackalloc byte[64], out _);
-            ValidateNcName(utf8Target);
-            if (!_options.SkipValidation && utf8Target.Length == 3 && (utf8Target[0] | 0x20) is (byte)'x' && (utf8Target[1] | 0x20) is (byte)'m' && (utf8Target[2] | 0x20) is (byte)'l')
-            {
-                throw new XmlException("Processing instruction target cannot be 'xml'.");
-            }
-
-            if (data is not null && data.Contains("?>", StringComparison.Ordinal))
-            {
-                throw new XmlException("Processing instruction data must not contain '?>'.");
-            }
-
-            if (_depth > 0)
-            {
-                CloseStartTag();
-                MarkContent();
-            }
-            else
-            {
-                EnsureDeclaration();
-            }
-
-            WriteRaw("<?"u8);
-            WriteRaw(utf8Target);
-            if (!string.IsNullOrEmpty(data))
-            {
-                WriteRaw(" "u8);
-                WriteRaw(EncodeChars(data));
-            }
-
-            WriteRaw("?>"u8);
+            WriteProcessingInstructionUtf8(
+                EncodeUtf8(target, stackalloc byte[64], out _),
+                EncodeUtf8(data, stackalloc byte[256], out _));
         }
 
         /// <summary>
@@ -1567,7 +1597,7 @@ namespace CloudNimble.Text.Xml
             if (_depth > 0)
             {
                 CloseStartTag();
-                MarkContent();
+                MarkText();
             }
 
             WriteRaw(utf8Xml);
@@ -1631,19 +1661,6 @@ namespace CloudNimble.Text.Xml
             }
 
             return ref _frames![index];
-        }
-
-        /// <summary>
-        /// Throws <see cref="XmlException"/> when <paramref name="status"/> is not <see cref="OperationStatus.Done"/>.
-        /// </summary>
-        /// <param name="status">The operation status.</param>
-        /// <param name="message">The exception message.</param>
-        internal static void EnsureDone(OperationStatus status, string message)
-        {
-            if (status is not OperationStatus.Done)
-            {
-                throw new XmlException(message);
-            }
         }
 
         /// <summary>
@@ -2062,6 +2079,298 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Checks the characters of a comment, CDATA section, or processing instruction payload.
+        /// </summary>
+        /// <param name="utf8">The payload.</param>
+        /// <exception cref="XmlException">
+        /// The payload is not valid UTF-8, holds a character outside the Char production of the output version,
+        /// or holds an XML 1.1 RestrictedChar.
+        /// </exception>
+        /// <remarks>
+        /// Character references are not recognized in these constructs, so a character that cannot appear
+        /// literally cannot be written at all. Element text and attribute values escape it instead.
+        /// </remarks>
+        internal void ValidateContentChars(ReadOnlySpan<byte> utf8)
+        {
+            if (_options.SkipValidation || utf8.IndexOfAnyExcept(XmlChars.AsciiContentChars) < 0)
+            {
+                return;
+            }
+
+            var i = 0;
+            while (i < utf8.Length)
+            {
+                if (!TryReadRune(utf8, ref i, out var cp))
+                {
+                    throw new XmlException("Invalid UTF-8 in XML content.");
+                }
+
+                var legal = _version is XmlVersion.Version11
+                    ? XmlChars.IsXml11Char(cp) && !XmlChars.IsXml11RestrictedChar(cp)
+                    : XmlChars.IsXml10Char(cp);
+                if (!legal)
+                {
+                    throw new XmlException("Illegal character in a comment, CDATA section, or processing instruction.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Rejects the <c>xmlns</c> prefix on an element name.
+        /// </summary>
+        /// <param name="prefix">The UTF-8 element prefix.</param>
+        /// <exception cref="XmlException">The prefix is <c>xmlns</c> (Namespaces in XML, section 3: element names must not use it).</exception>
+        internal void ValidateElementPrefix(ReadOnlySpan<byte> prefix)
+        {
+            if (!_options.SkipValidation && prefix.SequenceEqual(XmlUtf8.XmlnsPrefix))
+            {
+                throw new XmlException("Element names must not use the xmlns prefix.");
+            }
+        }
+
+        /// <summary>
+        /// Rejects the <c>xmlns</c> prefix on an element name.
+        /// </summary>
+        /// <param name="prefix">The element prefix.</param>
+        /// <exception cref="XmlException">The prefix is <c>xmlns</c> (Namespaces in XML, section 3: element names must not use it).</exception>
+        internal void ValidateElementPrefix(ReadOnlySpan<char> prefix)
+        {
+            if (!_options.SkipValidation && prefix.SequenceEqual("xmlns"))
+            {
+                throw new XmlException("Element names must not use the xmlns prefix.");
+            }
+        }
+
+        /// <summary>
+        /// Marks the current element as having character data.
+        /// </summary>
+        /// <remarks>
+        /// Whitespace is significant next to character data, so an element that holds text is never
+        /// indented: not its child start tags, and not its end tag.
+        /// </remarks>
+        internal void MarkText()
+        {
+            if (_depth > 0)
+            {
+                ref var frame = ref CurrentFrame();
+                frame.HasContent = true;
+                frame.HasText = true;
+            }
+        }
+
+        /// <summary>
+        /// Writes the newline and indent before a child start tag, unless the parent holds character data.
+        /// </summary>
+        /// <param name="depth">The depth of the element about to be written.</param>
+        internal void WriteElementIndent(int depth)
+        {
+            if (_options.Indented && (_depth == 0 || !CurrentFrame().HasText))
+            {
+                WriteIndent(depth);
+            }
+        }
+
+        /// <summary>
+        /// Records that an XML declaration was already written (for example by <see cref="XmlDocument.WriteTo"/>).
+        /// </summary>
+        /// <remarks>
+        /// Prevents <see cref="EnsureDeclaration"/> from emitting a second declaration when
+        /// <see cref="XmlWriterOptions.OmitXmlDeclaration"/> is false.
+        /// </remarks>
+        internal void MarkDeclarationWritten()
+        {
+            _wroteDeclaration = true;
+        }
+
+        /// <summary>
+        /// Writes an xmlns declaration for <paramref name="prefix"/>, or a default xmlns declaration when it is empty.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
+        /// <param name="ns">The namespace URI. Empty undeclares.</param>
+        internal void DeclareNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
+            RegisterNamespace(prefix, ns);
+            WriteRegisteredNamespace(prefix, ns);
+        }
+
+        /// <summary>
+        /// Declares the namespace of the open start tag's own name unless the in-scope binding already matches.
+        /// </summary>
+        /// <param name="prefix">The element prefix, or empty.</param>
+        /// <param name="ns">The element namespace URI, or empty for no namespace.</param>
+        /// <remarks>
+        /// Pairs with <see cref="WriteStartElementDeferred"/>. An unprefixed element in no namespace under a
+        /// non-empty default namespace gets <c>xmlns=""</c>, which is the only way to keep it out of that
+        /// namespace (Namespaces in XML, section 6.2).
+        /// </remarks>
+        internal void EnsureElementNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
+            if (!prefix.IsEmpty && ns.IsEmpty)
+            {
+                if (!_options.SkipValidation)
+                {
+                    throw new XmlException("Prefixed names require a namespace URI.");
+                }
+
+                return;
+            }
+
+            if (ns.SequenceEqual(LookupUri(prefix)))
+            {
+                return;
+            }
+
+            DeclareNamespace(prefix, ns);
+        }
+
+        /// <summary>
+        /// Writes <c>&lt;prefix:local</c> and opens the element without declaring any namespace.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <remarks>
+        /// The DOM replays an element's own xmlns declarations in document order and then calls
+        /// <see cref="EnsureElementNamespace"/>. Declaring up front, as <see cref="WriteStartElementUtf8(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>
+        /// does, would drop declarations that are only referenced from content (<c>xsi:type="p:T"</c>).
+        /// </remarks>
+        internal void WriteStartElementDeferred(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix)
+        {
+            ThrowIfDisposed();
+            ValidateNcName(local);
+            if (!prefix.IsEmpty)
+            {
+                ValidateNcName(prefix);
+                ValidateElementPrefix(prefix);
+            }
+
+            BeginStartElement();
+            WriteRawByte((byte)'<');
+            if (!prefix.IsEmpty)
+            {
+                WriteRaw(prefix);
+                WriteRawByte((byte)':');
+            }
+
+            WriteRaw(local);
+            PushFrame(new XmlWriterFrame
+            {
+                Local = AppendName(local),
+                Prefix = AppendName(prefix),
+                TagOpen = true,
+            });
+            _depth++;
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes a complete element with a UTF-8 name and text content.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="ns">The namespace URI, or empty.</param>
+        /// <param name="utf8Text">The unescaped text content.</param>
+        /// <remarks>
+        /// When the text needs no escaping and the name needs no new namespace declaration, the whole
+        /// <c>&lt;n&gt;v&lt;/n&gt;</c> run is written in one reserved span and no frame is pushed.
+        /// Anything else takes the start tag, text, end tag route and produces the same bytes.
+        /// </remarks>
+        internal void WriteCompleteElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, ReadOnlySpan<byte> utf8Text)
+        {
+            ThrowIfDisposed();
+            var nameIsBound = _nsCount == 0 && prefix.IsEmpty
+                ? ns.IsEmpty
+                : ns.SequenceEqual(LookupUri(prefix));
+            if (!nameIsBound || _options.Indented || utf8Text.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) >= 0)
+            {
+                WriteStartElementDeferred(local, prefix);
+                EnsureElementNamespace(prefix, ns);
+                WriteStringValue(utf8Text);
+                WriteFullEndElement();
+                return;
+            }
+
+            ValidateNcName(local);
+            var nameLength = local.Length;
+            if (!prefix.IsEmpty)
+            {
+                ValidateNcName(prefix);
+                ValidateElementPrefix(prefix);
+                nameLength += prefix.Length + 1;
+            }
+
+            BeginStartElement();
+            Ensure(5 + (2 * nameLength) + utf8Text.Length);
+            var dest = _memory.Span[_buffered..];
+            dest[0] = (byte)'<';
+            var pos = 1;
+            if (!prefix.IsEmpty)
+            {
+                prefix.CopyTo(dest[pos..]);
+                pos += prefix.Length;
+                dest[pos++] = (byte)':';
+            }
+
+            local.CopyTo(dest[pos..]);
+            pos += local.Length;
+            dest[pos++] = (byte)'>';
+            utf8Text.CopyTo(dest[pos..]);
+            pos += utf8Text.Length;
+            dest[pos++] = (byte)'<';
+            dest[pos++] = (byte)'/';
+            dest.Slice(1, nameLength).CopyTo(dest[pos..]);
+            pos += nameLength;
+            dest[pos++] = (byte)'>';
+            _buffered += pos;
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes a processing instruction from UTF-8 parts.
+        /// </summary>
+        /// <param name="utf8Target">The UTF-8 PI target.</param>
+        /// <param name="utf8Data">The UTF-8 PI data, or empty.</param>
+        /// <remarks>
+        /// <see cref="XmlDocument.WriteTo"/> replays parsed processing instructions through this overload
+        /// without materializing strings.
+        /// </remarks>
+        internal void WriteProcessingInstructionUtf8(ReadOnlySpan<byte> utf8Target, ReadOnlySpan<byte> utf8Data)
+        {
+            ThrowIfDisposed();
+            ValidateNcName(utf8Target);
+            if (!_options.SkipValidation && utf8Target.Length == 3 && (utf8Target[0] | 0x20) is (byte)'x' && (utf8Target[1] | 0x20) is (byte)'m' && (utf8Target[2] | 0x20) is (byte)'l')
+            {
+                throw new XmlException("Processing instruction target cannot be 'xml'.");
+            }
+
+            if (utf8Data.IndexOf("?>"u8) >= 0)
+            {
+                throw new XmlException("Processing instruction data must not contain '?>'.");
+            }
+
+            ValidateContentChars(utf8Data);
+
+            if (_depth > 0)
+            {
+                CloseStartTag();
+                MarkContent();
+            }
+            else
+            {
+                EnsureDeclaration();
+            }
+
+            WriteRaw("<?"u8);
+            WriteRaw(utf8Target);
+            if (!utf8Data.IsEmpty)
+            {
+                WriteRaw(" "u8);
+                WriteRaw(utf8Data);
+            }
+
+            WriteRaw("?>"u8);
+        }
+
+        /// <summary>
         /// Returns the namespace binding at <paramref name="index"/>.
         /// </summary>
         /// <param name="index">The binding index.</param>
@@ -2089,9 +2398,13 @@ namespace CloudNimble.Text.Xml
         /// <param name="depth">The owning depth.</param>
         /// <param name="prefix">The prefix bytes.</param>
         /// <param name="uri">The URI bytes.</param>
-        internal void PushNs(int depth, byte[] prefix, byte[] uri)
+        /// <remarks>
+        /// A popped slot keeps its arrays. Documents declare the same namespaces over and over (sibling
+        /// elements, or the next document after <see cref="Reset()"/>), so a push whose bytes match the
+        /// slot's previous occupant reuses those arrays instead of allocating new ones.
+        /// </remarks>
+        internal void PushNs(int depth, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> uri)
         {
-            var binding = new XmlWriterNsBinding(depth, prefix, uri);
             if (_nsHeap is null)
             {
                 _nsHeap = new XmlWriterNsBinding[8];
@@ -2101,7 +2414,10 @@ namespace CloudNimble.Text.Xml
                 Array.Resize(ref _nsHeap, _nsHeap.Length * 2);
             }
 
-            _nsHeap[_nsCount] = binding;
+            var stale = _nsHeap[_nsCount];
+            var ownedPrefix = stale.Prefix is { } stalePrefix && prefix.SequenceEqual(stalePrefix) ? stalePrefix : prefix.ToArray();
+            var ownedUri = stale.Uri is { } staleUri && uri.SequenceEqual(staleUri) ? staleUri : uri.ToArray();
+            _nsHeap[_nsCount] = new XmlWriterNsBinding(depth, ownedPrefix, ownedUri);
             _nsCount++;
         }
 
@@ -2448,7 +2764,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8">The raw UTF-8 text.</param>
         internal void WriteElementText(ReadOnlySpan<byte> utf8)
         {
-            if (utf8.IndexOf((byte)']') < 0 && utf8.IndexOfAnyExcept(XmlChars.AsciiTextChars) < 0)
+            if (utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) < 0)
             {
                 WriteRaw(utf8);
                 return;
@@ -2458,6 +2774,25 @@ namespace CloudNimble.Text.Xml
             var i = 0;
             while (i < utf8.Length)
             {
+                if (bracket >= 2 && utf8[i] is (byte)'>')
+                {
+                    // "]]>" must not appear in character data (XML 1.0 and 1.1 section 2.4).
+                    WriteRaw("&gt;"u8);
+                    i++;
+                    bracket = 0;
+                    continue;
+                }
+
+                var plain = utf8[i..].IndexOfAnyExcept(XmlChars.AsciiTextWriteChars);
+                if (plain != 0)
+                {
+                    plain = plain < 0 ? utf8.Length - i : plain;
+                    WriteRaw(utf8.Slice(i, plain));
+                    i += plain;
+                    bracket = 0;
+                    continue;
+                }
+
                 var start = i;
                 if (!TryReadRune(utf8, ref i, out var cp))
                 {
@@ -2471,16 +2806,17 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
-                if (cp is '<')
+                if (cp is '\r')
                 {
-                    WriteRaw("&lt;"u8);
+                    // A literal CR would be read back as LF (XML 1.0 and 1.1 section 2.11).
+                    WriteRaw("&#xD;"u8);
                     bracket = 0;
                     continue;
                 }
 
-                if (cp is '>' && bracket >= 2)
+                if (cp is '<')
                 {
-                    WriteRaw("&gt;"u8);
+                    WriteRaw("&lt;"u8);
                     bracket = 0;
                     continue;
                 }
@@ -2496,9 +2832,24 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8">The raw UTF-8 text.</param>
         internal void WriteAttributeText(ReadOnlySpan<byte> utf8)
         {
+            if (utf8.IndexOfAnyExcept(XmlChars.AsciiAttributeWriteChars) < 0)
+            {
+                WriteRaw(utf8);
+                return;
+            }
+
             var i = 0;
             while (i < utf8.Length)
             {
+                var plain = utf8[i..].IndexOfAnyExcept(XmlChars.AsciiAttributeWriteChars);
+                if (plain != 0)
+                {
+                    plain = plain < 0 ? utf8.Length - i : plain;
+                    WriteRaw(utf8.Slice(i, plain));
+                    i += plain;
+                    continue;
+                }
+
                 var start = i;
                 if (!TryReadRune(utf8, ref i, out var cp))
                 {
@@ -2508,6 +2859,14 @@ namespace CloudNimble.Text.Xml
                 if (cp is '&')
                 {
                     WriteRaw("&amp;"u8);
+                    continue;
+                }
+
+                if (cp is '\t' or '\n' or '\r')
+                {
+                    // Literal TAB, LF, and CR in an attribute value are read back as a space
+                    // (attribute-value normalization, XML 1.0 and 1.1 section 3.3.3).
+                    WriteNcr(cp);
                     continue;
                 }
 
@@ -2546,8 +2905,10 @@ namespace CloudNimble.Text.Xml
                     throw new XmlException("Illegal character in XML value.");
                 }
 
-                if (XmlChars.IsXml11RestrictedChar(cp))
+                if (XmlChars.IsXml11RestrictedChar(cp) || cp is 0x85 or 0x2028)
                 {
+                    // RestrictedChar must be a reference. NEL and LS are legal literals but would be
+                    // read back as LF (XML 1.1 section 2.11), so they are written as references too.
                     WriteNcr(cp);
                     return;
                 }
@@ -2648,10 +3009,7 @@ namespace CloudNimble.Text.Xml
                 throw new XmlException($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
             }
 
-            if (_options.Indented)
-            {
-                WriteIndent(_depth);
-            }
+            WriteElementIndent(_depth);
         }
 
         /// <summary>
@@ -2663,6 +3021,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
         internal void WriteStartElementFromChars(ReadOnlySpan<char> local, ReadOnlySpan<char> prefix, ReadOnlySpan<byte> ns, bool empty)
         {
+            ValidateElementPrefix(prefix);
             var nsUri = ns;
             if (!prefix.IsEmpty && nsUri.IsEmpty)
             {
@@ -2759,6 +3118,7 @@ namespace CloudNimble.Text.Xml
             if (!prefix.IsEmpty)
             {
                 ValidateNcName(prefix);
+                ValidateElementPrefix(prefix);
             }
 
             var nsUri = ns;
@@ -2803,7 +3163,7 @@ namespace CloudNimble.Text.Xml
                 throw new XmlException($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
             }
 
-            WriteIndent(_depth);
+            WriteElementIndent(_depth);
             WriteRawByte((byte)'<');
             byte[]? autoPrefix = null;
             if (!prefix.IsEmpty)
@@ -3153,6 +3513,7 @@ namespace CloudNimble.Text.Xml
             if (!string.IsNullOrEmpty(prefix))
             {
                 ValidateNcNameChars(prefix);
+                ValidateElementPrefix(prefix);
                 if (prefix is not "xml" and not "xmlns" && !_options.SkipValidation)
                 {
                     throw new XmlException("Prefixed names require a namespace URI.");
@@ -3206,11 +3567,6 @@ namespace CloudNimble.Text.Xml
 
             WriteRawByte((byte)'>');
             WriteElementContentChars(value.AsSpan());
-            if (_options.Indented)
-            {
-                WriteIndent(_depth);
-            }
-
             WriteRaw("</"u8);
             WriteCharsRaw(localName);
             WriteRawByte((byte)'>');
@@ -3252,11 +3608,6 @@ namespace CloudNimble.Text.Xml
             WriteCharsRaw(localName);
             WriteRawByte((byte)'>');
             WriteRaw(utf8Value);
-            if (_options.Indented)
-            {
-                WriteIndent(_depth);
-            }
-
             WriteRaw("</"u8);
             WriteCharsRaw(localName);
             WriteRawByte((byte)'>');
@@ -3269,7 +3620,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The characters.</param>
         internal void WriteElementContentChars(ReadOnlySpan<char> value)
         {
-            if (Ascii.IsValid(value) && value.IndexOfAny("&<]") < 0)
+            if (value.IndexOfAnyExcept(XmlChars.PlainTextChars) < 0)
             {
                 WriteCharsRaw(value);
                 return;
@@ -3287,7 +3638,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The number.</param>
         /// <param name="maxBytes">Maximum UTF-8 digits to reserve.</param>
         internal void WriteNumberUtf8<T>(T value, int maxBytes)
-            where T : IUtf8SpanFormattable
+            where T : struct, IUtf8SpanFormattable
         {
             ThrowIfDisposed();
             if (_inAttribute)
@@ -3302,7 +3653,7 @@ namespace CloudNimble.Text.Xml
                 }
 
                 CloseStartTag();
-                MarkContent();
+                MarkText();
                 Ensure(maxBytes);
             }
 

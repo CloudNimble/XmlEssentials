@@ -1,0 +1,11 @@
+# Usage
+
+`XmlDocument.Declaration` is an optional `XmlDeclarationInfo` captured at parse time.
+
+```csharp
+using var document = XmlDocument.Parse("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?><e/>");
+var declaration = document.Declaration!.Value;
+Console.WriteLine(declaration.Version);    // 1.0
+Console.WriteLine(declaration.Encoding);   // utf-8
+Console.WriteLine(declaration.Standalone); // true
+```

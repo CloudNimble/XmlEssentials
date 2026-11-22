@@ -1,0 +1,91 @@
+---
+title: XmlValueKind
+description: "Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlValueKind', 'CloudNimble.Text.Xml.XmlValueKind', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `XmlElement`', '- `XmlTokenType`', '- `CloudNimble.Text.Xml.Nodes.XmlNode`', '- `XmlDeclarationInfo`']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlValueKind
+```
+
+## Summary
+
+Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree.
+
+## Usage
+
+# Usage
+
+`XmlValueKind` discriminates an `XmlElement` cursor or a mutable `XmlNode`.
+
+```csharp
+using var document = XmlDocument.Parse("<e>x</e>");
+foreach (var child in document.RootElement.EnumerateChildren())
+{
+    if (child.ValueKind is XmlValueKind.Text)
+    {
+        Console.WriteLine(child.GetString());
+    }
+}
+```
+
+## Examples
+
+# Examples
+
+`TokenType` maps element kinds to `StartElement`, attributes to `Attribute`, and leaves to their token. Unknown kinds map to `None`.
+
+## Best Practices
+
+# Best Practices
+
+Do not assume every child is an element. Check `ValueKind` is `Element`, `EmptyElement`, or `Nil` before `GetChild`-style navigation on a cursor you enumerated.
+
+## Patterns
+
+# Patterns
+
+Switch on `ValueKind` before calling typed getters. Mixed content can be text, CDATA, comments, PIs, and child elements in one list.
+
+## Considerations
+
+# Considerations
+
+`Undefined` is the default cursor. `Document` is reserved for the document node (not exposed as `XmlElement`). `EmptyElement` is `<e/>`. `Nil` is `xsi:nil="true"`. `XmlDeclaration` is used by `XmlDeclarationNode` only; immutable documents store `XmlDeclarationInfo` instead.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `Undefined` | 0 | No node is selected. |
+| `Document` | 1 | The document node (immutable [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) only). |
+| `Element` | 2 | An element with a start and end tag. |
+| `EmptyElement` | 3 | An empty element (`<e/>`). |
+| `Attribute` | 4 | An attribute. |
+| `Text` | 5 | Character data. |
+| `CData` | 6 | A CDATA section. |
+| `Comment` | 7 | A comment. |
+| `ProcessingInstruction` | 8 | A processing instruction other than the XML declaration. |
+| `XmlDeclaration` | 9 | The XML declaration. |
+| `Nil` | 10 | An element with `xsi:nil="true"`. |
+
+## Related APIs
+
+- # Related APIs
+- - `XmlElement`
+- - `XmlTokenType`
+- - `CloudNimble.Text.Xml.Nodes.XmlNode`
+- - `XmlDeclarationInfo`
+

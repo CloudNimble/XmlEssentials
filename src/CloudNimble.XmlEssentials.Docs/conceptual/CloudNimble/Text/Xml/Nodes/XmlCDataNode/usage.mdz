@@ -1,0 +1,7 @@
+# Usage
+
+```csharp
+root.Add(new XmlCDataNode("<raw>"));
+```
+
+`InnerText` includes CDATA payloads along with text nodes.

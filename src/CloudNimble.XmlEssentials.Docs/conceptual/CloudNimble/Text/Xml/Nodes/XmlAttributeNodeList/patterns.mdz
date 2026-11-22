@@ -1,0 +1,3 @@
+# Patterns
+
+Replace in place with the indexer setter. `Clear` detaches every attribute.

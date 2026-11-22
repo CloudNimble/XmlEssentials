@@ -16,6 +16,44 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
+        public void XmlChars_AsciiClassifiers_MatchProductions()
+        {
+            for (var b = 0; b <= byte.MaxValue; b++)
+            {
+                var letter = b is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z');
+                var digit = b is >= '0' and <= '9';
+                XmlChars.IsAsciiNameStart((byte)b).Should().Be(letter || b == '_' || b == ':', $"byte {b}");
+                XmlChars.IsAsciiNcNameChar((byte)b).Should().Be(letter || digit || b == '_' || b == '-' || b == '.', $"byte {b}");
+            }
+        }
+
+        [TestMethod]
+        public void XmlChars_NameStartChar_RangeBoundaries()
+        {
+            (int First, int Last)[] ranges =
+            [
+                (':', ':'), ('A', 'Z'), ('_', '_'), ('a', 'z'), (0xC0, 0xD6), (0xD8, 0xF6), (0xF8, 0x2FF),
+                (0x370, 0x37D), (0x37F, 0x1FFF), (0x200C, 0x200D), (0x2070, 0x218F), (0x2C00, 0x2FEF),
+                (0x3001, 0xD7FF), (0xF900, 0xFDCF), (0xFDF0, 0xFFFD), (0x10000, 0xEFFFF),
+            ];
+            foreach (var (first, last) in ranges)
+            {
+                XmlChars.IsNameStartChar(first, XmlVersion.Version10).Should().BeTrue($"U+{first:X}");
+                XmlChars.IsNameStartChar(last, XmlVersion.Version11).Should().BeTrue($"U+{last:X}");
+            }
+
+            int[] outside =
+            [
+                0, '9', ';', '@', '[', '^', '`', '{', 0xBF, 0xD7, 0xF7, 0x300, 0x36F, 0x37E, 0x2000, 0x200B, 0x200E,
+                0x206F, 0x2190, 0x2BFF, 0x2FF0, 0x3000, 0xD800, 0xF8FF, 0xFDD0, 0xFDEF, 0xFFFE, 0xFFFF, 0xF0000, 0x10FFFF,
+            ];
+            foreach (var cp in outside)
+            {
+                XmlChars.IsNameStartChar(cp, XmlVersion.Version10).Should().BeFalse($"U+{cp:X}");
+            }
+        }
+
+        [TestMethod]
         public void XmlChars_NameAndCharProductions()
         {
             XmlChars.IsNameStartChar(':', XmlVersion.Version10).Should().BeTrue();

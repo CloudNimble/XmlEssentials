@@ -1,0 +1,3 @@
+# Best Practices
+
+Write text nodes as children of an element. Document-level character data is rejected by the writer.

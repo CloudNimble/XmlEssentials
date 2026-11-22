@@ -1,0 +1,5 @@
+# Examples
+
+```csharp
+new XmlElementNode("e").Add(new XmlCommentNode("c"));
+```

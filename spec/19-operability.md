@@ -8,7 +8,7 @@ No `ILogger` in the runtime package. `XmlException` carries position and Path. C
 
 ## Rollout plan
 
-1. PRs 1–4: reader/writer/DOM; CI already runs `--coverage` + `coverage-gate.cs` (PR 1: collector invoked, zero lines OK).
+1. PRs 1–4: reader/writer/DOM. **PRs 1–3 are done** (reader + writer). Next is PR 4 DOM. CI already runs `--coverage` + `coverage-gate.cs`.
 2. PRs 5–10: serializer, source-gen, AOT, benches, docs. Line gate live from PR 2.
 3. PR 11: freeze API baseline; confirm gate still fails below 100% line.
 4. **`-preview` after PR 11.** v1.0.0 when coverage, AOT smoke, docs, baseline are green.

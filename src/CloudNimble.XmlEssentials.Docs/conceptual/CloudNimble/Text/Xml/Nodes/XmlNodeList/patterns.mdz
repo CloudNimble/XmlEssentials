@@ -1,0 +1,3 @@
+# Patterns
+
+Walk with `foreach` or `XmlElementNode`’s `IEnumerable<XmlNode>`. Filter with `is XmlElementNode` when you want child elements only.

@@ -1,0 +1,3 @@
+# Considerations
+
+`WriteTo` calls `WriteStringValue` (escaped). Text nodes have no namespace. Null constructor argument becomes empty.

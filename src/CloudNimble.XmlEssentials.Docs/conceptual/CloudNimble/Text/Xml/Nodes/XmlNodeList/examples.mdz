@@ -1,0 +1,7 @@
+# Examples
+
+```csharp
+var child = root.Children[0];
+root.Children.Remove(child);
+child.Parent; // null
+```

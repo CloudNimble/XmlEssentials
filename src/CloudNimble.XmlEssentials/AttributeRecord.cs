@@ -20,9 +20,14 @@ namespace CloudNimble.Text.Xml
         public byte[]? Decoded;
 
         /// <summary>
-        /// Number of bytes in <see cref="Decoded"/> that are live.
+        /// Number of bytes of <see cref="Decoded"/> that belong to this attribute.
         /// </summary>
         public int DecodedLength;
+
+        /// <summary>
+        /// Offset of this attribute's value in <see cref="Decoded"/>, which is shared by the start tag's attributes.
+        /// </summary>
+        public int DecodedStart;
 
         /// <summary>
         /// UTF-8 byte length of the raw name, including a prefix and colon when present.

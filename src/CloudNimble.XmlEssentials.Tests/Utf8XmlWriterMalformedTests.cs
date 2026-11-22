@@ -687,7 +687,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteAttributeString("a", "1");
                 w.WriteAttributeString("p", "a", "urn:x", "2");
                 w.WriteEndElement();
-            }).Should().Contain("a=\"1\"").And.Contain("p:a=\"2\"");
+            }).Should().Be("<e a=\"1\" xmlns:p=\"urn:x\" p:a=\"2\"/>");
         }
 
         #endregion

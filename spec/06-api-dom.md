@@ -129,6 +129,26 @@ public readonly struct XmlElement : IEquatable<XmlElement>
 
 Prolog/epilog comments and PIs are **preserved** in the parse buffer and round-tripped by `XmlDocument.WriteTo`. They are **not** enumerable as children of `RootElement`.
 
+### Values
+
+- `GetString()` returns the text exactly as parsed (after the reader's line-end and attribute-value normalization), whitespace included. For an element it is the concatenated text and CDATA of its descendants. For a nil element it is `null`.
+- `GetInt32()`, `GetDouble()`, `GetDateTime()`, and the other typed getters apply the lexical rules in [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant) through the same code as `Utf8XmlReader`. `<n> 42 </n>` is the string `" 42 "` and the integer `42`.
+- A typed getter on a nil element throws: the element has no value.
+- `IsEmptyElement` is true for `<e/>` and false for `<e></e>`, including when the element is nil.
+- Name lookups compare `{local, namespace URI}`. The overloads without a namespace match the local name in any namespace.
+
+### WriteTo fidelity
+
+`WriteTo` writes the infoset that was parsed. The exact guarantees are listed under [round-trip guarantees](02-xml-fidelity.md#round-trip-guarantees): namespace declarations as parsed and in place, `xmlns=""` kept (and added for a sub-tree that needs it), attribute order kept, `<e/>` versus `<e></e>` kept. A document that is already in the writer's own form is reproduced byte for byte.
+
+Writing a sub-tree (`XmlElement.WriteTo`, `GetRawXml`, `ParseValue`) declares any namespace its own name or attributes need that an ancestor declared.
+
+The writer's `XmlWriterOptions.Version` governs what can be written. A 1.1 document that undeclares a prefix (`xmlns:p=""`) or holds a RestrictedChar cannot be written by a 1.0 writer and throws.
+
+### Storage
+
+Rows are stored in document order (STJ `JsonDocument.MetadataDb`): an element, its attributes, then its descendants. The document owns one pooled copy of the UTF-8 payload; names and unescaped values are offsets into it. Details and measurements: [optimization](23-optimization.md).
+
 ## DOM — mutable (JsonNode family)
 
 XML is not a property bag. The mutable tree is a real XML node list, not `JsonObject`.

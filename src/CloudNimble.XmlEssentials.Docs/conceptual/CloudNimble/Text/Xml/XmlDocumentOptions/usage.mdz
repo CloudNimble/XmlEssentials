@@ -1,0 +1,15 @@
+# Usage
+
+Pass a constructed options struct into `XmlDocument.Parse`:
+
+```csharp
+var options = new XmlDocumentOptions
+{
+    MaxDepth = 32,
+    CommentHandling = XmlCommentHandling.Allow,
+    MaxDocumentByteCount = 1_048_576,
+};
+using var document = XmlDocument.Parse(utf8, options);
+```
+
+Omit the argument for defaults: comments skipped, insignificant whitespace between elements skipped, every max-* at `0` (table defaults).

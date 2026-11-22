@@ -1,0 +1,7 @@
+# Examples
+
+```csharp
+var reader = new Utf8XmlReader("<e>z</e>"u8);
+var node = XmlNode.ParseValue(ref reader);
+Console.WriteLine(node);
+```

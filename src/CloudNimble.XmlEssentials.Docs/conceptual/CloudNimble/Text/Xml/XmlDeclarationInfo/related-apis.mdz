@@ -1,0 +1,6 @@
+# Related APIs
+
+- `XmlDocument`
+- `XmlVersion`
+- `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`
+- `Utf8XmlWriter`

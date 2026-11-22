@@ -1,0 +1,9 @@
+# Patterns
+
+**Pooled parse.** `using var document = XmlDocument.Parse(utf8);` then read through `RootElement`. Do not cache the document instance.
+
+**Cursor.** `XmlElement` is a struct cursor. Enumerate children and attributes; do not store cursors after `Dispose`.
+
+**Fragment.** `ParseValue(ref reader)` builds a document whose root is the current start tag. Empty elements stop without consuming the next sibling.
+
+**Mutation.** Call `CloneNode` (or `XmlNode.Parse`) when you need to edit. The immutable document does not change.

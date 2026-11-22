@@ -1,0 +1,14 @@
+# Usage
+
+`XmlValueKind` discriminates an `XmlElement` cursor or a mutable `XmlNode`.
+
+```csharp
+using var document = XmlDocument.Parse("<e>x</e>");
+foreach (var child in document.RootElement.EnumerateChildren())
+{
+    if (child.ValueKind is XmlValueKind.Text)
+    {
+        Console.WriteLine(child.GetString());
+    }
+}
+```

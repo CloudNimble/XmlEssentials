@@ -1,15 +1,12 @@
 # Usage
 
-Add the `XmlEssentials` package and import `CloudNimble.Text.Xml`. Feed UTF-8 bytes to `Utf8XmlReader` and call `Read` until it returns false.
+Add the `XmlEssentials` package and import `CloudNimble.Text.Xml`. Tokenize with `Utf8XmlReader`, write with `Utf8XmlWriter`, or parse a whole document with `XmlDocument`.
 
 ```csharp
 using CloudNimble.Text.Xml;
 
-var reader = new Utf8XmlReader("<Person id=\"1\">Ada</Person>"u8);
-while (reader.Read())
-{
-    // inspect TokenType, LocalNameSpan, ValueSpan
-}
+using var document = XmlDocument.Parse("<Person id=\"1\">Ada</Person>");
+Console.WriteLine(document.RootElement.GetAttribute("id").GetInt32());
 ```
 
-Construct options with `new XmlReaderOptions()`. A max-* of `0` means the documented default, except `MaxDocumentByteCount`, which stays unbounded.
+Construct options with `new XmlDocumentOptions()` / `new XmlReaderOptions()`. A max-* of `0` means the documented default, except `MaxDocumentByteCount`, which stays unbounded.

@@ -1,0 +1,12 @@
+# Usage
+
+Parse UTF-8 XML into a pooled, immutable document. Dispose the instance to return the rental.
+
+```csharp
+using var document = XmlDocument.Parse("<Person id=\"1\"><Name>Ada</Name></Person>");
+var root = document.RootElement;
+Console.WriteLine(root.GetAttribute("id").GetInt32());
+Console.WriteLine(root.GetChild("Name").GetString());
+```
+
+Overloads accept `string`, `ReadOnlySpan<char>`, `ReadOnlySpan<byte>`, `ReadOnlySequence<byte>`, and `Stream`. `ParseValue(ref Utf8XmlReader)` captures the current element as a document. `TryParse` returns false on well-formedness errors instead of throwing.

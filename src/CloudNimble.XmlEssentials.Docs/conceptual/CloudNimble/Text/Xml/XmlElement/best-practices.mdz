@@ -1,0 +1,6 @@
+# Best Practices
+
+- Keep the `XmlDocument` alive for the lifetime of any cursor.
+- Prefer `TryGetChild` / `TryGetAttribute` on optional names.
+- Use `ValueKind` or `TokenType` before calling typed getters on mixed content.
+- Do not compare `XmlElement` instances from different documents; equality is document plus row index.

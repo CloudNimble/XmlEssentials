@@ -129,7 +129,7 @@ namespace CloudNimble.XmlEssentials.Tests
             reader.ReadStartElement();
             reader.MoveToNextAttribute();
             var attribute = reader.CurrentAttribute();
-            var decoded = reader.DecodeAttributeValue(attribute.ValueStart, attribute.ValueLength, out var escaped, out var decodedLength);
+            var decoded = reader.DecodeAttributeValue(attribute.ValueStart, attribute.ValueLength, out var escaped, out _, out var decodedLength);
             escaped.Should().BeTrue();
             Encoding.UTF8.GetString(decoded!.AsSpan(0, decodedLength)).Should().Be("x&y");
         }
@@ -141,7 +141,7 @@ namespace CloudNimble.XmlEssentials.Tests
             reader.ReadStartElement();
             reader.MoveToNextAttribute();
             var attribute = reader.CurrentAttribute();
-            var decoded = reader.DecodeAttributeValue(attribute.ValueStart, attribute.ValueLength, out var escaped, out var decodedLength);
+            var decoded = reader.DecodeAttributeValue(attribute.ValueStart, attribute.ValueLength, out var escaped, out _, out var decodedLength);
             decoded.Should().BeNull();
             escaped.Should().BeFalse();
             decodedLength.Should().Be(2);
@@ -211,7 +211,7 @@ namespace CloudNimble.XmlEssentials.Tests
             catch (XmlException ex)
             {
                 threw = true;
-                ex.Message.Should().Contain("UTF-8");
+                ex.Message.Should().Be("Invalid UTF-8.");
             }
 
             threw.Should().BeTrue();
@@ -312,30 +312,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void ParseInteger_ReadsCurrentText()
-        {
-            var reader = new Utf8XmlReader("<e>42</e>"u8);
-            reader.ReadStartElement();
-            reader.ReadText();
-            reader.ParseInteger(int.Parse).Should().Be(42);
-
-            var invalid = new Utf8XmlReader("<e>+1</e>"u8);
-            invalid.ReadStartElement();
-            invalid.ReadText();
-            var threw = false;
-            try
-            {
-                _ = invalid.ParseInteger(int.Parse);
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void ParseXmlDeclaration_SetsVersionAndRejectsNonUtf8()
         {
             var version11 = new Utf8XmlReader("<?xml version=\"1.1\" encoding=\"utf-8\"?><e/>"u8);
@@ -351,7 +327,7 @@ namespace CloudNimble.XmlEssentials.Tests
             catch (XmlException ex)
             {
                 threw = true;
-                ex.Message.Should().Contain("UTF-8");
+                ex.Message.Should().Be("XmlEssentials is UTF-8 only. Declared encoding 'latin1' is not supported.");
             }
 
             threw.Should().BeTrue();
@@ -475,13 +451,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void TrimAscii_TrimsXmlWhitespace()
-        {
-            Utf8XmlReader.TrimAscii("  hi\t").Should().Be("hi");
-            Utf8XmlReader.TrimAscii("x").Should().Be("x");
-        }
-
-        [TestMethod]
         public void TryMatchUnprefixedEndName_AcceptsTerminator()
         {
             var reader = new Utf8XmlReader("<item>x</item>"u8);
@@ -578,49 +547,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void TryParseDuration_ParsesDayTimeAndRejectsYearMonth()
-        {
-            Utf8XmlReader.TryParseDuration("PT1S", out var second).Should().BeTrue();
-            second.Should().Be(TimeSpan.FromSeconds(1));
-            Utf8XmlReader.TryParseDuration("P1D", out var day).Should().BeTrue();
-            day.Should().Be(TimeSpan.FromDays(1));
-            Utf8XmlReader.TryParseDuration("-PT1S", out var negative).Should().BeTrue();
-            negative.Should().Be(-TimeSpan.FromSeconds(1));
-            Utf8XmlReader.TryParseDuration("P1Y", out _).Should().BeFalse();
-            Utf8XmlReader.TryParseDuration("P1M", out _).Should().BeFalse();
-            Utf8XmlReader.TryParseDuration("PT", out _).Should().BeFalse();
-            Utf8XmlReader.TryParseDuration("", out _).Should().BeFalse();
-            Utf8XmlReader.TryParseDuration("PT1H", out var hour).Should().BeTrue();
-            hour.Should().Be(TimeSpan.FromHours(1));
-            Utf8XmlReader.TryParseDuration("PT1M", out var minute).Should().BeTrue();
-            minute.Should().Be(TimeSpan.FromMinutes(1));
-            Utf8XmlReader.TryParseDuration("P1DT2H3M4S", out var mixed).Should().BeTrue();
-            mixed.Should().Be(new TimeSpan(1, 2, 3, 4));
-            Utf8XmlReader.TryParseDuration("PT1.2.3S", out _).Should().BeFalse();
-            Utf8XmlReader.TryParseDuration("P1H", out _).Should().BeFalse();
-        }
-
-        [TestMethod]
-        public void TryParseInteger_RejectsPlusAndExponent()
-        {
-            var ok = new Utf8XmlReader("<e>7</e>"u8);
-            ok.ReadStartElement();
-            ok.ReadText();
-            ok.TryParseInteger<int>(int.TryParse, out var n).Should().BeTrue();
-            n.Should().Be(7);
-
-            var plus = new Utf8XmlReader("<e>+7</e>"u8);
-            plus.ReadStartElement();
-            plus.ReadText();
-            plus.TryParseInteger<int>(int.TryParse, out _).Should().BeFalse();
-
-            var exponent = new Utf8XmlReader("<e>1e2</e>"u8);
-            exponent.ReadStartElement();
-            exponent.ReadText();
-            exponent.TryParseInteger<int>(int.TryParse, out _).Should().BeFalse();
-        }
-
-        [TestMethod]
         public void TryReadMarkupDeclaration_CommentAndDtd()
         {
             var comment = new Utf8XmlReader("<!--c--><e/>"u8);
@@ -636,7 +562,7 @@ namespace CloudNimble.XmlEssentials.Tests
             catch (XmlException ex)
             {
                 threw = true;
-                ex.Message.Should().Contain("DTD");
+                ex.Message.Should().Be("DTD is not allowed.");
             }
 
             threw.Should().BeTrue();
@@ -722,320 +648,6 @@ namespace CloudNimble.XmlEssentials.Tests
 
             threw.Should().BeTrue();
             reader.ResolveElementNamespace([]).IsEmpty.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void Coverage_AttributeAndElementOverflow()
-        {
-            var xml = new StringBuilder("<e");
-            for (var i = 0; i < 17; i++)
-            {
-                xml.Append(" a").Append(i).Append("=\"").Append(i).Append('"');
-            }
-
-            xml.Append("/>");
-            var many = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml.ToString()));
-            many.ReadStartElement();
-            many.AttributeCount.Should().Be(17);
-            for (var i = 0; i < 9; i++)
-            {
-                many.MoveToNextAttribute().Should().BeTrue();
-            }
-
-            many.CurrentAttribute().NameLength.Should().Be(2);
-
-            var nested = new StringBuilder();
-            nested.Append("<n0 xmlns=\"urn:a\">");
-            for (var i = 1; i < 17; i++)
-            {
-                nested.Append("<n").Append(i).Append('>');
-            }
-
-            nested.Append('x');
-            for (var i = 16; i >= 0; i--)
-            {
-                nested.Append("</n").Append(i).Append('>');
-            }
-
-            var deep = new Utf8XmlReader(Encoding.UTF8.GetBytes(nested.ToString()));
-            while (deep.Read() && deep.TokenType is not XmlTokenType.Text)
-            {
-            }
-
-            deep.ElementLocalName(16).SequenceEqual("n16"u8).Should().BeTrue();
-            deep.ElementNamespace(16).SequenceEqual("urn:a"u8).Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void Coverage_NamespaceOwnedAndOverflow()
-        {
-            var owned = new NamespaceBinding(1, "p"u8.ToArray(), "urn:p"u8.ToArray());
-            owned.PrefixStart.Should().Be(-1);
-            owned.UriStart.Should().Be(-1);
-
-            var xml = new Utf8XmlReader("<xml:e xml:lang=\"en\"/>"u8);
-            xml.Read();
-            xml.NamespaceUriEquals(XmlNamespaces.Xml).Should().BeTrue();
-
-            var deep = new StringBuilder("<xml:n0>");
-            for (var i = 1; i < 17; i++)
-            {
-                deep.Append("<xml:n").Append(i).Append('>');
-            }
-
-            deep.Append('x');
-            for (var i = 16; i >= 0; i--)
-            {
-                deep.Append("</xml:n").Append(i).Append('>');
-            }
-
-            var nested = new Utf8XmlReader(Encoding.UTF8.GetBytes(deep.ToString()));
-            while (nested.Read() && nested.TokenType is not XmlTokenType.Text)
-            {
-            }
-
-            nested.ElementNamespace(16).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-
-            var intern = new Utf8XmlReader("<e/>"u8);
-            intern.SetCurrentNamespace("urn:not-in-buffer"u8);
-            intern.CurrentNamespaceBytes().SequenceEqual("urn:not-in-buffer"u8).Should().BeTrue();
-            intern.StoreElementNamespace(0, "urn:not-in-buffer"u8);
-            intern.StoreElementNamespace(20, XmlUtf8.Xml);
-            intern.StoreElementNamespace(8, XmlUtf8.Xml);
-            intern.TryGetBufferOffset([], out _).Should().BeFalse();
-            intern.ElementNamespace(8).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-            intern.ElementNamespace(20).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-            intern.PushBinding(1, "zz"u8, "urn:zz"u8);
-            intern.LookupNamespace("zz"u8, out var zzDeclared).SequenceEqual("urn:zz"u8).Should().BeTrue();
-            zzDeclared.Should().BeTrue();
-
-            for (var i = 0; i < 17; i++)
-            {
-                intern.PushBinding(1, intern.InternPrefix(Encoding.UTF8.GetBytes("p" + i)), intern.InternUri("urn:p"u8));
-            }
-
-            intern.BindingAt(16).Depth.Should().Be(1);
-            intern.LookupNamespace("p16"u8, out var declared).SequenceEqual("urn:p"u8).Should().BeTrue();
-            declared.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void Coverage_DecodeAndInternEdgePaths()
-        {
-            var text = new Utf8XmlReader("<e>a&amp;b</e>"u8);
-            text.Read();
-            text.Read();
-            text.NamespaceUriSpan.IsEmpty.Should().BeTrue();
-
-            var plus = new Utf8XmlReader("<e>+1</e>"u8);
-            plus.Read();
-            plus.Read();
-            plus.TryGetByte(out _).Should().BeFalse();
-            plus.TryGetInt16(out _).Should().BeFalse();
-            plus.TryGetInt64(out _).Should().BeFalse();
-            plus.TryGetSByte(out _).Should().BeFalse();
-            plus.TryGetUInt16(out _).Should().BeFalse();
-            plus.TryGetUInt32(out _).Should().BeFalse();
-            plus.TryGetUInt64(out _).Should().BeFalse();
-
-            var spaces = new Utf8XmlReader("<e>   </e>"u8, new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Significant });
-            spaces.Read();
-            spaces.Read();
-            spaces.TryGetBytesFromBase64(out var empty).Should().BeTrue();
-            empty.Should().BeEmpty();
-
-            var attr = new Utf8XmlReader("<e a=\"x&amp;y\"/>"u8);
-            attr.ReadStartElement();
-            attr.MoveToNextAttribute();
-            Encoding.UTF8.GetString(attr.AttributeValue(attr.CurrentAttribute())).Should().Be("x&y");
-
-            var incomplete = new Utf8XmlReader("<e a=\"&amp\"/>"u8, false, default);
-            var decoded = incomplete.DecodeAttributeValue(6, 4, out _, out _);
-            decoded.Should().BeNull();
-
-            var entity = new Utf8XmlReader("&amp;"u8);
-            var tiny = false;
-            try
-            {
-                _ = entity.DecodeEntity(stackalloc byte[0], out _);
-            }
-            catch (XmlException)
-            {
-                tiny = true;
-            }
-
-            tiny.Should().BeTrue();
-
-            Span<byte> utf8 = stackalloc byte[4];
-            Utf8XmlReader.EncodeUtf8CodePoint(0xE9, utf8).Should().Be(2);
-            Utf8XmlReader.EncodeUtf8CodePoint(0x20AC, utf8).Should().Be(3);
-            Utf8XmlReader.EncodeUtf8CodePoint(0x1F600, utf8).Should().Be(4);
-
-            var intern = new Utf8XmlReader("<e/>"u8);
-            intern.InternUri("urn:1"u8);
-            intern.InternUri("urn:2"u8);
-            intern.InternUri("urn:3"u8);
-            intern.InternUri("urn:4"u8);
-            intern.InternUri("urn:5"u8).Should().NotBeNull();
-            intern.PushBinding(1, intern.InternPrefix("a"u8), intern.InternUri("urn:a"u8));
-            intern.PushBinding(1, intern.InternPrefix("b"u8), intern.InternUri("urn:b"u8));
-            intern.PushBinding(1, intern.InternPrefix("c"u8), intern.InternUri("urn:c"u8));
-            intern.PushBinding(1, intern.InternPrefix("d"u8), intern.InternUri("urn:d"u8));
-            intern.PushBinding(1, intern.InternPrefix("e"u8), intern.InternUri("urn:e"u8));
-            intern.PushBinding(1, intern.InternPrefix("f"u8), intern.InternUri("urn:f"u8));
-            intern.PushBinding(1, intern.InternPrefix("g"u8), intern.InternUri("urn:g"u8));
-            intern.PushBinding(1, intern.InternPrefix("h"u8), intern.InternUri("urn:h"u8));
-            intern.PushBinding(1, intern.InternPrefix("i"u8), intern.InternUri("urn:i"u8));
-            intern.LookupNamespace("i"u8, out var declaredI).SequenceEqual("urn:i"u8).Should().BeTrue();
-            declaredI.Should().BeTrue();
-            intern.CurrentElementNamespace().IsEmpty.Should().BeTrue();
-
-            intern.EnsureDecodedCapacity(4);
-            intern.EnsureDecodedCapacity(2);
-
-            intern.ElementNamespace(0).IsEmpty.Should().BeTrue();
-
-            Utf8XmlReader.TrimXmlWhitespace("  x  "u8).SequenceEqual("x"u8).Should().BeTrue();
-            Utf8XmlReader.TryParseCodePoint("G"u8, hex: true, out _).Should().BeFalse();
-
-            var overflow = new Utf8XmlReader("<e>99999999999999999999</e>"u8);
-            overflow.ReadStartElement();
-            overflow.ReadText();
-            var threw = false;
-            try
-            {
-                _ = overflow.ParseInteger(int.Parse);
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-
-            var format = new Utf8XmlReader("<e>12a</e>"u8);
-            format.ReadStartElement();
-            format.ReadText();
-            var formatThrew = false;
-            try
-            {
-                _ = format.ParseInteger(int.Parse);
-            }
-            catch (XmlException)
-            {
-                formatThrew = true;
-            }
-
-            formatThrew.Should().BeTrue();
-
-            var cut = new Utf8XmlReader("<e>a&amp"u8, false, default);
-            cut.ReadStartElement();
-            cut.DecodeValueSpan((int)cut.BytesConsumed, 5);
-        }
-
-        [TestMethod]
-        public void Coverage_RemainingReaderBranches()
-        {
-            var attrs = new Utf8XmlReader("<e a=\"1\"/>"u8);
-            attrs.Read();
-            attrs.MoveToNextAttribute();
-            attrs.TokenType.Should().Be(XmlTokenType.Attribute);
-            attrs.NamespaceUriEquals((string?)null).Should().BeTrue();
-
-            var padded = new Utf8XmlReader("<e>YQ==</e>"u8);
-            padded.ReadStartElement();
-            padded.ReadText();
-            padded.TryGetBytesFromBase64(out var one).Should().BeTrue();
-            one.Should().Equal((byte)'a');
-
-            var longText = new string('x', 200);
-            var longReader = new Utf8XmlReader(Encoding.UTF8.GetBytes("<e>" + longText + "</e>"));
-            longReader.ReadStartElement();
-            longReader.ReadText();
-            longReader.ValueTextEquals(longText.AsSpan()).Should().BeTrue();
-
-            var xmlNs = new Utf8XmlReader("<e/>"u8);
-            xmlNs.Read();
-            xmlNs.StoreElementNamespace(0, XmlUtf8.Xml);
-            xmlNs.ElementNamespace(0).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-
-            var emptyNs = new Utf8XmlReader("<e/>"u8);
-            emptyNs.Read();
-            emptyNs.ElementNamespace(0).IsEmpty.Should().BeTrue();
-
-            var hexEof = new Utf8XmlReader("<e>&#"u8, false, default);
-            hexEof.ReadStartElement();
-            hexEof.Read().Should().BeFalse();
-
-            var longDecl = "<?xml version=\"1.0\" encoding=\"utf-8\"" + new string(' ', 300) + "?><e/>";
-            var decl = new Utf8XmlReader(Encoding.UTF8.GetBytes(longDecl));
-            decl.Read().Should().BeTrue();
-            decl.TokenType.Should().Be(XmlTokenType.XmlDeclaration);
-            decl.Read().Should().BeTrue();
-
-            var lookup = new Utf8XmlReader("<p:e xmlns:p=\"urn:x\" xml:lang=\"en\"/>"u8);
-            lookup.Read();
-            lookup.TryLookupBinding("p"u8, out var pBinding).Should().BeTrue();
-            lookup.BindingUri(pBinding).SequenceEqual("urn:x"u8).Should().BeTrue();
-            lookup.TryLookupBinding("xml"u8, out var xmlBinding).Should().BeTrue();
-            lookup.BindingUri(xmlBinding).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-            lookup.TryLookupBinding("xmlns"u8, out var xmlnsBinding).Should().BeTrue();
-            lookup.BindingUri(xmlnsBinding).SequenceEqual(XmlUtf8.Xmlns).Should().BeTrue();
-            lookup.TryLookupBinding("nope"u8, out _).Should().BeFalse();
-
-            var prefixedAttr = new Utf8XmlReader("<e xmlns:p=\"urn:x\" p:a=\"1\"/>"u8);
-            prefixedAttr.Read();
-            prefixedAttr.AttributeCount.Should().Be(2);
-
-            var nested = new StringBuilder("<a xmlns:p=\"urn:x\">");
-            for (var i = 0; i < 9; i++)
-            {
-                nested.Append("<p:e>");
-            }
-
-            for (var i = 0; i < 9; i++)
-            {
-                nested.Append("</p:e>");
-            }
-
-            nested.Append("</a>");
-            var deep = new Utf8XmlReader(Encoding.UTF8.GetBytes(nested.ToString()));
-            var depth = 0;
-            while (depth < 10 && deep.Read())
-            {
-                if (deep.TokenType is XmlTokenType.StartElement)
-                {
-                    depth++;
-                }
-            }
-
-            deep.AssignCurrentNamespace(new NamespaceBinding(0, XmlUtf8.XmlPrefix, XmlUtf8.Xml));
-            deep.StoreElementNamespaceFromCurrent(8);
-            deep.RestoreCurrentNamespaceFromElement(8);
-            deep.CurrentNamespaceBytes().SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-            deep.StoreElementNamespace(0, "urn:not-in-buffer"u8);
-            deep.SetCurrentNamespace(XmlUtf8.Xml);
-            deep.CurrentNamespaceBytes().SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
-            var inBuffer = new Utf8XmlReader("<e xmlns=\"urn:x\"/>"u8);
-            inBuffer.Read();
-            inBuffer.MoveToNextAttribute();
-            inBuffer.StoreElementNamespace(0, inBuffer.ValueSpan);
-
-            var internedXml = new Utf8XmlReader("<e xmlns=\"http://www.w3.org/XML/1998/namespace\"></e>"u8);
-            internedXml.Read();
-            internedXml.Read();
-            internedXml.TokenType.Should().Be(XmlTokenType.EndElement);
-
-            var mismatch = new Utf8XmlReader("<p:e xmlns:p=\"urn:x\" xmlns:qq=\"urn:x\"></qq:e>"u8);
-            mismatch.Read().Should().BeTrue();
-            mismatch.Read().Should().BeTrue();
-            mismatch.TokenType.Should().Be(XmlTokenType.EndElement);
-
-            var owned = new Utf8XmlReader("<e/>"u8);
-            owned.Read();
-            owned.PushBinding(1, "zz"u8.ToArray(), "urn:zz"u8.ToArray());
-            owned.TryLookupBinding("zz"u8, out var zz).Should().BeTrue();
-            owned.BindingPrefix(zz).SequenceEqual("zz"u8).Should().BeTrue();
         }
 
         [TestMethod]

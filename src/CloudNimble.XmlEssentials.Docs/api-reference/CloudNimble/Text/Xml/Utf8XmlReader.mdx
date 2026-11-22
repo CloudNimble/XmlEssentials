@@ -1392,12 +1392,12 @@ Type: `string?`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetByte
 
-Attempts to read the current value as an unsigned 8-bit integer.
+Attempts to read the current value as an unsigned 8-bit integer (`xs:unsignedByte`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetByte(out byte value)
+public readonly bool TryGetByte(out byte value)
 ```
 
 #### Parameters
@@ -1418,7 +1418,7 @@ Attempts to read the current value as XSD `base64Binary`.
 #### Syntax
 
 ```csharp
-public bool TryGetBytesFromBase64(out byte[] value)
+public readonly bool TryGetBytesFromBase64(out byte[] value)
 ```
 
 #### Parameters
@@ -1439,7 +1439,7 @@ Attempts to read the current value as XSD `date`.
 #### Syntax
 
 ```csharp
-public bool TryGetDateOnly(out System.DateOnly value)
+public readonly bool TryGetDateOnly(out System.DateOnly value)
 ```
 
 #### Parameters
@@ -1460,7 +1460,7 @@ Attempts to read the current value as XSD `dateTime`.
 #### Syntax
 
 ```csharp
-public bool TryGetDateTime(out System.DateTime value)
+public readonly bool TryGetDateTime(out System.DateTime value)
 ```
 
 #### Parameters
@@ -1481,7 +1481,7 @@ Attempts to read the current value as XSD `dateTime` with an offset.
 #### Syntax
 
 ```csharp
-public bool TryGetDateTimeOffset(out System.DateTimeOffset value)
+public readonly bool TryGetDateTimeOffset(out System.DateTimeOffset value)
 ```
 
 #### Parameters
@@ -1502,7 +1502,7 @@ Attempts to read the current value as XSD `decimal`. Exponent notation is reject
 #### Syntax
 
 ```csharp
-public bool TryGetDecimal(out decimal value)
+public readonly bool TryGetDecimal(out decimal value)
 ```
 
 #### Parameters
@@ -1523,7 +1523,7 @@ Attempts to read the current value as XSD `double`, including `INF`, `-INF`, and
 #### Syntax
 
 ```csharp
-public bool TryGetDouble(out double value)
+public readonly bool TryGetDouble(out double value)
 ```
 
 #### Parameters
@@ -1544,7 +1544,7 @@ Attempts to read the current value as a GUID.
 #### Syntax
 
 ```csharp
-public bool TryGetGuid(out System.Guid value)
+public readonly bool TryGetGuid(out System.Guid value)
 ```
 
 #### Parameters
@@ -1560,12 +1560,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt16
 
-Attempts to read the current value as a 16-bit integer.
+Attempts to read the current value as a 16-bit integer (`xs:short`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetInt16(out short value)
+public readonly bool TryGetInt16(out short value)
 ```
 
 #### Parameters
@@ -1581,12 +1581,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt32
 
-Attempts to read the current value as a 32-bit integer.
+Attempts to read the current value as a 32-bit integer (`xs:int`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetInt32(out int value)
+public readonly bool TryGetInt32(out int value)
 ```
 
 #### Parameters
@@ -1602,12 +1602,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt64
 
-Attempts to read the current value as a 64-bit integer.
+Attempts to read the current value as a 64-bit integer (`xs:long`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetInt64(out long value)
+public readonly bool TryGetInt64(out long value)
 ```
 
 #### Parameters
@@ -1623,12 +1623,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetSByte
 
-Attempts to read the current value as a signed 8-bit integer.
+Attempts to read the current value as a signed 8-bit integer (`xs:byte`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetSByte(out sbyte value)
+public readonly bool TryGetSByte(out sbyte value)
 ```
 
 #### Parameters
@@ -1649,7 +1649,7 @@ Attempts to read the current value as XSD `float`.
 #### Syntax
 
 ```csharp
-public bool TryGetSingle(out float value)
+public readonly bool TryGetSingle(out float value)
 ```
 
 #### Parameters
@@ -1670,7 +1670,7 @@ Attempts to read the current value as XSD `time`.
 #### Syntax
 
 ```csharp
-public bool TryGetTimeOnly(out System.TimeOnly value)
+public readonly bool TryGetTimeOnly(out System.TimeOnly value)
 ```
 
 #### Parameters
@@ -1691,7 +1691,7 @@ Attempts to read the current value as XSD `duration`. Year and month components 
 #### Syntax
 
 ```csharp
-public bool TryGetTimeSpan(out System.TimeSpan value)
+public readonly bool TryGetTimeSpan(out System.TimeSpan value)
 ```
 
 #### Parameters
@@ -1707,12 +1707,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt16
 
-Attempts to read the current value as an unsigned 16-bit integer.
+Attempts to read the current value as an unsigned 16-bit integer (`xs:unsignedShort`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetUInt16(out ushort value)
+public readonly bool TryGetUInt16(out ushort value)
 ```
 
 #### Parameters
@@ -1728,12 +1728,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt32
 
-Attempts to read the current value as an unsigned 32-bit integer.
+Attempts to read the current value as an unsigned 32-bit integer (`xs:unsignedInt`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetUInt32(out uint value)
+public readonly bool TryGetUInt32(out uint value)
 ```
 
 #### Parameters
@@ -1749,12 +1749,12 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt64
 
-Attempts to read the current value as an unsigned 64-bit integer.
+Attempts to read the current value as an unsigned 64-bit integer (`xs:unsignedLong`).
 
 #### Syntax
 
 ```csharp
-public bool TryGetUInt64(out ulong value)
+public readonly bool TryGetUInt64(out ulong value)
 ```
 
 #### Parameters

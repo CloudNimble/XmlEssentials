@@ -25,6 +25,49 @@ namespace CloudNimble.Text.Xml
         public static readonly SearchValues<byte> AsciiNcNameChars = SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"u8);
 
         /// <summary>
+        /// Bytes that force an attribute value to be decoded: an entity start or whitespace that normalizes to a space.
+        /// </summary>
+        public static readonly SearchValues<byte> AttrDecodeTriggers = SearchValues.Create("&\t\n\r"u8);
+
+        /// <summary>
+        /// ASCII attribute-value bytes the writer copies verbatim: printable ASCII except
+        /// <c>&lt;</c>, <c>&amp;</c>, and <c>"</c>.
+        /// </summary>
+        /// <remarks>
+        /// TAB, LF, and CR are excluded: a reader normalizes them to a space, so they are written as references.
+        /// </remarks>
+        public static readonly SearchValues<byte> AsciiAttributeWriteChars = SearchValues.Create(" !#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// ASCII element-text bytes the writer copies verbatim: TAB, LF, and printable ASCII except
+        /// <c>&lt;</c>, <c>&amp;</c>, and <c>]</c> (which may start a <c>]]&gt;</c> that must be escaped).
+        /// </summary>
+        /// <remarks>
+        /// CR is excluded: a reader normalizes it to LF, so it is written as a reference.
+        /// </remarks>
+        public static readonly SearchValues<byte> AsciiTextWriteChars = SearchValues.Create("\t\n !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// ASCII bytes that are legal, as literals, in comments, CDATA sections, and processing instruction data
+        /// in both XML versions: TAB, LF, CR, and printable ASCII.
+        /// </summary>
+        public static readonly SearchValues<byte> AsciiContentChars = SearchValues.Create("\t\n\r !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// UTF-16 form of <see cref="AsciiAttributeWriteChars"/>: attribute text made only of these is copied verbatim.
+        /// </summary>
+        /// <remarks>
+        /// An allow-list, not a list of characters to escape: control characters are ASCII too, and they
+        /// are illegal in XML 1.0 and must be references in XML 1.1.
+        /// </remarks>
+        public static readonly SearchValues<char> PlainAttributeChars = SearchValues.Create(" !#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+
+        /// <summary>
+        /// UTF-16 form of <see cref="AsciiTextWriteChars"/>: element text made only of these is copied verbatim.
+        /// </summary>
+        public static readonly SearchValues<char> PlainTextChars = SearchValues.Create("\t\n !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~");
+
+        /// <summary>
         /// ASCII text that needs no EOL, entity, or Char check: tab and printable ASCII except <c>&lt;</c> and <c>&amp;</c>.
         /// </summary>
         public static readonly SearchValues<byte> AsciiTextChars = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
@@ -45,14 +88,14 @@ namespace CloudNimble.Text.Xml
         public static readonly SearchValues<byte> AttrStopsSingle = SearchValues.Create("'<&\r\n"u8);
 
         /// <summary>
-        /// Stops an XML 1.0 text scan: markup, entity, or end-of-line.
+        /// Stops an XML 1.0 text scan: markup, entity, end-of-line, or a <c>&gt;</c> that may close a forbidden <c>]]&gt;</c>.
         /// </summary>
-        public static readonly SearchValues<byte> TextStops10 = SearchValues.Create("<&\r\n"u8);
+        public static readonly SearchValues<byte> TextStops10 = SearchValues.Create("<&>\r\n"u8);
 
         /// <summary>
         /// Stops an XML 1.1 text scan, including lead bytes of NEL (<c>C2</c>) and LS (<c>E2</c>).
         /// </summary>
-        public static readonly SearchValues<byte> TextStops11 = SearchValues.Create([(byte)'<', (byte)'&', (byte)'\r', (byte)'\n', 0xC2, 0xE2]);
+        public static readonly SearchValues<byte> TextStops11 = SearchValues.Create([(byte)'<', (byte)'&', (byte)'>', (byte)'\r', (byte)'\n', 0xC2, 0xE2]);
 
         #endregion
 

@@ -1,0 +1,7 @@
+# Examples
+
+```csharp
+var root = new XmlElementNode("e");
+root.Add(new XmlProcessingInstructionNode("pi", "d"));
+root.ToString(); // contains <?pi d?>
+```

@@ -70,6 +70,38 @@ No DTD ⇒ every attribute is treated as CDATA:
 3. Expand the five predefined entities and numeric character references.
 4. Writer **always** double-quotes attribute values.
 
+## Round-trip guarantees
+
+Reading normalizes; writing must therefore protect anything that normalization would change. These are requirements, tested as properties (`XmlRoundTripTests`), not conventions.
+
+**Writer → reader.** Any string the writer accepts as a value is returned unchanged by the reader:
+
+| Value contains | In element text | In an attribute value | Why |
+| --- | --- | --- | --- |
+| `&`, `<` | `&amp;`, `&lt;` | `&amp;`, `&lt;` | Markup. |
+| `"` | literal | `&quot;` | Attribute values are double-quoted. |
+| `>` after `]]` | `&gt;` | literal | `]]>` may not appear in character data (§2.4). |
+| CR (`#xD`) | `&#xD;` | `&#xD;` | A literal CR is read as LF (§2.11). |
+| TAB, LF | literal | `&#x9;`, `&#xA;` | A literal TAB or LF in an attribute is read as a space (§3.3.3). |
+| NEL (`#x85`), LS (`#x2028`) in **1.1** | `&#x85;`, `&#x2028;` | same | Literals are read as LF in 1.1. In 1.0 they are ordinary characters and stay literal. |
+| 1.1 RestrictedChar | `&#xN;` | `&#xN;` | Must be a reference (§2.2). |
+| A character outside `Char` for the version | throws | throws | Cannot be represented. |
+
+**Reader → DOM → writer.** `XmlDocument.WriteTo` reproduces the infoset it parsed, and for a document already in the writer's own form it reproduces the bytes:
+
+- Namespace declarations are written **as parsed**, in their original position among the attributes. They are not regenerated from the names in use, because a prefix may be referenced only from content (`xsi:type="p:T"`, XPath, QName-valued attributes).
+- `xmlns=""` is preserved, and is added when a sub-tree in no namespace is written under a default namespace. Without it the element would change namespace.
+- Attribute order is preserved.
+- `<e/>` and `<e></e>` are preserved (`IsEmptyElement`).
+- Comments and processing instructions before and after the root are preserved.
+- Not preserved, because they are not in the infoset: the quote character, whitespace inside tags, whitespace outside the root, the spelling of a character reference, and the declaration's spelling (it is rewritten as `version` + `encoding="utf-8"` + `standalone`).
+
+The mutable tree (`XmlNode`) keeps namespace declarations and attribute order the same way. It does not record `<e/>` versus `<e></e>`: an element with no children is written `<e/>`.
+
+**Indentation never changes content.** With `Indented`, whitespace is inserted only between elements. An element that holds character data is written on one line, including its child elements and its end tag, because whitespace next to character data is significant.
+
+**Writer overloads and the default namespace.** `WriteStartElement(localName)` and the other overloads that take no namespace write the bare name and therefore inherit the default namespace in scope, as `System.Xml.XmlWriter` does for a null namespace. The DOM and node tree, which know an element is in *no* namespace, write `xmlns=""` when that differs.
+
 ## Names
 
 Use the `NameStartChar` / `NameChar` productions of the **document version**. Both 1.0 5th ed and 1.1 2nd ed list explicit code-point ranges (including `#x10000–#xEFFFF`). Do **not** implement “Letter | '_' | ':'” as a Unicode category heuristic.
@@ -126,6 +158,13 @@ maps to `[XmlAttribute] string Currency` + `[XmlText] decimal Amount`.
 | Undeclared prefix | `XmlException`. |
 | `]]>` in text (must be escaped as `]]&gt;`) | Reader accepts the escaped form; writer escapes. Raw `]]>` in text is a well-formedness error on write (or escaped). |
 | CDATA containing `]]>` | Writer throws; it does not silently split CDATA. |
+| XML declaration that does not match [production 23](https://www.w3.org/TR/xml/#NT-XMLDecl) | `XmlException`. `version` is required and first; then optional `encoding`, then optional `standalone` (`yes` or `no`); nothing else. `1.1` selects XML 1.1, any other `1.x` is read as 1.0, anything else is an error. Any non-ASCII byte, including NEL and LS, is an error ([XML 1.1 §2.11](https://www.w3.org/TR/xml11/#sec-line-ends)). |
+| PI target `XML`, `Xml`, … | `XmlException`. Targets matching `xml` in any letter case are reserved; only lower-case `xml` at the start of the document is the declaration. |
+| PI target containing `:` , or no whitespace between target and data | `XmlException` ([Namespaces §7](https://www.w3.org/TR/xml-names/#Conformance), [XML production 16](https://www.w3.org/TR/xml/#NT-PI)). |
+| Name starting with `:`, ending with `:`, or with two colons | `XmlException`. Names are QNames ([Namespaces §4](https://www.w3.org/TR/xml-names/#ns-qualnames)). |
+| Element name with the `xmlns` prefix | `XmlException` ([Namespaces §3](https://www.w3.org/TR/xml-names/#ns-decl)). Reader and writer. |
+| A prefix other than `xml` bound to `http://www.w3.org/XML/1998/namespace`; any prefix bound to `http://www.w3.org/2000/xmlns/`; either one as the default namespace | `XmlException` (Namespaces §3). Reader and writer. |
+| Writer: a character outside `Char` in a comment, CDATA section, or PI; or a 1.1 RestrictedChar there | `XmlException`. References are not recognized in those constructs, so the character cannot be written at all. |
 
 ## Well-formedness constraints the reader enforces
 
@@ -134,8 +173,9 @@ maps to `[XmlAttribute] string Currency` + `[XmlText] decimal Amount`.
 3. Attribute names unique per element by `{local, ns}` (`xmlns` / `xmlns:prefix` included).
 4. No `<` in attribute values (must be `&lt;`).
 5. Element and attribute names match the document version's `NameStartChar` / `NameChar`.
+    Names are QNames: at most one colon, never first or last. Element names do not use the `xmlns` prefix.
 6. Comments do not contain `--`.
-7. PI target is not `xml` (case-insensitive) except for the XML declaration handled separately.
+7. PI target is an NCName and is not `xml` in any letter case; lower-case `xml` first in the document is the XML declaration, which must match production 23.
 8. Depth ≤ `MaxDepth`.
 9. Attribute count ≤ `MaxAttributeCount` (**including** `xmlns` and `xmlns:prefix`).
 10. Name byte length ≤ `MaxNameByteCount`.
@@ -156,21 +196,46 @@ maps to `[XmlAttribute] string Currency` + `[XmlText] decimal Amount`.
 
 ## Lexical rules (XSD 1.0, invariant)
 
-Typed getters on [`Utf8XmlReader`](04-api-reader.md) and serializer primitives use these forms. Current token must be Text, CData, or Attribute (or Comment for `GetComment`). Throw `XmlException` on mismatch or invalid lexical form.
+Typed getters on [`Utf8XmlReader`](04-api-reader.md) and [`XmlElement`](06-api-dom.md), and serializer primitives, share **one** implementation (`XmlLexical`). The reader and the DOM never parse a value on their own, so they cannot disagree. On the reader the current token must be Text, CData, or Attribute (or Comment for `GetComment`). On `XmlElement`, an element's value is its concatenated text and CDATA content. Throw `XmlException` on mismatch or invalid lexical form.
 
-| Type | Write | Read accepts |
+Authority: [XML Schema Part 2: Datatypes, Second Edition](https://www.w3.org/TR/xmlschema-2/). Two layers apply to every value, and they are different specifications:
+
+1. **XML** decides what the text is. Whitespace in element content is significant ([XML §2.10](https://www.w3.org/TR/xml/#sec-white-space)), so `<n> 42 </n>` has the text `" 42 "` and `GetString()` returns exactly that.
+2. **XML Schema** decides what the text means as a typed value. Every datatype below has the `whiteSpace` facet fixed to `collapse` ([§4.3.6](https://www.w3.org/TR/xmlschema-2/#rf-whiteSpace)), so leading and trailing XML whitespace (space, TAB, LF, CR) is removed before parsing and `GetInt32()` on `<n> 42 </n>` returns `42`. None of these lexical spaces allows whitespace inside the value, except Base64.
+
+| Type | XSD type | Write | Read accepts |
+| --- | --- | --- | --- |
+| `bool` | `boolean` | `true` / `false` | `true`, `false`, `1`, `0`. Case-sensitive. |
+| `sbyte` `short` `int` `long` | `byte` `short` `int` `long` | invariant decimal, `-` when negative | `[+-]?[0-9]+`, in range. A leading `+` and leading zeros are legal. No group separators, hex, fraction, or exponent. |
+| `byte` `ushort` `uint` `ulong` | `unsignedByte` … `unsignedLong` | invariant decimal | `[+]?[0-9]+`, in range. `-0` is zero; any other negative is out of range. |
+| `float` / `double` | `float` / `double` | round-trip (`G9`/`G17`) or `INF` / `-INF` / `NaN` | `[+-]?` decimal mantissa, optional `[eE][+-]?[0-9]+`; or `INF`, `-INF`, `NaN`. **Documented extension:** the three literals in any letter case. `+INF` (XSD 1.1) and `Infinity` are rejected. `XmlNumberHandling.Strict` rejects the literals. |
+| `decimal` | `decimal` | invariant, **no exponent** | `[+-]?` digits with an optional fraction (`12`, `12.5`, `.5`, `5.`). **Exponent is rejected** (`1E+2` is a `double`). |
+| `DateTime` | `dateTime` | no zone if `Unspecified`; `Z` if `Utc`; offset if `Local` | `YYYY-MM-DDThh:mm:ss[.f+][Z\|(+\|-)hh:mm]`. No zone → `Unspecified`; `Z` or `+00:00` → `Utc`; other offset → converted to `Local`. |
+| `DateTimeOffset` | `dateTime` | offset or `Z` | Same form. No zone takes the local offset at that instant (as `XmlConvert.ToDateTimeOffset` does). |
+| `DateOnly` | `date` | `yyyy-MM-dd` | `YYYY-MM-DD` with an optional zone, which is validated and dropped. |
+| `TimeOnly` | `time` | `xs:time` | `hh:mm:ss[.f+]` with an optional zone, which is validated and dropped. |
+| `TimeSpan` | `duration` | `xs:duration` (`PT1H2M3S`, …) | `[-]P[nD][T[nH][nM][n[.n]S]]`: at least one component, in that order, at least one after `T`, a fraction only on seconds. |
+| `Guid` | (none) | .NET `"D"` | `"D"`, `"N"`, `"B"`, `"P"`. Not an XSD type. |
+| `byte[]` | `base64Binary` | Base64 | Base64; whitespace between groups is allowed. Empty is an empty array. |
+
+Rules that hold for all date and time types:
+
+- Fields are fixed width. `2020-1-2` and `3:04:05` are rejected. `T` is upper case. A space is not a separator.
+- `24:00:00` is legal ([§3.2.7.1](https://www.w3.org/TR/xmlschema-2/#dateTime-lexical-representation)) and means the first instant of the next day. `24:00:01` is not.
+- Seconds are `00`–`59`. XSD 1.0 has no leap seconds.
+- A zone is `Z` or `(+|-)hh:mm` up to `14:00`.
+- Fraction digits past the seventh are dropped (100 ns resolution).
+
+Deliberate limits, because the framework types cannot hold more (documented, not silent):
+
+| XSD allows | This library | Why |
 | --- | --- | --- |
-| `bool` | `true` / `false` | `true`, `false`, `1`, `0` (XSD boolean). Leading/trailing XML whitespace trimmed. |
-| integers | invariant decimal, optional `-` | same; reject `+`, group separators, hex, exponent |
-| `float`/`double` | round-trip (`G9`/`G17`) or `INF`/`-INF`/`NaN` | XSD: number, `INF`, `-INF`, `NaN`; also `inf`/`nan` case-insensitive as a documented extension. `XmlNumberHandling.Strict` rejects named literals. Options default is `AllowNamedFloatingPointLiterals`. |
-| `decimal` | invariant, **no exponent** | XSD 1.0 `decimal` only: optional sign, digits, optional fraction. **Reject exponent** (`1E+2` / `1e2` is `XmlException`). Not a documented extension. |
-| `DateTime` | `xs:dateTime` without offset if `DateTimeKind.Unspecified`; `Z` if Utc; offset if Local | `xs:dateTime` |
-| `DateTimeOffset` | `xs:dateTime` with offset or `Z` | `xs:dateTime` with offset or `Z` |
-| `DateOnly` | `xs:date` `yyyy-MM-dd` | `xs:date` |
-| `TimeOnly` | `xs:time` | `xs:time` |
-| `TimeSpan` | `xs:duration` (`PT1H2M3S`, …) | `xs:duration` |
-| `Guid` | .NET `"D"` (hyphens) | `"D"`, `"N"`, `"B"`, `"P"` |
-| `byte[]` | `xs:base64Binary` | XSD base64 |
+| Years above 9999, year `0000` is illegal, negative years | Year is exactly four digits, `0001`–`9999` | `DateTime` range. |
+| `duration` with years and months (`P1Y2M`) | Rejected, including `P0Y` | A year or month has no fixed length, so it cannot be a `TimeSpan`. |
+| Arbitrary-precision `decimal` and `integer` | Range of the .NET type | Out of range is a parse failure, never a silent wrap. |
+| `xs:dateTime` / `time` with a date-only or time-only type and a zone | Zone is validated, then dropped | `DateOnly` and `TimeOnly` have no zone. |
+
+`xsi:nil="true"` means the element has no value. `GetString()` returns `null`; every typed getter on a nil element throws.
 
 See [serializer enums](07-api-serializer.md#enums).
 

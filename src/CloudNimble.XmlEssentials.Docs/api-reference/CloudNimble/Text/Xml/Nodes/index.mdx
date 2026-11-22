@@ -1,0 +1,96 @@
+---
+title: Overview
+description: "Summary of the CloudNimble.Text.Xml.Nodes Namespace"
+icon: folder-tree
+mode: wide
+keywords: ['CloudNimble.Text.Xml.Nodes', 'namespace', 'XmlAttributeNode', 'XmlAttributeNodeList', 'XmlCDataNode', 'XmlCommentNode', 'XmlDeclarationNode', 'XmlElementNode', 'XmlNode', 'XmlNodeList', 'XmlProcessingInstructionNode', 'XmlTextNode']
+---
+
+## Summary
+
+# Summary
+
+`CloudNimble.Text.Xml.Nodes` is the mutable XML tree: `XmlNode` plus `XmlElementNode`, attributes, text, CDATA, comments, processing instructions, and a declaration node. Lists are `XmlNodeList` and `XmlAttributeNodeList`, not BCL `System.Xml` types.
+
+## Usage
+
+# Usage
+
+Parse into a mutable root element, then edit children and attributes.
+
+```csharp
+using CloudNimble.Text.Xml.Nodes;
+
+var root = (XmlElementNode)XmlNode.Parse("<e/>")!;
+root.SetAttribute("id", "1");
+root.AddElement("Name").InnerText = "Ada";
+Console.WriteLine(root);
+```
+
+Prolog comments and PIs are discarded. Clone from an `XmlDocument` with `RootElement.CloneNode()` when you need the immutable parse first.
+
+## Examples
+
+# Examples
+
+Build a tree by hand:
+
+```csharp
+var person = new XmlElementNode("Person");
+person.SetAttribute("id", "1");
+person.AddElement("Name").InnerText = "Ada";
+person.Add(new XmlCommentNode("ok"));
+```
+
+## Best Practices
+
+# Best Practices
+
+- Use `XmlDocument` when you only read. Use this namespace when you must edit.
+- Do not move a node to a second parent; clone it.
+- Keep prefixes and namespace URIs in sync on elements and attributes you write.
+
+## Patterns
+
+# Patterns
+
+**Island.** A serializer property of type `XmlNode` / `XmlElementNode` is an XML island (later PRs).
+
+**Replace text.** Setting `InnerText` clears children and, when non-empty, adds one `XmlTextNode`.
+
+**Deep copy.** `DeepClone` returns an unattached copy. Lists keep parent pointers consistent.
+
+## Considerations
+
+# Considerations
+
+XML is not a property bag. Children are an ordered mixed list, not a JSON object. A node may have only one parent; adding a node that already has a parent throws `XmlException`.
+
+`ToString` writes the node through `Utf8XmlWriter` with `OmitXmlDeclaration`. `WriteTo` skips `xmlns*` attributes and lets the writer declare namespaces from `Prefix` / `NamespaceUri`.
+
+## Related APIs
+
+- # Related APIs
+- - `XmlNode`
+- - `XmlElementNode`
+- - `XmlDocument`
+- - `XmlElement`
+- - `Utf8XmlWriter`
+
+## Types
+
+### <Icon icon="file-brackets-curly" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Classes
+
+| Name | Summary |
+| ---- | ------- |
+| [XmlAttributeNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode) | A mutable XML attribute. |
+| [XmlAttributeNodeList](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNodeList) | An ordered list of [XmlAttributeNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode) instances on an element. |
+| [XmlCDataNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlCDataNode) | A mutable CDATA node. |
+| [XmlCommentNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlCommentNode) | A mutable comment node. |
+| [XmlDeclarationNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlDeclarationNode) | A mutable XML declaration. Immutable documents use [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) instead. |
+| [XmlElementNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlElementNode) | A mutable XML element with attributes and mixed children. |
+| [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) | A mutable XML node, analogous to `JsonNode` but as a real XML tree. |
+| [XmlNodeList](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNodeList) | An ordered list of child [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) instances. |
+| [XmlProcessingInstructionNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlProcessingInstructionNode) | A mutable processing-instruction node. |
+| [XmlTextNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlTextNode) | A mutable character-data node. |
+

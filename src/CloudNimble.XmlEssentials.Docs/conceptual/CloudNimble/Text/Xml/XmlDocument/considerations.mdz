@@ -1,0 +1,9 @@
+# Considerations
+
+`XmlDocument` is analogous to `JsonDocument`. The parse buffer is rented from `ArrayPool<byte>`. Use after `Dispose` throws `ObjectDisposedException`.
+
+Prolog and epilog comments or processing instructions are preserved for `WriteTo` and are not children of `RootElement`. The XML declaration is `XmlDeclarationInfo?`, not a mutable `XmlDeclarationNode`.
+
+`WriteTo` emits the captured declaration when one was present, then the prolog, root, and epilog. Pass `OmitXmlDeclaration = true` on the writer when you want a fragment without a declaration and the source had none.
+
+A max-* of `0` on `XmlDocumentOptions` means the DoS table default, except `MaxDocumentByteCount` which stays unbounded. Comments default to `Skip`.

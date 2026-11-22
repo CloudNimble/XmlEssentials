@@ -1,0 +1,3 @@
+# Best Practices
+
+Do not use target `xml` (case-insensitive); that is the XML declaration, not a PI.

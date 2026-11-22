@@ -1,0 +1,7 @@
+# Patterns
+
+**Island.** A serializer property of type `XmlNode` / `XmlElementNode` is an XML island (later PRs).
+
+**Replace text.** Setting `InnerText` clears children and, when non-empty, adds one `XmlTextNode`.
+
+**Deep copy.** `DeepClone` returns an unattached copy. Lists keep parent pointers consistent.

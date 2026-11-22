@@ -6,7 +6,14 @@
 
 	<ItemGroup>
 		<PackageReference Include="BenchmarkDotNet" Version="0.*" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\CloudNimble.XmlEssentials\CloudNimble.XmlEssentials.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\CloudNimble.XmlEssentials.Tests\Fixtures\quick-xml\*.xml;..\CloudNimble.XmlEssentials.Tests\Fixtures\quick-xml\*.fodt" Link="Fixtures\quick-xml\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 </Project>

@@ -1,0 +1,3 @@
+# Considerations
+
+Adding an attribute that already has a parent throws. Indexers return null when the name is missing. The list is never read-only.

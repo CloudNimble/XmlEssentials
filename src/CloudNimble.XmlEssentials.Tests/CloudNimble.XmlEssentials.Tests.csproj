@@ -8,4 +8,8 @@
 		<ProjectReference Include="..\CloudNimble.XmlEssentials\CloudNimble.XmlEssentials.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<None Update="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
 </Project>

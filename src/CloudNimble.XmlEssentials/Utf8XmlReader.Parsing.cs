@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace CloudNimble.Text.Xml
@@ -66,6 +67,14 @@ namespace CloudNimble.Text.Xml
             }
 
             var (cp, width) = DecodeRune(_pos);
+            if (width == 0)
+            {
+                // The buffer ends inside a multi-byte character. Consume the rest so the caller runs out
+                // of input and reports that more data is needed.
+                _pos = _span.Length;
+                return;
+            }
+
             ValidateChar(cp, fromNcr: false);
             _pos += width;
         }
@@ -123,7 +132,12 @@ namespace CloudNimble.Text.Xml
             {
                 _resumeLocalNames[i] = Encoding.UTF8.GetBytes(snapshot.ElementLocalNames[i]);
                 _resumeNsUris[i] = InternUri(Encoding.UTF8.GetBytes(snapshot.ElementNamespaceUris[i]));
+                _elementCount = i;
+                EnsureElementCapacity();
+                SetElementSlot(i, snapshot.ElementFlags[i]);
             }
+
+            _elementCount = snapshot.ElementLocalNames.Length;
 
             if (snapshot.NamespacePrefixes is { Length: > 0 })
             {
@@ -160,6 +174,7 @@ namespace CloudNimble.Text.Xml
                 Depth = _depth,
                 DocumentBytesConsumed = _documentBytesConsumedBase + _pos,
                 ElementLocalNames = MaterializeElementNames(),
+                ElementFlags = MaterializeElementFlags(),
                 ElementNamespaceUris = MaterializeElementNamespaces(),
                 Finished = _finished,
                 IsEmptyElement = _isEmptyElement,
@@ -194,6 +209,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Returns the qualified name of the current element token, including a prefix and colon when present.
+        /// </summary>
+        /// <param name="prefixLength">When this method returns, the prefix byte length, or 0 when unprefixed.</param>
+        /// <returns>UTF-8 name bytes in the current buffer.</returns>
+        /// <remarks>
+        /// One slice for <c>prefix:local</c> lets <see cref="XmlDocument"/> record a name with a single offset.
+        /// </remarks>
+        internal readonly ReadOnlySpan<byte> CurrentQualifiedName(out int prefixLength)
+        {
+            prefixLength = _prefixLength;
+            return _span.Slice(_nameStart, _nameLength);
+        }
+
+        /// <summary>
         /// Decodes <see cref="ValueSpan"/> as UTF-16.
         /// </summary>
         /// <returns>The current token value. Never null; empty when the value is empty.</returns>
@@ -208,28 +237,26 @@ namespace CloudNimble.Text.Xml
         /// <param name="start">Byte offset of the raw value in the current buffer.</param>
         /// <param name="length">UTF-8 byte length of the raw value.</param>
         /// <param name="escaped">True when the result differs from the raw slice.</param>
-        /// <param name="decodedLength">Byte length of the returned buffer, or <paramref name="length"/> when no decode ran.</param>
+        /// <param name="decodedStart">Offset of the decoded value in the returned buffer.</param>
+        /// <param name="decodedLength">Byte length of the decoded value, or <paramref name="length"/> when no decode ran.</param>
         /// <returns>A decoded buffer, or null when the raw slice is already the value.</returns>
         /// <remarks>
         /// TAB, LF, and CR become SPACE after end-of-line handling, per attribute-value normalization.
         /// </remarks>
-        internal byte[]? DecodeAttributeValue(int start, int length, out bool escaped, out int decodedLength)
+        internal byte[]? DecodeAttributeValue(int start, int length, out bool escaped, out int decodedStart, out int decodedLength)
         {
             escaped = false;
+            decodedStart = 0;
             decodedLength = length;
             var slice = _span.Slice(start, length);
             var xml11Eol = _version is XmlVersion.Version11 && ContainsXml11LineEnding(slice);
-            if (slice.IndexOf((byte)'&') < 0
-                && slice.IndexOf((byte)'\t') < 0
-                && slice.IndexOf((byte)'\n') < 0
-                && slice.IndexOf((byte)'\r') < 0
-                && !xml11Eol)
+            if (slice.IndexOfAny(XmlChars.AttrDecodeTriggers) < 0 && !xml11Eol)
             {
                 return null;
             }
 
             var savedPos = _pos;
-            var destination = new byte[length];
+            var destination = RentAttributeDecodeSpace(length);
             var written = 0;
             var i = start;
             Span<byte> entityScratch = stackalloc byte[8];
@@ -238,14 +265,9 @@ namespace CloudNimble.Text.Xml
                 _pos = i;
                 if (_span[i] is (byte)'&')
                 {
-                    if (!DecodeEntity(entityScratch, out var entityWritten))
-                    {
-                        _pos = savedPos;
-                        decodedLength = length;
-                        return null;
-                    }
-
-                    entityScratch[..entityWritten].CopyTo(destination.AsSpan(written));
+                    // ReadAttribute already consumed this reference once, so it is complete and legal.
+                    DecodeEntity(entityScratch, out var entityWritten);
+                    entityScratch[..entityWritten].CopyTo(destination[written..]);
                     written += entityWritten;
                     escaped = true;
                     i = _pos;
@@ -300,7 +322,30 @@ namespace CloudNimble.Text.Xml
             _pos = savedPos;
             escaped = true;
             decodedLength = written;
-            return destination;
+            decodedStart = _attributeDecodedLength;
+            _attributeDecodedLength += written;
+            return _attributeDecoded;
+        }
+
+        /// <summary>
+        /// Reserves room for one decoded attribute value in the buffer shared by the current start tag.
+        /// </summary>
+        /// <param name="length">The raw value length, which bounds the decoded length.</param>
+        /// <returns>The free space after the values already decoded for this start tag.</returns>
+        /// <remarks>
+        /// The buffer is reused from one start tag to the next, so a document with escaped attribute
+        /// values costs one array per reader rather than one per attribute. When it has to grow, earlier
+        /// attributes of the same tag keep the array they were decoded into.
+        /// </remarks>
+        internal Span<byte> RentAttributeDecodeSpace(int length)
+        {
+            if (_attributeDecoded is null || _attributeDecodedLength + length > _attributeDecoded.Length)
+            {
+                _attributeDecoded = new byte[Math.Max(Math.Max(256, length), (_attributeDecoded?.Length ?? 0) * 2)];
+                _attributeDecodedLength = 0;
+            }
+
+            return _attributeDecoded.AsSpan(_attributeDecodedLength, length);
         }
 
         /// <summary>
@@ -328,7 +373,7 @@ namespace CloudNimble.Text.Xml
             if (_span[_pos] is (byte)'#')
             {
                 _pos++;
-                var hex = _pos < _span.Length && _span[_pos] is (byte)'x' or (byte)'X';
+                var hex = _pos < _span.Length && _span[_pos] is (byte)'x';
                 if (hex)
                 {
                     _pos++;
@@ -340,10 +385,16 @@ namespace CloudNimble.Text.Xml
                     _pos++;
                 }
 
-                if (_pos >= _span.Length || _span[_pos] is not (byte)';')
+                if (_pos >= _span.Length)
                 {
                     _pos = start;
                     return false;
+                }
+
+                if (_span[_pos] is not (byte)';')
+                {
+                    // CharRef is '&#' [0-9]+ ';' or '&#x' [0-9a-fA-F]+ ';' (production 66). The 'x' is lower case.
+                    throw Error("Invalid character reference.");
                 }
 
                 if (!TryParseCodePoint(_span.Slice(numberStart, _pos - numberStart), hex, out var cp)
@@ -399,10 +450,6 @@ namespace CloudNimble.Text.Xml
                 throw Error("Undefined entity.");
             }
 
-            if (destination.Length < 1)
-            {
-                throw Error("Entity destination is too small.");
-            }
 
             destination[0] = replacement;
             written = 1;
@@ -413,7 +460,10 @@ namespace CloudNimble.Text.Xml
         /// Decodes one Unicode code point at <paramref name="index"/>.
         /// </summary>
         /// <param name="index">Byte offset in the current buffer.</param>
-        /// <returns>The code point and the number of UTF-8 bytes it occupies.</returns>
+        /// <returns>
+        /// The code point and the number of UTF-8 bytes it occupies. A width of 0 means the buffer ends inside
+        /// the character and more data may still arrive.
+        /// </returns>
         /// <exception cref="XmlException">The bytes are not valid UTF-8.</exception>
         internal (int CodePoint, int Width) DecodeRune(int index)
         {
@@ -424,6 +474,11 @@ namespace CloudNimble.Text.Xml
             }
 
             var status = Rune.DecodeFromUtf8(span, out var rune, out var consumed);
+            if (status is OperationStatus.NeedMoreData && !_isFinalBlock)
+            {
+                return (0, 0);
+            }
+
             if (status is not OperationStatus.Done)
             {
                 throw Error("Invalid UTF-8.");
@@ -457,12 +512,8 @@ namespace CloudNimble.Text.Xml
                 {
                     var saved = _pos;
                     _pos = start + i;
-                    if (!DecodeEntity(entityScratch, out var entityWritten))
-                    {
-                        _pos = saved;
-                        break;
-                    }
-
+                    // ReadText already consumed this reference once, so it is complete and legal.
+                    DecodeEntity(entityScratch, out var entityWritten);
                     entityScratch[..entityWritten].CopyTo(_decodedValue.AsSpan(written));
                     written += entityWritten;
                     i = _pos - start;
@@ -549,36 +600,6 @@ namespace CloudNimble.Text.Xml
             }
 
             return _span.Slice(_elementNameStarts![index], _elementNameLengths![index]);
-        }
-
-        /// <summary>
-        /// Returns true when the end-tag prefix is the same prefix stored on the start tag.
-        /// </summary>
-        /// <param name="index">The current element-stack index.</param>
-        /// <param name="endNameStart">The end-tag name offset in the current buffer.</param>
-        /// <param name="endPrefixLength">The end-tag prefix length.</param>
-        /// <returns><see langword="true"/> when the prefixes match and are still in the current buffer.</returns>
-        internal readonly bool EndPrefixMatchesStart(int index, int endNameStart, int endPrefixLength)
-        {
-            if (index < _resumeNameCount)
-            {
-                return false;
-            }
-
-            var startPrefixLength = index < 8 ? _elementPrefixLengthsInline[index] : _elementPrefixLengths![index];
-            if (endPrefixLength != startPrefixLength)
-            {
-                return false;
-            }
-
-            if (endPrefixLength == 0)
-            {
-                return true;
-            }
-
-            var localStart = index < 8 ? _elementNameStartsInline[index] : _elementNameStarts![index];
-            return _span.Slice(localStart - endPrefixLength - 1, endPrefixLength)
-                .SequenceEqual(_span.Slice(endNameStart, endPrefixLength));
         }
 
         /// <summary>
@@ -682,8 +703,26 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException">Handling is <see cref="XmlWhitespaceHandling.None"/>.</exception>
         internal bool HandleWhitespaceOnlyText()
         {
-            if (_options.WhitespaceHandling is XmlWhitespaceHandling.Significant)
+            var slot = ElementSlot(_elementCount - 1);
+            var significant = _options.WhitespaceHandling is XmlWhitespaceHandling.Significant
+                || (slot & (ElementHasText | ElementPreserveSpace)) != 0;
+            if (!significant && (slot & ElementHasChild) == 0)
             {
+                // No child element and no text so far. This whitespace is the element's whole value
+                // if the end tag comes next (<c> </c>); otherwise it is indentation before a child.
+                if (_pos + 1 >= _span.Length)
+                {
+                    return NeedMore();
+                }
+
+                significant = _span[_pos + 1] is (byte)'/';
+            }
+
+            if (significant)
+            {
+                SetElementSlot(_elementCount - 1, slot | ElementHasText);
+                _nameLength = 0;
+                _prefixLength = 0;
                 _tokenType = XmlTokenType.Text;
                 return true;
             }
@@ -694,6 +733,65 @@ namespace CloudNimble.Text.Xml
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns the packed stack slot of the open element at <paramref name="index"/>: its prefix length and flags.
+        /// </summary>
+        /// <param name="index">The element-stack index.</param>
+        /// <returns>The slot value.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal readonly int ElementSlot(int index)
+        {
+            return index < 8 ? _elementPrefixLengthsInline[index] : _elementPrefixLengths![index];
+        }
+
+        /// <summary>
+        /// Stores the packed stack slot of the open element at <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The element-stack index.</param>
+        /// <param name="value">The prefix length combined with the element flags.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void SetElementSlot(int index, int value)
+        {
+            if (index < 8)
+            {
+                _elementPrefixLengthsInline[index] = value;
+            }
+            else
+            {
+                _elementPrefixLengths![index] = value;
+            }
+        }
+
+        /// <summary>
+        /// Applies an <c>xml:space</c> attribute on the current start tag to the inherited setting.
+        /// </summary>
+        /// <param name="inherited">The parent's <see cref="ElementPreserveSpace"/> bit, or 0.</param>
+        /// <returns>The bit for this element: set for <c>preserve</c>, clear for <c>default</c>, otherwise inherited.</returns>
+        /// <remarks>
+        /// XML 1.0 and 1.1 section 2.10: the declared intent applies to the element and everything in it
+        /// until another <c>xml:space</c> overrides it.
+        /// </remarks>
+        internal readonly int ResolveXmlSpace(int inherited)
+        {
+            // The caller saw an xml:space attribute while reading this tag, so the loop always finds it.
+            for (var i = 0; ; i++)
+            {
+                var attribute = AttributeAt(i);
+                if (!AttributeQualifiedName(in attribute).SequenceEqual("xml:space"u8))
+                {
+                    continue;
+                }
+
+                var value = AttributeValue(attribute);
+                if (value.SequenceEqual("preserve"u8))
+                {
+                    return ElementPreserveSpace;
+                }
+
+                return value.SequenceEqual("default"u8) ? 0 : inherited;
+            }
         }
 
         /// <summary>
@@ -710,6 +808,21 @@ namespace CloudNimble.Text.Xml
             }
 
             return hex && b is (>= (byte)'a' and <= (byte)'f') or (>= (byte)'A' and <= (byte)'F');
+        }
+
+        /// <summary>
+        /// Copies the whitespace-relevant flags of each open element for a snapshot.
+        /// </summary>
+        /// <returns>One flag set per open element, without the prefix length (which refers to the old buffer).</returns>
+        internal readonly int[] MaterializeElementFlags()
+        {
+            var flags = new int[_elementCount];
+            for (var i = 0; i < _elementCount; i++)
+            {
+                flags[i] = ElementSlot(i) & ~ElementPrefixLengthMask;
+            }
+
+            return flags;
         }
 
         /// <summary>
@@ -766,82 +879,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Parses the current value as an XSD integer using <paramref name="parse"/>.
+        /// Validates the current XML declaration token and applies its version.
         /// </summary>
-        /// <typeparam name="T">
-        /// The integer type.
-        /// </typeparam>
-        /// <param name="parse">The framework parse function.</param>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form uses <c>+</c>, exponent, grouping, or overflows <typeparamref name="T"/>.</exception>
-        internal T ParseInteger<T>(Func<string, NumberStyles, IFormatProvider, T> parse)
-            where T : struct
-        {
-            var s = TrimAscii(CurrentValueText());
-            if (s.StartsWith('+') || s.Contains('e', StringComparison.OrdinalIgnoreCase) || s.Contains('_') || s.Contains(','))
-            {
-                throw Error("Invalid integer.");
-            }
-
-            try
-            {
-                return parse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
-            }
-            catch (Exception ex) when (ex is FormatException or OverflowException)
-            {
-                throw Error("Invalid integer.");
-            }
-        }
-
-        /// <summary>
-        /// Reads <c>version</c> and <c>encoding</c> from the current XML declaration token.
-        /// </summary>
-        /// <exception cref="XmlException">The declared encoding is not UTF-8.</exception>
-        /// <remarks>
-        /// An omitted version means <see cref="XmlVersion.Version10"/>. The <c>standalone</c> pseudo-attribute is ignored.
-        /// </remarks>
+        /// <exception cref="XmlException">The declaration does not match the XMLDecl production, or names an encoding other than UTF-8.</exception>
         internal void ParseXmlDeclaration()
         {
-            var text = _span.Slice(_valueStart, _valueLength);
-            Span<byte> folded = text.Length <= 256 ? stackalloc byte[text.Length] : new byte[text.Length];
-            text.CopyTo(folded);
-            for (var i = 0; i < folded.Length; i++)
+            if (!XmlDeclarationSyntax.TryParse(_span.Slice(_valueStart, _valueLength), out var version, out var encoding, out _))
             {
-                if (folded[i] is >= (byte)'A' and <= (byte)'Z')
-                {
-                    folded[i] = (byte)(folded[i] | 0x20);
-                }
-            }
-            if (folded.IndexOf("version"u8) >= 0)
-            {
-                _version = folded.IndexOf("1.1"u8) >= 0
-                    ? XmlVersion.Version11
-                    : XmlVersion.Version10;
+                throw Error("The XML declaration is malformed.");
             }
 
-            var encIndex = folded.IndexOf("encoding="u8);
-            if (encIndex < 0)
+            _version = version;
+            if (!encoding.IsEmpty && !Ascii.EqualsIgnoreCase(encoding, "utf-8"u8) && !Ascii.EqualsIgnoreCase(encoding, "utf8"u8))
             {
-                return;
-            }
-
-            var rest = TrimXmlWhitespace(folded[(encIndex + "encoding=".Length)..]);
-            if (rest.Length < 2)
-            {
-                return;
-            }
-
-            var q = rest[0];
-            var end = rest[1..].IndexOf(q);
-            if (end <= 0)
-            {
-                return;
-            }
-
-            var enc = rest.Slice(1, end);
-            if (!enc.SequenceEqual("utf-8"u8) && !enc.SequenceEqual("utf8"u8))
-            {
-                throw Error($"XmlEssentials is UTF-8 only. Declared encoding '{Encoding.UTF8.GetString(enc)}' is not supported.");
+                throw Error($"XmlEssentials is UTF-8 only. Declared encoding '{Encoding.UTF8.GetString(encoding).ToLowerInvariant()}' is not supported.");
             }
         }
 
@@ -898,6 +949,10 @@ namespace CloudNimble.Text.Xml
             {
                 _hasNamespaceAttribute = true;
             }
+            else if (nameLength == 9 && prefixLength == 3 && _span.Slice(nameStart, 9).SequenceEqual("xml:space"u8))
+            {
+                _hasXmlSpaceAttribute = true;
+            }
 
             _pos++;
             var valueStart = _pos;
@@ -949,7 +1004,8 @@ namespace CloudNimble.Text.Xml
             _pos++;
             var record = new AttributeRecord
             {
-                Decoded = DecodeAttributeValue(valueStart, valueLength, out var escaped, out var decodedLength),
+                Decoded = DecodeAttributeValue(valueStart, valueLength, out var escaped, out var decodedStart, out var decodedLength),
+                DecodedStart = decodedStart,
                 DecodedLength = decodedLength,
                 NameLength = nameLength,
                 NameStart = nameStart,
@@ -1005,6 +1061,13 @@ namespace CloudNimble.Text.Xml
                         throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
                     }
 
+                    _nameLength = 0;
+                    _prefixLength = 0;
+                    if (_elementCount > 0)
+                    {
+                        SetElementSlot(_elementCount - 1, ElementSlot(_elementCount - 1) | ElementHasText);
+                    }
+
                     _tokenType = XmlTokenType.CData;
                     return true;
                 }
@@ -1046,6 +1109,8 @@ namespace CloudNimble.Text.Xml
                         throw Error($"{nameof(XmlReaderOptions.MaxCommentByteCount)} exceeded ({_maxCommentBytes}).");
                     }
 
+                    _nameLength = 0;
+                    _prefixLength = 0;
                     _tokenType = XmlTokenType.Comment;
                     return true;
                 }
@@ -1151,7 +1216,8 @@ namespace CloudNimble.Text.Xml
             int nameStart;
             int nameLength;
             int prefixLength;
-            if (!(_elementCount > 0 && TryMatchEndName(out nameStart, out nameLength, out prefixLength)))
+            var sameAsStartTag = TryMatchStartTagName(out nameStart, out nameLength, out prefixLength);
+            if (!sameAsStartTag && !(_elementCount > 0 && TryMatchEndName(out nameStart, out nameLength, out prefixLength)))
             {
                 nameStart = _pos;
                 if (!ReadName(out prefixLength, out nameLength))
@@ -1165,32 +1231,38 @@ namespace CloudNimble.Text.Xml
                 }
             }
 
-            SkipWhitespaceBytes();
-            if (_pos >= _span.Length)
+            if (_pos >= _span.Length || _span[_pos] is not (byte)'>')
             {
-                return NeedMore();
-            }
+                SkipWhitespaceBytes();
+                if (_pos >= _span.Length)
+                {
+                    return NeedMore();
+                }
 
-            if (_span[_pos] is not (byte)'>')
-            {
-                throw Error("Expected '>' in end tag.");
+                if (_span[_pos] is not (byte)'>')
+                {
+                    throw Error("Expected '>' in end tag.");
+                }
             }
 
             _pos++;
-            var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
-            var local = _span.Slice(nameStart + localAdj, nameLength - localAdj);
             var index = _elementCount - 1;
-            if (_elementCount == 0 || !ElementLocalName(index).SequenceEqual(local))
-            {
-                throw Error("End tag does not match start tag.");
-            }
-
-            if (EndPrefixMatchesStart(index, nameStart, prefixLength))
+            if (sameAsStartTag)
             {
                 RestoreCurrentNamespaceFromElement(index);
             }
             else
             {
+                var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
+                var local = _span.Slice(nameStart + localAdj, nameLength - localAdj);
+                if (_elementCount == 0 || !ElementLocalName(index).SequenceEqual(local))
+                {
+                    throw Error("End tag does not match start tag.");
+                }
+
+                // The local names match but the tag did not repeat the start tag's bytes: the prefix
+                // differs, or the start tag came from a resume snapshot. Either way the end tag is only
+                // valid if its own prefix resolves to the element's namespace.
                 var prefix = prefixLength > 0 ? _span.Slice(nameStart, prefixLength) : [];
                 var endNs = ResolveElementNamespace(prefix);
                 if (!ElementNamespace(index).SequenceEqual(endNs))
@@ -1203,6 +1275,13 @@ namespace CloudNimble.Text.Xml
 
             PopNamespaceScope(_depth);
             _elementCount--;
+            if (_elementCount < _resumeNameCount)
+            {
+                // A resumed element just closed. The next element at this depth is read from the
+                // current buffer and must not see the closed element's saved name or namespace.
+                _resumeNameCount = _elementCount;
+            }
+
             _depth--;
             _nameStart = nameStart;
             _nameLength = nameLength;
@@ -1232,7 +1311,7 @@ namespace CloudNimble.Text.Xml
             var b = _span[_pos];
             if (b < 0x80)
             {
-                if (!XmlChars.IsAsciiNameStart(b))
+                if (!XmlChars.IsAsciiNameStart(b) || b is (byte)':')
                 {
                     return false;
                 }
@@ -1242,6 +1321,11 @@ namespace CloudNimble.Text.Xml
             else
             {
                 var (cp, width) = DecodeRune(_pos);
+                if (width == 0)
+                {
+                    return NeedMore();
+                }
+
                 if (!XmlChars.IsNameStartChar(cp, _version))
                 {
                     return false;
@@ -1294,6 +1378,11 @@ namespace CloudNimble.Text.Xml
                     }
 
                     var (cp, width) = DecodeRune(_pos);
+                    if (width == 0)
+                    {
+                        return NeedMore();
+                    }
+
                     if (!XmlChars.IsNameStartChar(cp, _version))
                     {
                         throw Error("Invalid name.");
@@ -1309,6 +1398,11 @@ namespace CloudNimble.Text.Xml
                 }
 
                 var (cp2, width2) = DecodeRune(_pos);
+                if (width2 == 0)
+                {
+                    return NeedMore();
+                }
+
                 if (!XmlChars.IsNameChar(cp2, _version))
                 {
                     break;
@@ -1337,7 +1431,7 @@ namespace CloudNimble.Text.Xml
         internal bool ReadPiOrDeclaration()
         {
             _pos += 2;
-            if (!ReadName(out _, out var targetLength))
+            if (!ReadName(out var targetPrefixLength, out var targetLength))
             {
                 if (_incomplete)
                 {
@@ -1347,8 +1441,20 @@ namespace CloudNimble.Text.Xml
                 throw Error("Invalid processing instruction.");
             }
 
+            if (targetPrefixLength > 0)
+            {
+                throw Error("A processing instruction target must not contain a colon.");
+            }
+
             var targetStart = _pos - targetLength;
             var target = _span.Slice(targetStart, targetLength);
+            if (_pos + 1 < _span.Length
+                && !XmlChars.IsWhiteSpace(_span[_pos])
+                && !(_span[_pos] is (byte)'?' && _span[_pos + 1] is (byte)'>'))
+            {
+                throw Error("Whitespace must separate a processing instruction target from its data.");
+            }
+
             SkipWhitespaceBytes();
             var valueStart = _pos;
             while (_pos + 1 < _span.Length)
@@ -1358,11 +1464,13 @@ namespace CloudNimble.Text.Xml
                     _valueStart = valueStart;
                     _valueLength = _pos - valueStart;
                     _pos += 2;
-                    if (target.Length == 3
-                        && target[0] is (byte)'x' or (byte)'X'
-                        && target[1] is (byte)'m' or (byte)'M'
-                        && target[2] is (byte)'l' or (byte)'L')
+                    if (Ascii.EqualsIgnoreCase(target, "xml"u8))
                     {
+                        if (!target.SequenceEqual("xml"u8))
+                        {
+                            throw Error("Processing instruction targets that match 'xml' in any letter case are reserved.");
+                        }
+
                         if (!_xmlDeclarationAllowed)
                         {
                             throw Error("The XML declaration must be the first token in the document.");
@@ -1418,7 +1526,9 @@ namespace CloudNimble.Text.Xml
             _nameLength = nameLength;
             _prefixLength = prefixLength;
             _attributeCount = 0;
+            _attributeDecodedLength = 0;
             _hasNamespaceAttribute = false;
+            _hasXmlSpaceAttribute = false;
             _isEmptyElement = false;
 
             while (true)
@@ -1475,6 +1585,19 @@ namespace CloudNimble.Text.Xml
                 CheckDuplicateNamespacedAttributes();
             }
 
+            var spaceFlag = 0;
+            if (_elementCount > 0)
+            {
+                var parentSlot = ElementSlot(_elementCount - 1) | ElementHasChild;
+                SetElementSlot(_elementCount - 1, parentSlot);
+                spaceFlag = parentSlot & ElementPreserveSpace;
+            }
+
+            if (_hasXmlSpaceAttribute)
+            {
+                spaceFlag = ResolveXmlSpace(spaceFlag);
+            }
+
             if (!_isEmptyElement)
             {
                 var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
@@ -1483,13 +1606,13 @@ namespace CloudNimble.Text.Xml
                 {
                     _elementNameStartsInline[_elementCount] = nameStart + localAdj;
                     _elementNameLengthsInline[_elementCount] = nameLength - localAdj;
-                    _elementPrefixLengthsInline[_elementCount] = prefixLength;
+                    _elementPrefixLengthsInline[_elementCount] = prefixLength | spaceFlag;
                 }
                 else
                 {
                     _elementNameStarts![_elementCount] = nameStart + localAdj;
                     _elementNameLengths![_elementCount] = nameLength - localAdj;
-                    _elementPrefixLengths![_elementCount] = prefixLength;
+                    _elementPrefixLengths![_elementCount] = prefixLength | spaceFlag;
                 }
 
                 _elementCount++;
@@ -1515,6 +1638,7 @@ namespace CloudNimble.Text.Xml
         {
             var start = _pos;
             var hasNonWs = false;
+            var needsDecode = false;
             var stops = _version is XmlVersion.Version11 ? XmlChars.TextStops11 : XmlChars.TextStops10;
             Span<byte> entityScratch = stackalloc byte[8];
             while (_pos < _span.Length && _span[_pos] is not (byte)'<')
@@ -1541,6 +1665,7 @@ namespace CloudNimble.Text.Xml
                             hasNonWs = true;
                         }
 
+                        needsDecode = true;
                         AdvanceChar();
                     }
 
@@ -1560,6 +1685,7 @@ namespace CloudNimble.Text.Xml
                 if (_span[_pos] is (byte)'&')
                 {
                     hasNonWs = true;
+                    needsDecode = true;
                     if (!DecodeEntity(entityScratch, out _))
                     {
                         return NeedMore();
@@ -1568,11 +1694,27 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
+                if (_span[_pos] is (byte)'>')
+                {
+                    // "]]>" must not appear in character data (XML 1.0 and 1.1 section 2.4).
+                    if (_pos - start >= 2 && _span[_pos - 1] is (byte)']' && _span[_pos - 2] is (byte)']')
+                    {
+                        throw Error("']]>' is not allowed in character data.");
+                    }
+
+                    hasNonWs = true;
+                    _pos++;
+                    continue;
+                }
+
                 if (!XmlChars.IsWhiteSpace(_span[_pos]))
                 {
                     hasNonWs = true;
                 }
 
+                // LF is already the normalized line end. Anything else that stops the ASCII run
+                // (CR, an XML 1.1 line end, a multi-byte character) may need DecodeValueSpan.
+                needsDecode |= _span[_pos] is not (byte)'\n';
                 AdvanceChar();
             }
 
@@ -1588,12 +1730,23 @@ namespace CloudNimble.Text.Xml
                 throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
             }
 
-            DecodeValueSpan(start, _valueLength);
+            if (needsDecode)
+            {
+                DecodeValueSpan(start, _valueLength);
+            }
+            else
+            {
+                _valueIsEscaped = false;
+            }
+
             if (!hasNonWs)
             {
                 return HandleWhitespaceOnlyText();
             }
 
+            _nameLength = 0;
+            _prefixLength = 0;
+            SetElementSlot(_elementCount - 1, ElementSlot(_elementCount - 1) | ElementHasText);
             _tokenType = XmlTokenType.Text;
             return true;
         }
@@ -1619,36 +1772,6 @@ namespace CloudNimble.Text.Xml
             {
                 AdvanceChar();
             }
-        }
-
-        /// <summary>
-        /// Trims leading and trailing whitespace from a decoded token value.
-        /// </summary>
-        /// <param name="value">The decoded text.</param>
-        /// <returns>The trimmed string.</returns>
-        internal static string TrimAscii(string value)
-        {
-            return value.Trim();
-        }
-
-        /// <summary>
-        /// Trims XML whitespace from both ends of a UTF-8 span.
-        /// </summary>
-        /// <param name="span">The span to trim.</param>
-        /// <returns>The trimmed span.</returns>
-        internal static ReadOnlySpan<byte> TrimXmlWhitespace(ReadOnlySpan<byte> span)
-        {
-            while (span.Length > 0 && XmlChars.IsWhiteSpace(span[0]))
-            {
-                span = span[1..];
-            }
-
-            while (span.Length > 0 && XmlChars.IsWhiteSpace(span[^1]))
-            {
-                span = span[..^1];
-            }
-
-            return span;
         }
 
         /// <summary>
@@ -1713,6 +1836,71 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Matches an end tag against the bytes of the current element's start-tag name, prefix included.
+        /// </summary>
+        /// <param name="nameStart">The byte offset of the end-tag name.</param>
+        /// <param name="nameLength">When this method returns true, the qualified-name byte length.</param>
+        /// <param name="prefixLength">When this method returns true, the prefix byte length, or 0.</param>
+        /// <returns><see langword="true"/> if the end tag repeats the start tag's qualified name exactly.</returns>
+        /// <remarks>
+        /// This is the BCL interned-name compare done on bytes: one comparison settles the local name and
+        /// the prefix together, so a matching end tag needs no name scan and no namespace lookup.
+        /// It declines (without advancing) for elements restored from a resume snapshot, for a different
+        /// prefix bound to the same namespace, and for anything else <see cref="TryMatchEndName"/> must judge.
+        /// </remarks>
+        internal bool TryMatchStartTagName(out int nameStart, out int nameLength, out int prefixLength)
+        {
+            nameStart = _pos;
+            nameLength = 0;
+            prefixLength = 0;
+            var index = _elementCount - 1;
+            if (index < _resumeNameCount)
+            {
+                return false;
+            }
+
+            int localStart;
+            int localLength;
+            int startPrefixLength;
+            if (index < 8)
+            {
+                localStart = _elementNameStartsInline[index];
+                localLength = _elementNameLengthsInline[index];
+                startPrefixLength = _elementPrefixLengthsInline[index] & ElementPrefixLengthMask;
+            }
+            else
+            {
+                localStart = _elementNameStarts![index];
+                localLength = _elementNameLengths![index];
+                startPrefixLength = _elementPrefixLengths![index] & ElementPrefixLengthMask;
+            }
+
+            var prefixAdj = startPrefixLength > 0 ? startPrefixLength + 1 : 0;
+            var length = localLength + prefixAdj;
+            var after = _pos + length;
+            if (after >= _span.Length)
+            {
+                return false;
+            }
+
+            var terminator = _span[after];
+            if (terminator >= 0x80 || XmlChars.IsAsciiNcNameChar(terminator) || terminator is (byte)':')
+            {
+                return false;
+            }
+
+            if (!_span.Slice(_pos, length).SequenceEqual(_span.Slice(localStart - prefixAdj, length)))
+            {
+                return false;
+            }
+
+            nameLength = length;
+            prefixLength = startPrefixLength;
+            _pos = after;
+            return true;
+        }
+
+        /// <summary>
         /// Matches an unprefixed end tag against the current element's local name without a full name scan.
         /// </summary>
         /// <param name="nameStart">When this method returns true, the byte offset of the local name.</param>
@@ -1721,23 +1909,6 @@ namespace CloudNimble.Text.Xml
         internal bool TryMatchUnprefixedEndName(out int nameStart, out int nameLength)
         {
             return TryMatchEndName(out nameStart, out nameLength, out _);
-        }
-
-        /// <summary>
-        /// Returns the trimmed current value if it is a plain integer lexical form.
-        /// </summary>
-        /// <param name="span">When this method returns, the trimmed UTF-8 digits.</param>
-        /// <returns><see langword="false"/> if the value uses <c>+</c>, exponent, or grouping.</returns>
-        internal readonly bool TryGetIntegerUtf8(out ReadOnlySpan<byte> span)
-        {
-            span = TrimXmlWhitespace(ValueSpan);
-            if (span.IsEmpty || span[0] is (byte)'+' || ContainsForbiddenIntegerByte(span))
-            {
-                span = default;
-                return false;
-            }
-
-            return true;
         }
 
         /// <summary>
@@ -1757,24 +1928,7 @@ namespace CloudNimble.Text.Xml
 
             foreach (var b in digits)
             {
-                int digit;
-                if (b is >= (byte)'0' and <= (byte)'9')
-                {
-                    digit = b - (byte)'0';
-                }
-                else if (hex && b is >= (byte)'a' and <= (byte)'f')
-                {
-                    digit = b - (byte)'a' + 10;
-                }
-                else if (hex && b is >= (byte)'A' and <= (byte)'F')
-                {
-                    digit = b - (byte)'A' + 10;
-                }
-                else
-                {
-                    return false;
-                }
-
+                var digit = b <= (byte)'9' ? b - (byte)'0' : (b | 0x20) - (byte)'a' + 10;
                 if (value > (0x10FFFF - digit) / (hex ? 16 : 10))
                 {
                     return false;
@@ -1784,142 +1938,6 @@ namespace CloudNimble.Text.Xml
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Parses XSD <c>duration</c> day/time forms into a <see cref="TimeSpan"/>.
-        /// </summary>
-        /// <param name="text">The lexical value, such as <c>PT1H2M3S</c>.</param>
-        /// <param name="value">When this method returns, the parsed duration.</param>
-        /// <returns><see langword="true"/> if <paramref name="text"/> is a duration that fits in <see cref="TimeSpan"/>.</returns>
-        /// <remarks>
-        /// Year and month components are rejected. Negative durations are accepted.
-        /// </remarks>
-        internal static bool TryParseDuration(ReadOnlySpan<char> text, out TimeSpan value)
-        {
-            value = default;
-            if (text.Length == 0 || text[0] is not 'P' and not '-')
-            {
-                return false;
-            }
-
-            try
-            {
-                var negative = text[0] is '-';
-                var s = negative ? text[1..] : text;
-                if (s.Length == 0 || s[0] is not 'P')
-                {
-                    return false;
-                }
-
-                s = s[1..];
-                var days = 0;
-                var hours = 0;
-                var minutes = 0;
-                var seconds = 0d;
-                var inTime = false;
-                var parsed = false;
-                var i = 0;
-                while (i < s.Length)
-                {
-                    if (s[i] is 'T')
-                    {
-                        inTime = true;
-                        i++;
-                        continue;
-                    }
-
-                    var start = i;
-                    while (i < s.Length && (char.IsAsciiDigit(s[i]) || s[i] is '.'))
-                    {
-                        i++;
-                    }
-
-                    if (i >= s.Length || start == i)
-                    {
-                        return false;
-                    }
-
-                    var number = s[start..i];
-                    var unit = s[i];
-                    i++;
-                    switch (unit)
-                    {
-                        case 'D':
-                            days = int.Parse(number, CultureInfo.InvariantCulture);
-                            parsed = true;
-                            break;
-                        case 'H' when inTime:
-                            hours = int.Parse(number, CultureInfo.InvariantCulture);
-                            parsed = true;
-                            break;
-                        case 'M' when inTime:
-                            minutes = int.Parse(number, CultureInfo.InvariantCulture);
-                            parsed = true;
-                            break;
-                        case 'S' when inTime:
-                            seconds = double.Parse(number, CultureInfo.InvariantCulture);
-                            parsed = true;
-                            break;
-                        case 'Y' or 'M' when !inTime:
-                            return false;
-                        default:
-                            return false;
-                    }
-                }
-
-                if (!parsed)
-                {
-                    return false;
-                }
-
-                value = TimeSpan.FromDays(days) + TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
-                if (negative)
-                {
-                    value = -value;
-                }
-
-                return true;
-            }
-            catch (Exception ex) when (ex is FormatException or OverflowException)
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Attempts to parse the current value as an XSD integer using <paramref name="tryParse"/>.
-        /// </summary>
-        /// <typeparam name="T">
-        /// The integer type.
-        /// </typeparam>
-        /// <param name="tryParse">The framework try-parse function.</param>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
-        internal bool TryParseInteger<T>(TryParseHandler<T> tryParse, out T value)
-            where T : struct
-        {
-            var span = TrimXmlWhitespace(ValueSpan);
-            if (span.IsEmpty || span[0] is (byte)'+' || ContainsForbiddenIntegerByte(span))
-            {
-                value = default;
-                return false;
-            }
-
-            Span<char> chars = stackalloc char[span.Length];
-            var n = Encoding.UTF8.GetChars(span, chars);
-            return tryParse(new string(chars[..n]), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out value);
-        }
-
-        /// <summary>
-        /// Returns true if <paramref name="span"/> contains exponent or grouping characters.
-        /// </summary>
-        /// <param name="span">The UTF-8 integer lexical value.</param>
-        /// <returns><see langword="true"/> if the span is not a plain integer.</returns>
-        internal static bool ContainsForbiddenIntegerByte(ReadOnlySpan<byte> span)
-        {
-            return span.IndexOfAny((byte)'e', (byte)'E') >= 0
-                || span.IndexOfAny((byte)'_', (byte)',') >= 0;
         }
 
         /// <summary>
@@ -1937,6 +1955,11 @@ namespace CloudNimble.Text.Xml
 
             if (remaining.StartsWith("<![CDATA["u8))
             {
+                if (_depth == 0)
+                {
+                    throw Error("A CDATA section is not allowed outside the root element.");
+                }
+
                 return ReadCData();
             }
 

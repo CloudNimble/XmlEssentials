@@ -1,0 +1,3 @@
+# Best Practices
+
+Keep CDATA as a child of an element. Do not put `]]>` in the value.

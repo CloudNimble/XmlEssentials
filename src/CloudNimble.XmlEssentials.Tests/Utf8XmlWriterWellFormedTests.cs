@@ -72,8 +72,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 w.WriteStartElement("e");
                 w.WriteEndElement();
-            }, new XmlWriterOptions { Standalone = false }).Should()
-                .Contain("standalone=\"no\"");
+            }, new XmlWriterOptions { Standalone = false }).Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?><e/>");
         }
 
         [TestMethod]
@@ -135,8 +134,8 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteAttributeString(null, "id", "urn:x", "1");
                 w.WriteEndElement();
             });
-            xml.Should().Contain("xmlns:ns1=\"urn:x\"");
-            xml.Should().Contain("ns1:id=\"1\"");
+            xml.Should().Be("<e xmlns:ns1=\"urn:x\" ns1:id=\"1\"/>");
+            xml.Should().Be("<e xmlns:ns1=\"urn:x\" ns1:id=\"1\"/>");
         }
 
         [TestMethod]
@@ -229,13 +228,13 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteStartElement("e");
                 w.WriteStringValue(new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Unspecified));
                 w.WriteEndElement();
-            }).Should().StartWith("<e>2020-01-02T03:04:05");
+            }).Should().Be("<e>2020-01-02T03:04:05</e>");
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElement("e");
                 w.WriteStringValue(new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc));
                 w.WriteEndElement();
-            }).Should().Contain("Z</e>");
+            }).Should().Be("<e>2020-01-02T03:04:05Z</e>");
         }
 
         [TestMethod]
@@ -285,18 +284,18 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteNumberValue(9);
                 w.WriteEndAttribute();
                 w.WriteEndElement();
-            }).Should().Contain("i=\"7\"").And.Contain("l=\"8\"").And.Contain("d=\"1.5\"").And.Contain("n=\"9\"");
-            XmlWriterHarness.ToXml(w => w.WriteElementNumber("é", 1)).Should().Contain(">1</");
+            }).Should().Be("<e i=\"7\" l=\"8\" d=\"1.5\" n=\"9\"/>");
+            XmlWriterHarness.ToXml(w => w.WriteElementNumber("é", 1)).Should().Be("<\u00E9>1</\u00E9>");
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElement("e");
                 w.WriteAttributeNumber("é", 2);
                 w.WriteEndElement();
-            }).Should().Contain("=\"2\"");
+            }).Should().Be("<e \u00E9=\"2\"/>");
             XmlWriterHarness.ToXml(w => w.WriteElementNumber("n", 3u)).Should().Be("<n>3</n>");
             XmlWriterHarness.ToXml(w => w.WriteElementNumber("n", 4ul)).Should().Be("<n>4</n>");
-            XmlWriterHarness.ToXml(w => w.WriteElementNumber("n", 1.5d)).Should().Contain("<n>1.5</n>");
-            XmlWriterHarness.ToXml(w => w.WriteElementNumber("n", 1.5f)).Should().Contain("<n>1.5</n>");
+            XmlWriterHarness.ToXml(w => w.WriteElementNumber("n", 1.5d)).Should().Be("<n>1.5</n>");
+            XmlWriterHarness.ToXml(w => w.WriteElementNumber("n", 1.5f)).Should().Be("<n>1.5</n>");
         }
 
         [TestMethod]
@@ -311,7 +310,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteElementBoolean("c"u8, false);
                 w.WriteElementBase64String("d".AsSpan(), "hi"u8);
                 w.WriteEndElement();
-            }).Should().StartWith("<root id=\"1\"><n>42</n><b>true</b><c>false</c><d>");
+            }).Should().Be("<root id=\"1\"><n>42</n><b>true</b><c>false</c><d>aGk=</d></root>");
         }
 
         [TestMethod]
@@ -353,16 +352,16 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteNilValue();
                 w.WriteEndElement();
             });
-            xml.Should().Contain("id=\"1\"");
-            xml.Should().Contain("xsi:nil=\"true\"");
+            xml.Should().Be("<e id=\"1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
+            xml.Should().Be("<e id=\"1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
         }
 
         [TestMethod]
         public void Write_NilElementWithNamespace()
         {
             var xml = XmlWriterHarness.ToXml(w => w.WriteNilElement("e", "urn:x"));
-            xml.Should().Contain("xmlns=\"urn:x\"");
-            xml.Should().Contain("xsi:nil=\"true\"");
+            xml.Should().Be("<e xmlns=\"urn:x\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
+            xml.Should().Be("<e xmlns=\"urn:x\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
         }
 
         [TestMethod]
@@ -481,7 +480,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 writer.WriteStartElement("e");
             }
 
-            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Contain("<e");
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<e");
         }
 
         [TestMethod]
@@ -513,7 +512,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
 
                 w.WriteEndElement();
-            }).Should().Contain("xmlns:p9=\"urn:9\"");
+            }).Should().Be("<e xmlns:p1=\"urn:1\" xmlns:p2=\"urn:2\" xmlns:p3=\"urn:3\" xmlns:p4=\"urn:4\" xmlns:p5=\"urn:5\" xmlns:p6=\"urn:6\" xmlns:p7=\"urn:7\" xmlns:p8=\"urn:8\" xmlns:p9=\"urn:9\"/>");
         }
 
         [TestMethod]
@@ -522,7 +521,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlWriterHarness.ToXml(w => w.WriteElementString("e", "urn:x", "v")).Should().Be("<e xmlns=\"urn:x\">v</e>");
             XmlWriterHarness.ToXml(w => w.WriteElementString("e".AsSpan(), "v".AsSpan())).Should().Be("<e>v</e>");
             XmlWriterHarness.ToXml(w => w.WriteElementString("e", (string?)null)).Should().Be("<e/>");
-            XmlWriterHarness.ToXml(w => w.WriteElementString("e", DateTimeOffset.UnixEpoch)).Should().Contain("1970-01-01T00:00:00");
+            XmlWriterHarness.ToXml(w => w.WriteElementString("e", DateTimeOffset.UnixEpoch)).Should().Be("<e>1970-01-01T00:00:00+00:00</e>");
         }
 
         [TestMethod]

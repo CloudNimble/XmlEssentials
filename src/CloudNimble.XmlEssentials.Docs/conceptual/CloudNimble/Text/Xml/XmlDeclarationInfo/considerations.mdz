@@ -1,0 +1,5 @@
+# Considerations
+
+This is a readonly struct. Encoding is always `utf-8` for documents this stack accepts. `Standalone` is null when the pseudo-attribute was omitted.
+
+Mutable trees use `Nodes.XmlDeclarationNode` instead. Mutating that type cannot change `XmlDocument.Declaration`.

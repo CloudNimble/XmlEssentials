@@ -1,0 +1,3 @@
+# Summary
+
+`CloudNimble.Text.Xml.Nodes` is the mutable XML tree: `XmlNode` plus `XmlElementNode`, attributes, text, CDATA, comments, processing instructions, and a declaration node. Lists are `XmlNodeList` and `XmlAttributeNodeList`, not BCL `System.Xml` types.

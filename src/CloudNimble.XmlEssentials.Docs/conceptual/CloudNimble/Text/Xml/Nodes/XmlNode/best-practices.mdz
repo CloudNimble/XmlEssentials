@@ -1,0 +1,3 @@
+# Best Practices
+
+Switch on `ValueKind` (or pattern-match the concrete type) before reading element-only members. Catch `XmlException` around `Parse`.

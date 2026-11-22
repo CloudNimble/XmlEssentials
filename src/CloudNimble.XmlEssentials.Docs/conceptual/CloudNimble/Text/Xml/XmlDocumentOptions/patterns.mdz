@@ -1,0 +1,7 @@
+# Patterns
+
+**Untrusted input.** Set `MaxDocumentByteCount` and `MaxDepth` together. A stream that exceeds the cap throws `XmlException` before the tokenizer runs on the overflow.
+
+**Comments.** `Skip` (default) drops comments. `Allow` stores them. `Disallow` throws.
+
+**Reader.** The same limits apply if you tokenize first and call `XmlDocument.ParseValue`.

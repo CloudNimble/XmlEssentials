@@ -1,0 +1,9 @@
+# Usage
+
+`XmlElementNode.Attributes` is an `IList<XmlAttributeNode>` with name indexers.
+
+```csharp
+root.SetAttribute("a", "1");
+root.Attributes["a"]!.Value; // 1
+root.Attributes["a", ""] ;   // by local name + namespace
+```

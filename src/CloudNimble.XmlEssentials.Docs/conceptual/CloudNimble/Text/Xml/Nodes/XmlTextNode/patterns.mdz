@@ -1,0 +1,3 @@
+# Patterns
+
+Prefer `InnerText` on the parent element when the element has simple content. Use `XmlTextNode` in mixed content lists.

@@ -1,0 +1,3 @@
+# Considerations
+
+The XML declaration is not a PI. Immutable documents store it as `XmlDeclarationInfo`. Prolog PIs on `XmlDocument` round-trip via `WriteTo` and are not children of `RootElement`. `XmlNode.Parse` discards them.

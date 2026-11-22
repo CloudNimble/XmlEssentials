@@ -1,0 +1,24 @@
+# Examples
+
+UTF-8 span and stream:
+
+```csharp
+using var fromUtf8 = XmlDocument.Parse("<e>1</e>"u8);
+using var stream = new MemoryStream("<e>2</e>"u8.ToArray());
+using var fromStream = XmlDocument.Parse(stream);
+```
+
+Keep comments and round-trip them:
+
+```csharp
+using var document = XmlDocument.Parse(
+    "<!--hi--><e/><!--tail-->",
+    new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+```
+
+Clone the root into a mutable tree:
+
+```csharp
+var node = (XmlElementNode)document.RootElement.CloneNode();
+node.SetAttribute("id", "1");
+```

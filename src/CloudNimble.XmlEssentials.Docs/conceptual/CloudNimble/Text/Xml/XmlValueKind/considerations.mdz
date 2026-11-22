@@ -1,0 +1,3 @@
+# Considerations
+
+`Undefined` is the default cursor. `Document` is reserved for the document node (not exposed as `XmlElement`). `EmptyElement` is `<e/>`. `Nil` is `xsi:nil="true"`. `XmlDeclaration` is used by `XmlDeclarationNode` only; immutable documents store `XmlDeclarationInfo` instead.

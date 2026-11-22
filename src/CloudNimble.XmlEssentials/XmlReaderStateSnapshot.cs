@@ -38,6 +38,12 @@ namespace CloudNimble.Text.Xml
         public required string[] ElementLocalNames { get; init; }
 
         /// <summary>
+        /// Gets, per open element, whether it has reported character data, has a child element,
+        /// or is under <c>xml:space="preserve"</c>. Whitespace handling after a resume depends on all three.
+        /// </summary>
+        public required int[] ElementFlags { get; init; }
+
+        /// <summary>
         /// Gets the element namespace-URI stack.
         /// </summary>
         public required string[] ElementNamespaceUris { get; init; }

@@ -1,0 +1,15 @@
+# Usage
+
+`XmlElement` is a struct cursor into an `XmlDocument`, analogous to `JsonElement`. Read names, attributes, children, and typed values from the current node.
+
+```csharp
+using var document = XmlDocument.Parse("<e a=\"1\"><n>42</n></e>");
+var root = document.RootElement;
+var n = root.GetChild("n").GetInt32();
+foreach (var attr in root.EnumerateAttributes())
+{
+    Console.WriteLine($"{attr.LocalName}={attr.GetString()}");
+}
+```
+
+`GetRawXml` reconstructs this node. `CloneNode` copies it into a mutable `XmlNode` tree.

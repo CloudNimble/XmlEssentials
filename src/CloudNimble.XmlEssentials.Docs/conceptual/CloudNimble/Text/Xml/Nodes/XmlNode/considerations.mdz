@@ -1,0 +1,5 @@
+# Considerations
+
+`Parent` is null until the node is added to an `XmlNodeList` or `XmlAttributeNodeList`. The default `NamespaceUri` getter is null; elements and attributes override it.
+
+`Parse` requires a document element. Prolog comments/PIs are discarded.

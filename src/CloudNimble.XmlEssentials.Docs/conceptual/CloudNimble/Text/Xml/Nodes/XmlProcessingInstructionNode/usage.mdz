@@ -1,0 +1,7 @@
+# Usage
+
+```csharp
+root.Add(new XmlProcessingInstructionNode("pi", "data"));
+```
+
+`Target` is required. `Data` may be null.

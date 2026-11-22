@@ -1,0 +1,5 @@
+# Patterns
+
+**SetAttribute.** Replaces the value when the name (and namespace) already exists; otherwise appends.
+
+**AddElement.** Creates a child and returns it for chaining `InnerText` or further children.

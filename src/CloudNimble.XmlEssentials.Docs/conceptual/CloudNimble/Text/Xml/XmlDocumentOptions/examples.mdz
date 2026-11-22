@@ -1,0 +1,13 @@
+# Examples
+
+Cap an untrusted payload:
+
+```csharp
+using var document = XmlDocument.Parse(stream, new XmlDocumentOptions
+{
+    MaxDocumentByteCount = 64 * 1024,
+    MaxDepth = 16,
+});
+```
+
+Keep insignificant whitespace as text nodes with `WhitespaceHandling = XmlWhitespaceHandling.All`.

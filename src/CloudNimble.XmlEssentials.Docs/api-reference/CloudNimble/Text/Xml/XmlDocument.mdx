@@ -1,0 +1,459 @@
+---
+title: XmlDocument
+description: "An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`."
+icon: lock
+tag: "SEALED"
+keywords: ['XmlDocument', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml', 'class', '# Related APIs', '- `XmlElement`', '- `XmlDocumentOptions`', '- `XmlDeclarationInfo`', '- `Utf8XmlReader`']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlDocument
+```
+
+## Summary
+
+An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`.
+
+## Usage
+
+# Usage
+
+Parse UTF-8 XML into a pooled, immutable document. Dispose the instance to return the rental.
+
+```csharp
+using var document = XmlDocument.Parse("<Person id=\"1\"><Name>Ada</Name></Person>");
+var root = document.RootElement;
+Console.WriteLine(root.GetAttribute("id").GetInt32());
+Console.WriteLine(root.GetChild("Name").GetString());
+```
+
+Overloads accept `string`, `ReadOnlySpan<char>`, `ReadOnlySpan<byte>`, `ReadOnlySequence<byte>`, and `Stream`. `ParseValue(ref Utf8XmlReader)` captures the current element as a document. `TryParse` returns false on well-formedness errors instead of throwing.
+
+## Remarks
+
+Dispose returns rented buffers. Use after dispose throws [ObjectDisposedException](https://learn.microsoft.com/dotnet/api/system.objectdisposedexception).
+Prolog and epilog comments or processing instructions are preserved for [XmlDocument.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlDocument#writeto)
+and are not children of [XmlDocument.RootElement](/api-reference/CloudNimble/Text/Xml/XmlDocument#rootelement).
+The document owns a pooled copy of the UTF-8 payload. Names and unescaped values are offsets
+into that copy; only entity-decoded values and interned namespace URIs are copied a second time.
+
+## Examples
+
+# Examples
+
+UTF-8 span and stream:
+
+```csharp
+using var fromUtf8 = XmlDocument.Parse("<e>1</e>"u8);
+using var stream = new MemoryStream("<e>2</e>"u8.ToArray());
+using var fromStream = XmlDocument.Parse(stream);
+```
+
+Keep comments and round-trip them:
+
+```csharp
+using var document = XmlDocument.Parse(
+    "<!--hi--><e/><!--tail-->",
+    new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+```
+
+Clone the root into a mutable tree:
+
+```csharp
+var node = (XmlElementNode)document.RootElement.CloneNode();
+node.SetAttribute("id", "1");
+```
+
+## Best Practices
+
+# Best Practices
+
+- Always dispose. The extra buffer and row store are `ArrayPool` rentals.
+- Prefer `Parse(ReadOnlySpan<byte>)` when you already have UTF-8. `Parse(string)` encodes first.
+- Set `MaxDocumentByteCount`, `MaxDepth`, and `MaxAttributeCount` on untrusted input.
+- Use `CommentHandling.Allow` only when comments must round-trip. The default skips them.
+- For lookup, `TryGetChild` / `TryGetAttribute` avoid exceptions on missing names.
+
+## Patterns
+
+# Patterns
+
+**Pooled parse.** `using var document = XmlDocument.Parse(utf8);` then read through `RootElement`. Do not cache the document instance.
+
+**Cursor.** `XmlElement` is a struct cursor. Enumerate children and attributes; do not store cursors after `Dispose`.
+
+**Fragment.** `ParseValue(ref reader)` builds a document whose root is the current start tag. Empty elements stop without consuming the next sibling.
+
+**Mutation.** Call `CloneNode` (or `XmlNode.Parse`) when you need to edit. The immutable document does not change.
+
+## Considerations
+
+# Considerations
+
+`XmlDocument` is analogous to `JsonDocument`. The parse buffer is rented from `ArrayPool<byte>`. Use after `Dispose` throws `ObjectDisposedException`.
+
+Prolog and epilog comments or processing instructions are preserved for `WriteTo` and are not children of `RootElement`. The XML declaration is `XmlDeclarationInfo?`, not a mutable `XmlDeclarationNode`.
+
+`WriteTo` emits the captured declaration when one was present, then the prolog, root, and epilog. Pass `OmitXmlDeclaration = true` on the writer when you want a fragment without a declaration and the source had none.
+
+A max-* of `0` on `XmlDocumentOptions` means the DoS table default, except `MaxDocumentByteCount` which stays unbounded. Comments default to `Skip`.
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Declaration
+
+Gets the XML declaration captured at parse time, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when omitted.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlDeclarationInfo? Declaration { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlDeclarationInfo?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RootElement
+
+Gets the document element.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlElement RootElement { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlElement`
+
+## Methods
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Dispose
+
+#### Syntax
+
+```csharp
+public void Dispose()
+```
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
+
+Parses *xml* as UTF-16 converted to UTF-8.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlDocument Parse(string xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `xml` | `string` | The XML text. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlDocument`
+A disposable document.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
+
+Parses UTF-16 XML.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.ReadOnlySpan<char> xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlDocument`
+A disposable document.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
+
+Parses UTF-8 XML.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlDocument`
+A disposable document.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
+
+Parses a UTF-8 sequence.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.Buffers.ReadOnlySequence<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlDocument`
+A disposable document.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
+
+Reads a UTF-8 stream to its end and parses it.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.IO.Stream` | The stream. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlDocument`
+A disposable document.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ParseValue
+
+Parses the current element (and its descendants) from *reader* as a document.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlDocument ParseValue(ref CloudNimble.Text.Xml.Utf8XmlReader reader)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | A reader positioned at or before a start tag. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlDocument`
+A disposable document whose root is that element.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryParse
+
+Attempts to parse UTF-8 XML.
+
+#### Syntax
+
+```csharp
+public static bool TryParse(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options, out CloudNimble.Text.Xml.XmlDocument document)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+| `document` | `CloudNimble.Text.Xml.XmlDocument?` | When this method returns true, the parsed document. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the payload was well-formed.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteTo
+
+Writes the declaration (when present), prolog, root, and epilog to *writer*.
+
+#### Syntax
+
+```csharp
+public void WriteTo(CloudNimble.Text.Xml.Utf8XmlWriter writer)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The destination writer. |
+
+## Related APIs
+
+- # Related APIs
+- - `XmlElement`
+- - `XmlDocumentOptions`
+- - `XmlDeclarationInfo`
+- - `Utf8XmlReader`
+- - `Utf8XmlWriter`
+- - `CloudNimble.Text.Xml.Nodes.XmlNode`
+- - `System.Text.Json.JsonDocument`
+

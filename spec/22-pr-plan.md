@@ -4,6 +4,28 @@ Part of the [XmlEssentials spec](README.md).
 
 Incremental, mergeable PRs. Each PR must compile, include tests for the new surface, and not depend on later PRs except as listed.
 
+## Status
+
+| PR | Title | Status |
+| --- | --- | --- |
+| 1 | Repo scaffolding | **Done** (`bd364fb`) |
+| 2a | Utf8XmlReader skeleton | **Done** (`bd364fb`) |
+| 2b | Namespaces | **Done** (`47e7fd1`) |
+| 2c | Resume | **Done** (`47e7fd1`) |
+| 2d | xmlconf subset | **Done** (`47e7fd1`) |
+| 3 | Utf8XmlWriter | **Done** (`e211820`) |
+| 4 | DOM | In progress |
+| 5 | Options, converters, primitive serialize | Not started |
+| 6a–6e | POCO mapping | Not started |
+| 7 | Source generator + context | Not started |
+| 7b | XSD generator | Not started |
+| 8 | AOT / trimming tests | Not started |
+| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Not started (tokenizer benches shipped with PRs 2–3) |
+| 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
+| 11 | Breakdance freeze + coverage slogan check | Not started |
+
+Tokenizer speed work that is still open (namespaced drain interned prefixes) is tracked in [optimization](23-optimization.md), not as a new PR.
+
 TreatWarningsAsErrors is on from PR 1. **CS1591** is in `NoWarn` until the runtime library's first public type (PR 2), then XML comments are required on every new public member in that same PR ([K40](01-identity-and-decisions.md#key-decisions)).
 
 Coverage **line 100%** fail and **branch 80%** report start in **PR 2**, not PR 11. Breakdance baselines update on every public-surface PR.
@@ -21,6 +43,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 1: Repo scaffolding
 
+- **Status:** Done (`bd364fb` on `dev`)
 - **Title:** `chore: scaffold XmlEssentials solution, props, tests, benchmarks`
 - **Depends on:** none
 - **Files:**
@@ -37,6 +60,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 2a: Utf8XmlReader skeleton
 
+- **Status:** Done (`bd364fb` on `dev`)
 - **Title:** `feat: Utf8XmlReader skeleton, empty elements, text, XmlException`
 - **Depends on:** PR 1
 - **Files:** reader, options/state snapshot contract, `XmlException`, `XmlName`, `XmlTokenType`, DoS 0-semantics, tests, **coverage-gate.cs now fails on line &lt; 100%**, XML comments, Breakdance baseline
@@ -44,18 +68,21 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 2b: Namespaces
 
+- **Status:** Done (`47e7fd1` on `dev`)
 - **Title:** `feat: Utf8XmlReader namespace stack`
 - **Depends on:** PR 2a
 - **Description:** Prefix/default xmlns, `xmlns=""`, unprefixed attributes vs default xmlns.
 
 ## PR 2c: Resume
 
+- **Status:** Done (`47e7fd1` on `dev`)
 - **Title:** `feat: Utf8XmlReader IsFinalBlock resume`
 - **Depends on:** PR 2b
 - **Description:** `XmlReaderState` snapshot tests: split inside namespaced start tag, attribute, text.
 
 ## PR 2d: xmlconf subset
 
+- **Status:** Done (`47e7fd1` on `dev`)
 - **Title:** `test: UTF-8 XML 1.0 and 1.1 conformance subset`
 - **Depends on:** PR 2c
 - **Description:** Curated W3C xmlconf without DTD. 1.0 and 1.1. EOL (NEL/LS), RestrictedChar, `xmlns:p=""`, NameStartChar.
@@ -64,6 +91,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 3: Utf8XmlWriter
 
+- **Status:** Done (`e211820` on `dev`)
 - **Title:** `feat: Utf8XmlWriter and reader/writer round-trip`
 - **Depends on:** PR 2d
 - **Files:** writer (`EmitByteOrderMark` default false; `MaxAttributeCount` / `MaxNameByteCount` on options), `XmlEncodedText`, round-trip tests, baseline

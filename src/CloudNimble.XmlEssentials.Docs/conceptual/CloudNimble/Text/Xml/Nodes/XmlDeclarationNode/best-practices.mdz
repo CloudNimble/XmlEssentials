@@ -1,0 +1,3 @@
+# Best Practices
+
+Keep `Encoding` as `utf-8`. This stack does not write other encodings.

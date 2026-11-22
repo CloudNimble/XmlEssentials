@@ -1,0 +1,6 @@
+# Examples
+
+```csharp
+root.Attributes.Insert(0, new XmlAttributeNode("id", "1"));
+root.Attributes.RemoveAt(0);
+```

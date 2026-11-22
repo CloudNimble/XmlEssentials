@@ -20,6 +20,11 @@ namespace CloudNimble.Text.Xml
         public bool HasContent { get; set; }
 
         /// <summary>
+        /// Gets or sets whether character data has been written, which turns off indentation inside the element.
+        /// </summary>
+        public bool HasText { get; set; }
+
+        /// <summary>
         /// Gets or sets the local name.
         /// </summary>
         public XmlWriterName Local { get; set; }

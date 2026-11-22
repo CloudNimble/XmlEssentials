@@ -202,7 +202,7 @@ namespace CloudNimble.XmlEssentials.Tests
             r.TryGetUInt32(out _).Should().BeFalse();
             r.TryGetUInt64(out _).Should().BeFalse();
             OnText("<e>1e2</e>").TryGetDecimal(out _).Should().BeFalse();
-            OnText("<e>+1</e>").TryGetDecimal(out _).Should().BeFalse();
+            OnText("<e>1e1</e>").TryGetDecimal(out _).Should().BeFalse();
         }
 
         [TestMethod]
@@ -602,21 +602,21 @@ namespace CloudNimble.XmlEssentials.Tests
             var crlf = new Utf8XmlReader("<e>a\r\nb</e>"u8);
             crlf.Read();
             crlf.Read();
-            crlf.GetString().Should().Contain("a");
+            crlf.GetString().Should().Be("a\nb");
 
             var nel = "<?xml version=\"1.1\"?><e>a"u8.ToArray().Concat(new byte[] { 0xC2, 0x85 }).Concat("b</e>"u8.ToArray()).ToArray();
             var reader = new Utf8XmlReader(nel);
             reader.Read();
             reader.Read();
             reader.Read();
-            reader.GetString().Should().Contain("a");
+            reader.GetString().Should().Be("a\nb");
 
             var ls = "<?xml version=\"1.1\"?><e>a"u8.ToArray().Concat(new byte[] { 0xE2, 0x80, 0xA8 }).Concat("b</e>"u8.ToArray()).ToArray();
             var lsReader = new Utf8XmlReader(ls);
             lsReader.Read();
             lsReader.Read();
             lsReader.Read();
-            lsReader.GetString().Should().Contain("a");
+            lsReader.GetString().Should().Be("a\nb");
         }
 
         [TestMethod]
@@ -726,8 +726,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_Getters_MoreFailuresAndDurations()
         {
-            OnText("<e>+1</e>").TryGetInt32(out _).Should().BeFalse();
-            var plus = OnText("<e>+1</e>");
+            OnText("<e>1e1</e>").TryGetInt32(out _).Should().BeFalse();
+            var plus = OnText("<e>1e1</e>");
             var plusThrew = false;
             try
             {
@@ -788,17 +788,20 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             singleThrew.Should().BeTrue();
-            OnText("<e>Infinity</e>").GetDouble().Should().Be(double.PositiveInfinity);
-            OnText("<e>-Infinity</e>").GetDouble().Should().Be(double.NegativeInfinity);
+            OnText("<e>Infinity</e>").TryGetDouble(out _).Should().BeFalse();
+            OnText("<e>-Infinity</e>").TryGetDouble(out _).Should().BeFalse();
         }
 
         [TestMethod]
-        public void Read_HexCharacterReferenceUppercase()
+        public void Read_HexCharacterReference_DigitsAnyCase_PrefixLowerCase()
         {
-            var reader = new Utf8XmlReader("<e>&#X42;</e>"u8);
+            var reader = new Utf8XmlReader("<e>&#x4a;&#x4A;</e>"u8);
             reader.Read();
             reader.Read();
-            reader.GetString().Should().Be("B");
+            reader.GetString().Should().Be("JJ");
+            XmlReaderHarness.MustThrow("<e>&#X42;</e>");
+            XmlReaderHarness.MustThrow("<e a=\"&#X42;\"/>");
+            XmlReaderHarness.MustThrow("<e>&#12x;</e>");
         }
 
         [TestMethod]

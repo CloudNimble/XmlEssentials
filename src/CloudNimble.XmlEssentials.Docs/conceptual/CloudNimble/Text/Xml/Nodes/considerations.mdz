@@ -1,0 +1,5 @@
+# Considerations
+
+XML is not a property bag. Children are an ordered mixed list, not a JSON object. A node may have only one parent; adding a node that already has a parent throws `XmlException`.
+
+`ToString` writes the node through `Utf8XmlWriter` with `OmitXmlDeclaration`. `WriteTo` skips `xmlns*` attributes and lets the writer declare namespaces from `Prefix` / `NamespaceUri`.

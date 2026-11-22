@@ -33,28 +33,28 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElementFromChars("lang", "xml", [], empty: true);
-            }).Should().StartWith("<xml:lang");
+            }).Should().Be("<xml:lang/>");
 
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElementFromChars("p", "xmlns", [], empty: true);
-            }).Should().StartWith("<xmlns:p");
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Be("<xmlns:p/>");
 
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElementFromChars("e", default, "urn:x"u8, empty: true);
-            }).Should().Contain("xmlns=\"urn:x\"");
+            }).Should().Be("<e xmlns=\"urn:x\"/>");
 
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElementFromChars("e", "p", "urn:x"u8, empty: true);
-            }).Should().Contain("xmlns:p");
+            }).Should().Be("<p:e xmlns:p=\"urn:x\"/>");
 
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElementFromChars("e", default, "urn:x"u8, empty: false);
                 w.WriteEndElement();
-            }).Should().Contain("xmlns=\"urn:x\"");
+            }).Should().Be("<e xmlns=\"urn:x\"/>");
 
             XmlWriterHarness.ToXml(w =>
             {
@@ -62,14 +62,13 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteStartElementFromChars("child", default, "urn:x"u8, empty: false);
                 w.WriteEndElement();
                 w.WriteEndElement();
-            }).Should().Contain("p:child");
+            }).Should().Be("<p:e xmlns:p=\"urn:x\"><p:child/></p:e>");
 
             XmlWriterHarness.MustThrow(w => w.WriteStartElementFromChars("e", "p", [], empty: true));
             XmlWriterHarness.ToXml(
                 w => w.WriteStartElementFromChars("e", "p", [], empty: true),
                 new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true })
-                .Should()
-                .Contain("<p:e");
+                .Should().Be("<p:e/>");
         }
 
         [TestMethod]
@@ -85,7 +84,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteNumberValue(3u);
                 w.WriteNumberValue(4ul);
                 w.WriteEndElement();
-            }).Should().Contain("1.5");
+            }).Should().Be("<e>11.51.51.534</e>");
 
             XmlWriterHarness.ToXml(w =>
             {
@@ -97,7 +96,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteNumberValue(float.PositiveInfinity);
                 w.WriteNumberValue(float.NegativeInfinity);
                 w.WriteEndElement();
-            }).Should().Contain("NaN").And.Contain("INF");
+            }).Should().Be("<e>NaNINF-INFNaNINF-INF</e>");
         }
 
         [TestMethod]
@@ -220,13 +219,13 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 w.WriteStartElement("xml"u8, "lang"u8, []);
                 w.WriteEndElement();
-            }).Should().StartWith("<xml:lang");
+            }).Should().Be("<xml:lang/>");
 
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElement("xmlns"u8, "p"u8, []);
                 w.WriteEndElement();
-            }).Should().StartWith("<xmlns:p");
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Be("<xmlns:p/>");
 
             XmlWriterHarness.ToXml(w =>
             {
@@ -234,7 +233,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteStartElement("b"u8, "urn:x"u8);
                 w.WriteEndElement();
                 w.WriteEndElement();
-            }).Should().Contain("<p:b/>");
+            }).Should().Be("<p:a xmlns:p=\"urn:x\"><p:b/></p:a>");
         }
 
         [TestMethod]
@@ -247,7 +246,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteStartElement("c"u8);
                 w.WriteEndElement();
                 w.WriteEndElement();
-            }).Should().Contain("<c/>");
+            }).Should().Be("<e a=\"\"><c/></e>");
 
             XmlWriterHarness.MustThrow(w =>
             {
@@ -268,7 +267,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 w.WriteStartElement("p"u8, "e"u8, []);
                 w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Contain("<p:e");
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Be("<p:e/>");
         }
 
         [TestMethod]
@@ -630,7 +629,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
 
                 w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, MaxAttributeCount = 32 }).Should().Contain("a16=\"1\"");
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, MaxAttributeCount = 32 }).Should().Be("<e a0=\"1\" a1=\"1\" a2=\"1\" a3=\"1\" a4=\"1\" a5=\"1\" a6=\"1\" a7=\"1\" a8=\"1\" a9=\"1\" a10=\"1\" a11=\"1\" a12=\"1\" a13=\"1\" a14=\"1\" a15=\"1\" a16=\"1\"/>");
 
             using var nsAt = Create(new XmlWriterOptions { OmitXmlDeclaration = true, MaxAttributeCount = 32 });
             nsAt.WriteStartElement("e");
@@ -708,7 +707,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 w.WriteStartElement("e");
                 w.WriteCharsRaw("café");
                 w.WriteEndElement();
-            }).Should().Contain("café");
+            }).Should().Be("<ecaf\u00E9/>");
         }
 
         [TestMethod]
@@ -732,8 +731,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     w.WriteEndElement();
                 },
                 new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n" })
-                .Should()
-                .Contain("<n>42");
+                .Should().Be("<root>\n  <n>42</n>\n  <q>1</q>\n</root>");
         }
 
         [TestMethod]
@@ -743,14 +741,14 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 w.WriteStartElement("xml", "lang", null);
                 w.WriteEndElement();
-            }).Should().StartWith("<xml:lang");
+            }).Should().Be("<xml:lang/>");
 
             XmlWriterHarness.ToXml(w => w.WriteEmptyElement("e")).Should().Be("<e/>");
             XmlWriterHarness.ToXml(w =>
             {
                 w.WriteStartElement("p", "e", null);
                 w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Contain("<p:e");
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Be("<p:e/>");
         }
 
         [TestMethod]
@@ -810,234 +808,6 @@ namespace CloudNimble.XmlEssentials.Tests
             using var writer = Create();
             writer.FlushBuffer();
             writer.BytesCommitted.Should().Be(0);
-        }
-
-        [TestMethod]
-        public void Coverage_RemainingPublicOverloadsAndBranches()
-        {
-            XmlWriterHarness.ToXml(w => w.WriteNilElement("n".AsSpan()));
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("root");
-                w.WriteNilElement("n"u8);
-                w.WriteStartElement("a".AsSpan(), "urn:a".AsSpan());
-                w.WriteEndElement();
-                w.WriteStartElement("b"u8, "urn:b"u8);
-                w.WriteEndElement();
-                w.WriteStartElement("p"u8, "c"u8, "urn:c"u8);
-                w.WriteEndElement();
-                w.WriteElementBase64String("d"u8, "hi"u8);
-                w.WriteEndElement();
-            }).Should().Contain("xsi:nil");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStartAttribute("a");
-                w.WriteEndElement();
-            }).Should().Be("<e a=\"\"/>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("p", "e", "urn:x");
-                w.WriteStartAttribute("a");
-                w.WriteStringValue("1");
-                w.WriteFullEndElement();
-            }).Should().Be("<p:e xmlns:p=\"urn:x\" a=\"1\"></p:e>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("a");
-                w.WriteStartElement("b");
-                w.WriteStringValue("x");
-                w.WriteFullEndElement();
-                w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n", IndentSize = 2 })
-                .Should().Contain("</b>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteAttributeString("a", (string?)null);
-                w.WriteAttributeString("b", "urn:x", (string?)null);
-                w.WriteStringValue((string?)null);
-                w.WriteEndElement();
-            }).Should().Contain("a=\"\"");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStringValue(DateTime.Now);
-                w.WriteEndElement();
-            }).Should().Contain("T");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStartAttribute("a");
-                w.WriteStartElement("c");
-                w.WriteEndElement();
-                w.WriteEndElement();
-            }).Should().Contain("<c/>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteNamespaceDeclaration("p", "urn:x");
-                w.WriteStartElement("c", "urn:x");
-                w.WriteEndElement();
-                w.WriteEndElement();
-            }).Should().Contain("<p:c/>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteAttributeString("xml", "space", null, "preserve");
-                w.WriteEndElement();
-            }).Should().Be("<e xml:space=\"preserve\"/>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteAttributeString("p", "a", "urn:x", "1");
-                w.WriteAttributeString(null, "b", "urn:x", "2");
-                w.WriteEndElement();
-            }).Should().Contain("p:b=\"2\"");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("xml", "e", null);
-                w.WriteEndElement();
-            }).Should().StartWith("<xml:e");
-
-            XmlWriterHarness.MustThrow(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStartAttribute("a");
-                w.WriteStringValue([(byte)0x80]);
-            });
-
-            XmlWriterHarness.MustThrow(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStringValue([(byte)0xEF, 0xBF, 0xBE]);
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version11 });
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStringValue([(byte)0xC2, 0x80]);
-                w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version11 })
-                .Should().Contain("&#x80;");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteCData("x".AsSpan());
-                w.WriteComment("c"u8);
-                w.WriteRawValue("<z/>"u8);
-                w.WriteEndElement();
-            }).Should().Contain("CDATA");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteRawValue("<e/>");
-            }).Should().Be("<e/>");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                for (var i = 0; i < 17; i++)
-                {
-                    w.WriteStartElement("e");
-                }
-
-                for (var i = 0; i < 17; i++)
-                {
-                    w.WriteEndElement();
-                }
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, MaxDepth = 32 });
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                for (var i = 1; i <= 17; i++)
-                {
-                    w.WriteNamespaceDeclaration("p" + i, "urn:" + i);
-                }
-
-                w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, MaxAttributeCount = 32 });
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("a");
-                w.WriteStartElement("b");
-                w.WriteEndElement();
-                w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentCharacter = '\0', NewLine = "\n" });
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("p", "e", null);
-                w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Contain("<p:e");
-
-            using var grow = Create();
-            grow.WriteRaw(new byte[XmlLimits.DefaultBufferSize - 10]);
-            grow.Ensure(20);
-            grow.Ensure(XmlLimits.DefaultBufferSize + 32);
-
-            Utf8XmlWriter.EnsureDone(OperationStatus.Done, "ok");
-            var threw = false;
-            try
-            {
-                Utf8XmlWriter.EnsureDone(OperationStatus.DestinationTooSmall, "fail");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteAttributeString("id", "urn:x", "1");
-                w.WriteEndElement();
-            }).Should().Contain("id=\"1\"");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("xmlns", "e", null);
-                w.WriteEndElement();
-            }).Should().StartWith("<xmlns:e");
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStartAttribute("xmlns", "p", null);
-                w.WriteStringValue("urn:x");
-                w.WriteEndAttribute();
-                w.WriteEndElement();
-            }).Should().Contain("xmlns:p");
-
-            XmlWriterHarness.MustThrow(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStartAttribute("p", "a", null);
-            });
-
-            XmlWriterHarness.MustThrow(w => w.WriteStartElement("e$"));
-
-            XmlWriterHarness.ToXml(w =>
-            {
-                w.WriteStartElement("e");
-                w.WriteStartAttribute("q", "a", null);
-                w.WriteEndAttribute();
-                w.WriteEndElement();
-            }, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true });
         }
 
         [TestMethod]

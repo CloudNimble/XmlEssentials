@@ -1,0 +1,3 @@
+# Patterns
+
+Use CDATA when the payload is markup-like text you do not want escaped as `&lt;`.

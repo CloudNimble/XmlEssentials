@@ -1,0 +1,3 @@
+# Considerations
+
+`LocalName` rejects null or whitespace. `Prefix`, `NamespaceUri`, and `Value` coerce null to empty. `ValueKind` is `Attribute`.
