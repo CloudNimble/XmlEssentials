@@ -89,6 +89,15 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<?xml version=\"1.0\" encoding=\"utf-16\"?><e/>", DisplayName = "utf-16 encoding")]
         [DataRow("<?xml version=\"1.0\" encoding=\"iso-8859-1\"?><e/>", DisplayName = "latin-1 encoding")]
         [DataRow("<?xml version=\"1.0\" encoding=\"ascii\"?><e/>", DisplayName = "ascii encoding")]
+        [DataRow("<p:e/>", DisplayName = "undeclared element prefix")]
+        [DataRow("<e p:a=\"1\"/>", DisplayName = "undeclared attribute prefix")]
+        [DataRow("<e xmlns:p=\"\"/>", DisplayName = "prefix undeclaration in 1.0")]
+        [DataRow("<e xmlns:xmlns=\"urn:x\"/>", DisplayName = "xmlns prefix declared")]
+        [DataRow("<e xmlns:xml=\"urn:x\"/>", DisplayName = "xml prefix rebound")]
+        [DataRow("<a::b/>", DisplayName = "double colon in name")]
+        [DataRow("<item></items>", DisplayName = "end tag shares a prefix of the start name")]
+        [DataRow("<p:e xmlns:p=\"urn:x\"></p:f>", DisplayName = "end tag local mismatch with prefix")]
+        [DataRow("<p:e xmlns:p=\"urn:x\" xmlns:q=\"urn:y\"></q:e>", DisplayName = "end tag URI mismatch")]
         public void Read_MalformedDocument_Throws(string xml)
         {
             XmlReaderHarness.MustThrow(xml);

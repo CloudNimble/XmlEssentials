@@ -18,4 +18,6 @@ while (reader.Read())
 }
 ```
 
-Pass `new XmlReaderOptions { MaxDepth = 32 }` as the second argument when you need limits or comment/whitespace policy. Use the three-argument constructor (`utf8`, `isFinalBlock`, `state`) only when you are feeding successive buffers.
+Compare namespaces with `NamespaceUriEquals` (`u8` literals, `ReadOnlySpan<char>`, or `string`). `GetNil()` requires `xsi:nil` in the XML Schema instance namespace.
+
+Pass `new XmlReaderOptions { MaxDepth = 32 }` as the second argument when you need limits or comment/whitespace policy. Use the three-argument constructor (`utf8`, `isFinalBlock`, `state`) when feeding successive buffers; take `CurrentState` after `Read` returns false.

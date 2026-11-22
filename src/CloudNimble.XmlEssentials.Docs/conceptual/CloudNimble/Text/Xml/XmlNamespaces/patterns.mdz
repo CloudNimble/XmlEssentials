@@ -1,5 +1,5 @@
 <!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Document common patterns for `XmlNamespaces` here.
+Use the constants at comparison sites (`NamespaceUriEquals(XmlNamespaces.Xsi)`). Do not intern your own copies of the well-known URIs; the reader already does.
 

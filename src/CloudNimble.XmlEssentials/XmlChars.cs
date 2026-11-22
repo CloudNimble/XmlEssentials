@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Runtime.CompilerServices;
+
 namespace CloudNimble.Text.Xml
 {
 
@@ -5,14 +8,80 @@ namespace CloudNimble.Text.Xml
     /// XML 1.0 Fifth Edition and XML 1.1 Second Edition Char and Name productions.
     /// </summary>
     /// <remarks>
-    /// These helpers take a Unicode code point, not a UTF-8 byte, except <see cref="IsWhiteSpace"/>.
+    /// These helpers take a Unicode code point, not a UTF-8 byte, except the ASCII/byte helpers.
     /// XML 1.0 5th edition names cover XML 1.1 NameStartChar / NameChar, so <see cref="XmlVersion"/>
     /// is reserved for Char and RestrictedChar, not names.
+    /// ASCII scanners follow BCL <c>XmlCharType</c>: a cheap byte test on the hot path, full
+    /// productions only for non-ASCII.
     /// </remarks>
     internal static class XmlChars
     {
 
+        #region Fields
+
+        /// <summary>
+        /// ASCII NCName characters: letters, digits, <c>_</c>, <c>-</c>, <c>.</c>. Excludes colon.
+        /// </summary>
+        public static readonly SearchValues<byte> AsciiNcNameChars = SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"u8);
+
+        /// <summary>
+        /// ASCII text that needs no EOL, entity, or Char check: tab and printable ASCII except <c>&lt;</c> and <c>&amp;</c>.
+        /// </summary>
+        public static readonly SearchValues<byte> AsciiTextChars = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// Stops an end-tag name scan: colon, closer, or whitespace.
+        /// </summary>
+        public static readonly SearchValues<byte> EndTagNameStops = SearchValues.Create(":> \t\r\n"u8);
+
+        /// <summary>
+        /// Stops a double-quoted attribute value scan.
+        /// </summary>
+        public static readonly SearchValues<byte> AttrStopsDouble = SearchValues.Create("\"<&\r\n"u8);
+
+        /// <summary>
+        /// Stops a single-quoted attribute value scan.
+        /// </summary>
+        public static readonly SearchValues<byte> AttrStopsSingle = SearchValues.Create("'<&\r\n"u8);
+
+        /// <summary>
+        /// Stops an XML 1.0 text scan: markup, entity, or end-of-line.
+        /// </summary>
+        public static readonly SearchValues<byte> TextStops10 = SearchValues.Create("<&\r\n"u8);
+
+        /// <summary>
+        /// Stops an XML 1.1 text scan, including lead bytes of NEL (<c>C2</c>) and LS (<c>E2</c>).
+        /// </summary>
+        public static readonly SearchValues<byte> TextStops11 = SearchValues.Create([(byte)'<', (byte)'&', (byte)'\r', (byte)'\n', 0xC2, 0xE2]);
+
+        #endregion
+
         #region Public Methods
+
+        /// <summary>
+        /// Returns true if <paramref name="b"/> is an ASCII NameStartChar (<c>A-Z_a-z:</c>).
+        /// </summary>
+        /// <param name="b">The UTF-8 byte.</param>
+        /// <returns><see langword="true"/> if the byte may start a name without decoding.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsAsciiNameStart(byte b)
+        {
+            return b is (>= (byte)'A' and <= (byte)'Z') or (>= (byte)'a' and <= (byte)'z') or (byte)'_' or (byte)':';
+        }
+
+        /// <summary>
+        /// Returns true if <paramref name="b"/> is an ASCII NCName character (no colon).
+        /// </summary>
+        /// <param name="b">The UTF-8 byte.</param>
+        /// <returns><see langword="true"/> if the byte may continue a name without decoding.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsAsciiNcNameChar(byte b)
+        {
+            return b is (>= (byte)'A' and <= (byte)'Z')
+                or (>= (byte)'a' and <= (byte)'z')
+                or (>= (byte)'0' and <= (byte)'9')
+                or (byte)'_' or (byte)'-' or (byte)'.';
+        }
 
         /// <summary>
         /// Returns true if <paramref name="cp"/> is a NameChar for <paramref name="version"/>.
@@ -57,6 +126,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="b">The byte.</param>
         /// <returns><see langword="true"/> if the byte is whitespace.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsWhiteSpace(byte b)
         {
             return b is (byte)' ' or (byte)'\t' or (byte)'\n' or (byte)'\r';

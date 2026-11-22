@@ -6,6 +6,101 @@ mode: wide
 keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'XmlAttributes', 'XmlCommentHandling', 'XmlException', 'XmlName', 'XmlNamespaces', 'XmlReaderOptions', 'XmlReaderState', 'XmlTokenType', 'XmlVersion']
 ---
 
+## Summary
+
+# Summary
+
+`CloudNimble.Text.Xml` is the UTF-8 XML pipeline for XmlEssentials. It is shaped like `System.Text.Json`: a `ref struct` reader, later a writer, DOM, and static serializer. There is no `System.Xml` dependency.
+
+This release ships `Utf8XmlReader` with namespace binding and resumable `IsFinalBlock` splits, plus options, tokens, names, and `XmlException`. The writer, DOM, and `XmlSerializer` are not in this surface yet.
+
+## Usage
+
+# Usage
+
+Add the `XmlEssentials` package and import `CloudNimble.Text.Xml`. Feed UTF-8 bytes to `Utf8XmlReader` and call `Read` until it returns false.
+
+```csharp
+using CloudNimble.Text.Xml;
+
+var reader = new Utf8XmlReader("<Person id=\"1\">Ada</Person>"u8);
+while (reader.Read())
+{
+    // inspect TokenType, LocalNameSpan, ValueSpan
+}
+```
+
+Construct options with `new XmlReaderOptions()`. A max-* of `0` means the documented default, except `MaxDocumentByteCount`, which stays unbounded.
+
+## Examples
+
+# Examples
+
+Walk a document and print element names and text without allocating on the hot path:
+
+```csharp
+var xml = "<root id=\"1\"><n>42</n></root>"u8;
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    switch (reader.TokenType)
+    {
+        case XmlTokenType.StartElement:
+            // LocalNameSpan is UTF-8 in the source buffer
+            break;
+        case XmlTokenType.Text:
+            if (reader.TryGetInt32(out var n))
+            {
+                Console.WriteLine(n);
+            }
+            break;
+    }
+}
+```
+
+## Best Practices
+
+# Best Practices
+
+- Prefer `ValueSpan` and `TryGet*` over `GetString` when you can stay in UTF-8.
+- Call `new Utf8XmlReader(utf8)` or `new Utf8XmlReader(utf8, new XmlReaderOptions { ... })`. Avoid `default(XmlReaderOptions)` unless you intend `CommentHandling.Disallow`.
+- Check `IsEmptyElement` before expecting `EndElement`.
+- Set DoS limits on untrusted input (`MaxDepth`, `MaxNameByteCount`, `MaxTextByteCount`, `MaxAttributeCount`). `0` selects the table default.
+- Compare names with `LocalNameEquals` (`u8` literals, `ReadOnlySpan<char>`, or `string`) instead of decoding to `string` first.
+
+## Patterns
+
+# Patterns
+
+**Drain.** Loop `Read()` and switch on `TokenType`. This is the STJ `Utf8JsonReader` shape.
+
+**Skip a subtree.** On a start tag, `Skip()` consumes that element and its children. Empty elements are already complete.
+
+**Typed text.** After `Read` lands on `Text` or `CData`, call `TryGetInt32`, `TryGetBoolean`, `TryGetGuid`, and the other getters. They parse UTF-8 in place.
+
+**Attributes.** On `StartElement`, `MoveToNextAttribute` until it returns false, then `MoveToElement` to restore the start tag.
+
+## Considerations
+
+# Considerations
+
+- `Utf8XmlReader` is a `ref struct`. It cannot be stored on the heap, captured by a lambda, or used across `await`.
+- Empty elements (`<e/>`) are a start tag with `IsEmptyElement` true. The reader does not emit a matching end tag.
+- `xmlns` attributes bind before the element's own name is resolved. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`.
+- The XML declaration, when present, must be the first token after an optional BOM.
+- DTDs (`<!DOCTYPE`, `<!ENTITY`, and other `<!` markup that is not a comment or CDATA) throw `XmlException`.
+- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`.
+
+## Related APIs
+
+- # Related APIs
+- - `Utf8XmlReader`
+- - `XmlReaderOptions`
+- - `XmlTokenType`
+- - `XmlException`
+- - `XmlName`
+- - `Utf8JsonReader` (shape analogue in `System.Text.Json`)
+
 ## Types
 
 ### <Icon icon="file-brackets-curly" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Classes

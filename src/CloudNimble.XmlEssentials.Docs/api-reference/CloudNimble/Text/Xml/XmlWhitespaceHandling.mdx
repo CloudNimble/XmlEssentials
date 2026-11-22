@@ -3,7 +3,7 @@ title: XmlWhitespaceHandling
 description: "How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `XmlReaderOptions.WhitespaceHandling`', '- `XmlTokenType.Text`', '- `Utf8XmlReader.ValueSpan`']
 ---
 
 ## Definition
@@ -24,10 +24,69 @@ CloudNimble.Text.Xml.XmlWhitespaceHandling
 
 How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements.
 
+## Usage
+
+# Usage
+
+`XmlReaderOptions.WhitespaceHandling` applies to **whitespace-only text between elements**:
+
+- `Insignificant` (default) — skip those nodes.
+- `Significant` — report them as `XmlTokenType.Text`.
+- `None` — throw `XmlException`.
+
+Whitespace inside a leaf element's value is always part of the value. `<n> a </n>` is `" a "` under every setting.
+
 ## Remarks
 
 Whitespace inside a leaf element's value is always significant.
 `<n> a </n>` is the value `" a "` regardless of this setting.
+
+## Examples
+
+# Examples
+
+```csharp
+var xml = "<a>\n<b/>\n</a>"u8;
+
+var skip = new Utf8XmlReader(xml);
+skip.Read(); // a
+skip.Read(); // b (the newline was skipped)
+
+var keep = new Utf8XmlReader(xml, new XmlReaderOptions
+{
+    WhitespaceHandling = XmlWhitespaceHandling.Significant,
+});
+keep.Read(); // a
+keep.Read(); // Text "\n"
+```
+
+## Best Practices
+
+# Best Practices
+
+Keep `Insignificant` unless you are writing a canonicalizer or mixed-content model that treats inter-element space as data.
+
+Do not use this enum to trim leaf values. Trim with `TrimXmlWhitespace` semantics on `ValueSpan`, or accept the spaces as significant character data.
+
+## Patterns
+
+# Patterns
+
+**Documents.** Default `Insignificant` — ignore pretty-print newlines.
+
+**Mixed content.** `Significant` so a mapper can see text nodes between child elements.
+
+**Machine XML.** `None` when the contract forbids inter-element whitespace and you want a hard error.
+
+## Considerations
+
+# Considerations
+
+Indentation between child elements is insignificant by default, matching typical document and SOAP payloads.
+
+`None` is a strict policy for producers that never emit inter-element whitespace. Pretty-printed XML will throw.
+
+Prolog and epilog whitespace (before the root, after the root) is skipped at depth 0 and is not governed by this enum.
 
 ## Values
 
@@ -39,8 +98,8 @@ Whitespace inside a leaf element's value is always significant.
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- # Related APIs
+- - `XmlReaderOptions.WhitespaceHandling`
+- - `XmlTokenType.Text`
+- - `Utf8XmlReader.ValueSpan`
 

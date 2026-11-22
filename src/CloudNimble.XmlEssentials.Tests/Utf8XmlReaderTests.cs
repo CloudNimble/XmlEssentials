@@ -206,7 +206,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_GetNil()
         {
-            var reader = new Utf8XmlReader("<e nil=\"true\"/>"u8);
+            var reader = new Utf8XmlReader("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>"u8);
             reader.Read();
             reader.GetNil().Should().BeTrue();
             var none = new Utf8XmlReader("<e/>"u8);
@@ -315,7 +315,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_Prefix_OnEmptyElement()
         {
-            var reader = new Utf8XmlReader("<p:e/>"u8);
+            var reader = new Utf8XmlReader("<p:e xmlns:p=\"urn:x\"/>"u8);
             reader.Read();
             reader.PrefixSpan.Length.Should().Be(1);
             reader.LocalNameEquals("e").Should().BeTrue();
@@ -602,7 +602,7 @@ namespace CloudNimble.XmlEssentials.Tests
             crlf.Read();
             crlf.GetString().Should().Contain("a");
 
-            var nel = "<?xml version=\"1.1\"?><e>a"u8.ToArray().Concat(new byte[] { 0x85 }).Concat("b</e>"u8.ToArray()).ToArray();
+            var nel = "<?xml version=\"1.1\"?><e>a"u8.ToArray().Concat(new byte[] { 0xC2, 0x85 }).Concat("b</e>"u8.ToArray()).ToArray();
             var reader = new Utf8XmlReader(nel);
             reader.Read();
             reader.Read();
@@ -644,11 +644,20 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_PrefixedAttribute()
         {
-            var reader = new Utf8XmlReader("<e p:a=\"1\"/>"u8);
+            var reader = new Utf8XmlReader("<e xmlns:p=\"urn:x\" p:a=\"1\"/>"u8);
             reader.Read();
-            reader.MoveToNextAttribute();
-            reader.PrefixSpan.Length.Should().Be(1);
-            reader.LocalNameEquals("a").Should().BeTrue();
+            var found = false;
+            while (reader.MoveToNextAttribute())
+            {
+                if (reader.LocalNameEquals("a"))
+                {
+                    reader.PrefixSpan.Length.Should().Be(1);
+                    found = true;
+                    break;
+                }
+            }
+
+            found.Should().BeTrue();
             reader.MoveToNextAttribute().Should().BeFalse();
         }
 
@@ -808,10 +817,10 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_GetNilVariants()
         {
-            var one = new Utf8XmlReader("<e nil=\"1\"/>"u8);
+            var one = new Utf8XmlReader("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"1\"/>"u8);
             one.Read();
             one.GetNil().Should().BeTrue();
-            var no = new Utf8XmlReader("<e nil=\"false\"/>"u8);
+            var no = new Utf8XmlReader("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"false\"/>"u8);
             no.Read();
             no.GetNil().Should().BeFalse();
         }

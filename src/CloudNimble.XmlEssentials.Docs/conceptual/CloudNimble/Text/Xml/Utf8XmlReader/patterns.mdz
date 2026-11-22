@@ -4,7 +4,9 @@
 
 **Attribute walk.** Only valid on `StartElement`. `MoveToNextAttribute` sets `TokenType` to `Attribute`. `MoveToElement` restores the start tag.
 
-**Nil.** `GetNil()` is true when the current start tag has a `nil` attribute of `true` or `1`. The local name is matched; the `xsi` namespace is not required in this release.
+**Nil.** `GetNil()` is true when the current start tag has `xsi:nil` of `true` or `1` in the XML Schema instance namespace. An unprefixed `nil` attribute does not count.
+
+**Resume.** When `Read` returns false on a non-final buffer, construct a new reader over the unconsumed remainder plus the next chunk, passing `CurrentState`. The snapshot copies element names and xmlns bindings; it does not alias the previous buffer.
 
 **Comments.** Default options skip comments. `XmlCommentHandling.Allow` reports `XmlTokenType.Comment`. `Disallow` throws.
 

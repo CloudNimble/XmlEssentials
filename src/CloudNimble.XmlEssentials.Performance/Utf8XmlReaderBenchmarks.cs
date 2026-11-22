@@ -25,6 +25,8 @@ namespace CloudNimble.XmlEssentials.Performance
 
         private byte[] _catalog = null!;
         private MemoryStream _catalogStream = null!;
+        private byte[] _namespaced = null!;
+        private MemoryStream _namespacedStream = null!;
         private XmlReaderSettings _settings = null!;
         private byte[] _tiny = null!;
         private MemoryStream _tinyStream = null!;
@@ -67,6 +69,17 @@ namespace CloudNimble.XmlEssentials.Performance
         }
 
         /// <summary>
+        /// BCL <see cref="XmlReader"/> drain of the namespaced catalog.
+        /// </summary>
+        /// <returns>The number of nodes reported by <see cref="XmlReader.Read"/>.</returns>
+        [Benchmark(Baseline = true)]
+        [BenchmarkCategory("NamespacedDrain")]
+        public int BclXmlReader_DrainNamespaced()
+        {
+            return DrainBcl(_namespacedStream);
+        }
+
+        /// <summary>
         /// BCL <see cref="XmlReader"/> drain of the tiny document.
         /// </summary>
         /// <returns>The number of nodes reported by <see cref="XmlReader.Read"/>.</returns>
@@ -94,8 +107,19 @@ namespace CloudNimble.XmlEssentials.Performance
 
             builder.Append("</catalog>");
             _catalog = Encoding.UTF8.GetBytes(builder.ToString());
+            var ns = new StringBuilder(16_384);
+            ns.Append("<p:catalog xmlns:p=\"urn:catalog\">");
+            for (var i = 0; i < 200; i++)
+            {
+                ns.Append("<p:item id=\"").Append(i).Append("\"><p:name>Widget").Append(i)
+                    .Append("</p:name><p:qty>").Append(i).Append("</p:qty></p:item>");
+            }
+
+            ns.Append("</p:catalog>");
+            _namespaced = Encoding.UTF8.GetBytes(ns.ToString());
             _tinyStream = new MemoryStream(_tiny, writable: false);
             _catalogStream = new MemoryStream(_catalog, writable: false);
+            _namespacedStream = new MemoryStream(_namespaced, writable: false);
             _settings = new XmlReaderSettings
             {
                 CheckCharacters = true,
@@ -137,6 +161,17 @@ namespace CloudNimble.XmlEssentials.Performance
             }
 
             return qty;
+        }
+
+        /// <summary>
+        /// XmlEssentials drain of the namespaced catalog without materializing strings.
+        /// </summary>
+        /// <returns>The number of tokens.</returns>
+        [Benchmark]
+        [BenchmarkCategory("NamespacedDrain")]
+        public int XmlEssentials_DrainNamespaced()
+        {
+            return DrainXmlEssentials(_namespaced);
         }
 
         /// <summary>

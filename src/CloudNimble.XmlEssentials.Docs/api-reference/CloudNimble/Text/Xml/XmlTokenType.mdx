@@ -3,7 +3,7 @@ title: XmlTokenType
 description: "Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlTokenType', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlTokenType', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `Utf8XmlReader.TokenType`', '- `Utf8XmlReader.IsEmptyElement`', '- `XmlCommentHandling`', '- `XmlVersion`']
 ---
 
 ## Definition
@@ -24,12 +24,83 @@ CloudNimble.Text.Xml.XmlTokenType
 
 Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document.
 
+## Usage
+
+# Usage
+
+After each successful `Read()`, `Utf8XmlReader.TokenType` is the kind of token under the cursor. Switch on it to decide whether to inspect `LocalNameSpan`, `ValueSpan`, or attributes.
+
+`MoveToNextAttribute` sets `TokenType` to `Attribute` until `MoveToElement` restores the start tag.
+
 ## Remarks
 
 Empty elements (`<e/>`) are reported as [XmlTokenType.StartElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) with
 [Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement) set. The reader does not synthesize an
 [XmlTokenType.EndElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) token. Callers must check [Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement)
 before expecting a matching end tag.
+
+## Examples
+
+# Examples
+
+```csharp
+while (reader.Read())
+{
+    switch (reader.TokenType)
+    {
+        case XmlTokenType.StartElement:
+            if (reader.IsEmptyElement)
+            {
+                break;
+            }
+            break;
+        case XmlTokenType.EndElement:
+            break;
+        case XmlTokenType.Text:
+        case XmlTokenType.CData:
+            break;
+        case XmlTokenType.Comment:
+            Console.WriteLine(reader.GetComment());
+            break;
+        case XmlTokenType.XmlDeclaration:
+            Console.WriteLine(reader.Version);
+            break;
+    }
+}
+```
+
+## Best Practices
+
+# Best Practices
+
+Handle `StartElement` and `IsEmptyElement` together so empty tags do not look like missing end tags.
+
+Treat `Text` and `CData` as the same infoset for mapping unless you must preserve CDATA delimiters. Both expose `ValueSpan` after entity handling (CDATA has no entity expansion).
+
+## Patterns
+
+# Patterns
+
+A typical mapper:
+
+1. `XmlDeclaration` — record `Version`, ignore encoding (UTF-8 only).
+2. `ProcessingInstruction` — ignore or stash.
+3. `StartElement` — push a frame; if `IsEmptyElement`, pop immediately.
+4. `Attribute` — only while walking with `MoveToNextAttribute`.
+5. `Text` / `CData` — bind to a property via `TryGet*`.
+6. `EndElement` — pop the frame.
+
+## Considerations
+
+# Considerations
+
+`None` means no token yet, or `Read` has already returned false.
+
+`StartElement` covers both `<e>` and `<e/>`. Distinguish them with `IsEmptyElement`. The reader never synthesizes `EndElement` for an empty tag.
+
+`Comment` appears only when `XmlCommentHandling.Allow` is set. Otherwise comments are skipped or rejected.
+
+`XmlDeclaration` is reported as its own token. It is legal only as the first token in the document.
 
 ## Values
 
@@ -47,8 +118,9 @@ before expecting a matching end tag.
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- # Related APIs
+- - `Utf8XmlReader.TokenType`
+- - `Utf8XmlReader.IsEmptyElement`
+- - `XmlCommentHandling`
+- - `XmlVersion`
 

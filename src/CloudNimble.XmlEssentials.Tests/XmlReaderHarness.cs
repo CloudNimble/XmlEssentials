@@ -13,30 +13,30 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Public Methods
 
-        public static void Drain(string xml, XmlReaderOptions options = default)
+        public static void Drain(string xml, XmlReaderOptions? options = null)
         {
-            Drain(Encoding.UTF8.GetBytes(xml), options);
+            Drain(Encoding.UTF8.GetBytes(xml), options ?? new XmlReaderOptions());
         }
 
-        public static void Drain(byte[] xml, XmlReaderOptions options = default)
+        public static void Drain(byte[] xml, XmlReaderOptions? options = null)
         {
-            var reader = new Utf8XmlReader(xml, options);
+            var reader = new Utf8XmlReader(xml, options ?? new XmlReaderOptions());
             while (reader.Read())
             {
             }
         }
 
-        public static void MustRead(string xml, XmlReaderOptions options = default)
+        public static void MustRead(string xml, XmlReaderOptions? options = null)
         {
             Drain(xml, options);
         }
 
-        public static void MustRead(byte[] xml, XmlReaderOptions options = default)
+        public static void MustRead(byte[] xml, XmlReaderOptions? options = null)
         {
             Drain(xml, options);
         }
 
-        public static void MustThrow(string xml, XmlReaderOptions options = default)
+        public static void MustThrow(string xml, XmlReaderOptions? options = null)
         {
             var threw = false;
             try
@@ -51,7 +51,7 @@ namespace CloudNimble.XmlEssentials.Tests
             threw.Should().BeTrue("expected XmlException for {0}", xml);
         }
 
-        public static void MustThrow(byte[] xml, XmlReaderOptions options = default)
+        public static void MustThrow(byte[] xml, XmlReaderOptions? options = null)
         {
             var threw = false;
             try

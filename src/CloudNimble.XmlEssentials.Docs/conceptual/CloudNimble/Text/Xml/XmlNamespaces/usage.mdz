@@ -1,5 +1,12 @@
 <!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Usage
 
-Describe how to use `XmlNamespaces` here.
+`XmlNamespaces` holds the well-known URI strings: `xml`, `xmlns`, `xsi`, and `xsd`. Compare them with `Utf8XmlReader.NamespaceUriEquals` rather than copying the URI text into your code.
+
+```csharp
+if (reader.LocalNameEquals("nil") && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
+{
+    // xsi:nil
+}
+```
 

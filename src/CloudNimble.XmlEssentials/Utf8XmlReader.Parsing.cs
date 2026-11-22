@@ -41,9 +41,24 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            if (_version is XmlVersion.Version11 && (b is 0x85 || (b is 0xE2 && _pos + 2 < _span.Length && _span[_pos + 1] is 0x80 && _span[_pos + 2] is 0xA8)))
+            if (_version is XmlVersion.Version11
+                && b is 0xC2
+                && _pos + 1 < _span.Length
+                && _span[_pos + 1] is 0x85)
             {
-                _pos += b is 0x85 ? 1 : 3;
+                _pos += 2;
+                _lineNumber++;
+                _lineStart = _pos;
+                return;
+            }
+
+            if (_version is XmlVersion.Version11
+                && b is 0xE2
+                && _pos + 2 < _span.Length
+                && _span[_pos + 1] is 0x80
+                && _span[_pos + 2] is 0xA8)
+            {
+                _pos += 3;
                 _lineNumber++;
                 _lineStart = _pos;
                 return;
@@ -52,6 +67,33 @@ namespace CloudNimble.Text.Xml
             var (cp, width) = DecodeRune(_pos);
             ValidateChar(cp, fromNcr: false);
             _pos += width;
+        }
+
+        /// <summary>
+        /// Advances over ASCII text that needs no entity expansion, EOL, or Char check.
+        /// </summary>
+        /// <param name="length">The maximum number of bytes to inspect from <c>_pos</c>.</param>
+        /// <returns><see langword="true"/> if a non-whitespace byte was consumed.</returns>
+        internal bool AdvanceAsciiTextRun(int length)
+        {
+            var run = _span.Slice(_pos, length);
+            var bad = run.IndexOfAnyExcept(XmlChars.AsciiTextChars);
+            if (bad < 0)
+            {
+                var hasNonWs = run.IndexOfAnyExcept((byte)' ', (byte)'\t') >= 0;
+                _pos += length;
+                return hasNonWs;
+            }
+
+            if (bad == 0)
+            {
+                return false;
+            }
+
+            var prefix = run[..bad];
+            var prefixNonWs = prefix.IndexOfAnyExcept((byte)' ', (byte)'\t') >= 0;
+            _pos += bad;
+            return prefixNonWs;
         }
 
         /// <summary>
@@ -73,20 +115,36 @@ namespace CloudNimble.Text.Xml
             _elementCount = snapshot.ElementLocalNames.Length;
             _resumeNameCount = snapshot.ElementLocalNames.Length;
             _resumeLocalNames = new byte[snapshot.ElementLocalNames.Length][];
+            _resumeNsUris = new byte[snapshot.ElementLocalNames.Length][];
+            _nsCount = 0;
+            _nsBindings = null;
             for (var i = 0; i < snapshot.ElementLocalNames.Length; i++)
             {
                 _resumeLocalNames[i] = Encoding.UTF8.GetBytes(snapshot.ElementLocalNames[i]);
+                _resumeNsUris[i] = InternUri(Encoding.UTF8.GetBytes(snapshot.ElementNamespaceUris[i]));
             }
 
-            _ = snapshot.ElementNamespaceUris;
+            if (snapshot.NamespacePrefixes is { Length: > 0 })
+            {
+                for (var i = 0; i < snapshot.NamespacePrefixes.Length; i++)
+                {
+                    PushBinding(
+                        snapshot.NamespaceDepths[i],
+                        InternPrefix(Encoding.UTF8.GetBytes(snapshot.NamespacePrefixes[i])),
+                        InternUri(Encoding.UTF8.GetBytes(snapshot.NamespaceUris[i])));
+                }
+            }
+
+            SetCurrentNamespace(InternUri(Encoding.UTF8.GetBytes(snapshot.CurrentNamespaceUri)));
             _finished = snapshot.Finished;
             _isEmptyElement = snapshot.IsEmptyElement;
             _lineNumber = snapshot.LineNumber;
             _lineStart = snapshot.LineStart;
+            _pendingEmptyNsDepth = snapshot.PendingEmptyNsDepth;
             _seenRoot = snapshot.SeenRoot;
             _tokenType = snapshot.TokenType;
             _version = snapshot.Version;
-            _xmlDeclarationAllowed = false;
+            _xmlDeclarationAllowed = snapshot.XmlDeclarationAllowed;
         }
 
         /// <summary>
@@ -97,17 +155,23 @@ namespace CloudNimble.Text.Xml
         {
             return new XmlReaderStateSnapshot
             {
+                CurrentNamespaceUri = Encoding.UTF8.GetString(CurrentNamespaceBytes()),
                 Depth = _depth,
                 DocumentBytesConsumed = _documentBytesConsumedBase + _pos,
                 ElementLocalNames = MaterializeElementNames(),
-                ElementNamespaceUris = new string[_elementCount],
+                ElementNamespaceUris = MaterializeElementNamespaces(),
                 Finished = _finished,
                 IsEmptyElement = _isEmptyElement,
                 LineNumber = _lineNumber,
                 LineStart = _lineStart,
+                PendingEmptyNsDepth = _pendingEmptyNsDepth,
+                NamespaceDepths = MaterializeNamespaceDepths(),
+                NamespacePrefixes = MaterializeNamespacePrefixes(),
+                NamespaceUris = MaterializeNamespaceUris(),
                 SeenRoot = _seenRoot,
                 TokenType = _tokenType,
                 Version = _version,
+                XmlDeclarationAllowed = _xmlDeclarationAllowed,
             };
         }
 
@@ -153,7 +217,12 @@ namespace CloudNimble.Text.Xml
             escaped = false;
             decodedLength = length;
             var slice = _span.Slice(start, length);
-            if (slice.IndexOf((byte)'&') < 0 && slice.IndexOf((byte)'\t') < 0 && slice.IndexOf((byte)'\n') < 0 && slice.IndexOf((byte)'\r') < 0)
+            var xml11Eol = _version is XmlVersion.Version11 && ContainsXml11LineEnding(slice);
+            if (slice.IndexOf((byte)'&') < 0
+                && slice.IndexOf((byte)'\t') < 0
+                && slice.IndexOf((byte)'\n') < 0
+                && slice.IndexOf((byte)'\r') < 0
+                && !xml11Eol)
             {
                 return null;
             }
@@ -194,6 +263,31 @@ namespace CloudNimble.Text.Xml
                     }
 
                     i++;
+                    continue;
+                }
+
+                if (_version is XmlVersion.Version11
+                    && _span[i] is 0xC2
+                    && i + 1 < start + length
+                    && _span[i + 1] is 0x85)
+                {
+                    destination[written] = (byte)' ';
+                    written++;
+                    escaped = true;
+                    i += 2;
+                    continue;
+                }
+
+                if (_version is XmlVersion.Version11
+                    && _span[i] is 0xE2
+                    && i + 2 < start + length
+                    && _span[i + 1] is 0x80
+                    && _span[i + 2] is 0xA8)
+                {
+                    destination[written] = (byte)' ';
+                    written++;
+                    escaped = true;
+                    i += 3;
                     continue;
                 }
 
@@ -345,7 +439,8 @@ namespace CloudNimble.Text.Xml
         internal void DecodeValueSpan(int start, int length)
         {
             var slice = _span.Slice(start, length);
-            if (slice.IndexOf((byte)'&') < 0)
+            var needsEol = slice.IndexOf((byte)'\r') >= 0 || (_version is XmlVersion.Version11 && ContainsXml11LineEnding(slice));
+            if (slice.IndexOf((byte)'&') < 0 && !needsEol)
             {
                 _valueIsEscaped = false;
                 return;
@@ -374,6 +469,35 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
+                if (slice[i] is (byte)'\r')
+                {
+                    _decodedValue![written] = (byte)'\n';
+                    written++;
+                    i++;
+                    if (i < slice.Length && slice[i] is (byte)'\n')
+                    {
+                        i++;
+                    }
+
+                    continue;
+                }
+
+                if (_version is XmlVersion.Version11 && slice[i] is 0xC2 && i + 1 < slice.Length && slice[i + 1] is 0x85)
+                {
+                    _decodedValue![written] = (byte)'\n';
+                    written++;
+                    i += 2;
+                    continue;
+                }
+
+                if (_version is XmlVersion.Version11 && slice[i] is 0xE2 && i + 2 < slice.Length && slice[i + 1] is 0x80 && slice[i + 2] is 0xA8)
+                {
+                    _decodedValue![written] = (byte)'\n';
+                    written++;
+                    i += 3;
+                    continue;
+                }
+
                 _decodedValue![written] = slice[i];
                 written++;
                 i++;
@@ -381,6 +505,29 @@ namespace CloudNimble.Text.Xml
 
             _decodedLength = written;
             _valueIsEscaped = true;
+        }
+
+        /// <summary>
+        /// Returns true if <paramref name="slice"/> contains a UTF-8 NEL or LS.
+        /// </summary>
+        /// <param name="slice">The text bytes.</param>
+        /// <returns><see langword="true"/> if an XML 1.1 extra line ending is present.</returns>
+        internal static bool ContainsXml11LineEnding(ReadOnlySpan<byte> slice)
+        {
+            for (var i = 0; i < slice.Length; i++)
+            {
+                if (slice[i] is 0xC2 && i + 1 < slice.Length && slice[i + 1] is 0x85)
+                {
+                    return true;
+                }
+
+                if (slice[i] is 0xE2 && i + 2 < slice.Length && slice[i + 1] is 0x80 && slice[i + 2] is 0xA8)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -554,10 +701,32 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException"><see cref="IsFinalBlock"/> is true, so the document ended inside a token.</exception>
         internal bool NeedMore()
         {
+            return NeedMore(rewindToTokenStart: true);
+        }
+
+        /// <summary>
+        /// Marks the current token incomplete, optionally rewinding to the token start so the next buffer can reparse it.
+        /// </summary>
+        /// <param name="rewindToTokenStart">True when the current token is incomplete and must be reread from its first byte.</param>
+        /// <returns><see langword="false"/> when more data may still arrive.</returns>
+        /// <exception cref="XmlException"><see cref="IsFinalBlock"/> is true, so the document ended inside a token.</exception>
+        internal bool NeedMore(bool rewindToTokenStart)
+        {
             _incomplete = true;
             if (_isFinalBlock)
             {
                 throw Error("Unexpected end of XML.");
+            }
+
+            if (rewindToTokenStart)
+            {
+                var offset = (int)(_tokenStartIndex - _documentBytesConsumedBase);
+                if (offset >= 0 && offset <= _pos)
+                {
+                    _pos = offset;
+                    _lineNumber = _tokenLineNumber;
+                    _lineStart = _tokenLineStart;
+                }
             }
 
             return false;
@@ -650,10 +819,9 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException">The attribute is malformed, duplicated, or exceeds <see cref="XmlReaderOptions.MaxAttributeCount"/>.</exception>
         internal bool ReadAttribute()
         {
-            var maxAttr = XmlLimits.Resolve(_options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
-            if (_attributeCount >= maxAttr)
+            if (_attributeCount >= _maxAttributes)
             {
-                throw Error($"{nameof(XmlReaderOptions.MaxAttributeCount)} exceeded ({maxAttr}).");
+                throw Error($"{nameof(XmlReaderOptions.MaxAttributeCount)} exceeded ({_maxAttributes}).");
             }
 
             var nameStart = _pos;
@@ -665,19 +833,6 @@ namespace CloudNimble.Text.Xml
                 }
 
                 throw Error("Invalid attribute name.");
-            }
-
-            var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
-            var local = _span.Slice(nameStart + localAdj, nameLength - localAdj);
-            for (var i = 0; i < _attributeCount; i++)
-            {
-                var prev = i < 8 ? _attributesInline[i] : _attributes![i];
-                var prevAdj = prev.PrefixLength > 0 ? prev.PrefixLength + 1 : 0;
-                var prevLocal = _span.Slice(prev.NameStart + prevAdj, prev.NameLength - prevAdj);
-                if (local.SequenceEqual(prevLocal))
-                {
-                    throw Error("Duplicate attribute.");
-                }
             }
 
             SkipWhitespaceBytes();
@@ -704,11 +859,36 @@ namespace CloudNimble.Text.Xml
                 throw Error("Expected attribute quote.");
             }
 
+            if (nameLength >= 5
+                && (prefixLength == 5 || (prefixLength == 0 && nameLength == 5))
+                && _span.Slice(nameStart, 5).SequenceEqual("xmlns"u8))
+            {
+                _hasNamespaceAttribute = true;
+            }
+
             _pos++;
             var valueStart = _pos;
+            var stops = quote is (byte)'"' ? XmlChars.AttrStopsDouble : XmlChars.AttrStopsSingle;
             Span<byte> entityScratch = stackalloc byte[8];
             while (_pos < _span.Length && _span[_pos] != quote)
             {
+                var rest = _span[_pos..];
+                var n = rest.IndexOfAny(stops);
+                if (n < 0)
+                {
+                    return NeedMore();
+                }
+
+                if (n > 0)
+                {
+                    _ = AdvanceAsciiTextRun(n);
+                }
+
+                if (_pos >= _span.Length || _span[_pos] == quote)
+                {
+                    break;
+                }
+
                 if (_span[_pos] is (byte)'<')
                 {
                     throw Error("'<' is not allowed in attribute values.");
@@ -787,10 +967,9 @@ namespace CloudNimble.Text.Xml
                     _valueStart = start;
                     _valueLength = _pos - start;
                     _pos += 3;
-                    var maxText = XmlLimits.Resolve(_options.MaxTextByteCount, XmlLimits.DefaultMaxTextByteCount);
-                    if (_valueLength > maxText)
+                    if (_valueLength > _maxTextBytes)
                     {
-                        throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({maxText}).");
+                        throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
                     }
 
                     _tokenType = XmlTokenType.CData;
@@ -829,10 +1008,9 @@ namespace CloudNimble.Text.Xml
                     _valueStart = start;
                     _valueLength = _pos - start;
                     _pos += 3;
-                    var maxComment = XmlLimits.Resolve(_options.MaxCommentByteCount, XmlLimits.DefaultMaxCommentByteCount);
-                    if (_valueLength > maxComment)
+                    if (_valueLength > _maxCommentBytes)
                     {
-                        throw Error($"{nameof(XmlReaderOptions.MaxCommentByteCount)} exceeded ({maxComment}).");
+                        throw Error($"{nameof(XmlReaderOptions.MaxCommentByteCount)} exceeded ({_maxCommentBytes}).");
                     }
 
                     _tokenType = XmlTokenType.Comment;
@@ -846,6 +1024,90 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Reads markup inside an element: child tags, text, comments, and PIs.
+        /// </summary>
+        /// <returns><see langword="true"/> if a token was produced; <see langword="false"/> if more data is required.</returns>
+        internal bool ReadElementContent()
+        {
+            while (true)
+            {
+                if (_pos >= _span.Length)
+                {
+                    if (!_isFinalBlock)
+                    {
+                        return NeedMore(rewindToTokenStart: false);
+                    }
+
+                    throw Error("Unexpected end of XML.");
+                }
+
+                _tokenStartIndex = _documentBytesConsumedBase + _pos;
+                _tokenLineNumber = _lineNumber;
+                _tokenLineStart = _lineStart;
+                if (_span[_pos] is not (byte)'<')
+                {
+                    if (ReadText())
+                    {
+                        return true;
+                    }
+
+                    if (_incomplete)
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if (_pos + 1 >= _span.Length)
+                {
+                    return NeedMore();
+                }
+
+                var next = _span[_pos + 1];
+                if (next is (byte)'/')
+                {
+                    return ReadEndElement();
+                }
+
+                if (next is (byte)'!')
+                {
+                    if (!TryReadMarkupDeclaration())
+                    {
+                        return false;
+                    }
+
+                    if (_tokenType == XmlTokenType.Comment)
+                    {
+                        if (_options.CommentHandling is XmlCommentHandling.Skip)
+                        {
+                            continue;
+                        }
+
+                        if (_options.CommentHandling is XmlCommentHandling.Disallow)
+                        {
+                            throw Error("Comments are not allowed.");
+                        }
+                    }
+
+                    return true;
+                }
+
+                if (next is (byte)'?')
+                {
+                    if (!ReadPiOrDeclaration())
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                return ReadStartElement();
+            }
+        }
+
+        /// <summary>
         /// Reads an end tag starting at <c>&lt;/</c>.
         /// </summary>
         /// <returns><see langword="true"/> if the tag was completed; <see langword="false"/> if more data is required.</returns>
@@ -853,15 +1115,21 @@ namespace CloudNimble.Text.Xml
         internal bool ReadEndElement()
         {
             _pos += 2;
-            var nameStart = _pos;
-            if (!ReadName(out var prefixLength, out var nameLength))
+            int nameStart;
+            int nameLength;
+            int prefixLength;
+            if (!(_elementCount > 0 && TryMatchEndName(out nameStart, out nameLength, out prefixLength)))
             {
-                if (_incomplete)
+                nameStart = _pos;
+                if (!ReadName(out prefixLength, out nameLength))
                 {
-                    return false;
-                }
+                    if (_incomplete)
+                    {
+                        return false;
+                    }
 
-                throw Error("Invalid end tag.");
+                    throw Error("Invalid end tag.");
+                }
             }
 
             SkipWhitespaceBytes();
@@ -878,11 +1146,17 @@ namespace CloudNimble.Text.Xml
             _pos++;
             var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
             var local = _span.Slice(nameStart + localAdj, nameLength - localAdj);
-            if (_elementCount == 0 || !ElementLocalName(_elementCount - 1).SequenceEqual(local))
+            var prefix = prefixLength > 0 ? _span.Slice(nameStart, prefixLength) : [];
+            var endNs = ResolveElementNamespace(prefix);
+            if (_elementCount == 0
+                || !ElementLocalName(_elementCount - 1).SequenceEqual(local)
+                || !ElementNamespace(_elementCount - 1).SequenceEqual(endNs))
             {
                 throw Error("End tag does not match start tag.");
             }
 
+            SetCurrentNamespace(endNs);
+            PopNamespaceScope(_depth);
             _elementCount--;
             _depth--;
             _nameStart = nameStart;
@@ -910,16 +1184,40 @@ namespace CloudNimble.Text.Xml
                 return NeedMore();
             }
 
-            var (cp, width) = DecodeRune(_pos);
-            if (!XmlChars.IsNameStartChar(cp, _version))
+            var b = _span[_pos];
+            if (b < 0x80)
             {
-                return false;
+                if (!XmlChars.IsAsciiNameStart(b))
+                {
+                    return false;
+                }
+
+                _pos++;
+            }
+            else
+            {
+                var (cp, width) = DecodeRune(_pos);
+                if (!XmlChars.IsNameStartChar(cp, _version))
+                {
+                    return false;
+                }
+
+                _pos += width;
             }
 
-            _pos += width;
             while (_pos < _span.Length)
             {
-                if (_span[_pos] is (byte)':')
+                var rest = _span[_pos..];
+                var n = rest.IndexOfAnyExcept(XmlChars.AsciiNcNameChars);
+                if (n < 0)
+                {
+                    _pos = _span.Length;
+                    break;
+                }
+
+                _pos += n;
+                b = _span[_pos];
+                if (b is (byte)':')
                 {
                     if (prefixLength > 0)
                     {
@@ -933,7 +1231,24 @@ namespace CloudNimble.Text.Xml
                         return NeedMore();
                     }
 
-                    (cp, width) = DecodeRune(_pos);
+                    b = _span[_pos];
+                    if (b < 0x80)
+                    {
+                        if (b is (byte)':')
+                        {
+                            throw Error("Multiple colons in name.");
+                        }
+
+                        if (!XmlChars.IsAsciiNameStart(b))
+                        {
+                            throw Error("Invalid name.");
+                        }
+
+                        _pos++;
+                        continue;
+                    }
+
+                    var (cp, width) = DecodeRune(_pos);
                     if (!XmlChars.IsNameStartChar(cp, _version))
                     {
                         throw Error("Invalid name.");
@@ -943,20 +1258,24 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
-                (cp, width) = DecodeRune(_pos);
-                if (!XmlChars.IsNameChar(cp, _version))
+                if (b < 0x80)
                 {
                     break;
                 }
 
-                _pos += width;
+                var (cp2, width2) = DecodeRune(_pos);
+                if (!XmlChars.IsNameChar(cp2, _version))
+                {
+                    break;
+                }
+
+                _pos += width2;
             }
 
             nameLength = _pos - start;
-            var maxName = XmlLimits.Resolve(_options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
-            if (nameLength > maxName)
+            if (nameLength > _maxNameBytes)
             {
-                throw Error($"{nameof(XmlReaderOptions.MaxNameByteCount)} exceeded ({maxName}).");
+                throw Error($"{nameof(XmlReaderOptions.MaxNameByteCount)} exceeded ({_maxNameBytes}).");
             }
 
             return nameLength > 0;
@@ -1009,9 +1328,11 @@ namespace CloudNimble.Text.Xml
                         _nameStart = targetStart;
                         _nameLength = targetLength;
                         _prefixLength = 0;
+                        _xmlDeclarationAllowed = false;
                         return true;
                     }
 
+                    _xmlDeclarationAllowed = false;
                     _tokenType = XmlTokenType.ProcessingInstruction;
                     _nameStart = targetStart;
                     _nameLength = targetLength;
@@ -1052,6 +1373,7 @@ namespace CloudNimble.Text.Xml
             _nameLength = nameLength;
             _prefixLength = prefixLength;
             _attributeCount = 0;
+            _hasNamespaceAttribute = false;
             _isEmptyElement = false;
 
             while (true)
@@ -1097,11 +1419,13 @@ namespace CloudNimble.Text.Xml
                 throw Error("Multiple root elements are not allowed.");
             }
 
-            var maxDepth = XmlLimits.Resolve(_options.MaxDepth, XmlLimits.DefaultMaxDepth);
-            if (_depth + 1 > maxDepth)
+            if (_depth + 1 > _maxDepth)
             {
-                throw Error($"{nameof(XmlReaderOptions.MaxDepth)} exceeded ({maxDepth}).");
+                throw Error($"{nameof(XmlReaderOptions.MaxDepth)} exceeded ({_maxDepth}).");
             }
+
+            ApplyNamespaces(_depth + 1);
+            CheckDuplicateNamespacedAttributes();
 
             if (!_isEmptyElement)
             {
@@ -1121,8 +1445,13 @@ namespace CloudNimble.Text.Xml
                 _elementCount++;
                 _depth++;
             }
+            else if (_hasNamespaceAttribute)
+            {
+                _pendingEmptyNsDepth = _depth + 1;
+            }
 
             _seenRoot = true;
+            _xmlDeclarationAllowed = false;
             _tokenType = XmlTokenType.StartElement;
             return true;
         }
@@ -1136,9 +1465,48 @@ namespace CloudNimble.Text.Xml
         {
             var start = _pos;
             var hasNonWs = false;
+            var stops = _version is XmlVersion.Version11 ? XmlChars.TextStops11 : XmlChars.TextStops10;
             Span<byte> entityScratch = stackalloc byte[8];
             while (_pos < _span.Length && _span[_pos] is not (byte)'<')
             {
+                var rest = _span[_pos..];
+                var n = rest.IndexOfAny(stops);
+                if (n < 0)
+                {
+                    if (!_isFinalBlock)
+                    {
+                        return NeedMore();
+                    }
+
+                    n = rest.Length;
+                    if (n > 0)
+                    {
+                        hasNonWs |= AdvanceAsciiTextRun(n);
+                    }
+
+                    while (_pos < _span.Length)
+                    {
+                        if (!XmlChars.IsWhiteSpace(_span[_pos]))
+                        {
+                            hasNonWs = true;
+                        }
+
+                        AdvanceChar();
+                    }
+
+                    break;
+                }
+
+                if (n > 0)
+                {
+                    hasNonWs |= AdvanceAsciiTextRun(n);
+                }
+
+                if (_pos >= _span.Length || _span[_pos] is (byte)'<')
+                {
+                    break;
+                }
+
                 if (_span[_pos] is (byte)'&')
                 {
                     hasNonWs = true;
@@ -1158,12 +1526,16 @@ namespace CloudNimble.Text.Xml
                 AdvanceChar();
             }
 
+            if (_pos >= _span.Length && !_isFinalBlock)
+            {
+                return NeedMore();
+            }
+
             _valueStart = start;
             _valueLength = _pos - start;
-            var maxText = XmlLimits.Resolve(_options.MaxTextByteCount, XmlLimits.DefaultMaxTextByteCount);
-            if (_valueLength > maxText)
+            if (_valueLength > _maxTextBytes)
             {
-                throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({maxText}).");
+                throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
             }
 
             DecodeValueSpan(start, _valueLength);
@@ -1227,6 +1599,78 @@ namespace CloudNimble.Text.Xml
             }
 
             return span;
+        }
+
+        /// <summary>
+        /// Matches an end tag against the current element's local name without a full name scan.
+        /// </summary>
+        /// <param name="nameStart">When this method returns true, the byte offset of the qualified name.</param>
+        /// <param name="nameLength">When this method returns true, the qualified-name byte length.</param>
+        /// <param name="prefixLength">When this method returns true, the prefix byte length, or 0.</param>
+        /// <returns><see langword="true"/> if the buffer holds that local name followed by a name terminator.</returns>
+        /// <remarks>
+        /// Handles <c>&lt;/local&gt;</c> and <c>&lt;/prefix:local&gt;</c>. Does not advance <c>_pos</c> on failure.
+        /// </remarks>
+        internal bool TryMatchEndName(out int nameStart, out int nameLength, out int prefixLength)
+        {
+            nameStart = _pos;
+            nameLength = 0;
+            prefixLength = 0;
+            if (_elementCount == 0)
+            {
+                return false;
+            }
+
+            var expected = ElementLocalName(_elementCount - 1);
+            var localStart = _pos;
+            var rest = _span[_pos..];
+            var stop = rest.IndexOfAny(XmlChars.EndTagNameStops);
+            if (stop > 0 && stop < rest.Length && rest[stop] is (byte)':' && stop + 1 < rest.Length)
+            {
+                var afterColon = rest[stop + 1];
+                if (afterColon < 0x80 && XmlChars.IsAsciiNameStart(afterColon) && afterColon is not (byte)':')
+                {
+                    localStart = _pos + stop + 1;
+                    prefixLength = stop;
+                }
+            }
+
+            if (localStart + expected.Length > _span.Length)
+            {
+                return false;
+            }
+
+            if (!_span.Slice(localStart, expected.Length).SequenceEqual(expected))
+            {
+                return false;
+            }
+
+            var after = localStart + expected.Length;
+            if (after >= _span.Length)
+            {
+                return false;
+            }
+
+            var n = _span[after];
+            if (n >= 0x80 || XmlChars.IsAsciiNcNameChar(n) || n is (byte)':')
+            {
+                return false;
+            }
+
+            nameLength = after - nameStart;
+            _pos = after;
+            return true;
+        }
+
+        /// <summary>
+        /// Matches an unprefixed end tag against the current element's local name without a full name scan.
+        /// </summary>
+        /// <param name="nameStart">When this method returns true, the byte offset of the local name.</param>
+        /// <param name="nameLength">When this method returns true, the local-name byte length.</param>
+        /// <returns><see langword="true"/> if the buffer holds that local name followed by a name terminator.</returns>
+        internal bool TryMatchUnprefixedEndName(out int nameStart, out int nameLength)
+        {
+            return TryMatchEndName(out nameStart, out nameLength, out _);
         }
 
         /// <summary>

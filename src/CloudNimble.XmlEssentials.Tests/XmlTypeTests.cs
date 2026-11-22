@@ -56,6 +56,32 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlChars.IsWhiteSpace((byte)'\n').Should().BeTrue();
             XmlChars.IsWhiteSpace((byte)'\r').Should().BeTrue();
             XmlChars.IsWhiteSpace((byte)'a').Should().BeFalse();
+            XmlChars.IsAsciiNameStart((byte)'A').Should().BeTrue();
+            XmlChars.IsAsciiNameStart((byte)'_').Should().BeTrue();
+            XmlChars.IsAsciiNameStart((byte)':').Should().BeTrue();
+            XmlChars.IsAsciiNameStart((byte)'1').Should().BeFalse();
+            XmlChars.IsAsciiNcNameChar((byte)'1').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'-').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)':').Should().BeFalse();
+            XmlChars.AsciiNcNameChars.Contains((byte)'Z').Should().BeTrue();
+            XmlChars.AsciiTextChars.Contains((byte)'W').Should().BeTrue();
+            XmlChars.AsciiTextChars.Contains((byte)'<').Should().BeFalse();
+            XmlChars.EndTagNameStops.Contains((byte)':').Should().BeTrue();
+            XmlChars.EndTagNameStops.Contains((byte)'>').Should().BeTrue();
+            XmlChars.TextStops10.Contains((byte)'<').Should().BeTrue();
+            XmlChars.TextStops11.Contains((byte)0xC2).Should().BeTrue();
+            XmlChars.AttrStopsDouble.Contains((byte)'"').Should().BeTrue();
+            XmlChars.AttrStopsSingle.Contains((byte)'\'').Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void XmlUtf8_TryInternKnown()
+        {
+            XmlUtf8.TryInternKnown([]).Should().BeSameAs(XmlUtf8.Empty);
+            XmlUtf8.TryInternKnown(XmlUtf8.Xml).Should().BeSameAs(XmlUtf8.Xml);
+            XmlUtf8.TryInternKnown(XmlUtf8.Xmlns).Should().BeSameAs(XmlUtf8.Xmlns);
+            XmlUtf8.TryInternKnown(XmlUtf8.Xsi).Should().BeSameAs(XmlUtf8.Xsi);
+            XmlUtf8.TryInternKnown("urn:nope"u8).Should().BeNull();
         }
 
         [TestMethod]

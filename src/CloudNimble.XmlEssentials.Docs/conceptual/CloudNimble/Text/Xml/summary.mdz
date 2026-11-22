@@ -2,4 +2,4 @@
 
 `CloudNimble.Text.Xml` is the UTF-8 XML pipeline for XmlEssentials. It is shaped like `System.Text.Json`: a `ref struct` reader, later a writer, DOM, and static serializer. There is no `System.Xml` dependency.
 
-This release ships the tokenizer: `Utf8XmlReader`, options, tokens, names, and `XmlException`. Namespace binding, resumable `IsFinalBlock` splits, the writer, DOM, and `XmlSerializer` are not in this surface yet.
+This release ships `Utf8XmlReader` with namespace binding and resumable `IsFinalBlock` splits, plus options, tokens, names, and `XmlException`. The writer, DOM, and `XmlSerializer` are not in this surface yet.

@@ -6,7 +6,7 @@ Empty elements are one token: `StartElement` with `IsEmptyElement` true. There i
 
 `Read` returns false at the end of a complete document, or when `isFinalBlock` is false and the current token is truncated. A truncated token on a final buffer throws `XmlException`.
 
-`NamespaceUriSpan` is always empty in this release. `PrefixSpan` reports the prefix text. Duplicate attributes are detected by local name only.
+`xmlns` attributes apply to the element that declares them. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`. `xmlns:p=""` is an error in XML 1.0 and unbinds `p` in XML 1.1.
 
 Text and attribute values are UTF-8 slices into the source buffer when they contain no entities. `GetString` allocates. `TryGet*` and `ValueSpan` do not, except when a node actually contains entities (those are expanded into a buffer on the reader).
 

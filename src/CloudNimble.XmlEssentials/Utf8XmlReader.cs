@@ -28,7 +28,8 @@ namespace CloudNimble.Text.Xml
     /// <see cref="IsEmptyElement"/> true. The reader does not synthesize an
     /// <see cref="XmlTokenType.EndElement"/> token. Callers must check
     /// <see cref="IsEmptyElement"/> before expecting a matching end tag.
-    /// Namespace resolution is not applied in this release; <see cref="NamespaceUriSpan"/> is empty.
+    /// xmlns attributes bind before the element name is resolved. Unprefixed attributes
+    /// are in no namespace; unprefixed elements use the default xmlns.
     /// The XML declaration, when present, must be the first token in the document (after an optional BOM).
     /// </remarks>
     public ref partial struct Utf8XmlReader
@@ -40,34 +41,57 @@ namespace CloudNimble.Text.Xml
         private int _attributeIndex;
         private AttributeRecord[]? _attributes;
         private AttributeRecord8 _attributesInline;
+        private int _currentNsLength;
+        private byte[] _currentNsOwned;
+        private int _currentNsStart;
         private int _decodedLength;
         private byte[]? _decodedValue;
         private int _depth;
         private long _documentBytesConsumedBase;
         private int _elementCount;
+        private int[]? _elementNsLengths;
+        private Int8Buffer _elementNsLengthsInline;
+        private int[]? _elementNsStarts;
+        private Int8Buffer _elementNsStartsInline;
+        private byte[][]? _elementNsUris;
         private int[]? _elementNameLengths;
         private Int8Buffer _elementNameLengthsInline;
         private int[]? _elementNameStarts;
         private Int8Buffer _elementNameStartsInline;
         private bool _finished;
+        private bool _hasNamespaceAttribute;
         private readonly bool _hasSequence;
         private bool _inAttribute;
         private bool _incomplete;
+        private int _internedUriCount;
+        private byte[][]? _internedUris;
         private bool _isEmptyElement;
         private readonly bool _isFinalBlock;
         private long _lineNumber;
         private long _lineStart;
+        private readonly int _maxAttributes;
+        private readonly int _maxCommentBytes;
+        private readonly int _maxDepth;
+        private readonly int _maxNameBytes;
+        private readonly int _maxTextBytes;
         private int _nameLength;
         private int _nameStart;
+        private NamespaceBinding[]? _nsBindings;
+        private NamespaceBinding8 _nsBindingsInline;
+        private int _nsCount;
         private XmlReaderOptions _options;
+        private int _pendingEmptyNsDepth;
         private int _pos;
         private int _prefixLength;
         private byte[][]? _resumeLocalNames;
         private int _resumeNameCount;
+        private byte[][]? _resumeNsUris;
         private bool _seenRoot;
         private ReadOnlySequence<byte> _sequence;
         private byte[]? _sequenceCopy;
         private ReadOnlySpan<byte> _span;
+        private long _tokenLineNumber;
+        private long _tokenLineStart;
         private long _tokenStartIndex;
         private XmlTokenType _tokenType;
         private bool _valueIsEscaped;
@@ -147,9 +171,25 @@ namespace CloudNimble.Text.Xml
 
         /// <summary>
         /// Gets the UTF-8 namespace URI of the current name.
-        /// Empty until namespace support is enabled.
+        /// Unprefixed attributes are in no namespace. Unprefixed elements use the default xmlns.
         /// </summary>
-        public readonly ReadOnlySpan<byte> NamespaceUriSpan => ReadOnlySpan<byte>.Empty;
+        public readonly ReadOnlySpan<byte> NamespaceUriSpan
+        {
+            get
+            {
+                if (_inAttribute)
+                {
+                    return ResolveAttributeNamespace(CurrentAttribute());
+                }
+
+                if (_tokenType is XmlTokenType.StartElement or XmlTokenType.EndElement)
+                {
+                    return CurrentElementNamespace();
+                }
+
+                return [];
+            }
+        }
 
         /// <summary>
         /// Gets the position in a sequence payload, if any.
@@ -323,34 +363,57 @@ namespace CloudNimble.Text.Xml
             _attributeIndex = -1;
             _attributes = null;
             _attributesInline = default;
+            _currentNsLength = 0;
+            _currentNsOwned = XmlUtf8.Empty;
+            _currentNsStart = -1;
             _decodedLength = 0;
             _decodedValue = null;
             _depth = 0;
             _documentBytesConsumedBase = 0;
             _elementCount = 0;
+            _elementNsLengths = null;
+            _elementNsLengthsInline = default;
+            _elementNsStarts = null;
+            _elementNsStartsInline = default;
+            _elementNsUris = null;
             _elementNameLengths = null;
             _elementNameLengthsInline = default;
             _elementNameStarts = null;
             _elementNameStartsInline = default;
             _finished = false;
+            _hasNamespaceAttribute = false;
             _hasSequence = hasSequence;
             _inAttribute = false;
             _incomplete = false;
+            _internedUriCount = 0;
+            _internedUris = null;
             _isEmptyElement = false;
             _isFinalBlock = isFinalBlock;
             _lineNumber = 1;
             _lineStart = 0;
+            _maxAttributes = XmlLimits.Resolve(state.Options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
+            _maxCommentBytes = XmlLimits.Resolve(state.Options.MaxCommentByteCount, XmlLimits.DefaultMaxCommentByteCount);
+            _maxDepth = XmlLimits.Resolve(state.Options.MaxDepth, XmlLimits.DefaultMaxDepth);
+            _maxNameBytes = XmlLimits.Resolve(state.Options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
+            _maxTextBytes = XmlLimits.Resolve(state.Options.MaxTextByteCount, XmlLimits.DefaultMaxTextByteCount);
             _nameLength = 0;
             _nameStart = 0;
+            _nsBindings = null;
+            _nsBindingsInline = default;
+            _nsCount = 0;
             _options = state.Options;
+            _pendingEmptyNsDepth = 0;
             _pos = 0;
             _prefixLength = 0;
             _resumeLocalNames = null;
             _resumeNameCount = 0;
+            _resumeNsUris = null;
             _seenRoot = false;
             _sequence = sequence;
             _sequenceCopy = sequenceCopy;
             _span = utf8Xml;
+            _tokenLineNumber = 1;
+            _tokenLineStart = 0;
             _tokenStartIndex = 0;
             _tokenType = XmlTokenType.None;
             _valueIsEscaped = false;
@@ -360,6 +423,11 @@ namespace CloudNimble.Text.Xml
             _xmlDeclarationAllowed = true;
             ApplySnapshot(state.Snapshot);
             SkipBomIfAtStart();
+            var maxDocument = _options.MaxDocumentByteCount;
+            if (maxDocument > 0 && _documentBytesConsumedBase + _span.Length > maxDocument)
+            {
+                throw Error($"{nameof(XmlReaderOptions.MaxDocumentByteCount)} exceeded ({maxDocument}).");
+            }
         }
 
         #endregion
@@ -590,12 +658,13 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns true when the current start element has <c>nil="true"</c> or <c>nil="1"</c>.
+        /// Returns true when the current start element has <c>xsi:nil="true"</c> or <c>xsi:nil="1"</c>.
         /// </summary>
         /// <returns><see langword="true"/> if the element is nil.</returns>
         /// <exception cref="XmlException">The current token is not a start element.</exception>
         /// <remarks>
-        /// Matches the local name <c>nil</c> only. Namespace URI is empty until namespace support is enabled.
+        /// The local name <c>nil</c> must be in the XML Schema instance namespace.
+        /// An unprefixed <c>nil</c> attribute is in no namespace and does not count.
         /// </remarks>
         public bool GetNil()
         {
@@ -611,7 +680,8 @@ namespace CloudNimble.Text.Xml
                 _attributeIndex = -1;
                 while (MoveToNextAttribute())
                 {
-                    if (LocalNameEquals(XmlAttributes.Nil))
+                    if (LocalNameEquals(XmlAttributes.Nil)
+                        && NamespaceUriEquals(XmlNamespaces.Xsi))
                     {
                         var s = TrimXmlWhitespace(ValueSpan);
                         return s.SequenceEqual("true"u8) || s.SequenceEqual("1"u8);
@@ -857,14 +927,23 @@ namespace CloudNimble.Text.Xml
             _inAttribute = false;
             _attributeIndex = -1;
             _isEmptyElement = false;
-            _decodedValue = null;
             _decodedLength = 0;
             _valueIsEscaped = false;
             _incomplete = false;
+            if (_pendingEmptyNsDepth > 0)
+            {
+                PopNamespaceScope(_pendingEmptyNsDepth);
+                _pendingEmptyNsDepth = 0;
+            }
 
             if (_finished)
             {
                 return false;
+            }
+
+            if (_depth > 0)
+            {
+                return ReadElementContent();
             }
 
             while (true)
@@ -880,9 +959,9 @@ namespace CloudNimble.Text.Xml
 
                 if (_pos >= _span.Length)
                 {
-                    if (_depth > 0)
+                    if (!_isFinalBlock)
                     {
-                        return NeedMore();
+                        return NeedMore(rewindToTokenStart: false);
                     }
 
                     _finished = true;
@@ -896,25 +975,11 @@ namespace CloudNimble.Text.Xml
                 }
 
                 _tokenStartIndex = _documentBytesConsumedBase + _pos;
+                _tokenLineNumber = _lineNumber;
+                _tokenLineStart = _lineStart;
                 if (_span[_pos] is not (byte)'<')
                 {
-                    if (_depth == 0)
-                    {
-                        throw Error("Unexpected content outside the root element.");
-                    }
-
-                    if (ReadText())
-                    {
-                        _xmlDeclarationAllowed = false;
-                        return true;
-                    }
-
-                    if (_incomplete)
-                    {
-                        return false;
-                    }
-
-                    continue;
+                    throw Error("Unexpected content outside the root element.");
                 }
 
                 if (_pos + 1 >= _span.Length)
@@ -925,13 +990,7 @@ namespace CloudNimble.Text.Xml
                 var next = _span[_pos + 1];
                 if (next is (byte)'/')
                 {
-                    if (!ReadEndElement())
-                    {
-                        return false;
-                    }
-
-                    _xmlDeclarationAllowed = false;
-                    return true;
+                    return ReadEndElement();
                 }
 
                 if (next is (byte)'!')

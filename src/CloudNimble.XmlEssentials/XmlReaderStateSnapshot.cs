@@ -14,6 +14,15 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
+        /// Gets the namespace URI of the current start or end element token.
+        /// </summary>
+        /// <remarks>
+        /// Stored separately from the element stack because an end tag pops its scope
+        /// before the caller inspects <see cref="Utf8XmlReader.NamespaceUriSpan"/>.
+        /// </remarks>
+        public required string CurrentNamespaceUri { get; init; }
+
+        /// <summary>
         /// Gets the element depth.
         /// </summary>
         public required int Depth { get; init; }
@@ -49,9 +58,29 @@ namespace CloudNimble.Text.Xml
         public required long LineNumber { get; init; }
 
         /// <summary>
+        /// Gets the owning element depth of each namespace binding.
+        /// </summary>
+        public required int[] NamespaceDepths { get; init; }
+
+        /// <summary>
+        /// Gets the prefix of each namespace binding. Empty is the default xmlns.
+        /// </summary>
+        public required string[] NamespacePrefixes { get; init; }
+
+        /// <summary>
+        /// Gets the URI of each namespace binding. Empty is unbound.
+        /// </summary>
+        public required string[] NamespaceUris { get; init; }
+
+        /// <summary>
         /// Gets the byte offset of the current line start.
         /// </summary>
         public required long LineStart { get; init; }
+
+        /// <summary>
+        /// Gets the namespace depth to pop after leaving an empty element, or 0.
+        /// </summary>
+        public required int PendingEmptyNsDepth { get; init; }
 
         /// <summary>
         /// Gets whether a root element has been seen.
@@ -67,6 +96,15 @@ namespace CloudNimble.Text.Xml
         /// Gets the XML version in force.
         /// </summary>
         public required XmlVersion Version { get; init; }
+
+        /// <summary>
+        /// Gets whether an XML declaration is still legal at the next token.
+        /// </summary>
+        /// <remarks>
+        /// True only before the first token is completed. An incomplete declaration on a
+        /// non-final buffer must keep this true so resume can finish <c>&lt;?xml ...?&gt;</c>.
+        /// </remarks>
+        public required bool XmlDeclarationAllowed { get; init; }
 
         #endregion
 

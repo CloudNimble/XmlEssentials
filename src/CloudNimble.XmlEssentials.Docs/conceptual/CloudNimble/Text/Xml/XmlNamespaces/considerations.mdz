@@ -1,5 +1,5 @@
 <!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Considerations
 
-Document considerations for `XmlNamespaces` here.
+The `xml` and `xmlns` prefixes are always bound. Rebinding `xml` to a different URI, or declaring `xmlns`, is an error. `xmlns:p=""` is illegal in XML 1.0 and unbinds `p` in XML 1.1.
 

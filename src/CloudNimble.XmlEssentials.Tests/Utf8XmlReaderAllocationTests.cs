@@ -49,6 +49,28 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Drain_WithDefaultXmlns_AllocatesNothing()
+        {
+            var xml = "<a xmlns=\"urn:a\"><b/><c>x</c></a>"u8.ToArray();
+            Drain(xml);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            Drain(xml);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void Drain_WithPrefixedXmlns_AllocatesNothing()
+        {
+            var xml = "<p:a xmlns:p=\"urn:catalog\"><p:b>x</p:b></p:a>"u8.ToArray();
+            Drain(xml);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            Drain(xml);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(0);
+        }
+
+        [TestMethod]
         public void GetInt32_DoesNotAllocate()
         {
             var xml = "<n>42</n>"u8.ToArray();

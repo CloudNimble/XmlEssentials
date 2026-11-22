@@ -34,8 +34,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<e>&#65;&#x42;</e>", DisplayName = "decimal and hex character references")]
         [DataRow("<e>&#x4a;</e>", DisplayName = "hex mixed case")]
         [DataRow("<e a=\"x\ty\"/>", DisplayName = "tab in attribute")]
-        [DataRow("<p:e/>", DisplayName = "prefixed empty element")]
-        [DataRow("<p:e></p:e>", DisplayName = "prefixed start-end matching prefix")]
+        [DataRow("<p:e xmlns:p=\"urn:x\"/>", DisplayName = "prefixed empty element")]
+        [DataRow("<p:e xmlns:p=\"urn:x\"></p:e>", DisplayName = "prefixed start-end matching prefix")]
         [DataRow("<?xml version=\"1.0\"?><e/>", DisplayName = "declaration version 1.0")]
         [DataRow("<?xml version=\"1.1\"?><e/>", DisplayName = "declaration version 1.1")]
         [DataRow("<?xml version=\"1.0\" encoding=\"utf-8\"?><e/>", DisplayName = "utf-8 encoding")]
@@ -140,7 +140,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_WellFormed_Xml11NelInText()
         {
-            var xml = "<?xml version=\"1.1\"?><e>a"u8.ToArray().Concat(new byte[] { 0x85 }).Concat("b</e>"u8.ToArray()).ToArray();
+            var xml = "<?xml version=\"1.1\"?><e>a"u8.ToArray().Concat(new byte[] { 0xC2, 0x85 }).Concat("b</e>"u8.ToArray()).ToArray();
             XmlReaderHarness.MustRead(xml);
         }
 

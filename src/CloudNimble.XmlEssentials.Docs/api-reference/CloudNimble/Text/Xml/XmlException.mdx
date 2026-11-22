@@ -3,7 +3,7 @@ title: XmlException
 description: "Thrown when XML is not well-formed or a DoS limit is exceeded."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlException', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml', 'class', 'System.Exception', 'System.Runtime.Serialization.ISerializable']
+keywords: ['XmlException', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml', 'class', 'System.Exception', '# Related APIs', '- `Utf8XmlReader`', '- `XmlReaderOptions`', '- `System.Exception`']
 ---
 
 ## Definition
@@ -24,10 +24,75 @@ CloudNimble.Text.Xml.XmlException
 
 Thrown when XML is not well-formed or a DoS limit is exceeded.
 
+## Usage
+
+# Usage
+
+`Utf8XmlReader` throws `XmlException` for well-formedness errors, illegal characters, DTD markup, and exceeded DoS limits. Catch it around the `Read` loop.
+
+```csharp
+try
+{
+    var reader = new Utf8XmlReader(utf8);
+    while (reader.Read()) { }
+}
+catch (XmlException ex)
+{
+    Console.WriteLine($"{ex.LineNumber}:{ex.LinePosition} {ex.Message}");
+}
+```
+
+This type is not `System.Xml.XmlException` and does not wrap it.
+
 ## Remarks
 
 This type is not `System.Xml.XmlException` and does not wrap it. Location properties
 are optional; they are set when the reader knows the byte offset and line.
+
+## Examples
+
+# Examples
+
+Construct with location when you wrap a parse at a higher layer:
+
+```csharp
+throw new XmlException(
+    "Multiple root elements are not allowed.",
+    bytePosition: 12,
+    lineNumber: 1,
+    linePosition: 13,
+    path: null);
+```
+
+## Best Practices
+
+# Best Practices
+
+Log `LineNumber` and `LinePosition` together. Offset-only diagnostics are hard to map to pretty-printed XML.
+
+Do not catch `System.Xml.XmlException` looking for XmlEssentials failures. Catch `CloudNimble.Text.Xml.XmlException`.
+
+Treat every `XmlException` from the reader as fatal for that document. The reader is not positioned for recovery.
+
+## Patterns
+
+# Patterns
+
+**Caller loop.** Try/catch outside `while (Read())`. Inner handling of individual tokens should not swallow `XmlException`.
+
+**Limits.** Messages for cap failures include the option name (`MaxDepth exceeded (64).`). Branch on `Message` only in tests; production code should treat all of them as invalid input.
+
+## Considerations
+
+# Considerations
+
+`LineNumber` is 1-based after end-of-line tracking. `LinePosition` is 1-based UTF-8 bytes in the current line, not xmlconf columns.
+
+`BytePosition` is the 0-based offset in the UTF-8 document.
+
+`Path` is reserved (`/Person/@id` style) and is not populated by the reader in this release.
+
+Incomplete tokens on a final buffer throw. On a non-final buffer, `Read` returns false instead.
 
 ## Constructors
 
@@ -517,5 +582,8 @@ protected event System.EventHandler<System.Runtime.Serialization.SafeSerializati
 
 ## Related APIs
 
-- System.Runtime.Serialization.ISerializable
+- # Related APIs
+- - `Utf8XmlReader`
+- - `XmlReaderOptions`
+- - `System.Exception`
 

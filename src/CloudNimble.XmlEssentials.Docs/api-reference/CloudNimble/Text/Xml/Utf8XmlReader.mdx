@@ -3,7 +3,7 @@ title: Utf8XmlReader
 description: "A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`."
 icon: cubes
 tag: "SEALED"
-keywords: ['Utf8XmlReader', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType']
+keywords: ['Utf8XmlReader', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `XmlReaderOptions`', '- `XmlReaderState`', '- `XmlTokenType`', '- `XmlException`']
 ---
 
 ## Definition
@@ -24,6 +24,32 @@ CloudNimble.Text.Xml.Utf8XmlReader
 
 A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`.
 
+## Usage
+
+# Usage
+
+Create the reader over a UTF-8 `ReadOnlySpan<byte>` or `ReadOnlySequence<byte>`. An optional BOM is consumed. Call `Read` until it returns false.
+
+```csharp
+var reader = new Utf8XmlReader("<root><n>42</n></root>"u8);
+while (reader.Read())
+{
+    if (reader.TokenType == XmlTokenType.StartElement
+        && reader.LocalNameEquals("n"u8))
+    {
+        reader.Read();
+        if (reader.TryGetInt32(out var n))
+        {
+            Console.WriteLine(n);
+        }
+    }
+}
+```
+
+Compare namespaces with `NamespaceUriEquals` (`u8` literals, `ReadOnlySpan<char>`, or `string`). `GetNil()` requires `xsi:nil` in the XML Schema instance namespace.
+
+Pass `new XmlReaderOptions { MaxDepth = 32 }` as the second argument when you need limits or comment/whitespace policy. Use the three-argument constructor (`utf8`, `isFinalBlock`, `state`) when feeding successive buffers; take `CurrentState` after `Read` returns false.
+
 ## Remarks
 
 Empty elements are reported as [XmlTokenType.StartElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) with
@@ -35,17 +61,84 @@ The XML declaration, when present, must be the first token in the document (afte
 
 ## Examples
 
+# Examples
+
+Empty vs start/end:
+
 ```csharp
-var xml = "<root id=\"1\">hi</root>"u8;
-var reader = new Utf8XmlReader(xml);
-while (reader.Read())
-{
-    if (reader.TokenType == XmlTokenType.Text)
-    {
-        Console.WriteLine(reader.GetString());
-    }
-}
+var empty = new Utf8XmlReader("<e/>"u8);
+empty.Read();
+// TokenType == StartElement, IsEmptyElement == true
+empty.Read(); // false
+
+var pair = new Utf8XmlReader("<e></e>"u8);
+pair.Read();  // StartElement, IsEmptyElement == false
+pair.Read();  // EndElement
 ```
+
+Attributes:
+
+```csharp
+var reader = new Utf8XmlReader("<e a=\"1\" b=\"two\"/>"u8);
+reader.Read();
+while (reader.MoveToNextAttribute())
+{
+    // LocalNameSpan / ValueSpan for this attribute
+}
+reader.MoveToElement();
+```
+
+Skip a child:
+
+```csharp
+var reader = new Utf8XmlReader("<a>**ignored**<c/></a>"u8);
+reader.Read(); // a
+reader.Read(); // b
+reader.Skip(); // consumes b and its text; next token is c or a's end
+```
+
+## Best Practices
+
+# Best Practices
+
+- Keep the payload in UTF-8 (`u8` literals, `byte[]`, `ReadOnlySequence<byte>`). Do not round-trip through `string` to parse.
+- Use `LocalNameEquals("Person"u8)` and `ValueTextEquals` instead of `GetString` plus `==`.
+- Parse scalars with `TryGetInt32`, `TryGetBoolean`, `TryGetGuid`, and friends. They read `ValueSpan` with `Utf8Parser`.
+- Construct options with `new XmlReaderOptions()`. The parameterless constructor sets `CommentHandling` to `Skip`.
+- On untrusted input, set `MaxDepth`, `MaxNameByteCount`, `MaxTextByteCount`, and `MaxAttributeCount`. Zero means the table default.
+- After `Read` returns false on a non-final buffer, take `CurrentState` and construct a new reader with the next span. Split-token resume is not complete in this release; incomplete tokens currently return false or throw on a final buffer.
+
+## Patterns
+
+# Patterns
+
+**Token loop.** `while (reader.Read())` then `switch (reader.TokenType)`. Handle `StartElement` with a check of `IsEmptyElement` before descending.
+
+**Attribute walk.** Only valid on `StartElement`. `MoveToNextAttribute` sets `TokenType` to `Attribute`. `MoveToElement` restores the start tag.
+
+**Nil.** `GetNil()` is true when the current start tag has `xsi:nil` of `true` or `1` in the XML Schema instance namespace. An unprefixed `nil` attribute does not count.
+
+**Resume.** When `Read` returns false on a non-final buffer, construct a new reader over the unconsumed remainder plus the next chunk, passing `CurrentState`. The snapshot copies element names and xmlns bindings; it does not alias the previous buffer.
+
+**Comments.** Default options skip comments. `XmlCommentHandling.Allow` reports `XmlTokenType.Comment`. `Disallow` throws.
+
+**Fragments.** `AllowMultipleRoots = true` accepts more than one top-level element, and an empty buffer.
+
+## Considerations
+
+# Considerations
+
+`Utf8XmlReader` is a `ref struct`. Do not box it, store it in a field of a class, pass it to an `async` method, or capture it in a lambda.
+
+Empty elements are one token: `StartElement` with `IsEmptyElement` true. There is no following `EndElement`.
+
+`Read` returns false at the end of a complete document, or when `isFinalBlock` is false and the current token is truncated. A truncated token on a final buffer throws `XmlException`.
+
+`xmlns` attributes apply to the element that declares them. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`. `xmlns:p=""` is an error in XML 1.0 and unbinds `p` in XML 1.1.
+
+Text and attribute values are UTF-8 slices into the source buffer when they contain no entities. `GetString` allocates. `TryGet*` and `ValueSpan` do not, except when a node actually contains entities (those are expanded into a buffer on the reader).
+
+The XML declaration must be the first token (after an optional BOM). Whitespace, comments, or a PI before `<?xml ...?>` throw.
 
 ## Constructors
 
@@ -310,7 +403,7 @@ Type: `System.ReadOnlySpan<byte>`
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUriSpan
 
 Gets the UTF-8 namespace URI of the current name.
-Empty until namespace support is enabled.
+Unprefixed attributes are in no namespace. Unprefixed elements use the default xmlns.
 
 #### Syntax
 
@@ -864,7 +957,7 @@ Type: `bool`
 
 #### Remarks
 
-Matches the local name `nil` only. Namespace URI is empty until namespace support is enabled.
+Matches `xsi:nil` in the XML Schema instance namespace.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetSByte
 
@@ -1751,4 +1844,16 @@ public readonly bool ValueTextEquals(string text)
 
 Type: `bool`
 [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+## Related APIs
+
+- # Related APIs
+- - `XmlReaderOptions`
+- - `XmlReaderState`
+- - `XmlTokenType`
+- - `XmlException`
+- - `XmlCommentHandling`
+- - `XmlWhitespaceHandling`
+- - `XmlVersion`
+- - `System.Text.Json.Utf8JsonReader`
 

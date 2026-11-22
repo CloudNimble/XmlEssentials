@@ -1,7 +1,12 @@
 <!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
-Provide examples of using `XmlNamespaces` here.
+```csharp
+var reader = new Utf8XmlReader("<e xml:lang=\"en\"/>"u8);
+reader.Read();
+reader.MoveToNextAttribute();
+reader.NamespaceUriEquals(XmlNamespaces.Xml); // true
+```
 
 ```csharp
 // Example code here
