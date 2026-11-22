@@ -1,0 +1,6 @@
+# Best Practices
+
+- Always write `new XmlReaderOptions()` when you need defaults, including when you set only `MaxDepth`.
+- Cap `MaxDepth` and `MaxNameByteCount` on untrusted input. Billion-laughs-style DTDs are already rejected; deep trees and huge names are not.
+- Leave `MaxDocumentByteCount` at 0 unless an upper layer (document parse, deserialize) will apply it.
+- Match comment and whitespace policy to the producer. SOAP and XHTML often need `CommentHandling.Skip` (the constructor default).

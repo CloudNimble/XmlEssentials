@@ -1,0 +1,6 @@
+# Related APIs
+
+- `Utf8XmlReader.TokenType`
+- `Utf8XmlReader.IsEmptyElement`
+- `XmlCommentHandling`
+- `XmlVersion`

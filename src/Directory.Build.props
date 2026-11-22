@@ -1,0 +1,105 @@
+<Project>
+
+	<PropertyGroup>
+		<IsSourceGeneratorProject Condition="$(MSBuildProjectName.EndsWith('.SourceGeneration'))">true</IsSourceGeneratorProject>
+		<IsDocumentationProject Condition="$(MSBuildProjectName.EndsWith('.Docs'))">true</IsDocumentationProject>
+		<IsBenchmarkProject Condition="$(MSBuildProjectName.EndsWith('.Performance'))">true</IsBenchmarkProject>
+		<IsTestProject Condition="$(MSBuildProjectName.Contains('.Tests'))">true</IsTestProject>
+		<IsSampleProject Condition="$(MSBuildProjectName.Contains('.Samples'))">true</IsSampleProject>
+		<IsPrimaryProject Condition="'$(IsSourceGeneratorProject)' != 'true' And '$(IsDocumentationProject)' != 'true' And '$(IsBenchmarkProject)' != 'true' And '$(IsTestProject)' != 'true' And '$(IsSampleProject)' != 'true'">true</IsPrimaryProject>
+		<IncludeReadmeFile Condition="$(IsPrimaryProject) == 'true' And Exists('$(MSBuildThisFileDirectory)..\README.md')">true</IncludeReadmeFile>
+
+		<IncludeSource>false</IncludeSource>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<PackageId>$(MSBuildProjectName.Replace('CloudNimble.', ''))</PackageId>
+		<Product>XmlEssentials</Product>
+		<Version>1.0.0</Version>
+		<PackageVersion>1.0.0</PackageVersion>
+		<Authors>CloudNimble, Inc.</Authors>
+		<Company>CloudNimble, Inc.</Company>
+		<Copyright>Copyright © 2026 CloudNimble, Inc. All rights reserved.</Copyright>
+		<NeutralLanguage>en-US</NeutralLanguage>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile Condition="$(IncludeReadmeFile) == 'true'">README.md</PackageReadmeFile>
+		<NoWarn>$(NoWarn);NU5048;NU1608;NU1510</NoWarn>
+		<MaintainerEmail>opensource@nimbleapps.cloud</MaintainerEmail>
+		<PackageProjectUrl>https://github.com/CloudNimble/XmlEssentials</PackageProjectUrl>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageTags>xml;serializer;aot;utf8;source-generator;cloudnimble;xmlessentials</PackageTags>
+		<Serviceable>true</Serviceable>
+		<RepositoryRoot>$(MSBuildThisFileDirectory)</RepositoryRoot>
+		<RepositoryUrl>https://github.com/CloudNimble/XmlEssentials.git</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<ChecksumAlgorithm>SHA256</ChecksumAlgorithm>
+		<BuildProjectReferences Condition=" '$(NoBuild)' == 'true' ">false</BuildProjectReferences>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" $(IsPrimaryProject) == 'true' ">
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<StandardTestTfms>net11.0;net10.0</StandardTestTfms>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" $(IsSampleProject) == 'true' ">
+		<GenerateProgramFile>false</GenerateProgramFile>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" $(IsTestProject) == 'true' ">
+		<NoWarn>$(NoWarn);CA1001;CA1707;CA2007;CA1801;CS1591</NoWarn>
+		<EnableMSTestRunner>true</EnableMSTestRunner>
+		<TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
+		<TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --ignore-exit-code 8</TestingPlatformCommandLineArguments>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" $(IsSourceGeneratorProject) == 'true' ">
+		<IsPackable>false</IsPackable>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" $(IsBenchmarkProject) == 'true' ">
+		<IsPackable>false</IsPackable>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(MSBuildProjectName)' == 'CloudNimble.XmlEssentials'">
+		<InternalsVisibleTo Include="CloudNimble.XmlEssentials.Tests" />
+	</ItemGroup>
+
+	<ItemGroup Condition=" $(IsTestProject) == 'true' ">
+		<PackageReference Include="coverlet.collector" Version="*" />
+		<PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="*" />
+		<PackageReference Include="FluentAssertions" Version="6.*" PrivateAssets="All" />
+		<PackageReference Include="FluentAssertions.Analyzers" Version="0.*" PrivateAssets="All" />
+		<PackageReference Include="MSTest" Version="4.*" />
+		<PackageReference Include="Breakdance.Assemblies" Version="8.*" />
+		<AssemblyAttribute Include="Microsoft.VisualStudio.TestTools.UnitTesting.Parallelize">
+			<_Parameter1>Workers = 0</_Parameter1>
+			<_Parameter1_IsLiteral>true</_Parameter1_IsLiteral>
+			<_Parameter2>Scope = Microsoft.VisualStudio.TestTools.UnitTesting.ExecutionScope.MethodLevel</_Parameter2>
+			<_Parameter2_IsLiteral>true</_Parameter2_IsLiteral>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="$(MSBuildThisFileDirectory)..\README.md" Link="README.md" Pack="true" PackagePath="\" Condition="$(IncludeReadmeFile) == 'true'" />
+		<None Include="$(MSBuildThisFileDirectory)..\LICENSE" Pack="true" PackagePath="\" Condition="$(IsPrimaryProject) == 'true'" />
+	</ItemGroup>
+
+</Project>

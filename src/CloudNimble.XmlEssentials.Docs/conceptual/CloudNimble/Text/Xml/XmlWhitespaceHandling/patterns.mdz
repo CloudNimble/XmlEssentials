@@ -1,0 +1,7 @@
+# Patterns
+
+**Documents.** Default `Insignificant` — ignore pretty-print newlines.
+
+**Mixed content.** `Significant` so a mapper can see text nodes between child elements.
+
+**Machine XML.** `None` when the contract forbids inter-element whitespace and you want a hard error.

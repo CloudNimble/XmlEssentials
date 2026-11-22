@@ -1,0 +1,59 @@
+{
+  "colors": {
+    "primary": "#419AC5",
+    "dark": "#3CD0E2",
+    "light": "#419AC5"
+  },
+  "name": "XmlEssentials",
+  "navigation": {
+    "pages": [
+      {
+        "group": "Getting Started",
+        "icon": "stars",
+        "pages": [
+          "index",
+          "why-xmlessentials",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "icon": "code",
+        "pages": [
+          {
+            "group": "CloudNimble",
+            "icon": "folder-tree",
+            "pages": [
+              {
+                "group": "Text",
+                "icon": "folder-tree",
+                "pages": [
+                  {
+                    "group": "Xml",
+                    "icon": "folder-tree",
+                    "pages": [
+                      "api-reference/CloudNimble/Text/Xml/index",
+                      "api-reference/CloudNimble/Text/Xml/Utf8XmlReader",
+                      "api-reference/CloudNimble/Text/Xml/XmlAttributes",
+                      "api-reference/CloudNimble/Text/Xml/XmlCommentHandling",
+                      "api-reference/CloudNimble/Text/Xml/XmlException",
+                      "api-reference/CloudNimble/Text/Xml/XmlName",
+                      "api-reference/CloudNimble/Text/Xml/XmlNamespaces",
+                      "api-reference/CloudNimble/Text/Xml/XmlReaderOptions",
+                      "api-reference/CloudNimble/Text/Xml/XmlReaderState",
+                      "api-reference/CloudNimble/Text/Xml/XmlTokenType",
+                      "api-reference/CloudNimble/Text/Xml/XmlVersion",
+                      "api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple"
+}

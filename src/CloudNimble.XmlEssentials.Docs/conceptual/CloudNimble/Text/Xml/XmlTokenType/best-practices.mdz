@@ -1,0 +1,5 @@
+# Best Practices
+
+Handle `StartElement` and `IsEmptyElement` together so empty tags do not look like missing end tags.
+
+Treat `Text` and `CData` as the same infoset for mapping unless you must preserve CDATA delimiters. Both expose `ValueSpan` after entity handling (CDATA has no entity expansion).

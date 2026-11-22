@@ -1,0 +1,16 @@
+# Examples
+
+```csharp
+var xml = "<a>\n<b/>\n</a>"u8;
+
+var skip = new Utf8XmlReader(xml);
+skip.Read(); // a
+skip.Read(); // b (the newline was skipped)
+
+var keep = new Utf8XmlReader(xml, new XmlReaderOptions
+{
+    WhitespaceHandling = XmlWhitespaceHandling.Significant,
+});
+keep.Read(); // a
+keep.Read(); // Text "\n"
+```

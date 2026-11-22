@@ -1,0 +1,47 @@
+---
+title: XmlCommentHandling
+description: "How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlCommentHandling', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlCommentHandling
+```
+
+## Summary
+
+How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens.
+
+## Remarks
+
+The default for [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) is [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+[XmlCommentHandling.Disallow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) is the enum zero-value, so construct options with
+`new XmlReaderOptions()` rather than `default` when you want the documented default.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `Disallow` | 0 | Comments are a well-formedness error and throw [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException). |
+| `Skip` | 1 | Comments are consumed and not reported. This is the [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) default. |
+| `Allow` | 2 | Comments are reported as [XmlTokenType.Comment](/api-reference/CloudNimble/Text/Xml/XmlTokenType). |
+
+## Related APIs
+
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
+

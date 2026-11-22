@@ -1,0 +1,27 @@
+# Examples
+
+```csharp
+while (reader.Read())
+{
+    switch (reader.TokenType)
+    {
+        case XmlTokenType.StartElement:
+            if (reader.IsEmptyElement)
+            {
+                break;
+            }
+            break;
+        case XmlTokenType.EndElement:
+            break;
+        case XmlTokenType.Text:
+        case XmlTokenType.CData:
+            break;
+        case XmlTokenType.Comment:
+            Console.WriteLine(reader.GetComment());
+            break;
+        case XmlTokenType.XmlDeclaration:
+            Console.WriteLine(reader.Version);
+            break;
+    }
+}
+```

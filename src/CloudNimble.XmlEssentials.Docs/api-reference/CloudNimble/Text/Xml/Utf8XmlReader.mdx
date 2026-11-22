@@ -1,0 +1,1754 @@
+---
+title: Utf8XmlReader
+description: "A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`."
+icon: cubes
+tag: "SEALED"
+keywords: ['Utf8XmlReader', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.ValueType
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.Utf8XmlReader
+```
+
+## Summary
+
+A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`.
+
+## Remarks
+
+Empty elements are reported as [XmlTokenType.StartElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) with
+[Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement) true. The reader does not synthesize an
+[XmlTokenType.EndElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) token. Callers must check
+[Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement) before expecting a matching end tag.
+Namespace resolution is not applied in this release; [Utf8XmlReader.NamespaceUriSpan](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#namespaceurispan) is empty.
+The XML declaration, when present, must be the first token in the document (after an optional BOM).
+
+## Examples
+
+```csharp
+var xml = "<root id=\"1\">hi</root>"u8;
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType == XmlTokenType.Text)
+    {
+        Console.WriteLine(reader.GetString());
+    }
+}
+```
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Reads a complete UTF-8 XML payload with default options
+([XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling), insignificant whitespace).
+
+#### Syntax
+
+```csharp
+public Utf8XmlReader(System.ReadOnlySpan<byte> utf8Xml)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML bytes. An optional BOM is consumed. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Reads a complete UTF-8 XML payload.
+
+#### Syntax
+
+```csharp
+public Utf8XmlReader(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlReaderOptions options)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML bytes. An optional BOM is consumed. |
+| `options` | `CloudNimble.Text.Xml.XmlReaderOptions` | Reader options. Pass `new XmlReaderOptions()` for documented defaults. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Reads a UTF-8 XML payload, optionally resuming from *state*.
+
+#### Syntax
+
+```csharp
+public Utf8XmlReader(System.ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, CloudNimble.Text.Xml.XmlReaderState state)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML bytes. |
+| `isFinalBlock` | `bool` | Whether this buffer is the last. Incomplete tokens throw when true. |
+| `state` | `CloudNimble.Text.Xml.XmlReaderState` | Resume state from [Utf8XmlReader.CurrentState](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#currentstate), or default to start fresh. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Reads a complete UTF-8 XML sequence with default options.
+
+#### Syntax
+
+```csharp
+public Utf8XmlReader(System.Buffers.ReadOnlySequence<byte> utf8Xml)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML bytes. Multi-segment sequences are copied into a contiguous buffer. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Reads a complete UTF-8 XML sequence.
+
+#### Syntax
+
+```csharp
+public Utf8XmlReader(System.Buffers.ReadOnlySequence<byte> utf8Xml, CloudNimble.Text.Xml.XmlReaderOptions options)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML bytes. Multi-segment sequences are copied into a contiguous buffer. |
+| `options` | `CloudNimble.Text.Xml.XmlReaderOptions` | Reader options. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Reads a UTF-8 XML sequence, optionally resuming from *state*.
+
+#### Syntax
+
+```csharp
+public Utf8XmlReader(System.Buffers.ReadOnlySequence<byte> utf8Xml, bool isFinalBlock, CloudNimble.Text.Xml.XmlReaderState state)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML bytes. |
+| `isFinalBlock` | `bool` | Whether this buffer is the last. |
+| `state` | `CloudNimble.Text.Xml.XmlReaderState` | Resume state from [Utf8XmlReader.CurrentState](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#currentstate), or default to start fresh. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+protected ValueType()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeCount
+
+Gets the number of attributes on the current start tag.
+
+#### Syntax
+
+```csharp
+public int AttributeCount { get; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BytesConsumed
+
+Gets the number of bytes consumed from the current buffer.
+
+#### Syntax
+
+```csharp
+public long BytesConsumed { get; }
+```
+
+#### Property Value
+
+Type: `long`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CurrentDepth
+
+Gets the current element depth. The root element is depth 1.
+Empty elements do not increment depth.
+
+#### Syntax
+
+```csharp
+public int CurrentDepth { get; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CurrentState
+
+Gets an opaque resume snapshot.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlReaderState CurrentState { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlReaderState`
+
+#### Remarks
+
+The public surface of [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) is [XmlReaderState.Options](/api-reference/CloudNimble/Text/Xml/XmlReaderState#options) only.
+The implementation snapshot is copied so two readers never share mutable stacks.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> HasAttributes
+
+Gets a value indicating whether the current start tag has attributes.
+
+#### Syntax
+
+```csharp
+public bool HasAttributes { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> HasValueSequence
+
+Gets a value indicating whether the current value is a multi-segment sequence.
+Always [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool); use [Utf8XmlReader.ValueSpan](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#valuespan).
+
+#### Syntax
+
+```csharp
+public bool HasValueSequence { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsEmptyElement
+
+Gets a value indicating whether the current start tag was an empty element (`<e/>`).
+
+#### Syntax
+
+```csharp
+public bool IsEmptyElement { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsFinalBlock
+
+Gets a value indicating whether this buffer is the last in a resume series.
+
+#### Syntax
+
+```csharp
+public bool IsFinalBlock { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalNameSpan
+
+Gets the UTF-8 local name of the current element or attribute.
+
+#### Syntax
+
+```csharp
+public System.ReadOnlySpan<byte> LocalNameSpan { get; }
+```
+
+#### Property Value
+
+Type: `System.ReadOnlySpan<byte>`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUriSpan
+
+Gets the UTF-8 namespace URI of the current name.
+Empty until namespace support is enabled.
+
+#### Syntax
+
+```csharp
+public System.ReadOnlySpan<byte> NamespaceUriSpan { get; }
+```
+
+#### Property Value
+
+Type: `System.ReadOnlySpan<byte>`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Position
+
+Gets the position in a sequence payload, if any.
+
+#### Syntax
+
+```csharp
+public System.SequencePosition Position { get; }
+```
+
+#### Property Value
+
+Type: `System.SequencePosition`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PrefixSpan
+
+Gets the UTF-8 prefix of the current element or attribute.
+
+#### Syntax
+
+```csharp
+public System.ReadOnlySpan<byte> PrefixSpan { get; }
+```
+
+#### Property Value
+
+Type: `System.ReadOnlySpan<byte>`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TokenStartIndex
+
+Gets the byte offset of the current token in the document.
+
+#### Syntax
+
+```csharp
+public long TokenStartIndex { get; }
+```
+
+#### Property Value
+
+Type: `long`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TokenType
+
+Gets the current token type.
+After [Utf8XmlReader.MoveToNextAttribute](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#movetonextattribute) this is [XmlTokenType.Attribute](/api-reference/CloudNimble/Text/Xml/XmlTokenType).
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlTokenType TokenType { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlTokenType`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueIsEscaped
+
+Gets a value indicating whether the current value contained character or entity references.
+
+#### Syntax
+
+```csharp
+public bool ValueIsEscaped { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueSequence
+
+Gets a multi-segment value. Always empty; use [Utf8XmlReader.ValueSpan](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#valuespan).
+
+#### Syntax
+
+```csharp
+public System.Buffers.ReadOnlySequence<byte> ValueSequence { get; }
+```
+
+#### Property Value
+
+Type: `System.Buffers.ReadOnlySequence<byte>`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueSpan
+
+Gets the UTF-8 bytes of the current token value, decoded if entities were present.
+
+#### Syntax
+
+```csharp
+public System.ReadOnlySpan<byte> ValueSpan { get; }
+```
+
+#### Property Value
+
+Type: `System.ReadOnlySpan<byte>`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
+
+Gets the XML version in force after the declaration, or [XmlVersion.Version10](/api-reference/CloudNimble/Text/Xml/XmlVersion) if omitted.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlVersion Version { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlVersion`
+
+## Methods
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CopyString
+
+Copies the current value as UTF-8 into *utf8Destination*.
+
+#### Syntax
+
+```csharp
+public readonly int CopyString(System.Span<byte> utf8Destination)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Destination` | `System.Span<byte>` | The destination buffer. |
+
+#### Returns
+
+Type: `int`
+The number of bytes written.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CopyString
+
+Copies the current value as UTF-16 into *destination*.
+
+#### Syntax
+
+```csharp
+public readonly int CopyString(System.Span<char> destination)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `destination` | `System.Span<char>` | The destination buffer. |
+
+#### Returns
+
+Type: `int`
+The number of characters written.
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBoolean
+
+Reads the current text, CDATA, or attribute value as an XSD boolean.
+
+#### Syntax
+
+```csharp
+public bool GetBoolean()
+```
+
+#### Returns
+
+Type: `bool`
+The Boolean value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not `true`, `false`, `1`, or `0`. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetByte
+
+Reads the current value as an unsigned 8-bit integer.
+
+#### Syntax
+
+```csharp
+public byte GetByte()
+```
+
+#### Returns
+
+Type: `byte`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBytesFromBase64
+
+Reads the current value as XSD `base64Binary`.
+
+#### Syntax
+
+```csharp
+public byte[] GetBytesFromBase64()
+```
+
+#### Returns
+
+Type: `byte[]`
+The decoded bytes.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not valid Base64. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetComment
+
+Reads the payload of the current [XmlTokenType.Comment](/api-reference/CloudNimble/Text/Xml/XmlTokenType) token.
+
+#### Syntax
+
+```csharp
+public string GetComment()
+```
+
+#### Returns
+
+Type: `string`
+The comment text, without the surrounding `<!-- -->` delimiters.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The current token is not a comment. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateOnly
+
+Reads the current value as XSD `date`.
+
+#### Syntax
+
+```csharp
+public System.DateOnly GetDateOnly()
+```
+
+#### Returns
+
+Type: `System.DateOnly`
+The parsed date.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid `xs:date`. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateTime
+
+Reads the current value as XSD `dateTime`.
+
+#### Syntax
+
+```csharp
+public System.DateTime GetDateTime()
+```
+
+#### Returns
+
+Type: `System.DateTime`
+The parsed date and time.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid `xs:dateTime`. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateTimeOffset
+
+Reads the current value as XSD `dateTime` with an offset.
+
+#### Syntax
+
+```csharp
+public System.DateTimeOffset GetDateTimeOffset()
+```
+
+#### Returns
+
+Type: `System.DateTimeOffset`
+The parsed date, time, and offset.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid `xs:dateTime`. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDecimal
+
+Reads the current value as XSD `decimal`. Exponent notation is rejected.
+
+#### Syntax
+
+```csharp
+public decimal GetDecimal()
+```
+
+#### Returns
+
+Type: `decimal`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid XSD decimal. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDouble
+
+Reads the current value as XSD `double`, including `INF`, `-INF`, and `NaN`.
+
+#### Syntax
+
+```csharp
+public double GetDouble()
+```
+
+#### Returns
+
+Type: `double`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid double. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetGuid
+
+Reads the current value as a GUID.
+
+#### Syntax
+
+```csharp
+public System.Guid GetGuid()
+```
+
+#### Returns
+
+Type: `System.Guid`
+The parsed GUID.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a GUID in a supported format. |
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt16
+
+Reads the current value as a 16-bit integer.
+
+#### Syntax
+
+```csharp
+public short GetInt16()
+```
+
+#### Returns
+
+Type: `short`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt32
+
+Reads the current value as a 32-bit integer.
+
+#### Syntax
+
+```csharp
+public int GetInt32()
+```
+
+#### Returns
+
+Type: `int`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt64
+
+Reads the current value as a 64-bit integer.
+
+#### Syntax
+
+```csharp
+public long GetInt64()
+```
+
+#### Returns
+
+Type: `long`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetNil
+
+Returns true when the current start element has `nil="true"` or `nil="1"`.
+
+#### Syntax
+
+```csharp
+public bool GetNil()
+```
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the element is nil.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The current token is not a start element. |
+
+#### Remarks
+
+Matches the local name `nil` only. Namespace URI is empty until namespace support is enabled.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetSByte
+
+Reads the current value as a signed 8-bit integer.
+
+#### Syntax
+
+```csharp
+public sbyte GetSByte()
+```
+
+#### Returns
+
+Type: `sbyte`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetSingle
+
+Reads the current value as XSD `float`, including `INF`, `-INF`, and `NaN`.
+
+#### Syntax
+
+```csharp
+public float GetSingle()
+```
+
+#### Returns
+
+Type: `float`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid float. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetString
+
+Reads the current token value as a UTF-16 string, after entity expansion.
+
+#### Syntax
+
+```csharp
+public string GetString()
+```
+
+#### Returns
+
+Type: `string?`
+The decoded string. Never null; empty when the value is empty.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTimeOnly
+
+Reads the current value as XSD `time`.
+
+#### Syntax
+
+```csharp
+public System.TimeOnly GetTimeOnly()
+```
+
+#### Returns
+
+Type: `System.TimeOnly`
+The parsed time of day.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a valid `xs:time`. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTimeSpan
+
+Reads the current value as XSD `duration`. Year and month components are rejected.
+
+#### Syntax
+
+```csharp
+public System.TimeSpan GetTimeSpan()
+```
+
+#### Returns
+
+Type: `System.TimeSpan`
+The parsed duration.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The value is not a duration that can be represented as [TimeSpan](https://learn.microsoft.com/dotnet/api/system.timespan). |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetUInt16
+
+Reads the current value as an unsigned 16-bit integer.
+
+#### Syntax
+
+```csharp
+public ushort GetUInt16()
+```
+
+#### Returns
+
+Type: `ushort`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetUInt32
+
+Reads the current value as an unsigned 32-bit integer.
+
+#### Syntax
+
+```csharp
+public uint GetUInt32()
+```
+
+#### Returns
+
+Type: `uint`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetUInt64
+
+Reads the current value as an unsigned 64-bit integer.
+
+#### Syntax
+
+```csharp
+public ulong GetUInt64()
+```
+
+#### Returns
+
+Type: `ulong`
+The parsed value.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The lexical form is not an XSD integer, or the value overflows. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalNameEquals
+
+Compares the current local name to UTF-8 *utf8LocalName*.
+
+#### Syntax
+
+```csharp
+public readonly bool LocalNameEquals(System.ReadOnlySpan<byte> utf8LocalName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalNameEquals
+
+Compares the current local name to *localName*.
+
+#### Syntax
+
+```csharp
+public readonly bool LocalNameEquals(System.ReadOnlySpan<char> localName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalNameEquals
+
+Compares the current local name to *localName*.
+
+#### Syntax
+
+```csharp
+public readonly bool LocalNameEquals(string localName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `string?` | The local name. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MoveToElement
+
+Moves back to the start element from the current attribute.
+
+#### Syntax
+
+```csharp
+public void MoveToElement()
+```
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MoveToNextAttribute
+
+Moves to the next attribute on the current start tag.
+
+#### Syntax
+
+```csharp
+public bool MoveToNextAttribute()
+```
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if an attribute was selected; otherwise [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUriEquals
+
+Compares the current namespace URI to UTF-8 *utf8NamespaceUri*.
+
+#### Syntax
+
+```csharp
+public readonly bool NamespaceUriEquals(System.ReadOnlySpan<byte> utf8NamespaceUri)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUriEquals
+
+Compares the current namespace URI to *namespaceUri*.
+
+#### Syntax
+
+```csharp
+public readonly bool NamespaceUriEquals(System.ReadOnlySpan<char> namespaceUri)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `namespaceUri` | `System.ReadOnlySpan<char>` | The namespace URI. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUriEquals
+
+Compares the current namespace URI to *namespaceUri*.
+
+#### Syntax
+
+```csharp
+public readonly bool NamespaceUriEquals(string namespaceUri)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `namespaceUri` | `string?` | The namespace URI. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Read
+
+Advances to the next token.
+
+#### Syntax
+
+```csharp
+public bool Read()
+```
+
+#### Returns
+
+Type: `bool`
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) at the end of a complete document, or when more data is required
+and [Utf8XmlReader.IsFinalBlock](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isfinalblock) is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The document is not well-formed, a DoS limit was exceeded, or the buffer ended inside a token. |
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Skip
+
+Skips the current element and its children.
+On an empty element this is a no-op; the next [Utf8XmlReader.Read](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#read) moves to the following sibling.
+
+#### Syntax
+
+```csharp
+public void Skip()
+```
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | The remaining buffer is incomplete and [Utf8XmlReader.IsFinalBlock](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isfinalblock) is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). |
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetByte
+
+Attempts to read the current value as an unsigned 8-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetByte(out byte value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `byte` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetBytesFromBase64
+
+Attempts to read the current value as XSD `base64Binary`.
+
+#### Syntax
+
+```csharp
+public bool TryGetBytesFromBase64(out byte[] value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `byte[]?` | When this method returns, the decoded bytes. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if decoding succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDateOnly
+
+Attempts to read the current value as XSD `date`.
+
+#### Syntax
+
+```csharp
+public bool TryGetDateOnly(out System.DateOnly value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.DateOnly` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDateTime
+
+Attempts to read the current value as XSD `dateTime`.
+
+#### Syntax
+
+```csharp
+public bool TryGetDateTime(out System.DateTime value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.DateTime` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDateTimeOffset
+
+Attempts to read the current value as XSD `dateTime` with an offset.
+
+#### Syntax
+
+```csharp
+public bool TryGetDateTimeOffset(out System.DateTimeOffset value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.DateTimeOffset` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDecimal
+
+Attempts to read the current value as XSD `decimal`. Exponent notation is rejected.
+
+#### Syntax
+
+```csharp
+public bool TryGetDecimal(out decimal value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `decimal` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDouble
+
+Attempts to read the current value as XSD `double`, including `INF`, `-INF`, and `NaN`.
+
+#### Syntax
+
+```csharp
+public bool TryGetDouble(out double value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `double` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetGuid
+
+Attempts to read the current value as a GUID.
+
+#### Syntax
+
+```csharp
+public bool TryGetGuid(out System.Guid value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.Guid` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt16
+
+Attempts to read the current value as a 16-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetInt16(out short value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `short` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt32
+
+Attempts to read the current value as a 32-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetInt32(out int value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `int` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt64
+
+Attempts to read the current value as a 64-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetInt64(out long value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `long` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetSByte
+
+Attempts to read the current value as a signed 8-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetSByte(out sbyte value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `sbyte` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetSingle
+
+Attempts to read the current value as XSD `float`.
+
+#### Syntax
+
+```csharp
+public bool TryGetSingle(out float value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `float` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetTimeOnly
+
+Attempts to read the current value as XSD `time`.
+
+#### Syntax
+
+```csharp
+public bool TryGetTimeOnly(out System.TimeOnly value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.TimeOnly` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetTimeSpan
+
+Attempts to read the current value as XSD `duration`. Year and month components are rejected.
+
+#### Syntax
+
+```csharp
+public bool TryGetTimeSpan(out System.TimeSpan value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.TimeSpan` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt16
+
+Attempts to read the current value as an unsigned 16-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetUInt16(out ushort value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `ushort` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt32
+
+Attempts to read the current value as an unsigned 32-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetUInt32(out uint value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `uint` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt64
+
+Attempts to read the current value as an unsigned 64-bit integer.
+
+#### Syntax
+
+```csharp
+public bool TryGetUInt64(out ulong value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `ulong` | When this method returns, the parsed value. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if parsing succeeded.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TrySkip
+
+Attempts to skip the current element and its children.
+
+#### Syntax
+
+```csharp
+public bool TrySkip()
+```
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the element was skipped;
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if more data is required.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueTextEquals
+
+Compares the current value to UTF-8 *utf8Text*.
+
+#### Syntax
+
+```csharp
+public readonly bool ValueTextEquals(System.ReadOnlySpan<byte> utf8Text)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Text` | `System.ReadOnlySpan<byte>` | The UTF-8 text. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueTextEquals
+
+Compares the current value to *text*.
+
+#### Syntax
+
+```csharp
+public readonly bool ValueTextEquals(System.ReadOnlySpan<char> text)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `text` | `System.ReadOnlySpan<char>` | The text. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueTextEquals
+
+Compares the current value to *text*.
+
+#### Syntax
+
+```csharp
+public readonly bool ValueTextEquals(string text)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `text` | `string?` | The text. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are equal.
+

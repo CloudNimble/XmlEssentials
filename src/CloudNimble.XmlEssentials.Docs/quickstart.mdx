@@ -1,0 +1,41 @@
+---
+title: Quickstart
+sidebarTitle: Quickstart
+description: Read UTF-8 XML with Utf8XmlReader
+icon: play
+---
+
+# Quickstart
+
+```bash
+dotnet add package XmlEssentials
+```
+
+Package id is `XmlEssentials`. Assembly is `CloudNimble.XmlEssentials`. Namespace is `CloudNimble.Text.Xml`.
+
+```csharp
+using CloudNimble.Text.Xml;
+
+var xml = """
+    <Person id="1">
+      <Name>Ada</Name>
+    </Person>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType == XmlTokenType.StartElement
+        && reader.LocalNameEquals("Name"u8))
+    {
+        reader.Read();
+        Console.WriteLine(reader.GetString());
+    }
+}
+```
+
+Empty tags (`<Person id="1"/>`) are `StartElement` with `IsEmptyElement` true. There is no following `EndElement`.
+
+Prefer `ValueSpan` and `TryGetInt32` / `TryGetBoolean` when you can stay in UTF-8. `GetString` allocates.
+
+`XmlSerializer` is not in this release. The reader is the current public entry point.

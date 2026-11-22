@@ -1,0 +1,5 @@
+# Patterns
+
+**Caller loop.** Try/catch outside `while (Read())`. Inner handling of individual tokens should not swallow `XmlException`.
+
+**Limits.** Messages for cap failures include the option name (`MaxDepth exceeded (64).`). Branch on `Message` only in tests; production code should treat all of them as invalid input.

@@ -1,0 +1,8 @@
+# Best Practices
+
+- Keep the payload in UTF-8 (`u8` literals, `byte[]`, `ReadOnlySequence<byte>`). Do not round-trip through `string` to parse.
+- Use `LocalNameEquals("Person"u8)` and `ValueTextEquals` instead of `GetString` plus `==`.
+- Parse scalars with `TryGetInt32`, `TryGetBoolean`, `TryGetGuid`, and friends. They read `ValueSpan` with `Utf8Parser`.
+- Construct options with `new XmlReaderOptions()`. The parameterless constructor sets `CommentHandling` to `Skip`.
+- On untrusted input, set `MaxDepth`, `MaxNameByteCount`, `MaxTextByteCount`, and `MaxAttributeCount`. Zero means the table default.
+- After `Read` returns false on a non-final buffer, take `CurrentState` and construct a new reader with the next span. Split-token resume is not complete in this release; incomplete tokens currently return false or throw on a final buffer.

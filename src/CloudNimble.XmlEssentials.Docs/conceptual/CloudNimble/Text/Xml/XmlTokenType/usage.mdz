@@ -1,0 +1,5 @@
+# Usage
+
+After each successful `Read()`, `Utf8XmlReader.TokenType` is the kind of token under the cursor. Switch on it to decide whether to inspect `LocalNameSpan`, `ValueSpan`, or attributes.
+
+`MoveToNextAttribute` sets `TokenType` to `Attribute` until `MoveToElement` restores the start tag.

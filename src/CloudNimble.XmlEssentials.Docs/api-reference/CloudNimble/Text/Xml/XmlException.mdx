@@ -1,0 +1,521 @@
+---
+title: XmlException
+description: "Thrown when XML is not well-formed or a DoS limit is exceeded."
+icon: lock
+tag: "SEALED"
+keywords: ['XmlException', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml', 'class', 'System.Exception', 'System.Runtime.Serialization.ISerializable']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.Exception
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlException
+```
+
+## Summary
+
+Thrown when XML is not well-formed or a DoS limit is exceeded.
+
+## Remarks
+
+This type is not `System.Xml.XmlException` and does not wrap it. Location properties
+are optional; they are set when the reader knows the byte offset and line.
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates an exception with a message and no location.
+
+#### Syntax
+
+```csharp
+public XmlException(string message)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `message` | `string` | The error message. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates an exception with a message and an inner exception.
+
+#### Syntax
+
+```csharp
+public XmlException(string message, System.Exception innerException)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `message` | `string` | The error message. |
+| `innerException` | `System.Exception?` | The inner exception, or null. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates an exception with parse location.
+
+#### Syntax
+
+```csharp
+public XmlException(string message, long? bytePosition, long? lineNumber, long? linePosition, string path)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `message` | `string` | The error message. |
+| `bytePosition` | `long?` | 0-based byte offset in the UTF-8 document, if known. |
+| `lineNumber` | `long?` | 1-based line after end-of-line normalization, if known. |
+| `linePosition` | `long?` | 1-based UTF-8 byte offset in the current line, if known. |
+| `path` | `string?` | Document path such as `/Person/@id`, if known. |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public Exception()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public Exception(string message)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `message` | `string?` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public Exception(string message, System.Exception innerException)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `message` | `string?` | - |
+| `innerException` | `System.Exception?` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+protected Exception(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `info` | `System.Runtime.Serialization.SerializationInfo` | - |
+| `context` | `System.Runtime.Serialization.StreamingContext` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BytePosition
+
+Gets the 0-based byte offset in the UTF-8 document, if known.
+
+#### Syntax
+
+```csharp
+public long? BytePosition { get; }
+```
+
+#### Property Value
+
+Type: `long?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Data <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual System.Collections.IDictionary Data { get; }
+```
+
+#### Property Value
+
+Type: `System.Collections.IDictionary`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> HelpLink <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string HelpLink { get; set; }
+```
+
+#### Property Value
+
+Type: `string?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> HResult <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public int HResult { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InnerException <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public System.Exception InnerException { get; }
+```
+
+#### Property Value
+
+Type: `System.Exception?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LineNumber
+
+Gets the 1-based line number after end-of-line normalization, if known.
+
+#### Syntax
+
+```csharp
+public long? LineNumber { get; }
+```
+
+#### Property Value
+
+Type: `long?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LinePosition
+
+Gets the 1-based UTF-8 byte offset in the current line, if known.
+
+#### Syntax
+
+```csharp
+public long? LinePosition { get; }
+```
+
+#### Property Value
+
+Type: `long?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Message <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string Message { get; }
+```
+
+#### Property Value
+
+Type: `string`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Path
+
+Gets the document path such as `/Person/@id`, if known.
+
+#### Syntax
+
+```csharp
+public string Path { get; }
+```
+
+#### Property Value
+
+Type: `string?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Source <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string Source { get; set; }
+```
+
+#### Property Value
+
+Type: `string?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> StackTrace <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string StackTrace { get; }
+```
+
+#### Property Value
+
+Type: `string?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TargetSite <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public System.Reflection.MethodBase TargetSite { get; }
+```
+
+#### Property Value
+
+Type: `System.Reflection.MethodBase?`
+
+## Methods
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBaseException <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual System.Exception GetBaseException()
+```
+
+#### Returns
+
+Type: `System.Exception`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetObjectData <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public virtual void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `info` | `System.Runtime.Serialization.SerializationInfo` | - |
+| `context` | `System.Runtime.Serialization.StreamingContext` | - |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+public override string ToString()
+```
+
+#### Returns
+
+Type: `string`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+## Events
+
+### <Icon icon="bell" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeObjectState <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Exception`</Note>
+
+#### Syntax
+
+```csharp
+protected event System.EventHandler<System.Runtime.Serialization.SafeSerializationEventArgs> SerializeObjectState
+```
+
+## Related APIs
+
+- System.Runtime.Serialization.ISerializable
+

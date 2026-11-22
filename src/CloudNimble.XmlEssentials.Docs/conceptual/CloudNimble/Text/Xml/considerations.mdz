@@ -1,0 +1,8 @@
+# Considerations
+
+- `Utf8XmlReader` is a `ref struct`. It cannot be stored on the heap, captured by a lambda, or used across `await`.
+- Empty elements (`<e/>`) are a start tag with `IsEmptyElement` true. The reader does not emit a matching end tag.
+- `NamespaceUriSpan` is empty until namespace support is enabled. Prefixes are visible on `PrefixSpan`; they are not bound to URIs.
+- The XML declaration, when present, must be the first token after an optional BOM.
+- DTDs (`<!DOCTYPE`, `<!ENTITY`, and other `<!` markup that is not a comment or CDATA) throw `XmlException`.
+- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`.

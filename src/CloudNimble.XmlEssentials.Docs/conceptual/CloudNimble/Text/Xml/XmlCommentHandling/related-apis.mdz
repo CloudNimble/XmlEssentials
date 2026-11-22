@@ -1,0 +1,5 @@
+# Related APIs
+
+- `XmlReaderOptions.CommentHandling`
+- `XmlTokenType.Comment`
+- `Utf8XmlReader.GetComment`

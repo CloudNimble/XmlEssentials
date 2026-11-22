@@ -1,0 +1,10 @@
+# Related APIs
+
+- `XmlReaderOptions`
+- `XmlReaderState`
+- `XmlTokenType`
+- `XmlException`
+- `XmlCommentHandling`
+- `XmlWhitespaceHandling`
+- `XmlVersion`
+- `System.Text.Json.Utf8JsonReader`

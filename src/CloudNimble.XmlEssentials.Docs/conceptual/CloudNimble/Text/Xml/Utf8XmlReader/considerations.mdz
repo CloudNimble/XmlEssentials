@@ -1,0 +1,13 @@
+# Considerations
+
+`Utf8XmlReader` is a `ref struct`. Do not box it, store it in a field of a class, pass it to an `async` method, or capture it in a lambda.
+
+Empty elements are one token: `StartElement` with `IsEmptyElement` true. There is no following `EndElement`.
+
+`Read` returns false at the end of a complete document, or when `isFinalBlock` is false and the current token is truncated. A truncated token on a final buffer throws `XmlException`.
+
+`NamespaceUriSpan` is always empty in this release. `PrefixSpan` reports the prefix text. Duplicate attributes are detected by local name only.
+
+Text and attribute values are UTF-8 slices into the source buffer when they contain no entities. `GetString` allocates. `TryGet*` and `ValueSpan` do not, except when a node actually contains entities (those are expanded into a buffer on the reader).
+
+The XML declaration must be the first token (after an optional BOM). Whitespace, comments, or a PI before `<?xml ...?>` throw.

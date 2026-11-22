@@ -1,0 +1,12 @@
+# Examples
+
+Construct with location when you wrap a parse at a higher layer:
+
+```csharp
+throw new XmlException(
+    "Multiple root elements are not allowed.",
+    bytePosition: 12,
+    lineNumber: 1,
+    linePosition: 13,
+    path: null);
+```

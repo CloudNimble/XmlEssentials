@@ -1,0 +1,9 @@
+# Considerations
+
+`None` means no token yet, or `Read` has already returned false.
+
+`StartElement` covers both `<e>` and `<e/>`. Distinguish them with `IsEmptyElement`. The reader never synthesizes `EndElement` for an empty tag.
+
+`Comment` appears only when `XmlCommentHandling.Allow` is set. Otherwise comments are skipped or rejected.
+
+`XmlDeclaration` is reported as its own token. It is legal only as the first token in the document.

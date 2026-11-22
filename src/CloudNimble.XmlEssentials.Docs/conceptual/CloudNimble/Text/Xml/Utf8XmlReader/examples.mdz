@@ -1,0 +1,35 @@
+# Examples
+
+Empty vs start/end:
+
+```csharp
+var empty = new Utf8XmlReader("<e/>"u8);
+empty.Read();
+// TokenType == StartElement, IsEmptyElement == true
+empty.Read(); // false
+
+var pair = new Utf8XmlReader("<e></e>"u8);
+pair.Read();  // StartElement, IsEmptyElement == false
+pair.Read();  // EndElement
+```
+
+Attributes:
+
+```csharp
+var reader = new Utf8XmlReader("<e a=\"1\" b=\"two\"/>"u8);
+reader.Read();
+while (reader.MoveToNextAttribute())
+{
+    // LocalNameSpan / ValueSpan for this attribute
+}
+reader.MoveToElement();
+```
+
+Skip a child:
+
+```csharp
+var reader = new Utf8XmlReader("<a><b>ignored</b><c/></a>"u8);
+reader.Read(); // a
+reader.Read(); // b
+reader.Skip(); // consumes b and its text; next token is c or a's end
+```

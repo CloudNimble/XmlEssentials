@@ -1,0 +1,5 @@
+# Related APIs
+
+- `XmlReaderOptions.WhitespaceHandling`
+- `XmlTokenType.Text`
+- `Utf8XmlReader.ValueSpan`

@@ -1,0 +1,47 @@
+---
+title: XmlVersion
+description: "XML recommendation version in force for the current document."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlVersion', 'CloudNimble.Text.Xml.XmlVersion', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlVersion
+```
+
+## Summary
+
+XML recommendation version in force for the current document.
+
+## Remarks
+
+[Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) takes the version from the XML declaration. An omitted declaration
+means [XmlVersion.Version10](/api-reference/CloudNimble/Text/Xml/XmlVersion). XML 1.1 is not a superset of 1.0: NEL and LS are line endings
+only in 1.1, RestrictedChar must be a character reference in 1.1, and `xmlns:p=""` is
+legal only in Namespaces in XML 1.1.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `Version10` | 0 | XML 1.0 Fifth Edition. Default when the declaration is omitted or says `version="1.0"`. |
+| `Version11` | 1 | XML 1.1 Second Edition. Selected by `version="1.1"` in the XML declaration. |
+
+## Related APIs
+
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
+

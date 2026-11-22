@@ -1,0 +1,7 @@
+# Considerations
+
+Indentation between child elements is insignificant by default, matching typical document and SOAP payloads.
+
+`None` is a strict policy for producers that never emit inter-element whitespace. Pretty-printed XML will throw.
+
+Prolog and epilog whitespace (before the root, after the root) is skipped at depth 0 and is not governed by this enum.

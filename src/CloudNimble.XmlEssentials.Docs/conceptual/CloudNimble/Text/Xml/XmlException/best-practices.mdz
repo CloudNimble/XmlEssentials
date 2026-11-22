@@ -1,0 +1,7 @@
+# Best Practices
+
+Log `LineNumber` and `LinePosition` together. Offset-only diagnostics are hard to map to pretty-printed XML.
+
+Do not catch `System.Xml.XmlException` looking for XmlEssentials failures. Catch `CloudNimble.Text.Xml.XmlException`.
+
+Treat every `XmlException` from the reader as fatal for that document. The reader is not positioned for recovery.

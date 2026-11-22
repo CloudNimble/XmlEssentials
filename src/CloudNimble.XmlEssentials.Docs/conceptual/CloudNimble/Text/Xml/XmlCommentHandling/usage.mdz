@@ -1,0 +1,7 @@
+# Usage
+
+Set `XmlReaderOptions.CommentHandling` to control `<!-- ... -->` tokens:
+
+- `Skip` — consume comments and do not report them. This is the `new XmlReaderOptions()` default.
+- `Allow` — report `XmlTokenType.Comment`; read the payload with `GetComment()`.
+- `Disallow` — throw `XmlException`. This is the enum's zero value.

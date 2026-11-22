@@ -1,0 +1,7 @@
+# Considerations
+
+`Disallow = 0`. A defaulted `XmlReaderOptions` struct (including `Utf8XmlReader`'s optional-parameter `default`) is Disallow. `new XmlReaderOptions()` sets `Skip`.
+
+Comments containing `--` are always well-formedness errors, regardless of this setting.
+
+`MaxCommentByteCount` applies when a comment is parsed, including when it is skipped.

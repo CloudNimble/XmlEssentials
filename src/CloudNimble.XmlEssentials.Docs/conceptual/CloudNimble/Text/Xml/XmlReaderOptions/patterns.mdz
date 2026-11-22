@@ -1,0 +1,7 @@
+# Patterns
+
+**Trusted payload.** `new Utf8XmlReader(utf8)` with no options object.
+
+**Untrusted payload.** `new XmlReaderOptions { MaxDepth = 32, MaxTextByteCount = 1_048_576 }` and the other caps you care about.
+
+**Fragments.** `AllowMultipleRoots = true` for SOAP-style concatenations or test snippets without a wrapper element.

@@ -1,0 +1,18 @@
+# Examples
+
+Strict comments and no insignificant whitespace:
+
+```csharp
+var options = new XmlReaderOptions
+{
+    CommentHandling = XmlCommentHandling.Disallow,
+    WhitespaceHandling = XmlWhitespaceHandling.None,
+};
+```
+
+A document fragment with two roots:
+
+```csharp
+var options = new XmlReaderOptions { AllowMultipleRoots = true };
+var reader = new Utf8XmlReader("<a/><b/>"u8, options);
+```

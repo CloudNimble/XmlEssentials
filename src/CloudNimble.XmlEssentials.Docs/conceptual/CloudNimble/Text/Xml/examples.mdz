@@ -1,0 +1,23 @@
+# Examples
+
+Walk a document and print element names and text without allocating on the hot path:
+
+```csharp
+var xml = "<root id=\"1\"><n>42</n></root>"u8;
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    switch (reader.TokenType)
+    {
+        case XmlTokenType.StartElement:
+            // LocalNameSpan is UTF-8 in the source buffer
+            break;
+        case XmlTokenType.Text:
+            if (reader.TryGetInt32(out var n))
+            {
+                Console.WriteLine(n);
+            }
+            break;
+    }
+}
+```

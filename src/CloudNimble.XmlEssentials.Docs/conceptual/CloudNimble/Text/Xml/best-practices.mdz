@@ -1,0 +1,7 @@
+# Best Practices
+
+- Prefer `ValueSpan` and `TryGet*` over `GetString` when you can stay in UTF-8.
+- Call `new Utf8XmlReader(utf8)` or `new Utf8XmlReader(utf8, new XmlReaderOptions { ... })`. Avoid `default(XmlReaderOptions)` unless you intend `CommentHandling.Disallow`.
+- Check `IsEmptyElement` before expecting `EndElement`.
+- Set DoS limits on untrusted input (`MaxDepth`, `MaxNameByteCount`, `MaxTextByteCount`, `MaxAttributeCount`). `0` selects the table default.
+- Compare names with `LocalNameEquals` (`u8` literals, `ReadOnlySpan<char>`, or `string`) instead of decoding to `string` first.

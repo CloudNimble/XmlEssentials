@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net11.0;net10.0</TargetFrameworks>
+		<IsAotCompatible>true</IsAotCompatible>
+		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+		<Description>UTF-8 XML reader, writer, DOM, and AOT-safe serializer with a System.Text.Json-shaped API. Zero System.Xml dependency.</Description>
+		<RootNamespace>CloudNimble.Text.Xml</RootNamespace>
+		<AssemblyName>CloudNimble.XmlEssentials</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
+		                  ReferenceOutputAssembly="false"
+		                  SetTargetFramework="TargetFramework=netstandard2.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\CloudNimble.XmlEssentials.SourceGeneration\bin\$(Configuration)\netstandard2.0\CloudNimble.XmlEssentials.SourceGeneration.dll"
+		      Pack="true"
+		      PackagePath="analyzers/dotnet/cs;analyzers/dotnet/roslyn4.14/cs"
+		      Visible="false" />
+	</ItemGroup>
+
+</Project>

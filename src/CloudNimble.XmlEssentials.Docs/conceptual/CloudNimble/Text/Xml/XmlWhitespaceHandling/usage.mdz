@@ -1,0 +1,9 @@
+# Usage
+
+`XmlReaderOptions.WhitespaceHandling` applies to **whitespace-only text between elements**:
+
+- `Insignificant` (default) — skip those nodes.
+- `Significant` — report them as `XmlTokenType.Text`.
+- `None` — throw `XmlException`.
+
+Whitespace inside a leaf element's value is always part of the value. `<n> a </n>` is `" a "` under every setting.

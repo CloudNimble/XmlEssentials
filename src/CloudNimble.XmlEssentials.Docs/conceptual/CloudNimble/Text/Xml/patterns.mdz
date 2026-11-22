@@ -1,0 +1,9 @@
+# Patterns
+
+**Drain.** Loop `Read()` and switch on `TokenType`. This is the STJ `Utf8JsonReader` shape.
+
+**Skip a subtree.** On a start tag, `Skip()` consumes that element and its children. Empty elements are already complete.
+
+**Typed text.** After `Read` lands on `Text` or `CData`, call `TryGetInt32`, `TryGetBoolean`, `TryGetGuid`, and the other getters. They parse UTF-8 in place.
+
+**Attributes.** On `StartElement`, `MoveToNextAttribute` until it returns false, then `MoveToElement` to restore the start tag.

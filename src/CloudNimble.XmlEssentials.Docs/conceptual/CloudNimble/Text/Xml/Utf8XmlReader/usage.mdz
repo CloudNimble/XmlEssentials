@@ -1,0 +1,21 @@
+# Usage
+
+Create the reader over a UTF-8 `ReadOnlySpan<byte>` or `ReadOnlySequence<byte>`. An optional BOM is consumed. Call `Read` until it returns false.
+
+```csharp
+var reader = new Utf8XmlReader("<root><n>42</n></root>"u8);
+while (reader.Read())
+{
+    if (reader.TokenType == XmlTokenType.StartElement
+        && reader.LocalNameEquals("n"u8))
+    {
+        reader.Read();
+        if (reader.TryGetInt32(out var n))
+        {
+            Console.WriteLine(n);
+        }
+    }
+}
+```
+
+Pass `new XmlReaderOptions { MaxDepth = 32 }` as the second argument when you need limits or comment/whitespace policy. Use the three-argument constructor (`utf8`, `isFinalBlock`, `state`) only when you are feeding successive buffers.

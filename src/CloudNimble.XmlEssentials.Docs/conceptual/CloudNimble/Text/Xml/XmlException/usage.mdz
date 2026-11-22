@@ -1,0 +1,17 @@
+# Usage
+
+`Utf8XmlReader` throws `XmlException` for well-formedness errors, illegal characters, DTD markup, and exceeded DoS limits. Catch it around the `Read` loop.
+
+```csharp
+try
+{
+    var reader = new Utf8XmlReader(utf8);
+    while (reader.Read()) { }
+}
+catch (XmlException ex)
+{
+    Console.WriteLine($"{ex.LineNumber}:{ex.LinePosition} {ex.Message}");
+}
+```
+
+This type is not `System.Xml.XmlException` and does not wrap it.

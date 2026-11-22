@@ -1,0 +1,14 @@
+# Usage
+
+Pass a constructed options struct into `Utf8XmlReader`:
+
+```csharp
+var options = new XmlReaderOptions
+{
+    MaxDepth = 32,
+    CommentHandling = XmlCommentHandling.Allow,
+};
+var reader = new Utf8XmlReader(utf8, options);
+```
+
+Omit the argument for defaults: comments skipped, insignificant whitespace between elements skipped, a single root required, every max-* at `0` (table defaults).
