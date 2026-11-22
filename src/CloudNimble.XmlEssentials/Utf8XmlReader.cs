@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
@@ -58,6 +59,8 @@ namespace CloudNimble.Text.Xml
         private Int8Buffer _elementNameLengthsInline;
         private int[]? _elementNameStarts;
         private Int8Buffer _elementNameStartsInline;
+        private int[]? _elementPrefixLengths;
+        private Int8Buffer _elementPrefixLengthsInline;
         private bool _finished;
         private bool _hasNamespaceAttribute;
         private readonly bool _hasSequence;
@@ -79,6 +82,9 @@ namespace CloudNimble.Text.Xml
         private NamespaceBinding[]? _nsBindings;
         private NamespaceBinding8 _nsBindingsInline;
         private int _nsCount;
+        private NamespaceBinding _nsPrefixCache;
+        private byte _nsPrefixCacheByte;
+        private bool _nsPrefixCacheValid;
         private XmlReaderOptions _options;
         private int _pendingEmptyNsDepth;
         private int _pos;
@@ -380,6 +386,8 @@ namespace CloudNimble.Text.Xml
             _elementNameLengthsInline = default;
             _elementNameStarts = null;
             _elementNameStartsInline = default;
+            _elementPrefixLengths = null;
+            _elementPrefixLengthsInline = default;
             _finished = false;
             _hasNamespaceAttribute = false;
             _hasSequence = hasSequence;
@@ -401,6 +409,9 @@ namespace CloudNimble.Text.Xml
             _nsBindings = null;
             _nsBindingsInline = default;
             _nsCount = 0;
+            _nsPrefixCache = default;
+            _nsPrefixCacheByte = 0;
+            _nsPrefixCacheValid = false;
             _options = state.Options;
             _pendingEmptyNsDepth = 0;
             _pos = 0;
@@ -1089,7 +1100,7 @@ namespace CloudNimble.Text.Xml
                 return false;
             }
 
-            value = written == dest.Length ? dest : dest[..written].ToArray();
+            value = written == dest.Length ? dest : dest.AsSpan(0, written).ToArray();
             return true;
         }
 

@@ -1,0 +1,8 @@
+# Related APIs
+
+- `XmlWriterOptions`
+- `XmlEncodedText`
+- `XmlVersion`
+- `XmlException`
+- `Utf8XmlReader`
+- `System.Text.Json.Utf8JsonWriter`

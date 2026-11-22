@@ -1,0 +1,7 @@
+# Best Practices
+
+- Construct options with `new XmlWriterOptions()`. `default(XmlWriterOptions)` leaves `IndentCharacter` as NUL and `NewLine` as null; the writer substitutes space and `Environment.NewLine`.
+- Keep payloads in UTF-8 (`u8` literals, `byte[]`). Cache repeated names with `XmlEncodedText.Encode`.
+- Set `MaxDepth`, `MaxAttributeCount`, and `MaxNameByteCount` on untrusted object graphs.
+- Call `WriteEndElement` for every start tag. Do not rely on `Dispose` to close elements; it throws instead.
+- Use `OmitXmlDeclaration = true` for fragments. Write the declaration explicitly only when it must be the first output.

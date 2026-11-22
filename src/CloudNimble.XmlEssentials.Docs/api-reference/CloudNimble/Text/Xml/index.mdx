@@ -3,7 +3,7 @@ title: Overview
 description: "Summary of the CloudNimble.Text.Xml Namespace"
 icon: folder-tree
 mode: wide
-keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'XmlAttributes', 'XmlCommentHandling', 'XmlException', 'XmlName', 'XmlNamespaces', 'XmlReaderOptions', 'XmlReaderState', 'XmlTokenType', 'XmlVersion']
+keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'Utf8XmlWriter', 'XmlAttributes', 'XmlCommentHandling', 'XmlEncodedText', 'XmlException', 'XmlName', 'XmlNamespaces', 'XmlReaderOptions', 'XmlReaderState']
 ---
 
 ## Summary
@@ -107,6 +107,7 @@ while (reader.Read())
 
 | Name | Summary |
 | ---- | ------- |
+| [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | A UTF-8 XML writer analogous to `Utf8JsonWriter`. |
 | [XmlAttributes](/api-reference/CloudNimble/Text/Xml/XmlAttributes) | Well-known XML attribute local names used by XmlEssentials. |
 | [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) | Thrown when XML is not well-formed or a DoS limit is exceeded. |
 | [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) | Well-known XML namespace URIs used by XmlEssentials. |
@@ -116,9 +117,11 @@ while (reader.Read())
 | Name | Summary |
 | ---- | ------- |
 | [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`. |
+| [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) | Cached escaped UTF-8 for hot element and attribute names. |
 | [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) | A namespace-qualified XML name: local name, namespace URI, and optional prefix. |
 | [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) | Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
 | [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) | Opaque resume state for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
+| [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) | Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter). |
 
 ### <Icon icon="list-ol" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Enums
 

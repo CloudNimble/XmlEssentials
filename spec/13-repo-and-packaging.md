@@ -10,7 +10,7 @@ D:\GitHub\XmlEssentials\
   README.md
   spec\
     README.md
-    00-overview.md … 22-pr-plan.md
+    00-overview.md … 23-optimization.md
   src\
     Directory.Build.props
     Directory.Build.targets

@@ -1,0 +1,16 @@
+# Usage
+
+Pass a constructed options struct into `Utf8XmlWriter`:
+
+```csharp
+var options = new XmlWriterOptions
+{
+    Indented = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+    MaxDepth = 32,
+};
+using var writer = new Utf8XmlWriter(buffer, options);
+```
+
+Use the parameterless constructor so `IndentCharacter` is space and `NewLine` is `Environment.NewLine`.

@@ -1,3 +1,4 @@
+using System;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -13,6 +14,23 @@ namespace CloudNimble.XmlEssentials.Tests
     {
 
         #region Public Methods
+
+        [TestMethod]
+        public void PrefixedAttribute_OnChildWithoutXmlns_Resolves()
+        {
+            XmlReaderHarness.MustRead("<p:r xmlns:p=\"urn:x\"><p:e p:a=\"1\"/></p:r>");
+        }
+
+        [TestMethod]
+        public void EndTag_DifferentPrefixSameUri_Matches()
+        {
+            var reader = new Utf8XmlReader("<a:e xmlns:a=\"urn:x\" xmlns:b=\"urn:x\"></b:e>"u8);
+            reader.Read().Should().BeTrue();
+            reader.Read().Should().BeTrue();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            reader.LocalNameEquals("e").Should().BeTrue();
+            reader.NamespaceUriEquals("urn:x").Should().BeTrue();
+        }
 
         [TestMethod]
         public void DefaultXmlns_AppliesToUnprefixedElementNotAttribute()

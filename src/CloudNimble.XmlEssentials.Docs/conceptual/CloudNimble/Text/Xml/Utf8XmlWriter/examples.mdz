@@ -1,0 +1,27 @@
+# Examples
+
+Empty vs full end:
+
+```csharp
+writer.WriteEmptyElement("e");               // <e/>
+
+writer.WriteStartElement("e");
+writer.WriteFullEndElement();                // <e></e>
+```
+
+Attributes on an empty element still use the start/end pair:
+
+```csharp
+writer.WriteStartElement("e");
+writer.WriteAttributeString("id", "1");
+writer.WriteEndElement();                    // <e id="1"/>
+```
+
+Namespaces and nil:
+
+```csharp
+writer.WriteEmptyElement("p", "e", "urn:x"); // <p:e xmlns:p="urn:x"/>
+writer.WriteNilElement("n");                 // xmlns:xsi plus xsi:nil="true"
+```
+
+Typed values use XSD 1.0 lexical forms (`true`/`false`, `INF`/`NaN`, `yyyy-MM-ddTHH:mm:ss`, `PT1H`).

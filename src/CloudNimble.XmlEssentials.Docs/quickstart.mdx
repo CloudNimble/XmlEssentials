@@ -38,4 +38,17 @@ Empty tags (`<Person id="1"/>`) are `StartElement` with `IsEmptyElement` true. T
 
 Prefer `ValueSpan` and `TryGetInt32` / `TryGetBoolean` when you can stay in UTF-8. `GetString` allocates.
 
-`XmlSerializer` is not in this release. The reader is the current public entry point.
+Write with `Utf8XmlWriter` over `IBufferWriter<byte>` or `Stream`:
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+{
+    writer.WriteStartElement("Person");
+    writer.WriteAttributeString("id", "1");
+    writer.WriteElementString("Name", "Ada");
+    writer.WriteEndElement();
+}
+```
+
+`XmlSerializer` is not in this release. The reader and writer are the current public entry points.

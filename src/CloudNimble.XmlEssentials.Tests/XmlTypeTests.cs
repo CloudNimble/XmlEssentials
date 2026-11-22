@@ -1,3 +1,4 @@
+using System;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -60,9 +61,70 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlChars.IsAsciiNameStart((byte)'_').Should().BeTrue();
             XmlChars.IsAsciiNameStart((byte)':').Should().BeTrue();
             XmlChars.IsAsciiNameStart((byte)'1').Should().BeFalse();
+            XmlChars.IsAsciiNameStart((byte)'Z').Should().BeTrue();
+            XmlChars.IsAsciiNameStart((byte)'a').Should().BeTrue();
+            XmlChars.IsAsciiNameStart((byte)'z').Should().BeTrue();
+            XmlChars.IsAsciiNameStart((byte)'@').Should().BeFalse();
+            XmlChars.IsAsciiNcNameChar((byte)'A').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'Z').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'a').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'z').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'0').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'9').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'_').Should().BeTrue();
+            XmlChars.IsAsciiNcNameChar((byte)'.').Should().BeTrue();
             XmlChars.IsAsciiNcNameChar((byte)'1').Should().BeTrue();
             XmlChars.IsAsciiNcNameChar((byte)'-').Should().BeTrue();
             XmlChars.IsAsciiNcNameChar((byte)':').Should().BeFalse();
+            XmlChars.IsAsciiNcNameChar((byte)'/').Should().BeFalse();
+            foreach (var cp in new[]
+                     {
+                         (int)':', 'A', 'Z', '_', 'a', 'z',
+                         0xBF, 0xC0, 0xD6, 0xD7, 0xD8, 0xF6, 0xF7, 0xF8, 0x2FF, 0x300,
+                         0x36F, 0x370, 0x37D, 0x37E, 0x37F, 0x1FFF, 0x200B, 0x200C, 0x200D, 0x200E,
+                         0x206F, 0x2070, 0x218F, 0x2190, 0x2BFF, 0x2C00, 0x2FEF, 0x2FF0,
+                         0x3000, 0x3001, 0xD7FF, 0xD800, 0xF8FF, 0xF900, 0xFDCF, 0xFDD0,
+                         0xFDEF, 0xFDF0, 0xFFFD, 0xFFFE, 0x10000, 0xEFFFF, 0xF0000,
+                     })
+            {
+                _ = XmlChars.IsNameStartChar(cp, XmlVersion.Version10);
+                _ = XmlChars.IsNameStartChar(cp, XmlVersion.Version11);
+            }
+
+            XmlChars.IsNameChar('.', XmlVersion.Version10).Should().BeTrue();
+            XmlChars.IsNameChar('0', XmlVersion.Version10).Should().BeTrue();
+            XmlChars.IsNameChar('9', XmlVersion.Version10).Should().BeTrue();
+            XmlChars.IsNameChar(0xB7, XmlVersion.Version10).Should().BeTrue();
+            XmlChars.IsNameChar(0x036F, XmlVersion.Version10).Should().BeTrue();
+            XmlChars.IsNameChar(0x2040, XmlVersion.Version10).Should().BeTrue();
+            XmlChars.IsNameChar(0x2041, XmlVersion.Version10).Should().BeFalse();
+            XmlChars.IsXml10Char(0x8).Should().BeFalse();
+            XmlChars.IsXml10Char(0xA).Should().BeTrue();
+            XmlChars.IsXml10Char(0xD).Should().BeTrue();
+            XmlChars.IsXml10Char(0x20).Should().BeTrue();
+            XmlChars.IsXml10Char(0xD7FF).Should().BeTrue();
+            XmlChars.IsXml10Char(0xD800).Should().BeFalse();
+            XmlChars.IsXml10Char(0xFFFD).Should().BeTrue();
+            XmlChars.IsXml10Char(0xFFFE).Should().BeFalse();
+            XmlChars.IsXml10Char(0x10FFFF).Should().BeTrue();
+            XmlChars.IsXml10Char(0x110000).Should().BeFalse();
+            XmlChars.IsXml11Char(0xD7FF).Should().BeTrue();
+            XmlChars.IsXml11Char(0xD800).Should().BeFalse();
+            XmlChars.IsXml11Char(0xFFFD).Should().BeTrue();
+            XmlChars.IsXml11Char(0xFFFE).Should().BeFalse();
+            XmlChars.IsXml11Char(0x10FFFF).Should().BeTrue();
+            XmlChars.IsXml11Char(0x110000).Should().BeFalse();
+            XmlChars.IsXml11RestrictedChar(0).Should().BeFalse();
+            XmlChars.IsXml11RestrictedChar(8).Should().BeTrue();
+            XmlChars.IsXml11RestrictedChar(9).Should().BeFalse();
+            XmlChars.IsXml11RestrictedChar(0xC).Should().BeTrue();
+            XmlChars.IsXml11RestrictedChar(0xD).Should().BeFalse();
+            XmlChars.IsXml11RestrictedChar(0x1F).Should().BeTrue();
+            XmlChars.IsXml11RestrictedChar(0x20).Should().BeFalse();
+            XmlChars.IsXml11RestrictedChar(0x84).Should().BeTrue();
+            XmlChars.IsXml11RestrictedChar(0x85).Should().BeFalse();
+            XmlChars.IsXml11RestrictedChar(0x9F).Should().BeTrue();
+            XmlChars.IsXml11RestrictedChar(0xA0).Should().BeFalse();
             XmlChars.AsciiNcNameChars.Contains((byte)'Z').Should().BeTrue();
             XmlChars.AsciiTextChars.Contains((byte)'W').Should().BeTrue();
             XmlChars.AsciiTextChars.Contains((byte)'<').Should().BeFalse();

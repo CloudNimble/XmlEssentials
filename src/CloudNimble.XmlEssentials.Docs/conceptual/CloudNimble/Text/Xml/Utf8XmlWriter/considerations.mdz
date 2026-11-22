@@ -1,0 +1,11 @@
+# Considerations
+
+`Utf8XmlWriter` is a class, not a `ref struct`. Dispose flushes. If `SkipValidation` is false and elements are still open, `Dispose` throws `XmlException`.
+
+Empty elements use `/>` from `WriteEndElement` when the start tag has no content. `WriteFullEndElement` always writes `</name>`.
+
+Unprefixed elements in a namespace auto-declare `xmlns`. Prefixed names auto-declare `xmlns:prefix` when that URI is not in scope. Unprefixed attributes are in no namespace; a namespaced attribute without a prefix gets `ns1`, `ns2`, ….
+
+Text escaping: `&` and `<` always, and `>` only as part of `]]>`. Attributes are double-quoted; `"` is escaped. CDATA containing `]]>` throws. Comments containing `--` or ending in `-` throw.
+
+In XML 1.1, RestrictedChar in values is written as a hexadecimal numeric character reference. `EmitByteOrderMark` is false by default and emits `EF BB BF` once per writer lifetime.

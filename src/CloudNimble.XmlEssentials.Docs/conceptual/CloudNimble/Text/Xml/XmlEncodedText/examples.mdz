@@ -1,0 +1,8 @@
+# Examples
+
+```csharp
+var name = XmlEncodedText.Encode("Person"u8);
+var copy = XmlEncodedText.Encode("Person");
+name.Equals(copy); // true
+name.ToString();   // "Person"
+```

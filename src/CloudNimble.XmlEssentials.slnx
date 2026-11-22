@@ -34,6 +34,7 @@
     <File Path="../spec/20-open-questions.md" />
     <File Path="../spec/21-references.md" />
     <File Path="../spec/22-pr-plan.md" />
+    <File Path="../spec/23-optimization.md" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="../.gitignore" />

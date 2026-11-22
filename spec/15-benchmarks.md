@@ -16,6 +16,8 @@ Project: `CloudNimble.XmlEssentials.Performance`, BenchmarkDotNet, `net10.0` and
 
 Payload: nested graph (person, address, list of orders with line items) ~2–20 KB. Do not micro-benchmark a single `<a>1</a>`.
 
+Reader and writer tokenizer benches (`Utf8XmlReaderBenchmarks`, `Utf8XmlWriterBenchmarks`) are a separate suite: tiny document, 200-item catalog, namespaced catalog. How to run them, how to report numbers, and the remaining namespaced-drain work are in [optimization](23-optimization.md).
+
 Fairness rules:
 
 - No `new XmlSerializer(typeof(T))` inside `[Benchmark]` (ModernXmlSerializer serialize bench did this; deserialize bench hashed SHA256/MD5 and never called the library).

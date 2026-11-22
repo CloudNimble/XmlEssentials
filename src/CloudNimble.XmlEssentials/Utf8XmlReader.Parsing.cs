@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Globalization;
 using System.Text;
@@ -551,6 +552,36 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Returns true when the end-tag prefix is the same prefix stored on the start tag.
+        /// </summary>
+        /// <param name="index">The current element-stack index.</param>
+        /// <param name="endNameStart">The end-tag name offset in the current buffer.</param>
+        /// <param name="endPrefixLength">The end-tag prefix length.</param>
+        /// <returns><see langword="true"/> when the prefixes match and are still in the current buffer.</returns>
+        internal readonly bool EndPrefixMatchesStart(int index, int endNameStart, int endPrefixLength)
+        {
+            if (index < _resumeNameCount)
+            {
+                return false;
+            }
+
+            var startPrefixLength = index < 8 ? _elementPrefixLengthsInline[index] : _elementPrefixLengths![index];
+            if (endPrefixLength != startPrefixLength)
+            {
+                return false;
+            }
+
+            if (endPrefixLength == 0)
+            {
+                return true;
+            }
+
+            var localStart = index < 8 ? _elementNameStartsInline[index] : _elementNameStarts![index];
+            return _span.Slice(localStart - endPrefixLength - 1, endPrefixLength)
+                .SequenceEqual(_span.Slice(endNameStart, endPrefixLength));
+        }
+
+        /// <summary>
         /// Encodes <paramref name="cp"/> as UTF-8 into <paramref name="destination"/>.
         /// </summary>
         /// <param name="cp">The Unicode code point.</param>
@@ -618,12 +649,14 @@ namespace CloudNimble.Text.Xml
             var n = _elementNameStarts is null ? 16 : _elementNameStarts.Length * 2;
             Array.Resize(ref _elementNameStarts, n);
             Array.Resize(ref _elementNameLengths, n);
+            Array.Resize(ref _elementPrefixLengths, n);
             if (n == 16)
             {
                 for (var i = 0; i < 8; i++)
                 {
                     _elementNameStarts[i] = _elementNameStartsInline[i];
                     _elementNameLengths[i] = _elementNameLengthsInline[i];
+                    _elementPrefixLengths[i] = _elementPrefixLengthsInline[i];
                 }
             }
         }
@@ -1146,16 +1179,28 @@ namespace CloudNimble.Text.Xml
             _pos++;
             var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
             var local = _span.Slice(nameStart + localAdj, nameLength - localAdj);
-            var prefix = prefixLength > 0 ? _span.Slice(nameStart, prefixLength) : [];
-            var endNs = ResolveElementNamespace(prefix);
-            if (_elementCount == 0
-                || !ElementLocalName(_elementCount - 1).SequenceEqual(local)
-                || !ElementNamespace(_elementCount - 1).SequenceEqual(endNs))
+            var index = _elementCount - 1;
+            if (_elementCount == 0 || !ElementLocalName(index).SequenceEqual(local))
             {
                 throw Error("End tag does not match start tag.");
             }
 
-            SetCurrentNamespace(endNs);
+            if (EndPrefixMatchesStart(index, nameStart, prefixLength))
+            {
+                RestoreCurrentNamespaceFromElement(index);
+            }
+            else
+            {
+                var prefix = prefixLength > 0 ? _span.Slice(nameStart, prefixLength) : [];
+                var endNs = ResolveElementNamespace(prefix);
+                if (!ElementNamespace(index).SequenceEqual(endNs))
+                {
+                    throw Error("End tag does not match start tag.");
+                }
+
+                SetCurrentNamespace(endNs);
+            }
+
             PopNamespaceScope(_depth);
             _elementCount--;
             _depth--;
@@ -1425,7 +1470,10 @@ namespace CloudNimble.Text.Xml
             }
 
             ApplyNamespaces(_depth + 1);
-            CheckDuplicateNamespacedAttributes();
+            if (_attributeCount > 1 || (_attributeCount == 1 && AttributeAt(0).PrefixLength > 0))
+            {
+                CheckDuplicateNamespacedAttributes();
+            }
 
             if (!_isEmptyElement)
             {
@@ -1435,11 +1483,13 @@ namespace CloudNimble.Text.Xml
                 {
                     _elementNameStartsInline[_elementCount] = nameStart + localAdj;
                     _elementNameLengthsInline[_elementCount] = nameLength - localAdj;
+                    _elementPrefixLengthsInline[_elementCount] = prefixLength;
                 }
                 else
                 {
                     _elementNameStarts![_elementCount] = nameStart + localAdj;
                     _elementNameLengths![_elementCount] = nameLength - localAdj;
+                    _elementPrefixLengths![_elementCount] = prefixLength;
                 }
 
                 _elementCount++;

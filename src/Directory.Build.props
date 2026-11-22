@@ -16,7 +16,7 @@
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
-		<ImplicitUsings>enable</ImplicitUsings>
+		<ImplicitUsings>disable</ImplicitUsings>
 	</PropertyGroup>
 
 	<PropertyGroup>

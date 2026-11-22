@@ -1,0 +1,11 @@
+# Usage
+
+Cache a name once and pass it to `Utf8XmlWriter.WriteStartElement`:
+
+```csharp
+var root = XmlEncodedText.Encode("root");
+writer.WriteStartElement(root);
+writer.WriteEndElement();
+```
+
+`Encode` accepts `string`, `ReadOnlySpan<char>`, or UTF-8 `ReadOnlySpan<byte>`. `EncodedUtf8Bytes` is the cached name.

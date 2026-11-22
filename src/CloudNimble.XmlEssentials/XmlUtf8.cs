@@ -1,3 +1,5 @@
+using System;
+
 namespace CloudNimble.Text.Xml
 {
 
@@ -28,6 +30,16 @@ namespace CloudNimble.Text.Xml
         /// UTF-8 of <see cref="XmlNamespaces.Xsi"/>.
         /// </summary>
         public static readonly byte[] Xsi = "http://www.w3.org/2001/XMLSchema-instance"u8.ToArray();
+
+        /// <summary>
+        /// The reserved <c>xml</c> prefix.
+        /// </summary>
+        public static readonly byte[] XmlPrefix = "xml"u8.ToArray();
+
+        /// <summary>
+        /// The reserved <c>xmlns</c> prefix.
+        /// </summary>
+        public static readonly byte[] XmlnsPrefix = "xmlns"u8.ToArray();
 
         #endregion
 

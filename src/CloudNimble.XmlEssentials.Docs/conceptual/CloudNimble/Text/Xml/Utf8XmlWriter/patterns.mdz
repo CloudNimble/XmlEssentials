@@ -1,0 +1,11 @@
+# Patterns
+
+**Element pair.** `WriteStartElement`, attributes while the start tag is open, then content or `WriteEndElement`.
+
+**Helpers.** `WriteEmptyElement` writes `<e/>`. `WriteNilElement` adds `xsi:nil="true"`. `WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, and `WriteElementBase64String` write a complete child with a value.
+
+**Fragments.** `Reset` starts a new document on the same destination. `BytesCommitted` returns to 0. One BOM per writer lifetime.
+
+**Raw inject.** `WriteRawValue` copies bytes after closing the start tag. Use `skipInputValidation: true` only for trusted markup.
+
+**Streaming.** Prefer `ReadOnlySpan<byte>` and `XmlEncodedText` for hot names. `WriteStringValueSegment` / `WriteBase64StringSegment` append to the current value.

@@ -1,0 +1,5 @@
+# Patterns
+
+**Static cache.** Store `XmlEncodedText` in a `static readonly` field on the serializer or converter that writes that element name in a loop.
+
+**UTF-8 literal.** `XmlEncodedText.Encode("id"u8)` avoids a UTF-16 transcode at cache-fill time.

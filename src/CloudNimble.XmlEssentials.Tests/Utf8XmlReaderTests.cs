@@ -1,4 +1,6 @@
+using System;
 using System.Buffers;
+using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
 using FluentAssertions;

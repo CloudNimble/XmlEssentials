@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

@@ -50,6 +50,7 @@ using CloudNimble.Text.Xml.Serialization;
 | [20-open-questions.md](20-open-questions.md) | Open questions |
 | [21-references.md](21-references.md) | References |
 | [22-pr-plan.md](22-pr-plan.md) | PR plan |
+| [23-optimization.md](23-optimization.md) | Tokenizer/writer optimization playbook and backlog |
 
 ## How to read the spec
 

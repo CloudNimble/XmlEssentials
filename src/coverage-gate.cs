@@ -5,7 +5,9 @@
 #:property GenerateDocumentationFile=false
 #:property IsPrimaryProject=false
 
+using System;
 using System.Globalization;
+using System.IO;
 using System.Xml;
 
 if (args.Length < 1 || string.IsNullOrWhiteSpace(args[0]))

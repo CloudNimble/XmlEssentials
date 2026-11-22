@@ -1,0 +1,411 @@
+---
+title: XmlEncodedText
+description: "Cached escaped UTF-8 for hot element and attribute names."
+icon: cubes
+tag: "SEALED"
+keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `Utf8XmlWriter`', '- `XmlName`', '- `System.Text.Json.JsonEncodedText`']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.ValueType
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlEncodedText
+```
+
+## Summary
+
+Cached escaped UTF-8 for hot element and attribute names.
+
+## Usage
+
+# Usage
+
+Cache a name once and pass it to `Utf8XmlWriter.WriteStartElement`:
+
+```csharp
+var root = XmlEncodedText.Encode("root");
+writer.WriteStartElement(root);
+writer.WriteEndElement();
+```
+
+`Encode` accepts `string`, `ReadOnlySpan<char>`, or UTF-8 `ReadOnlySpan<byte>`. `EncodedUtf8Bytes` is the cached name.
+
+## Examples
+
+# Examples
+
+```csharp
+var name = XmlEncodedText.Encode("Person"u8);
+var copy = XmlEncodedText.Encode("Person");
+name.Equals(copy); // true
+name.ToString();   // "Person"
+```
+
+## Best Practices
+
+# Best Practices
+
+- Encode names once, not per element.
+- Do not use this type for text values; it does not apply `&amp;` / `&lt;` escaping.
+- Compare with `Equals` or `==`, not `ToString()`.
+
+## Patterns
+
+# Patterns
+
+**Static cache.** Store `XmlEncodedText` in a `static readonly` field on the serializer or converter that writes that element name in a loop.
+
+**UTF-8 literal.** `XmlEncodedText.Encode("id"u8)` avoids a UTF-16 transcode at cache-fill time.
+
+## Considerations
+
+# Considerations
+
+`XmlEncodedText` stores UTF-8 name bytes. It does not escape markup; XML names are not escaped. Invalid names still fail at write time unless `SkipValidation` is set.
+
+Equality is ordinal UTF-8 byte equality. The prefix is not part of this type; it is a local name (or other name token) only.
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+protected ValueType()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EncodedUtf8Bytes
+
+Gets the encoded UTF-8 bytes.
+
+#### Syntax
+
+```csharp
+public System.ReadOnlySpan<byte> EncodedUtf8Bytes { get; }
+```
+
+#### Property Value
+
+Type: `System.ReadOnlySpan<byte>`
+
+## Methods
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
+
+Encodes *value* as UTF-8 name bytes.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlEncodedText Encode(string value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `string` | The name. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlEncodedText`
+The encoded name.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
+
+Encodes *value* as UTF-8 name bytes.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<char> value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.ReadOnlySpan<char>` | The name. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlEncodedText`
+The encoded name.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
+
+Encodes *utf8Value* as UTF-8 name bytes.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<byte> utf8Value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 name. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlEncodedText`
+The encoded name.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
+
+#### Syntax
+
+```csharp
+public bool Equals(CloudNimble.Text.Xml.XmlEncodedText other)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `other` | `CloudNimble.Text.Xml.XmlEncodedText` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
+
+#### Syntax
+
+```csharp
+public override bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
+
+#### Syntax
+
+```csharp
+public override int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
+
+#### Syntax
+
+```csharp
+public override string ToString()
+```
+
+#### Returns
+
+Type: `string`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+## Related APIs
+
+- # Related APIs
+- - `Utf8XmlWriter`
+- - `XmlName`
+- - `System.Text.Json.JsonEncodedText`
+

@@ -1,0 +1,489 @@
+---
+title: XmlWriterOptions
+description: "Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter)."
+icon: cubes
+tag: "SEALED"
+keywords: ['XmlWriterOptions', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `Utf8XmlWriter`', '- `XmlVersion`', '- `XmlReaderOptions`']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.ValueType
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlWriterOptions
+```
+
+## Summary
+
+Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter).
+
+## Usage
+
+# Usage
+
+Pass a constructed options struct into `Utf8XmlWriter`:
+
+```csharp
+var options = new XmlWriterOptions
+{
+    Indented = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+    MaxDepth = 32,
+};
+using var writer = new Utf8XmlWriter(buffer, options);
+```
+
+Use the parameterless constructor so `IndentCharacter` is space and `NewLine` is `Environment.NewLine`.
+
+## Remarks
+
+A max-* of 0 means the default from the DoS table. Construct with
+`new XmlWriterOptions()` so indent defaults apply.
+
+## Examples
+
+# Examples
+
+Pretty-print a fragment:
+
+```csharp
+new XmlWriterOptions
+{
+    OmitXmlDeclaration = true,
+    Indented = true,
+    IndentSize = 2,
+    NewLine = "\n",
+};
+```
+
+XML 1.1 with a BOM:
+
+```csharp
+new XmlWriterOptions
+{
+    Version = XmlVersion.Version11,
+    EmitByteOrderMark = true,
+};
+```
+
+## Best Practices
+
+# Best Practices
+
+- Always write `new XmlWriterOptions()` rather than `default`.
+- Set `NewLine` explicitly (`"\n"` or `"\r\n"`) when tests or files must not depend on the OS.
+- Leave `EmitByteOrderMark` false unless an interoperable consumer requires `EF BB BF`.
+
+## Patterns
+
+# Patterns
+
+**Fragments.** `OmitXmlDeclaration = true` when the caller wraps the bytes in a larger document.
+
+**DoS.** Set `MaxDepth`, `MaxAttributeCount`, and `MaxNameByteCount` together. Zero means “use the default,” not “unlimited.”
+
+**SkipValidation.** Turns off name and well-formedness checks. Limits still apply. Unclosed `Dispose` does not throw.
+
+## Considerations
+
+# Considerations
+
+`default(XmlWriterOptions)` is all zeros: `IndentCharacter` is NUL, `NewLine` is null, every max-* is 0. The writer treats NUL indent as space, null/empty newline as `Environment.NewLine`, and 0 max-* as the table defaults (64 / 1000 / 1024).
+
+`Version` defaults to XML 1.0. XML 1.1 emits `version="1.1"` and writes RestrictedChar as numeric character references.
+
+`EmitByteOrderMark` is false. `Standalone` is omitted from the declaration when null.
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options with indent character space, indent size 0 (meaning 2),
+and [XmlWriterOptions.NewLine](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#newline) equal to [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
+
+#### Syntax
+
+```csharp
+public XmlWriterOptions()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+protected ValueType()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmitByteOrderMark
+
+Gets or sets whether to write a UTF-8 BOM at the first output.
+Default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Syntax
+
+```csharp
+public bool EmitByteOrderMark { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentCharacter
+
+Gets or sets the indent character when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is true.
+Default is space when constructed with [XmlWriterOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#.ctor).
+
+#### Syntax
+
+```csharp
+public char IndentCharacter { get; set; }
+```
+
+#### Property Value
+
+Type: `char`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Indented
+
+Gets or sets whether to pretty-print with newlines and indentation.
+
+#### Syntax
+
+```csharp
+public bool Indented { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentSize
+
+Gets or sets the number of [XmlWriterOptions.IndentCharacter](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indentcharacter)s per depth.
+0 means 2.
+
+#### Syntax
+
+```csharp
+public int IndentSize { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
+
+Gets or sets the maximum attributes on one element, including xmlns*.
+0 means 1000.
+
+#### Syntax
+
+```csharp
+public int MaxAttributeCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
+
+Gets or sets the maximum element depth.
+0 means 64.
+
+#### Syntax
+
+```csharp
+public int MaxDepth { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
+
+Gets or sets the maximum UTF-8 byte length of an element or attribute name.
+0 means 1024.
+
+#### Syntax
+
+```csharp
+public int MaxNameByteCount { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
+
+Gets or sets the newline sequence when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is true.
+Default is [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline) when constructed with [XmlWriterOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#.ctor).
+
+#### Syntax
+
+```csharp
+public string NewLine { get; set; }
+```
+
+#### Property Value
+
+Type: `string?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
+
+Gets or sets whether to omit `<?xml ...?>`.
+
+#### Syntax
+
+```csharp
+public bool OmitXmlDeclaration { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SkipValidation
+
+Gets or sets whether to skip name and well-formedness checks.
+
+#### Syntax
+
+```csharp
+public bool SkipValidation { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Standalone
+
+Gets or sets the standalone pseudo-attribute, or null to omit it.
+
+#### Syntax
+
+```csharp
+public bool? Standalone { get; set; }
+```
+
+#### Property Value
+
+Type: `bool?`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
+
+Gets or sets the XML version written in the declaration and used for Char checks.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlVersion Version { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlVersion`
+
+## Methods
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.ValueType`</Note>
+
+#### Syntax
+
+```csharp
+public override string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+## Related APIs
+
+- # Related APIs
+- - `Utf8XmlWriter`
+- - `XmlVersion`
+- - `XmlReaderOptions`
+

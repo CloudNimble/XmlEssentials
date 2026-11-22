@@ -1,0 +1,5 @@
+# Best Practices
+
+- Always write `new XmlWriterOptions()` rather than `default`.
+- Set `NewLine` explicitly (`"\n"` or `"\r\n"`) when tests or files must not depend on the OS.
+- Leave `EmitByteOrderMark` false unless an interoperable consumer requires `EF BB BF`.

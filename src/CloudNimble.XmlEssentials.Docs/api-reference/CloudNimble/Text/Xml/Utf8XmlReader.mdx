@@ -56,7 +56,8 @@ Empty elements are reported as [XmlTokenType.StartElement](/api-reference/CloudN
 [Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement) true. The reader does not synthesize an
 [XmlTokenType.EndElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) token. Callers must check
 [Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement) before expecting a matching end tag.
-Namespace resolution is not applied in this release; [Utf8XmlReader.NamespaceUriSpan](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#namespaceurispan) is empty.
+xmlns attributes bind before the element name is resolved. Unprefixed attributes
+are in no namespace; unprefixed elements use the default xmlns.
 The XML declaration, when present, must be the first token in the document (after an optional BOM).
 
 ## Examples
@@ -936,7 +937,7 @@ The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetNil
 
-Returns true when the current start element has `nil="true"` or `nil="1"`.
+Returns true when the current start element has `xsi:nil="true"` or `xsi:nil="1"`.
 
 #### Syntax
 
@@ -957,7 +958,8 @@ Type: `bool`
 
 #### Remarks
 
-Matches `xsi:nil` in the XML Schema instance namespace.
+The local name `nil` must be in the XML Schema instance namespace.
+An unprefixed `nil` attribute is in no namespace and does not count.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetSByte
 

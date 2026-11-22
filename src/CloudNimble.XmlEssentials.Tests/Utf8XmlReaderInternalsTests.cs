@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
@@ -588,6 +590,14 @@ namespace CloudNimble.XmlEssentials.Tests
             Utf8XmlReader.TryParseDuration("P1M", out _).Should().BeFalse();
             Utf8XmlReader.TryParseDuration("PT", out _).Should().BeFalse();
             Utf8XmlReader.TryParseDuration("", out _).Should().BeFalse();
+            Utf8XmlReader.TryParseDuration("PT1H", out var hour).Should().BeTrue();
+            hour.Should().Be(TimeSpan.FromHours(1));
+            Utf8XmlReader.TryParseDuration("PT1M", out var minute).Should().BeTrue();
+            minute.Should().Be(TimeSpan.FromMinutes(1));
+            Utf8XmlReader.TryParseDuration("P1DT2H3M4S", out var mixed).Should().BeTrue();
+            mixed.Should().Be(new TimeSpan(1, 2, 3, 4));
+            Utf8XmlReader.TryParseDuration("PT1.2.3S", out _).Should().BeFalse();
+            Utf8XmlReader.TryParseDuration("P1H", out _).Should().BeFalse();
         }
 
         [TestMethod]
@@ -883,6 +893,8 @@ namespace CloudNimble.XmlEssentials.Tests
             intern.EnsureDecodedCapacity(4);
             intern.EnsureDecodedCapacity(2);
 
+            intern.ElementNamespace(0).IsEmpty.Should().BeTrue();
+
             Utf8XmlReader.TrimXmlWhitespace("  x  "u8).SequenceEqual("x"u8).Should().BeTrue();
             Utf8XmlReader.TryParseCodePoint("G"u8, hex: true, out _).Should().BeFalse();
 
@@ -901,9 +913,129 @@ namespace CloudNimble.XmlEssentials.Tests
 
             threw.Should().BeTrue();
 
+            var format = new Utf8XmlReader("<e>12a</e>"u8);
+            format.ReadStartElement();
+            format.ReadText();
+            var formatThrew = false;
+            try
+            {
+                _ = format.ParseInteger(int.Parse);
+            }
+            catch (XmlException)
+            {
+                formatThrew = true;
+            }
+
+            formatThrew.Should().BeTrue();
+
             var cut = new Utf8XmlReader("<e>a&amp"u8, false, default);
             cut.ReadStartElement();
             cut.DecodeValueSpan((int)cut.BytesConsumed, 5);
+        }
+
+        [TestMethod]
+        public void Coverage_RemainingReaderBranches()
+        {
+            var attrs = new Utf8XmlReader("<e a=\"1\"/>"u8);
+            attrs.Read();
+            attrs.MoveToNextAttribute();
+            attrs.TokenType.Should().Be(XmlTokenType.Attribute);
+            attrs.NamespaceUriEquals((string?)null).Should().BeTrue();
+
+            var padded = new Utf8XmlReader("<e>YQ==</e>"u8);
+            padded.ReadStartElement();
+            padded.ReadText();
+            padded.TryGetBytesFromBase64(out var one).Should().BeTrue();
+            one.Should().Equal((byte)'a');
+
+            var longText = new string('x', 200);
+            var longReader = new Utf8XmlReader(Encoding.UTF8.GetBytes("<e>" + longText + "</e>"));
+            longReader.ReadStartElement();
+            longReader.ReadText();
+            longReader.ValueTextEquals(longText.AsSpan()).Should().BeTrue();
+
+            var xmlNs = new Utf8XmlReader("<e/>"u8);
+            xmlNs.Read();
+            xmlNs.StoreElementNamespace(0, XmlUtf8.Xml);
+            xmlNs.ElementNamespace(0).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
+
+            var emptyNs = new Utf8XmlReader("<e/>"u8);
+            emptyNs.Read();
+            emptyNs.ElementNamespace(0).IsEmpty.Should().BeTrue();
+
+            var hexEof = new Utf8XmlReader("<e>&#"u8, false, default);
+            hexEof.ReadStartElement();
+            hexEof.Read().Should().BeFalse();
+
+            var longDecl = "<?xml version=\"1.0\" encoding=\"utf-8\"" + new string(' ', 300) + "?><e/>";
+            var decl = new Utf8XmlReader(Encoding.UTF8.GetBytes(longDecl));
+            decl.Read().Should().BeTrue();
+            decl.TokenType.Should().Be(XmlTokenType.XmlDeclaration);
+            decl.Read().Should().BeTrue();
+
+            var lookup = new Utf8XmlReader("<p:e xmlns:p=\"urn:x\" xml:lang=\"en\"/>"u8);
+            lookup.Read();
+            lookup.TryLookupBinding("p"u8, out var pBinding).Should().BeTrue();
+            lookup.BindingUri(pBinding).SequenceEqual("urn:x"u8).Should().BeTrue();
+            lookup.TryLookupBinding("xml"u8, out var xmlBinding).Should().BeTrue();
+            lookup.BindingUri(xmlBinding).SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
+            lookup.TryLookupBinding("xmlns"u8, out var xmlnsBinding).Should().BeTrue();
+            lookup.BindingUri(xmlnsBinding).SequenceEqual(XmlUtf8.Xmlns).Should().BeTrue();
+            lookup.TryLookupBinding("nope"u8, out _).Should().BeFalse();
+
+            var prefixedAttr = new Utf8XmlReader("<e xmlns:p=\"urn:x\" p:a=\"1\"/>"u8);
+            prefixedAttr.Read();
+            prefixedAttr.AttributeCount.Should().Be(2);
+
+            var nested = new StringBuilder("<a xmlns:p=\"urn:x\">");
+            for (var i = 0; i < 9; i++)
+            {
+                nested.Append("<p:e>");
+            }
+
+            for (var i = 0; i < 9; i++)
+            {
+                nested.Append("</p:e>");
+            }
+
+            nested.Append("</a>");
+            var deep = new Utf8XmlReader(Encoding.UTF8.GetBytes(nested.ToString()));
+            var depth = 0;
+            while (depth < 10 && deep.Read())
+            {
+                if (deep.TokenType is XmlTokenType.StartElement)
+                {
+                    depth++;
+                }
+            }
+
+            deep.AssignCurrentNamespace(new NamespaceBinding(0, XmlUtf8.XmlPrefix, XmlUtf8.Xml));
+            deep.StoreElementNamespaceFromCurrent(8);
+            deep.RestoreCurrentNamespaceFromElement(8);
+            deep.CurrentNamespaceBytes().SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
+            deep.StoreElementNamespace(0, "urn:not-in-buffer"u8);
+            deep.SetCurrentNamespace(XmlUtf8.Xml);
+            deep.CurrentNamespaceBytes().SequenceEqual(XmlUtf8.Xml).Should().BeTrue();
+            var inBuffer = new Utf8XmlReader("<e xmlns=\"urn:x\"/>"u8);
+            inBuffer.Read();
+            inBuffer.MoveToNextAttribute();
+            inBuffer.StoreElementNamespace(0, inBuffer.ValueSpan);
+
+            var internedXml = new Utf8XmlReader("<e xmlns=\"http://www.w3.org/XML/1998/namespace\"></e>"u8);
+            internedXml.Read();
+            internedXml.Read();
+            internedXml.TokenType.Should().Be(XmlTokenType.EndElement);
+
+            var mismatch = new Utf8XmlReader("<p:e xmlns:p=\"urn:x\" xmlns:qq=\"urn:x\"></qq:e>"u8);
+            mismatch.Read().Should().BeTrue();
+            mismatch.Read().Should().BeTrue();
+            mismatch.TokenType.Should().Be(XmlTokenType.EndElement);
+
+            var owned = new Utf8XmlReader("<e/>"u8);
+            owned.Read();
+            owned.PushBinding(1, "zz"u8.ToArray(), "urn:zz"u8.ToArray());
+            owned.TryLookupBinding("zz"u8, out var zz).Should().BeTrue();
+            owned.BindingPrefix(zz).SequenceEqual("zz"u8).Should().BeTrue();
         }
 
         [TestMethod]

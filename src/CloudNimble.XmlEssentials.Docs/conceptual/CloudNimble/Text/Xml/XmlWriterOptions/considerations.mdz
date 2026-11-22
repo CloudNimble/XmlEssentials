@@ -1,0 +1,7 @@
+# Considerations
+
+`default(XmlWriterOptions)` is all zeros: `IndentCharacter` is NUL, `NewLine` is null, every max-* is 0. The writer treats NUL indent as space, null/empty newline as `Environment.NewLine`, and 0 max-* as the table defaults (64 / 1000 / 1024).
+
+`Version` defaults to XML 1.0. XML 1.1 emits `version="1.1"` and writes RestrictedChar as numeric character references.
+
+`EmitByteOrderMark` is false. `Standalone` is omitted from the declaration when null.

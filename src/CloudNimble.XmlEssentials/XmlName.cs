@@ -1,3 +1,5 @@
+using System;
+
 namespace CloudNimble.Text.Xml
 {
 

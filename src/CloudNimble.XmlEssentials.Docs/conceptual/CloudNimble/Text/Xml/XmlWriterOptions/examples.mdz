@@ -1,0 +1,23 @@
+# Examples
+
+Pretty-print a fragment:
+
+```csharp
+new XmlWriterOptions
+{
+    OmitXmlDeclaration = true,
+    Indented = true,
+    IndentSize = 2,
+    NewLine = "\n",
+};
+```
+
+XML 1.1 with a BOM:
+
+```csharp
+new XmlWriterOptions
+{
+    Version = XmlVersion.Version11,
+    EmitByteOrderMark = true,
+};
+```

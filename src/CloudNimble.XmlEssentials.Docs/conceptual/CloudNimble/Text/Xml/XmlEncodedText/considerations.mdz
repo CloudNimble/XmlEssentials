@@ -1,0 +1,5 @@
+# Considerations
+
+`XmlEncodedText` stores UTF-8 name bytes. It does not escape markup; XML names are not escaped. Invalid names still fail at write time unless `SkipValidation` is set.
+
+Equality is ordinal UTF-8 byte equality. The prefix is not part of this type; it is a local name (or other name token) only.

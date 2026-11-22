@@ -1,0 +1,5 @@
+# Best Practices
+
+- Encode names once, not per element.
+- Do not use this type for text values; it does not apply `&amp;` / `&lt;` escaping.
+- Compare with `Equals` or `==`, not `ToString()`.

@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -59,12 +60,41 @@ namespace CloudNimble.Text.Xml
                 }
             }
 
-            SetCurrentNamespace(ResolveElementNamespace(_prefixLength > 0
-                ? _span.Slice(_nameStart, _prefixLength)
-                : []));
+            if (_prefixLength == 1 && _nsPrefixCacheValid && _span[_nameStart] == _nsPrefixCacheByte)
+            {
+                AssignCurrentNamespace(_nsPrefixCache);
+            }
+            else
+            {
+                var elementPrefix = _prefixLength > 0 ? _span.Slice(_nameStart, _prefixLength) : [];
+                if (TryLookupBinding(elementPrefix, out var binding))
+                {
+                    if (!elementPrefix.IsEmpty && binding.UriLength == 0)
+                    {
+                        throw Error("Undeclared namespace prefix.");
+                    }
+
+                    AssignCurrentNamespace(binding);
+                    if (_prefixLength == 1)
+                    {
+                        _nsPrefixCache = binding;
+                        _nsPrefixCacheByte = _span[_nameStart];
+                        _nsPrefixCacheValid = true;
+                    }
+                }
+                else if (!elementPrefix.IsEmpty)
+                {
+                    throw Error("Undeclared namespace prefix.");
+                }
+                else
+                {
+                    SetCurrentNamespace([]);
+                }
+            }
+
             if (!_isEmptyElement && (_currentNsLength > 0 || _nsCount > 0))
             {
-                StoreElementNamespace(_elementCount, CurrentNamespaceBytes());
+                StoreElementNamespaceFromCurrent(_elementCount);
             }
         }
 
@@ -129,14 +159,14 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal readonly void CheckDuplicateNamespacedAttributes()
         {
-            if (_attributeCount == 0)
-            {
-                return;
-            }
-
             if (_attributeCount == 1)
             {
-                _ = ResolveAttributeNamespace(AttributeAt(0));
+                var single = AttributeAt(0);
+                if (single.PrefixLength > 0)
+                {
+                    _ = ResolveAttributeNamespace(single);
+                }
+
                 return;
             }
 
@@ -252,6 +282,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="index">The binding index.</param>
         /// <returns>The binding.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly NamespaceBinding BindingAt(int index)
         {
             if (index < 8)
@@ -368,30 +399,83 @@ namespace CloudNimble.Text.Xml
         /// <returns>The URI, or empty if unbound.</returns>
         internal readonly ReadOnlySpan<byte> LookupNamespace(scoped ReadOnlySpan<byte> prefix, out bool declared)
         {
-            if (prefix.SequenceEqual("xml"u8))
+            if (TryLookupBinding(prefix, out var binding))
             {
                 declared = true;
-                return XmlUtf8.Xml;
-            }
-
-            if (prefix.SequenceEqual("xmlns"u8))
-            {
-                declared = true;
-                return XmlUtf8.Xmlns;
-            }
-
-            for (var i = _nsCount - 1; i >= 0; i--)
-            {
-                var binding = BindingAt(i);
-                if (prefix.SequenceEqual(BindingPrefix(binding)))
-                {
-                    declared = true;
-                    return BindingUri(binding);
-                }
+                return BindingUri(binding);
             }
 
             declared = prefix.IsEmpty;
             return [];
+        }
+
+        /// <summary>
+        /// Finds the in-scope binding for <paramref name="prefix"/>.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty for the default xmlns.</param>
+        /// <param name="binding">When this method returns true, the matching binding.</param>
+        /// <returns><see langword="true"/> if the prefix is in scope, including xml and xmlns.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal readonly bool TryLookupBinding(scoped ReadOnlySpan<byte> prefix, out NamespaceBinding binding)
+        {
+            var length = prefix.Length;
+            if (length == 3 && prefix.SequenceEqual("xml"u8))
+            {
+                binding = new NamespaceBinding(0, XmlUtf8.XmlPrefix, XmlUtf8.Xml);
+                return true;
+            }
+
+            if (length == 5 && prefix.SequenceEqual("xmlns"u8))
+            {
+                binding = new NamespaceBinding(0, XmlUtf8.XmlnsPrefix, XmlUtf8.Xmlns);
+                return true;
+            }
+
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                var candidate = BindingAt(i);
+                if (candidate.PrefixLength != length)
+                {
+                    continue;
+                }
+
+                if (length == 0)
+                {
+                    binding = candidate;
+                    return true;
+                }
+
+                if (candidate.PrefixStart >= 0)
+                {
+                    if (length == 1)
+                    {
+                        if (_span[candidate.PrefixStart] == prefix[0])
+                        {
+                            binding = candidate;
+                            return true;
+                        }
+
+                        continue;
+                    }
+
+                    if (prefix.SequenceEqual(_span.Slice(candidate.PrefixStart, length)))
+                    {
+                        binding = candidate;
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (prefix.SequenceEqual(candidate.PrefixOwned))
+                {
+                    binding = candidate;
+                    return true;
+                }
+            }
+
+            binding = default;
+            return false;
         }
 
         /// <summary>
@@ -460,6 +544,11 @@ namespace CloudNimble.Text.Xml
         /// <param name="depth">The element depth that is ending.</param>
         internal void PopNamespaceScope(int depth)
         {
+            if (_nsCount > 0 && BindingAt(_nsCount - 1).Depth == depth)
+            {
+                _nsPrefixCacheValid = false;
+            }
+
             while (_nsCount > 0 && BindingAt(_nsCount - 1).Depth == depth)
             {
                 _nsCount--;
@@ -494,6 +583,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="binding">The binding to store.</param>
         internal void StoreBinding(NamespaceBinding binding)
         {
+            _nsPrefixCacheValid = false;
             if (_nsCount < 8)
             {
                 _nsBindingsInline[_nsCount] = binding;
@@ -566,6 +656,77 @@ namespace CloudNimble.Text.Xml
             }
 
             return uri;
+        }
+
+        /// <summary>
+        /// Copies URI slots from <paramref name="binding"/> onto the current element.
+        /// </summary>
+        /// <param name="binding">The in-scope binding.</param>
+        internal void AssignCurrentNamespace(in NamespaceBinding binding)
+        {
+            _currentNsStart = binding.UriStart;
+            _currentNsLength = binding.UriLength;
+            _currentNsOwned = binding.UriStart >= 0 ? XmlUtf8.Empty : binding.UriOwned;
+        }
+
+        /// <summary>
+        /// Stores the current namespace URI slots on the element stack at <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The element-stack index.</param>
+        internal void StoreElementNamespaceFromCurrent(int index)
+        {
+            if (index < 8)
+            {
+                _elementNsStartsInline[index] = _currentNsStart;
+                _elementNsLengthsInline[index] = _currentNsLength;
+                if (_currentNsStart < 0 && _currentNsLength > 0)
+                {
+                    _elementNsUris ??= new byte[8][];
+                    _elementNsUris[index] = _currentNsOwned;
+                }
+
+                return;
+            }
+
+            EnsureElementNsCapacity(index);
+            _elementNsStarts![index] = _currentNsStart;
+            _elementNsLengths![index] = _currentNsLength;
+            if (_currentNsStart < 0 && _currentNsLength > 0)
+            {
+                _elementNsUris![index] = _currentNsOwned;
+            }
+        }
+
+        /// <summary>
+        /// Restores the current namespace URI from the element stack at <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The element-stack index.</param>
+        internal void RestoreCurrentNamespaceFromElement(int index)
+        {
+            int start;
+            int length;
+            if (index < 8)
+            {
+                start = _elementNsStartsInline[index];
+                length = _elementNsLengthsInline[index];
+            }
+            else
+            {
+                start = _elementNsStarts![index];
+                length = _elementNsLengths![index];
+            }
+
+            _currentNsStart = start;
+            _currentNsLength = length;
+            if (start >= 0 || length == 0)
+            {
+                _currentNsOwned = XmlUtf8.Empty;
+                return;
+            }
+
+            _currentNsOwned = index < 8
+                ? (_elementNsUris is null ? XmlUtf8.Empty : _elementNsUris[index])
+                : _elementNsUris![index];
         }
 
         /// <summary>

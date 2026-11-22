@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using CloudNimble.Text.Xml;
 using FluentAssertions;

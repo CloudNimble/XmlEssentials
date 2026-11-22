@@ -85,6 +85,16 @@ public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
     public void WriteEndElement();
     public void WriteFullEndElement();
 
+    public void WriteEmptyElement(string localName);
+    public void WriteEmptyElement(string localName, string? namespaceUri);
+    public void WriteEmptyElement(string? prefix, string localName, string? namespaceUri);
+    public void WriteEmptyElement(ReadOnlySpan<char> localName);
+    public void WriteEmptyElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri);
+    public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName);
+    public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri);
+    public void WriteEmptyElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri);
+    public void WriteEmptyElement(XmlEncodedText localName);
+
     public void WriteElementString(string localName, string? value);
     public void WriteElementString(string localName, string? namespaceUri, string? value);
     public void WriteElementString(string localName, DateTime value);
