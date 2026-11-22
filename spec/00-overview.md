@@ -67,7 +67,7 @@ XmlEssentials does not share code, attributes, namespace, or package id with tha
 - Internal types serializable via source-gen (improvement over BCL `XmlSerializer`, which requires public types).
 - Deterministic, documented XML subset ([XML fidelity](02-xml-fidelity.md)).
 - `net10.0` and `net11.0` TFMs; `IsAotCompatible=true`; `EnableTrimAnalyzer=true`.
-- **100% line** on `CloudNimble.XmlEssentials.dll` as a **CI fail gate**: MTP `Microsoft.Testing.Extensions.CodeCoverage` **collects** (`dotnet test --coverage`); `coverage-gate.cs` **fails** the build if line-rate &lt; 1.00. Branch reported, 80% ratchet ([K21](01-identity-and-decisions.md#key-decisions)). Not coverlet.runsettings. Breakdance public API baselines.
+- **100% line** on `CloudNimble.XmlEssentials.dll` as a **CI fail gate**: MTP `Microsoft.Testing.Extensions.CodeCoverage` **collects** (`dotnet test --coverage`); `coverage-gate.cs` **fails** the build if line-rate or branch-rate &lt; 1.00 ([K21](01-identity-and-decisions.md#key-decisions)). Not coverlet.runsettings. Breakdance public API baselines.
 - Fair BenchmarkDotNet comparison vs cached BCL `XmlSerializer` and vs STJ on the same object graph.
 
 ### Non-goals

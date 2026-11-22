@@ -70,7 +70,7 @@ If you create any temporary new files, scripts, or helper files for iteration, c
 * If the expected value depends on the machine (local UTC offset, current time), compute the expected string in the test and still compare the whole thing. Do not fall back to a prefix.
 * When a value is expected to be rejected, assert the exact exception message when the message is part of the contract (encoding, DTD), and otherwise that an `XmlException` is thrown.
 * A test named `..._WellFormed...` or `MustRead` must only hold documents that are well formed by the XML specification. If the parser accepts something the specification rejects, fix the parser, not the test.
-* Do not write a test whose only purpose is to reach a line or branch. If a branch cannot be reached by a meaningful input, it is dead code: delete it.
+* **Testing for coverage is not allowed. Every test must be real, at all times.** A test states a behavior a caller depends on and asserts the exact result. Do not write a test, or add inputs to an existing one, in order to reach a line or branch. When the coverage gate reports a gap: if a meaningful input reaches it, test that behavior; if none does, it is dead code, so delete it. Never exclude code from coverage or lower the gate. See rule 5 in `spec/14-testing.md`.
 
 ## What a change must be tested against
 
@@ -78,11 +78,39 @@ If you create any temporary new files, scripts, or helper files for iteration, c
 * **W3C conformance.** `XmlConformanceSuiteTests` runs the W3C XML Conformance Test Suite manifests in `Fixtures/w3c-xmlconf`. A reader change must keep every case passing.
 * **Real documents.** `XmlFixtureDocumentTests` reads documents taken from other parsers' test suites and compares them with counts and digests produced by an independent reader. Add a fixture (and its `Fixtures/README.md` entry) when a new document shape matters.
 * **Properties, not just examples.** Reader changes must hold under `Utf8XmlReaderSplitTests` (every byte offset) and the chunked reads in the fixture tests. Writer and DOM changes must hold under `XmlRoundTripTests` (what is written is read back exactly; what is parsed is written back byte for byte).
+* **Both XML versions.** A fast path in the reader or writer (a bulk scan, a bulk copy, a skipped check) is tested under XML 1.0 and XML 1.1, in text and in attribute values. XML 1.1 treats C1 controls, NEL (U+0085) and LS (U+2028) differently, and their UTF-8 lead bytes (`0xC2`, `0xE2`) pass a scan written with only 1.0 in mind.
 * Typed values go through `XmlLexical` only. Do not parse a value anywhere else; add the case to `XmlLexicalTests`, which runs it through the reader and the DOM together.
 * Baseline testing: `D:\GitHub\Breakdance\specs\baseline-testing.md`
   * Add `<AssemblyAttribute Include="CloudNimble.Breakdance.Assemblies.BreakdanceTestAssembly" />` to the test csproj.
   * Use `[BreakdanceManifestGenerator]` methods and `dotnet breakdance generate` to create or update baselines.
   * If tests that need the baselines fail, and you regenerated the baselines, then the code to generate them is wrong and you need to fix it.
+
+## Coverage gate
+
+The gate fails below **100% line** or **100% branch** on `CloudNimble.XmlEssentials.dll`. Run both commands from `/src` before calling a change done, and before writing a coverage number anywhere:
+
+```bash
+dotnet test CloudNimble.XmlEssentials.slnx -c Release --coverage --coverage-output-format cobertura --coverage-output <absolute path>/artifacts/coverage/coverage.cobertura.xml
+dotnet run coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml
+```
+
+* Report the numbers the gate prints. Do not infer coverage from the tests passing.
+* A gap is closed by testing the real behavior or deleting the dead code (see "Assertions are exact"), never by a coverage-only test, an exclusion, or a lower threshold.
+
+# Performance
+
+The process and the current tables are in `spec/23-optimization.md`. Read it before any speed or allocation work.
+
+* **Measure first.** Profile the real workload (`dotnet-trace collect --profile cpu-sampling`) before changing code, and benchmark after. Do not state a cause or a win that a profile or benchmark has not shown.
+* Run benchmarks from `/src`: `dotnet run -c Release --project CloudNimble.XmlEssentials.Performance -f net11.0 -- --filter "*"`.
+* A 0 B claim needs a `GC.GetAllocatedBytesForCurrentThread` test in `*AllocationTests`. A benchmark column is not enough.
+* Never special-case a benchmark payload. A fast path must be correct and useful for every valid input.
+* Do not grow the public API for speed unless the benchmark cannot express the fast path without it.
+
+# Keeping the plan current
+
+* A change that finishes a PR, a backlog item, or an open question updates `spec/22-pr-plan.md`, `spec/23-optimization.md`, and `spec/20-open-questions.md` in the same commit. Regenerate benchmark tables and coverage counts there when they change.
+* When a rule changes (a gate threshold, a process), fix every statement of the old rule across `/spec` and this file, not just the first one found.
 
 # Documentation
 
@@ -94,7 +122,8 @@ If you create any temporary new files, scripts, or helper files for iteration, c
 
 ## Process
 
-* API documentation is created automatically by using the `dotnet easyaf mintlify` command (DotNetDocs.Sdk) to turn C# doc XML files into Mintlify-Enhanced Markdown.
+* The documentation is built by `dotnet build` (with `-c Release` or `-c Debug`). The docs project (DotNetDocs.Sdk) turns the C# doc XML files into Mintlify-Enhanced Markdown and generates `docs.json` as part of that build.
+* **Ignore `docs.json`.** Never edit it by hand, never restore or "fix" its contents, and do not treat a change the build makes to it as a regression. Whatever the build produces is correct.
 * XML documentation comments must be consistent, succinct, and as useful as possible.
 
 # Build Process

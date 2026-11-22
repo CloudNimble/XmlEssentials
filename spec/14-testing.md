@@ -10,7 +10,9 @@ MSTest 4, FluentAssertions 6, method-level parallel, **MTP** host, `Breakdance.A
 2. **Assertions are exact.** Output is compared whole: `.Should().Be(...)` on the complete string, `SequenceEqual` on the complete bytes, `.Should().Equal(...)` on the complete token list. `Contain`, `StartWith`, `EndWith`, `Match`, `IndexOf`, and length-only checks on XML output are not allowed. They pass when attributes are reordered, namespaces dropped, whitespace injected, or text double-escaped, and each of those was a real defect here that a substring assertion hid. The one exception is locating a specific portion of a large fixture document, and a pinned count or digest is still preferred.
 3. **Properties over examples.** A handful of hand-picked inputs is not a test of a tokenizer. Every reader change must hold at every byte split; every writer and DOM change must round-trip.
 4. **Independent expectations.** Expected values for real documents come from a different implementation (`System.Xml.XmlReader`, run in a script outside the runtime and the tests), never from this library's own output.
-5. **No coverage-only tests.** The 100% gate is a floor, not a goal. A line that no meaningful input reaches is dead code and is deleted.
+5. **Testing for coverage is not allowed. Every test must be real, at all times.** A test exists because it states a behavior a caller depends on: a rule from the specifications, a documented contract, or a defect that happened. It is named for that behavior and asserts the exact result. A test written to reach a line or branch is not allowed, whatever it asserts, and neither is an existing test padded with extra inputs for the same purpose. The 100% line and branch gate measures the tests; it is never the reason for one. When the gate reports an uncovered line or branch, there are only two correct responses:
+   - A meaningful input reaches it. Then a real behavior is untested: write the test for that behavior.
+   - No meaningful input reaches it. Then it is dead code: delete it. Do not exclude it (`[ExcludeFromCodeCoverage]`, gate exceptions) and do not lower the gate.
 6. No mocks. No `System.Xml` in the test assembly.
 
 ## Suites
@@ -33,7 +35,7 @@ MSTest 4, FluentAssertions 6, method-level parallel, **MTP** host, `Breakdance.A
 | AOT smoke | (PR 8) | PublishAot via context. |
 | Public API | Breakdance | On each public-surface PR. |
 | No BCL XML | `ForbiddenReferencesTests` | Assembly-ref + `using System.Xml` ban. |
-| Coverage | `coverage-gate.cs` | **MTP:** `dotnet test --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml` then `dotnet run src/coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml`. Line 100% fail from PR 2; branch reported, currently 100%. **Not** `coverlet.runsettings`. |
+| Coverage | `coverage-gate.cs` | **MTP:** `dotnet test --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml` then `dotnet run src/coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml`. Fails below 100% line (from PR 2) or 100% branch (from PR 4). The gate is a check on the suites above, not a suite: no test is written for it (rule 5). **Not** `coverlet.runsettings`. |
 
 Fixtures live in `src/CloudNimble.XmlEssentials.Tests/Fixtures` with their sources and licenses in `Fixtures/README.md`. `.gitattributes` marks the folder `-text`: the files are byte-exact inputs.
 

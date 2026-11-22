@@ -14,21 +14,21 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 2c | Resume | **Done** (`47e7fd1`) |
 | 2d | xmlconf subset | **Done** (`47e7fd1`) |
 | 3 | Utf8XmlWriter | **Done** (`e211820`) |
-| 4 | DOM | In progress |
+| 4 | DOM | **Done** (`7a7d8da`; real-document speed work in `26a0d03`) |
 | 5 | Options, converters, primitive serialize | Not started |
 | 6a–6e | POCO mapping | Not started |
 | 7 | Source generator + context | Not started |
 | 7b | XSD generator | Not started |
 | 8 | AOT / trimming tests | Not started |
-| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Not started (tokenizer benches shipped with PRs 2–3) |
+| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Not started (reader, writer, DOM and real-document benches shipped with PRs 2–4) |
 | 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
 | 11 | Breakdance freeze + coverage slogan check | Not started |
 
-Tokenizer speed work that is still open (namespaced drain interned prefixes) is tracked in [optimization](23-optimization.md), not as a new PR.
+Reader and writer speed work is tracked in [optimization](23-optimization.md), not as a new PR. Prefix resolution is done (every benchmark row is under BCL). Still open there: per-reader allocations on real documents (80 B to 10504 B per drain).
 
 TreatWarningsAsErrors is on from PR 1. **CS1591** is in `NoWarn` until the runtime library's first public type (PR 2), then XML comments are required on every new public member in that same PR ([K40](01-identity-and-decisions.md#key-decisions)).
 
-Coverage **line 100%** fail and **branch 80%** report start in **PR 2**, not PR 11. Breakdance baselines update on every public-surface PR.
+Coverage **line 100%** fail starts in **PR 2**, not PR 11. Branch coverage was reported against an 80% floor until `26a0d03`; `coverage-gate.cs` now fails below **100% branch** as well. Breakdance baselines update on every public-surface PR.
 
 CI (GitHub Actions matrix `net10.0` and `net11.0`), **MTP host**:
 
@@ -99,6 +99,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 4: DOM
 
+- **Status:** Done (`7a7d8da` on `dev`; real-document reader and writer speed work followed in `26a0d03`)
 - **Title:** `feat: XmlDocument, XmlElement, and mutable XmlNode tree`
 - **Depends on:** PR 3
 - **Description:** ArrayPool rental + Dispose. Mixed content. Nested `XmlElement.Enumerator`. Immutable `XmlDeclarationInfo` on `XmlDocument`.
@@ -172,9 +173,9 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 11: Breakdance freeze + coverage slogan check
 
-- **Title:** `test: freeze public API baseline; confirm 100% line gate`
+- **Title:** `test: freeze public API baseline; confirm 100% line and branch gate`
 - **Depends on:** PRs 2–8
-- **Description:** Not the first time coverage is measured. Confirms `coverage-gate.cs` still fails the build below 100% line. Subsequent API changes update baselines in the **same** PR.
+- **Description:** Not the first time coverage is measured. Confirms `coverage-gate.cs` still fails the build below 100% line or 100% branch. Subsequent API changes update baselines in the **same** PR.
 
 Preview packages (`-preview`) **after PR 11**, not after PR 7 ([rollout](19-operability.md)).
 

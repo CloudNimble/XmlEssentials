@@ -12,7 +12,7 @@ Read [benchmarks](15-benchmarks.md) for serializer-column rules. Reader/writer b
 - Official [dotnet/runtime](https://github.com/dotnet/runtime) source at a tagged release (`v11.0.0` while TFMs are net10/net11). **Not** reflection, ILSpy, or decompilation.
 - STJ toolbox: spans, `SearchValues`, `Utf8Formatter` / `IUtf8SpanFormattable`, `Ascii.FromUtf16`, `ArrayPool`, `IBufferWriter.GetMemory` / `Advance`. No string concat on the hot path.
 - CloudNimble C# layout ([AGENTS.md](../AGENTS.md)): block namespaces, internals not `private`, no nested types, XML docs on internals.
-- Coverage: **100% line** fail gate on `CloudNimble.XmlEssentials.dll`; branch ratchet 80% (currently held at 100% line / 100% branch — keep it there). After a hot-path change, run tests **and** `coverage-gate.cs` before declaring a win.
+- Coverage: **100% line and 100% branch** fail gate on `CloudNimble.XmlEssentials.dll`. After a hot-path change, run tests **and** `coverage-gate.cs` before declaring a win.
 - Do not commit until asked. Do not special-case a benchmark payload (no `if (prefix is "p")`).
 - Report reader/writer benches as a markdown table: **Method, Category, Mean, Ratio, Allocated, Alloc ratio**. Integer nanoseconds and integer bytes. `Allocated` `-` from BenchmarkDotNet is **0 B**.
 
@@ -60,7 +60,7 @@ Fetch tagged files, for example:
 - `.../XmlWellFormedWriterHelpers.cs` (`ElementScope`, `CheckNCName`, `AttrName`)
 - `.../System.Text.Json/src/System/Text/Json/Writer/Utf8JsonWriter.cs` (`GetMemory` / `Advance`, `Reset`)
 
-NameTable / interned prefix compare lives with the reader (`XmlNameTable`, `XmlTextReaderImpl`). That is the remaining namespaced-drain lesson (below).
+NameTable / interned prefix compare lives with the reader (`XmlNameTable`, `XmlTextReaderImpl`). That was the namespaced-drain lesson; the reader now gets the same effect from a prefix-to-binding cache ([backlog item 1](#1-prefix-resolution-on-the-reader-done-real-documents-071-to-087)).
 
 ### 4. Port the technique, not the extra scans
 
