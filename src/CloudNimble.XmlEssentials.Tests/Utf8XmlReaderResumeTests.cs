@@ -140,6 +140,9 @@ namespace CloudNimble.XmlEssentials.Tests
             string[] texts =
             [
                 "1",
+                "7 bytes",
+                "8 bytes.",
+                "9 bytes..",
                 "fifteen bytes..",
                 "sixteen bytes...",
                 "seventeen bytes..",

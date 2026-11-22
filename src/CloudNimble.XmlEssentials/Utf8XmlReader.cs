@@ -78,7 +78,7 @@ namespace CloudNimble.Text.Xml
         /// How many bytes of a text node <see cref="ReadText"/> reads one at a time before it switches to
         /// vectorized searches.
         /// </summary>
-        internal const int ShortTextBytes = 16;
+        internal const int ShortTextBytes = 8;
 
         /// <summary>
         /// Slot flag: character data has been reported inside this element, so later whitespace is significant.
