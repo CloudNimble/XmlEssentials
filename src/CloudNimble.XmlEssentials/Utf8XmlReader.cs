@@ -39,6 +39,11 @@ namespace CloudNimble.Text.Xml
         #region Fields
 
         /// <summary>
+        /// <c>_nsDefaultIndex</c> value meaning the default-namespace binding has not been looked up since the bindings last changed.
+        /// </summary>
+        internal const int NsIndexUnknown = -2;
+
+        /// <summary>
         /// Slot flag: a child element has started inside this element.
         /// </summary>
         internal const int ElementHasChild = 1 << 29;
@@ -86,6 +91,7 @@ namespace CloudNimble.Text.Xml
         private Int8Buffer _elementPrefixLengthsInline;
         private bool _finished;
         private bool _hasNamespaceAttribute;
+        private bool _hasUnresolvedAttribute;
         private bool _hasXmlSpaceAttribute;
         private readonly bool _hasSequence;
         private bool _inAttribute;
@@ -106,9 +112,11 @@ namespace CloudNimble.Text.Xml
         private NamespaceBinding[]? _nsBindings;
         private NamespaceBinding8 _nsBindingsInline;
         private int _nsCount;
-        private NamespaceBinding _nsPrefixCache;
-        private byte _nsPrefixCacheByte;
-        private bool _nsPrefixCacheValid;
+        private int _nsDefaultIndex;
+        private Int8Buffer _nsPrefixCacheIndexes;
+        private Int8Buffer _nsPrefixCacheLengths;
+        private int _nsPrefixCacheMask;
+        private Int8Buffer _nsPrefixCacheStarts;
         private XmlReaderOptions _options;
         private int _pendingEmptyNsDepth;
         private int _pos;
@@ -417,6 +425,7 @@ namespace CloudNimble.Text.Xml
             _elementPrefixLengthsInline = default;
             _finished = false;
             _hasNamespaceAttribute = false;
+            _hasUnresolvedAttribute = false;
             _hasXmlSpaceAttribute = false;
             _hasSequence = hasSequence;
             _inAttribute = false;
@@ -437,9 +446,11 @@ namespace CloudNimble.Text.Xml
             _nsBindings = null;
             _nsBindingsInline = default;
             _nsCount = 0;
-            _nsPrefixCache = default;
-            _nsPrefixCacheByte = 0;
-            _nsPrefixCacheValid = false;
+            _nsDefaultIndex = NsIndexUnknown;
+            _nsPrefixCacheIndexes = default;
+            _nsPrefixCacheLengths = default;
+            _nsPrefixCacheMask = 0;
+            _nsPrefixCacheStarts = default;
             _options = state.Options;
             _pendingEmptyNsDepth = 0;
             _pos = 0;

@@ -15,6 +15,67 @@
           "why-xmlessentials",
           "quickstart"
         ]
+      },
+      {
+        "group": "API Reference",
+        "icon": "code",
+        "pages": [
+          {
+            "group": "CloudNimble",
+            "icon": "folder-tree",
+            "pages": [
+              {
+                "group": "Text",
+                "icon": "folder-tree",
+                "pages": [
+                  {
+                    "group": "Xml",
+                    "icon": "folder-tree",
+                    "pages": [
+                      "api-reference/CloudNimble/Text/Xml/index",
+                      "api-reference/CloudNimble/Text/Xml/Utf8XmlReader",
+                      "api-reference/CloudNimble/Text/Xml/Utf8XmlWriter",
+                      "api-reference/CloudNimble/Text/Xml/XmlAttributes",
+                      "api-reference/CloudNimble/Text/Xml/XmlCommentHandling",
+                      "api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo",
+                      "api-reference/CloudNimble/Text/Xml/XmlDocument",
+                      "api-reference/CloudNimble/Text/Xml/XmlDocumentOptions",
+                      "api-reference/CloudNimble/Text/Xml/XmlElement",
+                      "api-reference/CloudNimble/Text/Xml/XmlEncodedText",
+                      "api-reference/CloudNimble/Text/Xml/XmlException",
+                      "api-reference/CloudNimble/Text/Xml/XmlName",
+                      "api-reference/CloudNimble/Text/Xml/XmlNamespaces",
+                      "api-reference/CloudNimble/Text/Xml/XmlReaderOptions",
+                      "api-reference/CloudNimble/Text/Xml/XmlReaderState",
+                      "api-reference/CloudNimble/Text/Xml/XmlTokenType",
+                      "api-reference/CloudNimble/Text/Xml/XmlValueKind",
+                      "api-reference/CloudNimble/Text/Xml/XmlVersion",
+                      "api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling",
+                      "api-reference/CloudNimble/Text/Xml/XmlWriterOptions",
+                      {
+                        "group": "Nodes",
+                        "icon": "folder-tree",
+                        "pages": [
+                          "api-reference/CloudNimble/Text/Xml/Nodes/index",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNodeList",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlCDataNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlCommentNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlDeclarationNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlElementNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlNodeList",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlProcessingInstructionNode",
+                          "api-reference/CloudNimble/Text/Xml/Nodes/XmlTextNode"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       }
     ]
   },

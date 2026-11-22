@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
 
@@ -68,6 +69,27 @@ namespace CloudNimble.Text.Xml
         public static readonly SearchValues<char> PlainTextChars = SearchValues.Create("\t\n !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~");
 
         /// <summary>
+        /// Bytes of a double-quoted attribute value that are the value as written: printable ASCII except
+        /// <c>"</c>, <c>&lt;</c>, and <c>&amp;</c>. No reference, no whitespace to normalize, no character to check.
+        /// </summary>
+        public static readonly SearchValues<byte> AttrPlainDouble = SearchValues.Create(" !#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// Bytes of a single-quoted attribute value that are the value as written: printable ASCII except
+        /// <c>'</c>, <c>&lt;</c>, and <c>&amp;</c>.
+        /// </summary>
+        public static readonly SearchValues<byte> AttrPlainSingle = SearchValues.Create(" !\"#$%()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// <see cref="AsciiTextChars"/> plus every byte of a multi-byte UTF-8 sequence (0x80 to 0xFF).
+        /// </summary>
+        /// <remarks>
+        /// A run made only of these bytes holds legal characters exactly when it is valid UTF-8 and has
+        /// neither U+FFFE nor U+FFFF, which lets the reader check a whole run of non-ASCII text at once.
+        /// </remarks>
+        public static readonly SearchValues<byte> TextRunChars = SearchValues.Create(CreateTextRunChars());
+
+        /// <summary>
         /// ASCII text that needs no EOL, entity, or Char check: tab and printable ASCII except <c>&lt;</c> and <c>&amp;</c>.
         /// </summary>
         public static readonly SearchValues<byte> AsciiTextChars = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
@@ -100,6 +122,53 @@ namespace CloudNimble.Text.Xml
         #endregion
 
         #region Public Methods
+
+        /// <summary>
+        /// Returns true if valid UTF-8 <paramref name="utf8"/> contains U+FFFE or U+FFFF, which are not XML characters.
+        /// </summary>
+        /// <param name="utf8">Valid UTF-8 bytes.</param>
+        /// <returns><see langword="true"/> if either noncharacter is present.</returns>
+        public static bool ContainsNonCharacter(ReadOnlySpan<byte> utf8)
+        {
+            // Both encode as EF BF followed by BE or BF. In valid UTF-8 that pair is always a whole
+            // three-byte sequence with its last byte, so the index after it is in range.
+            ReadOnlySpan<byte> lead = [0xEF, 0xBF];
+            while (true)
+            {
+                var index = utf8.IndexOf(lead);
+                if (index < 0)
+                {
+                    return false;
+                }
+
+                if (utf8[index + 2] >= 0xBE)
+                {
+                    return true;
+                }
+
+                utf8 = utf8[(index + 3)..];
+            }
+        }
+
+        /// <summary>
+        /// Builds the byte set behind <see cref="TextRunChars"/>.
+        /// </summary>
+        /// <returns>Tab, printable ASCII except <c>&lt;</c> and <c>&amp;</c>, and every byte from 0x80 to 0xFF.</returns>
+        public static byte[] CreateTextRunChars()
+        {
+            var bytes = new byte[1 + (0x7E - 0x20 + 1 - 2) + 0x80];
+            var count = 0;
+            bytes[count++] = (byte)'\t';
+            for (var b = 0x20; b <= 0xFF; b++)
+            {
+                if (b is not ('<' or '&' or 0x7F))
+                {
+                    bytes[count++] = (byte)b;
+                }
+            }
+
+            return bytes;
+        }
 
         /// <summary>
         /// Returns true if <paramref name="b"/> is an ASCII NameStartChar (<c>A-Z_a-z:</c>).

@@ -15,6 +15,31 @@ namespace CloudNimble.Text.Xml
         #region Fields
 
         /// <summary>
+        /// <see cref="NsIndex"/> of the first in-scope binding; binding <c>n</c> is stored as <c>FirstBinding + n</c>.
+        /// </summary>
+        public const int FirstBinding = 3;
+
+        /// <summary>
+        /// <see cref="NsIndex"/> of an unprefixed attribute, which is in no namespace.
+        /// </summary>
+        public const int NoNamespace = 0;
+
+        /// <summary>
+        /// <see cref="NsIndex"/> of a prefixed attribute whose prefix has not been looked up yet.
+        /// </summary>
+        public const int UnresolvedNamespace = -1;
+
+        /// <summary>
+        /// <see cref="NsIndex"/> of an attribute with the <c>xml</c> prefix.
+        /// </summary>
+        public const int XmlNamespace = 2;
+
+        /// <summary>
+        /// <see cref="NsIndex"/> of an <c>xmlns</c> or <c>xmlns:prefix</c> declaration.
+        /// </summary>
+        public const int XmlnsNamespace = 1;
+
+        /// <summary>
         /// Decoded attribute value when entities or whitespace normalization produced a new buffer.
         /// </summary>
         public byte[]? Decoded;
@@ -38,6 +63,12 @@ namespace CloudNimble.Text.Xml
         /// Byte offset of the name in the current buffer.
         /// </summary>
         public int NameStart;
+
+        /// <summary>
+        /// The attribute's namespace, resolved once when its start tag is completed: one of the constants
+        /// on this type, or <see cref="FirstBinding"/> plus the index of the in-scope binding.
+        /// </summary>
+        public int NsIndex;
 
         /// <summary>
         /// UTF-8 byte length of the prefix, or 0 when the attribute is unprefixed.

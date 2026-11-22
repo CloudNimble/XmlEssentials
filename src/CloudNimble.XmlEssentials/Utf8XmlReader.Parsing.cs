@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Unicode;
 
 namespace CloudNimble.Text.Xml
 {
@@ -93,6 +94,20 @@ namespace CloudNimble.Text.Xml
                 var hasNonWs = run.IndexOfAnyExcept((byte)' ', (byte)'\t') >= 0;
                 _pos += length;
                 return hasNonWs;
+            }
+
+            // The rest of the run holds multi-byte characters. Check all of it in one pass; anything
+            // that fails is left for AdvanceChar, which reports the exact error.
+            // XML 1.1 adds characters that need AdvanceChar: the C1 controls must be references, and
+            // NEL and LS are line ends. Their encodings all start with 0xC2 or 0xE2.
+            var tail = run[bad..];
+            if (tail.IndexOfAnyExcept(XmlChars.TextRunChars) < 0
+                && Utf8.IsValid(tail)
+                && !XmlChars.ContainsNonCharacter(tail)
+                && (_version is XmlVersion.Version10 || tail.IndexOfAny((byte)0xC2, (byte)0xE2) < 0))
+            {
+                _pos += length;
+                return true;
             }
 
             if (bad == 0)
@@ -943,20 +958,38 @@ namespace CloudNimble.Text.Xml
                 throw Error("Expected attribute quote.");
             }
 
+            var nsIndex = AttributeRecord.NoNamespace;
             if (nameLength >= 5
                 && (prefixLength == 5 || (prefixLength == 0 && nameLength == 5))
                 && _span.Slice(nameStart, 5).SequenceEqual("xmlns"u8))
             {
                 _hasNamespaceAttribute = true;
+                nsIndex = AttributeRecord.XmlnsNamespace;
             }
-            else if (nameLength == 9 && prefixLength == 3 && _span.Slice(nameStart, 9).SequenceEqual("xml:space"u8))
+            else if (prefixLength == 3 && _span.Slice(nameStart, 3).SequenceEqual("xml"u8))
             {
-                _hasXmlSpaceAttribute = true;
+                nsIndex = AttributeRecord.XmlNamespace;
+                _hasXmlSpaceAttribute |= nameLength == 9 && _span.Slice(nameStart + 4, 5).SequenceEqual("space"u8);
+            }
+            else if (prefixLength > 0)
+            {
+                nsIndex = AttributeRecord.UnresolvedNamespace;
+                _hasUnresolvedAttribute = true;
             }
 
             _pos++;
             var valueStart = _pos;
             var stops = quote is (byte)'"' ? XmlChars.AttrStopsDouble : XmlChars.AttrStopsSingle;
+
+            // Most values are plain ASCII up to the closing quote. One scan proves that, and then the
+            // value needs no character check, no reference expansion, and no normalization.
+            var plainLength = _span[_pos..].IndexOfAnyExcept(quote is (byte)'"' ? XmlChars.AttrPlainDouble : XmlChars.AttrPlainSingle);
+            var plain = plainLength >= 0 && _span[_pos + plainLength] == quote;
+            if (plainLength > 0)
+            {
+                _pos += plainLength;
+            }
+
             Span<byte> entityScratch = stackalloc byte[8];
             while (_pos < _span.Length && _span[_pos] != quote)
             {
@@ -1002,13 +1035,23 @@ namespace CloudNimble.Text.Xml
 
             var valueLength = _pos - valueStart;
             _pos++;
+            byte[]? decoded = null;
+            var escaped = false;
+            var decodedStart = 0;
+            var decodedLength = valueLength;
+            if (!plain)
+            {
+                decoded = DecodeAttributeValue(valueStart, valueLength, out escaped, out decodedStart, out decodedLength);
+            }
+
             var record = new AttributeRecord
             {
-                Decoded = DecodeAttributeValue(valueStart, valueLength, out var escaped, out var decodedStart, out var decodedLength),
+                Decoded = decoded,
                 DecodedStart = decodedStart,
                 DecodedLength = decodedLength,
                 NameLength = nameLength,
                 NameStart = nameStart,
+                NsIndex = nsIndex,
                 PrefixLength = prefixLength,
                 ValueIsEscaped = escaped,
                 ValueLength = valueLength,
@@ -1336,16 +1379,20 @@ namespace CloudNimble.Text.Xml
 
             while (_pos < _span.Length)
             {
-                var rest = _span[_pos..];
-                var n = rest.IndexOfAnyExcept(XmlChars.AsciiNcNameChars);
-                if (n < 0)
+                // Names are short, so a byte loop beats a vectorized search here.
+                var p = _pos;
+                while ((uint)p < (uint)_span.Length && XmlChars.IsAsciiNcNameChar(_span[p]))
                 {
-                    _pos = _span.Length;
+                    p++;
+                }
+
+                _pos = p;
+                if (p == _span.Length)
+                {
                     break;
                 }
 
-                _pos += n;
-                b = _span[_pos];
+                b = _span[p];
                 if (b is (byte)':')
                 {
                     if (prefixLength > 0)
@@ -1529,6 +1576,7 @@ namespace CloudNimble.Text.Xml
             _attributeDecodedLength = 0;
             _hasNamespaceAttribute = false;
             _hasXmlSpaceAttribute = false;
+            _hasUnresolvedAttribute = false;
             _isEmptyElement = false;
 
             while (true)
@@ -1580,7 +1628,7 @@ namespace CloudNimble.Text.Xml
             }
 
             ApplyNamespaces(_depth + 1);
-            if (_attributeCount > 1 || (_attributeCount == 1 && AttributeAt(0).PrefixLength > 0))
+            if (_attributeCount > 1)
             {
                 CheckDuplicateNamespacedAttributes();
             }
@@ -1658,13 +1706,11 @@ namespace CloudNimble.Text.Xml
                         hasNonWs |= AdvanceAsciiTextRun(n);
                     }
 
+                    // What the run check left behind starts with a byte that is neither plain text nor
+                    // whitespace: a control character, DEL, or a broken multi-byte sequence.
                     while (_pos < _span.Length)
                     {
-                        if (!XmlChars.IsWhiteSpace(_span[_pos]))
-                        {
-                            hasNonWs = true;
-                        }
-
+                        hasNonWs = true;
                         needsDecode = true;
                         AdvanceChar();
                     }
@@ -1768,9 +1814,22 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal void SkipWhitespaceBytes()
         {
-            while (_pos < _span.Length && XmlChars.IsWhiteSpace(_span[_pos]))
+            while (_pos < _span.Length)
             {
-                AdvanceChar();
+                var b = _span[_pos];
+                if (b is (byte)' ' or (byte)'\t')
+                {
+                    _pos++;
+                }
+                else if (b is (byte)'\n' or (byte)'\r')
+                {
+                    // Line ends move the line counter.
+                    AdvanceChar();
+                }
+                else
+                {
+                    return;
+                }
             }
         }
 

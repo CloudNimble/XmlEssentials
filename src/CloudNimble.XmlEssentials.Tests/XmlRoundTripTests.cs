@@ -500,6 +500,109 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Reader_MultiByteText_AndPlainAttributeValues()
+        {
+            var delete = ((char)0x7F).ToString();
+            var replacement = ((char)0xFFFD).ToString();
+            var xml = "<r a=\"é☃\" b='x\"y' c=\"it's\">aé☃𝄞z" + delete + " é" + replacement + "b" + replacement + "</r>";
+            XmlReaderHarness.Tokens(Encoding.UTF8.GetBytes(xml), new XmlReaderOptions()).Should().Equal(
+                "StartElement :r{} open @:a{}=[é☃] @:b{}=[x\"y] @:c{}=[it's]",
+                "Text :{} [aé☃𝄞z" + delete + " é" + replacement + "b" + replacement + "]",
+                "EndElement :r{}");
+        }
+
+        [TestMethod]
+        public void Reader_PrefixedNames_ResolveThroughRepeatedAndShadowedPrefixes()
+        {
+            const string xmlns = "http://www.w3.org/2000/xmlns/";
+            const string xml = "http://www.w3.org/XML/1998/namespace";
+            XmlReaderHarness.Tokens("<p:r xmlns:p=\"urn:1\" xmlns:q=\"urn:q\"><p:a p:x=\"1\" q:x=\"2\"><p:b xmlns:p=\"urn:2\" p:x=\"3\"/><p:c p:x=\"4\"/></p:a><xml:d xml:lang=\"en\"/></p:r>"u8, new XmlReaderOptions()).Should().Equal(
+                "StartElement p:r{urn:1} open @xmlns:p{" + xmlns + "}=[urn:1] @xmlns:q{" + xmlns + "}=[urn:q]",
+                "StartElement p:a{urn:1} open @p:x{urn:1}=[1] @q:x{urn:q}=[2]",
+                "StartElement p:b{urn:2} empty @xmlns:p{" + xmlns + "}=[urn:2] @p:x{urn:2}=[3]",
+                "StartElement p:c{urn:1} empty @p:x{urn:1}=[4]",
+                "EndElement p:a{urn:1}",
+                "StartElement xml:d{" + xml + "} empty @xml:lang{" + xml + "}=[en]",
+                "EndElement p:r{urn:1}");
+        }
+
+        [TestMethod]
+        public void Reader_Rejects_IllegalCharactersAmongMultiByteText()
+        {
+            byte[] invalidUtf8 = [.. "<a>é"u8, 0xFF, .. "</a>"u8];
+            byte[] notACharacterFffe = [.. "<a>é"u8, 0xEF, 0xBF, 0xBE, .. "</a>"u8];
+            byte[] notACharacterFfff = [.. "<a>é"u8, 0xEF, 0xBF, 0xBF, .. "</a>"u8];
+            byte[] controlAfterMultiByte = [.. "<a>é"u8, 0x01, .. "</a>"u8];
+            byte[] notACharacterInAttribute = [.. "<a b=\"é"u8, 0xEF, 0xBF, 0xBF, .. "\"/>"u8];
+            byte[] deleteAfterRoot = [.. "<a/>"u8, 0x7F];
+            byte[] controlAtEndOfInput = [.. "<a/>é"u8, 0x01];
+            byte[] truncatedAtEndOfInput = [.. "<a/>"u8, 0xC3];
+            byte[] unclosedAfterControl = [.. "<a>é"u8, 0x01];
+            byte[] unclosedAfterDelete = [.. "<a>x"u8, 0x7F, (byte)' ', (byte)'y'];
+            XmlReaderHarness.MustThrow(invalidUtf8);
+            XmlReaderHarness.MustThrow(notACharacterFffe);
+            XmlReaderHarness.MustThrow(notACharacterFfff);
+            XmlReaderHarness.MustThrow(controlAfterMultiByte);
+            XmlReaderHarness.MustThrow(notACharacterInAttribute);
+            XmlReaderHarness.MustThrow(deleteAfterRoot);
+            XmlReaderHarness.MustThrow(controlAtEndOfInput);
+            XmlReaderHarness.MustThrow(truncatedAtEndOfInput);
+            XmlReaderHarness.MustThrow(unclosedAfterControl);
+            XmlReaderHarness.MustThrow(unclosedAfterDelete);
+        }
+
+        [TestMethod]
+        public void Reader_Version11_RestrictedCharactersAmongMultiByteText()
+        {
+            byte[] declaration = [.. "<?xml version=\"1.1\"?>"u8];
+            byte[] controlInAttribute = [.. declaration, .. "<e a=\"é"u8, 0xC2, 0x80, .. "\"/>"u8];
+            byte[] controlAloneInAttribute = [.. declaration, .. "<e a=\""u8, 0xC2, 0x9F, .. "\"/>"u8];
+            byte[] controlInText = [.. declaration, .. "<e>é"u8, 0xC2, 0x80, .. "</e>"u8];
+            byte[] notACharacterInAttribute = [.. declaration, .. "<e a=\"é"u8, 0xEF, 0xBF, 0xBE, .. "\"/>"u8];
+            XmlReaderHarness.MustThrow(controlInAttribute);
+            XmlReaderHarness.MustThrow(controlAloneInAttribute);
+            XmlReaderHarness.MustThrow(controlInText);
+            XmlReaderHarness.MustThrow(notACharacterInAttribute);
+
+            // NEL and LS are line ends in XML 1.1: a space in an attribute value, a line feed in text,
+            // and each one starts a new line for error positions.
+            byte[] lineEnds = [.. declaration, .. "<e a=\"é"u8, 0xC2, 0x85, .. "☃"u8, 0xE2, 0x80, 0xA8, .. "ü\">é"u8, 0xC2, 0x85, .. "☃"u8, 0xE2, 0x80, 0xA8, .. "ü</e>"u8];
+            XmlReaderHarness.Tokens(lineEnds, new XmlReaderOptions()).Should().Equal(
+                "XmlDeclaration :xml{} [version=\"1.1\"]",
+                "StartElement :e{} open @:a{}=[é ☃ ü]",
+                "Text :{} [é\n☃\nü]",
+                "EndElement :e{}");
+
+            byte[] errorOnLineThree = [.. declaration, .. "<e a=\"é"u8, 0xC2, 0x85, .. "☃"u8, 0xE2, 0x80, 0xA8, .. "ü\"><"u8];
+            var reader = new Utf8XmlReader(errorOnLineThree);
+            XmlException? thrown = null;
+            try
+            {
+                while (reader.Read())
+                {
+                }
+            }
+            catch (XmlException exception)
+            {
+                thrown = exception;
+            }
+
+            thrown.Should().NotBeNull();
+            thrown!.LineNumber.Should().Be(3);
+        }
+
+        [TestMethod]
+        public void Reader_Rejects_AttributesThatCollideOrUseUndeclaredPrefixes()
+        {
+            XmlReaderHarness.MustThrow("<r xmlns:a=\"urn:x\" xmlns:b=\"urn:x\"><e a:x=\"1\" b:x=\"2\"/></r>");
+            XmlReaderHarness.MustThrow("<r xmlns:a=\"urn:x\"><e a:x=\"1\" a:x=\"2\"/></r>");
+            XmlReaderHarness.MustThrow("<e p:x=\"1\"/>");
+            XmlReaderHarness.MustThrow("<r xmlns:p=\"urn:p\"><e p:x=\"1\"/><f q:x=\"1\"/></r>");
+            XmlReaderHarness.MustThrow("<?xml version=\"1.1\"?><r xmlns:p=\"urn:p\"><e xmlns:p=\"\" p:x=\"1\"/></r>");
+            XmlReaderHarness.MustThrow("<?xml version=\"1.1\"?><r xmlns:p=\"urn:p\"><e xmlns:p=\"\"><p:f/></e></r>");
+        }
+
+        [TestMethod]
         public void Reader_ProcessingInstructions_AndNames()
         {
             var options = new XmlReaderOptions { CommentHandling = XmlCommentHandling.Allow };

@@ -160,6 +160,74 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void MultiByteText_IsCopiedExceptCharactersThatNeedAReference()
+        {
+            var nextLine = ((char)0x85).ToString();
+            var lineSeparator = ((char)0x2028).ToString();
+            var value = "aé☃" + nextLine + "𝄞" + lineSeparator + "ü<é";
+            var version10 = new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version10 };
+            var version11 = new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version11 };
+
+            XmlWriterHarness.ToXml(w => w.WriteElementString("e", value), version10)
+                .Should().Be("<e>" + "aé☃" + nextLine + "𝄞" + lineSeparator + "ü&lt;é</e>");
+            XmlWriterHarness.ToXml(w => w.WriteElementString("e", value), version11)
+                .Should().Be("<e>aé☃&#x85;𝄞&#x2028;ü&lt;é</e>");
+            XmlWriterHarness.ToXml(
+                w =>
+                {
+                    w.WriteStartElement("e");
+                    w.WriteAttributeString("a", value);
+                    w.WriteEndElement();
+                },
+                version11).Should().Be("<e a=\"aé☃&#x85;𝄞&#x2028;ü&lt;é\"/>");
+        }
+
+        [TestMethod]
+        public void PrefixedAttributes_ReuseBindingsAcrossShadowingAndScopeExit()
+        {
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("p", "r", "urn:1");
+                w.WriteAttributeString("p", "x", "urn:1", "1");
+                w.WriteStartElement("p", "a", "urn:2");
+                w.WriteAttributeString("p", "x", "urn:2", "2");
+                w.WriteEndElement();
+                w.WriteStartElement("p", "b", "urn:1");
+                w.WriteAttributeString("p", "x", "urn:1", "3");
+                w.WriteEndElement();
+                w.WriteEndElement();
+            }).Should().Be("<p:r xmlns:p=\"urn:1\" p:x=\"1\"><p:a xmlns:p=\"urn:2\" p:x=\"2\"/><p:b p:x=\"3\"/></p:r>");
+        }
+
+        [TestMethod]
+        public void SiblingNamespaceDeclarations_BeyondTheReuseLimit_AreWrittenCorrectly()
+        {
+            var expected = new StringBuilder("<r>");
+            var xml = XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("r");
+                for (var i = 0; i < 80; i++)
+                {
+                    w.WriteStartElement("p" + i, "e", "urn:" + i);
+                    w.WriteEndElement();
+                }
+
+                w.WriteStartElement("p0", "e", "urn:0");
+                w.WriteEndElement();
+                w.WriteStartElement("p79", "e", "urn:79");
+                w.WriteEndElement();
+                w.WriteEndElement();
+            });
+            for (var i = 0; i < 80; i++)
+            {
+                expected.Append("<p").Append(i).Append(":e xmlns:p").Append(i).Append("=\"urn:").Append(i).Append("\"/>");
+            }
+
+            expected.Append("<p0:e xmlns:p0=\"urn:0\"/><p79:e xmlns:p79=\"urn:79\"/></r>");
+            xml.Should().Be(expected.ToString());
+        }
+
+        [TestMethod]
         public void AttributeValue_InvalidUtf8_Throws()
         {
             byte[] truncated = [(byte)'a', (byte)'&', 0xC3];
@@ -194,8 +262,12 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Indent_UsesTheConfiguredCharacter()
+        public void Indent_DefaultStruct_UsesTwoSpaces()
         {
+            var options = default(XmlWriterOptions);
+            options.Indented = true;
+            options.NewLine = "\n";
+            options.OmitXmlDeclaration = true;
             XmlWriterHarness.ToXml(
                 w =>
                 {
@@ -205,8 +277,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     w.WriteEndElement();
                     w.WriteEndElement();
                 },
-                new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n", IndentCharacter = '\t', IndentSize = 1 })
-                .Should().Be("<a>\n\t<b>\n\t\t<c/>\n\t</b>\n</a>");
+                options).Should().Be("<a>\n  <b>\n    <c/>\n  </b>\n</a>");
         }
 
         [TestMethod]

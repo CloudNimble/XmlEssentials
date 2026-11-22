@@ -199,7 +199,7 @@ namespace CloudNimble.XmlEssentials.Performance
         public void XmlEssentials_Write()
         {
             _writer.Reset();
-            _buffer.Clear();
+            _buffer.ResetWrittenCount();
             _parsed.WriteTo(_writer);
             _writer.Flush();
         }

@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,6 +37,11 @@ namespace CloudNimble.Text.Xml
 
         #region Fields
 
+        /// <summary>
+        /// The number of distinct namespace prefixes and URIs a writer keeps for reuse.
+        /// </summary>
+        internal const int MaxInternedNamespaceValues = 64;
+
         private int _autoNs;
         private XmlWriterName8 _attrLocalsInline;
         private XmlWriterName[]? _attrLocalsHeap;
@@ -59,8 +65,12 @@ namespace CloudNimble.Text.Xml
         private byte[] _names;
         private int _namesLength;
         private byte[]? _newLineUtf8;
+        private Int8Buffer _nsCacheIndexes;
+        private int _nsCacheMask;
         private int _nsCount;
         private XmlWriterNsBinding[]? _nsHeap;
+        private byte[][]? _nsInterned;
+        private int _nsInternedCount;
         private XmlWriterOptions _options;
         private bool _seenRoot;
         private Stream? _stream;
@@ -238,6 +248,7 @@ namespace CloudNimble.Text.Xml
             _depth = 0;
             _emittedBom = false;
             _inAttribute = false;
+            _nsCacheMask = 0;
             _nsCount = 0;
             _seenRoot = false;
             _wroteDeclaration = false;
@@ -2389,6 +2400,7 @@ namespace CloudNimble.Text.Xml
             while (_nsCount > 0 && NsAt(_nsCount - 1).Depth == depth)
             {
                 _nsCount--;
+                _nsCacheMask = 0;
             }
         }
 
@@ -2415,10 +2427,11 @@ namespace CloudNimble.Text.Xml
             }
 
             var stale = _nsHeap[_nsCount];
-            var ownedPrefix = stale.Prefix is { } stalePrefix && prefix.SequenceEqual(stalePrefix) ? stalePrefix : prefix.ToArray();
-            var ownedUri = stale.Uri is { } staleUri && uri.SequenceEqual(staleUri) ? staleUri : uri.ToArray();
+            var ownedPrefix = stale.Prefix is { } stalePrefix && prefix.SequenceEqual(stalePrefix) ? stalePrefix : InternNamespaceBytes(prefix);
+            var ownedUri = stale.Uri is { } staleUri && uri.SequenceEqual(staleUri) ? staleUri : InternNamespaceBytes(uri);
             _nsHeap[_nsCount] = new XmlWriterNsBinding(depth, ownedPrefix, ownedUri);
             _nsCount++;
+            _nsCacheMask = 0;
         }
 
         /// <summary>
@@ -2793,13 +2806,17 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
-                var start = i;
-                if (!TryReadRune(utf8, ref i, out var cp))
+                int cp = utf8[i];
+                if (cp >= 0x80)
                 {
-                    throw new XmlException("Invalid UTF-8 in XML value.");
+                    i += WriteMultiByteRun(utf8[i..]);
+                    bracket = 0;
+                    continue;
                 }
 
-                if (cp is '&')
+                var start = i;
+                i++;
+                if (cp is (byte)'&')
                 {
                     WriteRaw("&amp;"u8);
                     bracket = 0;
@@ -2850,13 +2867,16 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
-                var start = i;
-                if (!TryReadRune(utf8, ref i, out var cp))
+                int cp = utf8[i];
+                if (cp >= 0x80)
                 {
-                    throw new XmlException("Invalid UTF-8 in XML value.");
+                    i += WriteMultiByteRun(utf8[i..]);
+                    continue;
                 }
 
-                if (cp is '&')
+                var start = i;
+                i++;
+                if (cp is (byte)'&')
                 {
                     WriteRaw("&amp;"u8);
                     continue;
@@ -2919,6 +2939,43 @@ namespace CloudNimble.Text.Xml
             }
 
             WriteRaw(slice);
+        }
+
+        /// <summary>
+        /// Writes the run of multi-byte characters at the start of <paramref name="utf8"/>.
+        /// </summary>
+        /// <param name="utf8">Text whose first byte starts a multi-byte UTF-8 sequence.</param>
+        /// <returns>The number of bytes consumed: everything up to the next ASCII byte.</returns>
+        /// <exception cref="XmlException">The run is not valid UTF-8, or holds a character XML does not allow.</exception>
+        /// <remarks>
+        /// A valid run is copied in one piece when none of its characters needs a reference. Only XML 1.1
+        /// has such characters outside ASCII (the C1 controls, NEL, and LS), and they all start with 0xC2 or 0xE2.
+        /// </remarks>
+        internal int WriteMultiByteRun(ReadOnlySpan<byte> utf8)
+        {
+            var ascii = utf8.IndexOfAnyInRange((byte)0x00, (byte)0x7F);
+            var run = ascii < 0 ? utf8 : utf8[..ascii];
+            if (Utf8.IsValid(run)
+                && !XmlChars.ContainsNonCharacter(run)
+                && (_version is XmlVersion.Version10 || run.IndexOfAny((byte)0xC2, (byte)0xE2) < 0))
+            {
+                WriteRaw(run);
+                return run.Length;
+            }
+
+            var i = 0;
+            while (i < run.Length)
+            {
+                var start = i;
+                if (!TryReadRune(run, ref i, out var cp))
+                {
+                    throw new XmlException("Invalid UTF-8 in XML value.");
+                }
+
+                WriteValueSlice(run[start..i], cp);
+            }
+
+            return run.Length;
         }
 
         /// <summary>
@@ -3343,13 +3400,30 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="prefix">The prefix bytes.</param>
         /// <returns>The URI bytes, or null if the prefix is unbound.</returns>
+        /// <remarks>
+        /// A document uses a handful of prefixes over and over, usually declared on its root. A small
+        /// direct-mapped cache from prefix to binding index, emptied whenever a binding is pushed or
+        /// popped, answers those with one compare instead of a scan of every binding in scope.
+        /// </remarks>
         internal byte[]? LookupUri(ReadOnlySpan<byte> prefix)
         {
+            var slot = prefix.IsEmpty ? 0 : (prefix[0] ^ (prefix[^1] << 1) ^ prefix.Length) & 7;
+            if ((_nsCacheMask & (1 << slot)) != 0)
+            {
+                var cached = NsAt(_nsCacheIndexes[slot]);
+                if (prefix.SequenceEqual(cached.Prefix))
+                {
+                    return cached.Uri;
+                }
+            }
+
             for (var i = _nsCount - 1; i >= 0; i--)
             {
                 var binding = NsAt(i);
                 if (prefix.SequenceEqual(binding.Prefix))
                 {
+                    _nsCacheMask |= 1 << slot;
+                    _nsCacheIndexes[slot] = i;
                     return binding.Uri;
                 }
             }
@@ -3365,6 +3439,38 @@ namespace CloudNimble.Text.Xml
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Returns an array this writer owns that holds <paramref name="value"/>, reusing one from an earlier declaration.
+        /// </summary>
+        /// <param name="value">A namespace prefix or URI.</param>
+        /// <returns>The owned bytes.</returns>
+        /// <remarks>
+        /// A binding slot remembers the last declaration it held, which covers a document whose declarations
+        /// repeat in the same order. Sibling elements that declare different prefixes land in the same slot
+        /// in turn, so the writer also keeps the first <see cref="MaxInternedNamespaceValues"/> distinct
+        /// values it has seen. Past that limit a value is copied each time it is declared.
+        /// </remarks>
+        internal byte[] InternNamespaceBytes(ReadOnlySpan<byte> value)
+        {
+            for (var i = 0; i < _nsInternedCount; i++)
+            {
+                if (value.SequenceEqual(_nsInterned![i]))
+                {
+                    return _nsInterned[i];
+                }
+            }
+
+            var owned = value.ToArray();
+            if (_nsInternedCount < MaxInternedNamespaceValues)
+            {
+                _nsInterned ??= new byte[MaxInternedNamespaceValues][];
+                _nsInterned[_nsInternedCount] = owned;
+                _nsInternedCount++;
+            }
+
+            return owned;
         }
 
         /// <summary>

@@ -105,6 +105,29 @@ namespace CloudNimble.XmlEssentials.Tests
             buffer.WrittenSpan.SequenceEqual(Catalog).Should().BeTrue();
         }
 
+        [TestMethod]
+        [DataRow("document.xml")]
+        [DataRow("libreoffice_document.fodt")]
+        [DataRow("rpm_primary.xml")]
+        [DataRow("sample_rss.xml")]
+        public void WriteTo_RealDocument_DoesNotAllocate(string fixture)
+        {
+            var xml = System.IO.File.ReadAllBytes(System.IO.Path.Combine(AppContext.BaseDirectory, "Fixtures", "quick-xml", fixture));
+            using var document = XmlDocument.Parse(xml, new XmlDocumentOptions
+            {
+                CommentHandling = XmlCommentHandling.Allow,
+                WhitespaceHandling = XmlWhitespaceHandling.Significant,
+            });
+            var buffer = new ArrayBufferWriter<byte>(xml.Length * 2);
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            Write(document, writer, buffer);
+            Write(document, writer, buffer);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            Write(document, writer, buffer);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(0);
+        }
+
         #endregion
 
         #region Private Methods

@@ -42,7 +42,7 @@ Do not parse expected XML with `XDocument` in unit tests. Coverage wiring: [pack
 ## Known gaps
 
 - Of the 2,238 cases in the W3C suite, 283 run. Almost all the rest need a DTD, which this library rejects by design; the suite cannot say whether the content after the DTD would have been handled correctly.
-- `RealDocumentBenchmarks` covers four real documents and shows the reader and `WriteTo` behind BCL on the namespace-heavy ones ([optimization](23-optimization.md)). The writer is only driven through `WriteTo` there: no public UTF-8 overload writes a prefixed attribute, so a reader-to-writer copy bench cannot be written against the public surface.
+- `RealDocumentBenchmarks` covers four real documents; every row is under BCL, but the drains allocate per reader ([optimization](23-optimization.md)). The writer is only driven through `WriteTo` there: no public UTF-8 overload writes a prefixed attribute, so a reader-to-writer copy bench cannot be written against the public surface.
 
 ---
 

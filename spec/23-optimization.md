@@ -97,67 +97,66 @@ A `GC.GetAllocatedBytesForCurrentThread` test (see `Utf8XmlWriterAllocationTests
 
 ## Baseline (2026-11-22, net11.0 ShortRun, Hyper-V)
 
-Integer ns and bytes. Ratio is XmlEssentials / BCL on that category. These numbers were taken **after** the standards work (strict declaration, reserved namespaces, `]]>` detection, whitespace significance, shared XSD lexical routines, namespace-preserving `WriteTo`).
+Integer ns and bytes. Ratio is XmlEssentials / BCL on that category. These numbers were taken **after** the standards work (strict declaration, reserved namespaces, `]]>` detection, whitespace significance, shared XSD lexical routines, namespace-preserving `WriteTo`) and after backlog item 1. Write benches reset their `ArrayBufferWriter` with `ResetWrittenCount()`, which does not zero the buffer.
 
 ### Writer (`Reset` reuse)
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| BclXmlWriter_WriteCatalog | CatalogWrite | 30694 ns | 1.00 | 13728 B | 1.00 |
-| XmlEssentials_WriteCatalog | CatalogWrite | 22855 ns | 0.74 | 0 B | 0.00 |
-| BclXmlWriter_WriteTiny | TinyWrite | 316 ns | 1.00 | 7328 B | 1.00 |
-| XmlEssentials_WriteTiny | TinyWrite | 59 ns | 0.19 | 0 B | 0.00 |
+| BclXmlWriter_WriteCatalog | CatalogWrite | 33976 ns | 1.00 | 13728 B | 1.00 |
+| XmlEssentials_WriteCatalog | CatalogWrite | 24147 ns | 0.71 | 0 B | 0.00 |
+| BclXmlWriter_WriteTiny | TinyWrite | 320 ns | 1.00 | 7328 B | 1.00 |
+| XmlEssentials_WriteTiny | TinyWrite | 61 ns | 0.19 | 0 B | 0.00 |
 
 ### Reader, synthetic (new `Utf8XmlReader` per iteration on a `byte[]`)
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| BclXmlReader_DrainCatalog | CatalogDrain | 25716 ns | 1.00 | 15088 B | 1.00 |
-| XmlEssentials_DrainCatalog | CatalogDrain | 22671 ns | 0.88 | 0 B | 0.00 |
-| BclXmlReader_DrainCatalogGetInt32 | CatalogGetInt32 | 29711 ns | 1.00 | 35808 B | 1.00 |
-| XmlEssentials_DrainCatalogGetInt32 | CatalogGetInt32 | 23469 ns | 0.79 | 0 B | 0.00 |
-| BclXmlReader_DrainNamespaced | NamespacedDrain | 20692 ns | 1.00 | 15200 B | 1.00 |
-| XmlEssentials_DrainNamespaced | NamespacedDrain | 20257 ns | 0.98 | 0 B | 0.00 |
-| BclXmlReader_DrainTiny | TinyDrain | 319 ns | 1.00 | 2472 B | 1.00 |
-| XmlEssentials_DrainTiny | TinyDrain | 90 ns | 0.28 | 0 B | 0.00 |
+| BclXmlReader_DrainCatalog | CatalogDrain | 25425 ns | 1.00 | 15088 B | 1.00 |
+| XmlEssentials_DrainCatalog | CatalogDrain | 20091 ns | 0.79 | 0 B | 0.00 |
+| BclXmlReader_DrainCatalogGetInt32 | CatalogGetInt32 | 30135 ns | 1.00 | 35808 B | 1.00 |
+| XmlEssentials_DrainCatalogGetInt32 | CatalogGetInt32 | 21485 ns | 0.71 | 0 B | 0.00 |
+| BclXmlReader_DrainNamespaced | NamespacedDrain | 20740 ns | 1.00 | 15200 B | 1.00 |
+| XmlEssentials_DrainNamespaced | NamespacedDrain | 16805 ns | 0.81 | 0 B | 0.00 |
+| BclXmlReader_DrainTiny | TinyDrain | 316 ns | 1.00 | 2472 B | 1.00 |
+| XmlEssentials_DrainTiny | TinyDrain | 89 ns | 0.28 | 0 B | 0.00 |
 
-### Reader and DOM, real documents (`RealDocumentBenchmarks`)
+### Reader, DOM, and writer on real documents (`RealDocumentBenchmarks`)
 
-Four fixtures from the quick-xml test suite. Both sides keep whitespace and comments. **This is the table that matters**, and it is not all green.
+Four fixtures from the quick-xml test suite. Both sides keep whitespace and comments. `RealDomWrite` replays a parsed document into a reused writer. **This is the table that matters.**
 
 | Method | Category | File | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- | --- |
-| BclXmlReader_Drain | RealDrain | document.xml | 19110 ns | 1.00 | 25144 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | document.xml | 24300 ns | **1.27** | 1328 B | 0.05 |
-| BclXmlReader_Drain | RealDrain | libreoffice_document.fodt | 79490 ns | 1.00 | 56017 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | libreoffice_document.fodt | 142090 ns | **1.79** | 9609 B | 0.17 |
-| BclXmlReader_Drain | RealDrain | rpm_primary.xml | 30680 ns | 1.00 | 20064 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | rpm_primary.xml | 27530 ns | 0.90 | 80 B | 0.00 |
-| BclXmlReader_Drain | RealDrain | sample_rss.xml | 187440 ns | 1.00 | 47137 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | sample_rss.xml | 172160 ns | 0.92 | 2073 B | 0.04 |
-| BclXmlDocument_Parse | RealDomParse | document.xml | 49210 ns | 1.00 | 127176 B | 1.00 |
-| XmlEssentials_Parse | RealDomParse | document.xml | 31070 ns | 0.63 | 1432 B | 0.01 |
-| BclXmlDocument_Parse | RealDomParse | libreoffice_document.fodt | 186240 ns | 1.00 | 353889 B | 1.00 |
-| XmlEssentials_Parse | RealDomParse | libreoffice_document.fodt | 182550 ns | 0.98 | 9713 B | 0.03 |
-| BclXmlDocument_Parse | RealDomParse | rpm_primary.xml | 68200 ns | 1.00 | 170953 B | 1.00 |
-| XmlEssentials_Parse | RealDomParse | rpm_primary.xml | 33910 ns | 0.50 | 184 B | 0.00 |
-| BclXmlDocument_Parse | RealDomParse | sample_rss.xml | 319180 ns | 1.00 | 709082 B | 1.00 |
-| XmlEssentials_Parse | RealDomParse | sample_rss.xml | 201040 ns | 0.63 | 2177 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | document.xml | 28040 ns | 1.00 | (not recorded) | 1.00 |
-| XmlEssentials_Write | RealDomWrite | document.xml | 27500 ns | 0.98 | 0 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | libreoffice_document.fodt | 94520 ns | 1.00 | (not recorded) | 1.00 |
-| XmlEssentials_Write | RealDomWrite | libreoffice_document.fodt | 115400 ns | **1.22** | 0 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | rpm_primary.xml | 31750 ns | 1.00 | (not recorded) | 1.00 |
-| XmlEssentials_Write | RealDomWrite | rpm_primary.xml | 25250 ns | 0.80 | 0 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | sample_rss.xml | 149330 ns | 1.00 | (not recorded) | 1.00 |
-| XmlEssentials_Write | RealDomWrite | sample_rss.xml | 90440 ns | 0.61 | 0 B | 0.00 |
+| BclXmlReader_Drain | RealDrain | document.xml | 19310 ns | 1.00 | 25144 B | 1.00 |
+| XmlEssentials_Drain | RealDrain | document.xml | 15830 ns | 0.82 | 1456 B | 0.06 |
+| BclXmlReader_Drain | RealDrain | libreoffice_document.fodt | 80280 ns | 1.00 | 56017 B | 1.00 |
+| XmlEssentials_Drain | RealDrain | libreoffice_document.fodt | 57300 ns | 0.71 | 10504 B | 0.19 |
+| BclXmlReader_Drain | RealDrain | rpm_primary.xml | 30620 ns | 1.00 | 20064 B | 1.000 |
+| XmlEssentials_Drain | RealDrain | rpm_primary.xml | 26500 ns | 0.87 | 80 B | 0.004 |
+| BclXmlReader_Drain | RealDrain | sample_rss.xml | 188460 ns | 1.00 | 47137 B | 1.00 |
+| XmlEssentials_Drain | RealDrain | sample_rss.xml | 162190 ns | 0.86 | 2073 B | 0.04 |
+| BclXmlDocument_Parse | RealDomParse | document.xml | 49330 ns | 1.00 | 127176 B | 1.00 |
+| XmlEssentials_Parse | RealDomParse | document.xml | 22150 ns | 0.45 | 1562 B | 0.01 |
+| BclXmlDocument_Parse | RealDomParse | libreoffice_document.fodt | 188430 ns | 1.00 | 353889 B | 1.00 |
+| XmlEssentials_Parse | RealDomParse | libreoffice_document.fodt | 74660 ns | 0.40 | 10649 B | 0.03 |
+| BclXmlDocument_Parse | RealDomParse | rpm_primary.xml | 68790 ns | 1.00 | 170953 B | 1.000 |
+| XmlEssentials_Parse | RealDomParse | rpm_primary.xml | 29810 ns | 0.43 | 187 B | 0.001 |
+| BclXmlDocument_Parse | RealDomParse | sample_rss.xml | 324770 ns | 1.00 | 709082 B | 1.000 |
+| XmlEssentials_Parse | RealDomParse | sample_rss.xml | 193750 ns | 0.60 | 2506 B | 0.004 |
+| BclXmlDocument_Write | RealDomWrite | document.xml | 28960 ns | 1.00 | 11032 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | document.xml | 26770 ns | 0.92 | 0 B | 0.00 |
+| BclXmlDocument_Write | RealDomWrite | libreoffice_document.fodt | 97490 ns | 1.00 | 23273 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | libreoffice_document.fodt | 81140 ns | 0.83 | 0 B | 0.00 |
+| BclXmlDocument_Write | RealDomWrite | rpm_primary.xml | 33100 ns | 1.00 | 8016 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | rpm_primary.xml | 25410 ns | 0.77 | 0 B | 0.00 |
+| BclXmlDocument_Write | RealDomWrite | sample_rss.xml | 150680 ns | 1.00 | 8017 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | sample_rss.xml | 89830 ns | 0.60 | 0 B | 0.00 |
 
-What the real documents show that the synthetic catalog hid:
+What the real documents show:
 
-- **Namespace-heavy documents are slower than BCL on drain** (WordprocessingML 1.27×, OpenDocument 1.79×). The `.fodt` root declares about thirty namespaces and most elements and attributes are prefixed with multi-byte prefixes (`office:`, `style:`, `text:`). Every prefixed name is resolved by a linear scan of the binding stack comparing bytes (`TryLookupBinding`), and the 1-byte last-prefix cache never hits. This is backlog item 1, and it is no longer optional.
-- **Drain is not 0 B on real documents.** The reader keeps a few arrays per instance (namespace bindings and element stacks once they outgrow their eight inline slots, interned URIs, one buffer for decoded attribute values and one for decoded text). They are allocated per reader, not per token, but a `ref struct` has no `Dispose` and so cannot return a pooled array. The split between them has not been measured. 0 B holds for small, shallow, entity-free documents such as the synthetic ones.
-- DOM parse stays ahead everywhere because BCL's DOM allocates so much more, but `.fodt` is only 0.98: the tokenizer cost above passes straight through.
-- **`WriteTo` is 1.22× BCL on the `.fodt`** and level on WordprocessingML. Same cause on the writer side: every prefixed name looks its prefix up in the writer's binding stack by comparing bytes, and thirty bindings are in scope.
+- Every row is under BCL. Before backlog item 1 the namespace-heavy drains were 1.27× (WordprocessingML) and 1.79× (OpenDocument), and `WriteTo` on the OpenDocument file was 1.22×. The synthetic catalog had hidden all of it.
+- **Drain is not 0 B on real documents.** The reader keeps a few arrays per instance (namespace bindings and element stacks once they outgrow their eight inline slots, interned URIs, one buffer for decoded attribute values and one for decoded text). They are allocated per reader, not per token, but a `ref struct` has no `Dispose` and so cannot return a pooled array. The split between them has not been measured. 0 B holds for small, shallow, entity-free documents such as the synthetic ones. This is now the largest gap against the goal (see backlog item 5).
+- `RealDomWrite` is 0 B on all four, pinned by `XmlDocumentAllocationTests.WriteTo_RealDocument_DoesNotAllocate`. That test found 200 B per write on the RSS file: sibling elements that declare different prefixes reuse one binding slot in turn, so the slot's remembered bytes never matched. The writer now keeps the first 64 distinct prefixes and URIs it has seen (`InternNamespaceBytes`).
 
 ### DOM, synthetic (`XmlDocument` / `XmlElement`, PR 4)
 
@@ -165,20 +164,20 @@ Parse rows build and dispose one document per operation. Navigate and write rows
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| BclXmlDocument_ParseCatalog | DomParseCatalog | 52224 ns | 1.00 | 136128 B | 1.00 |
-| XmlEssentials_ParseCatalog | DomParseCatalog | 30892 ns | 0.59 | 104 B | 0.00 |
-| BclXmlDocument_ParseNamespaced | DomParseNamespaced | 42195 ns | 1.00 | 110760 B | 1.00 |
-| XmlEssentials_ParseNamespaced | DomParseNamespaced | 27323 ns | 0.65 | 104 B | 0.00 |
-| BclXmlDocument_ParseTiny | DomParseTiny | 631 ns | 1.00 | 5176 B | 1.00 |
-| XmlEssentials_ParseTiny | DomParseTiny | 140 ns | 0.22 | 104 B | 0.02 |
-| BclXmlDocument_NavigateCatalog | DomNavigate | 3464 ns | 1.00 | 0 B | - |
-| XmlEssentials_NavigateCatalog | DomNavigate | 2874 ns | 0.83 | 0 B | - |
-| BclXmlDocument_WriteCatalog | DomWrite | 25124 ns | 1.00 | 7368 B | 1.00 |
-| XmlEssentials_WriteCatalog | DomWrite | 17316 ns | 0.69 | 0 B | 0.00 |
+| BclXmlDocument_ParseCatalog | DomParseCatalog | 52304 ns | 1.00 | 136128 B | 1.000 |
+| XmlEssentials_ParseCatalog | DomParseCatalog | 29507 ns | 0.56 | 104 B | 0.001 |
+| BclXmlDocument_ParseNamespaced | DomParseNamespaced | 42354 ns | 1.00 | 110760 B | 1.000 |
+| XmlEssentials_ParseNamespaced | DomParseNamespaced | 23330 ns | 0.55 | 104 B | 0.001 |
+| BclXmlDocument_ParseTiny | DomParseTiny | 642 ns | 1.00 | 5176 B | 1.00 |
+| XmlEssentials_ParseTiny | DomParseTiny | 134 ns | 0.21 | 104 B | 0.02 |
+| BclXmlDocument_NavigateCatalog | DomNavigate | 3470 ns | 1.00 | 0 B | - |
+| XmlEssentials_NavigateCatalog | DomNavigate | 2781 ns | 0.80 | 0 B | - |
+| BclXmlDocument_WriteCatalog | DomWrite | 28066 ns | 1.00 | 7368 B | 1.00 |
+| XmlEssentials_WriteCatalog | DomWrite | 19510 ns | 0.70 | 0 B | 0.00 |
 
 The 104 B on parse is the `XmlDocument` object itself. [DOM](06-api-dom.md) rules out a document-instance cache, so parse cannot reach 0 B; everything the document holds is pooled. Before the row-store rewrite the same benches read 0.94 / 1.07 / 0.31 (parse), 3.71 with 59040 B (navigate), and 1.02 (write).
 
-Summary: every synthetic category is under BCL and 0 B (apart from the one object per parsed document). On real documents DOM parse is under BCL on all four, the reader on two of four, and `WriteTo` on three of four.
+Summary: every category, synthetic and real, is under BCL. Synthetic categories are 0 B (apart from the one object per parsed document). Real-document drains allocate 80 B to 10504 B per reader.
 
 ## Shipped after PR 4 (reader drain)
 
@@ -241,28 +240,26 @@ Bugs that surfaced while proving the above, all fixed with tests. The first two 
 - DOM getters: parsed values on their own and disagreed with the reader (whitespace, `+`, dates).
 - Typed values: `DateTime` accepted any culture-invariant date (`March 5, 2020`); durations accepted `PT1D`.
 
-Coverage is 100% line and 100% branch (4326 lines, 2814 branches), with no test that exists only to reach a branch.
+Coverage is 100% line and 100% branch (4427 lines, 2890 branches), with no test that exists only to reach a branch. `coverage-gate.cs` now fails below 100% branch coverage (it used to allow 80%).
 
 ## Backlog (do these next)
 
 Work the list in order. Keep 0 B on drain/write. Do not grow the public API unless the bench cannot express the fast path (writer already has `WriteAttributeNumber` / complete elements).
 
-### 1. Prefix resolution on the reader (required: real documents are 1.27× and 1.79× BCL)
+### 1. Prefix resolution on the reader (done: real documents 0.71 to 0.87)
 
-**The synthetic gap is closed (NamespacedDrain 0.98), but real namespace-heavy documents are not** (see the real-document table). The cost is prefix resolution: a 1-byte last-prefix cache that multi-byte prefixes never hit, then `TryLookupBinding` scanning every in-scope binding and comparing bytes, for every prefixed element **and every prefixed attribute** (`CheckDuplicateNamespacedAttributes` resolves each one, and `NamespaceUriSpan` resolves it again when the caller asks). Resolve each attribute once per start tag and remember the binding on `AttributeRecord`; replace the 1-byte cache with a small prefix → binding cache that is cleared when a binding is pushed or popped.
+Real namespace-heavy documents were 1.27× and 1.79× BCL on drain. A sampling profile (`dotnet-trace`, the drain loop on each fixture) showed four separate costs, and only the first was the one this item predicted:
 
-BCL `XmlTextReaderImpl` puts prefixes and local names in a `XmlNameTable` (interned `string`). Prefix equality is a reference compare. We compare UTF-8 slices (`TryLookupBinding`, 1-byte cache of last prefix `p`).
+| Cost | What it was | What replaced it |
+| --- | --- | --- |
+| Prefix lookup | A 1-byte last-prefix cache that multi-byte prefixes never hit, then a scan of every in-scope binding comparing bytes, for each prefixed element and attribute | `LookupPrefixIndex`: an 8-slot direct-mapped cache from prefix to binding index, emptied when a binding is pushed or popped. The default namespace has its own slot (`_nsDefaultIndex`). No interning and no new arrays. |
+| Attributes resolved twice or more | The duplicate check resolved each prefixed attribute, and `NamespaceUriSpan` resolved it again | `ResolveAttributeNamespaces` runs once per start tag and stores the binding index on `AttributeRecord.NsIndex`. The duplicate check compares indexes before it compares URIs. |
+| Multi-byte text rescanned per character | After each non-ASCII character `ReadText` searched for the next `<` again, then decoded and checked one rune | `AdvanceAsciiTextRun` checks the whole run at once: allowed bytes (`TextRunChars`), `Utf8.IsValid`, and no U+FFFE / U+FFFF. A run that fails is left to `AdvanceChar`, which reports the exact error. This was the `.fodt` gap (it holds Markus Kuhn's UTF-8 demo text). |
+| Start-tag overhead | Whitespace between attributes went through the full character validator; each attribute value was scanned four times (stop search, character check, whitespace check, decode-trigger check); names used a vectorized search for five-byte inputs | `SkipWhitespaceBytes` advances over space and tab directly. One `AttrPlainDouble` / `AttrPlainSingle` scan proves a value needs no check, no reference expansion, and no normalization. `ReadName` uses a byte loop. This was the WordprocessingML gap. |
 
-What to try, in this order:
+The same lookup cost was on the writer (`LookupUri` scanned every binding for each prefixed name) and is fixed the same way (`_nsCacheIndexes`): `RealDomWrite` on the `.fodt` went from 1.22 to 0.83. `WriteElementText` / `WriteAttributeText` copy a valid multi-byte run in one piece (`WriteMultiByteRun`).
 
-1. Read `dotnet/runtime` `v11.0.0` `XmlTextReaderImpl` / `XmlNameTable` / `XmlNamespaceManager` (tagged raw files). Note how they intern prefixes once per distinct prefix, not per element.
-2. Keep **zero heap on the drain** after warmup. Interning must hit a small table of `byte[]` already owned (`InternPrefix` / `InternUri` exist). A new `string` per prefix **fails** the 0 B gate.
-3. Store a **canonical prefix handle** on `NamespaceBinding` (the interned `byte[]` or an int id). Lookup becomes `ReferenceEquals` or integer id, not `SequenceEqual` on the start-tag slice.
-4. Optionally intern the 1-byte prefix `p` on first `xmlns:p` so every later `p:item` reuses that handle. The 1-byte cache (`_nsPrefixCache`) is a stopgap; a table of in-scope prefix handles is the BCL shape.
-5. End tags skip URI re-resolve when `TryMatchStartTagName` matches the start tag's bytes. Do not break `<a:e xmlns:a="u" xmlns:b="u"></b:e>` (same URI, different prefix) — that path must still `ResolveElementNamespace`.
-6. Resume (`IsFinalBlock`) already copies names into owned arrays. Interned handles must survive snapshot restore.
-
-Success: `RealDrain` on `document.xml` and `libreoffice_document.fodt` at **≤ 1.00**, with every other row no worse than the tables above.
+Not done: interned prefix handles on `NamespaceBinding`. The cache made them unnecessary.
 
 ### 2. Unprefixed catalog drain (done, 0.88×)
 
@@ -279,6 +276,8 @@ STJ benches often use `JsonEncodedText` for repeated property names. Add a categ
 ### 5. Reader `Reset` / reuse
 
 **Writer `Reset` shipped in PR 3** (benches reuse one writer at 0 B). `Utf8XmlReader` is a `ref struct`; reuse is “construct again on the same span,” which is already cheap. If a future mutable reader or sequence reader appears, give it `Reset` and a bench that reuses it.
+
+**Open: per-reader allocations on real documents.** Drains of the four fixtures allocate 80 B to 10504 B each (see the real-document table). They are growth of the reader's own arrays past their inline slots, plus decode buffers, and a `ref struct` cannot return a pooled array without a `Dispose`. Measure the split first (bindings and element stacks vs. interned URIs vs. decode buffers), then choose between larger inline capacity, a caller-supplied scratch buffer in `XmlReaderOptions`, and an explicit `Dispose`.
 
 ### 6. DOM and serializer
 

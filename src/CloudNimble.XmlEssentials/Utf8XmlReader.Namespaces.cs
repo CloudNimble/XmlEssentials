@@ -71,41 +71,49 @@ namespace CloudNimble.Text.Xml
                 }
             }
 
-            if (_prefixLength == 1 && _nsPrefixCacheValid && _span[_nameStart] == _nsPrefixCacheByte)
+            if (_prefixLength == 0)
             {
-                AssignCurrentNamespace(_nsPrefixCache);
+                if (_nsDefaultIndex == NsIndexUnknown)
+                {
+                    _nsDefaultIndex = FindDefaultBinding();
+                }
+
+                if (_nsDefaultIndex < 0)
+                {
+                    SetCurrentNamespace([]);
+                }
+                else
+                {
+                    AssignCurrentNamespace(BindingAt(_nsDefaultIndex));
+                }
             }
             else
             {
-                var elementPrefix = _prefixLength > 0 ? _span.Slice(_nameStart, _prefixLength) : [];
+                var elementPrefix = _span.Slice(_nameStart, _prefixLength);
                 if (_prefixLength == 5 && elementPrefix.SequenceEqual(XmlUtf8.XmlnsPrefix))
                 {
                     throw Error("Element names must not use the xmlns prefix.");
                 }
 
-                if (TryLookupBinding(elementPrefix, out var binding))
+                if (_prefixLength == 3 && elementPrefix.SequenceEqual(XmlUtf8.XmlPrefix))
                 {
-                    if (!elementPrefix.IsEmpty && binding.UriLength == 0)
+                    SetCurrentNamespace(XmlUtf8.Xml);
+                }
+                else
+                {
+                    var index = LookupPrefixIndex(_nameStart, _prefixLength);
+                    if (index < 0 || BindingUriLengthAt(index) == 0)
                     {
                         throw Error("Undeclared namespace prefix.");
                     }
 
-                    AssignCurrentNamespace(binding);
-                    if (_prefixLength == 1)
-                    {
-                        _nsPrefixCache = binding;
-                        _nsPrefixCacheByte = _span[_nameStart];
-                        _nsPrefixCacheValid = true;
-                    }
+                    AssignCurrentNamespace(BindingAt(index));
                 }
-                else if (!elementPrefix.IsEmpty)
-                {
-                    throw Error("Undeclared namespace prefix.");
-                }
-                else
-                {
-                    SetCurrentNamespace([]);
-                }
+            }
+
+            if (_hasUnresolvedAttribute)
+            {
+                ResolveAttributeNamespaces();
             }
 
             if (!_isEmptyElement && (_currentNsLength > 0 || _nsCount > 0 || _elementNsStored))
@@ -200,27 +208,16 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal readonly void CheckDuplicateNamespacedAttributes()
         {
-            if (_attributeCount == 1)
-            {
-                var single = AttributeAt(0);
-                if (single.PrefixLength > 0)
-                {
-                    _ = ResolveAttributeNamespace(single);
-                }
-
-                return;
-            }
-
             for (var i = 0; i < _attributeCount; i++)
             {
                 var left = AttributeAt(i);
                 var leftLocal = AttributeLocalName(left);
-                var leftNs = ResolveAttributeNamespace(left);
                 for (var j = i + 1; j < _attributeCount; j++)
                 {
                     var right = AttributeAt(j);
                     if (leftLocal.SequenceEqual(AttributeLocalName(right))
-                        && leftNs.SequenceEqual(ResolveAttributeNamespace(right)))
+                        && (left.NsIndex == right.NsIndex
+                            || ResolveAttributeNamespace(left).SequenceEqual(ResolveAttributeNamespace(right))))
                     {
                         throw Error("Duplicate attribute.");
                     }
@@ -472,41 +469,13 @@ namespace CloudNimble.Text.Xml
 
             for (var i = _nsCount - 1; i >= 0; i--)
             {
+                if (BindingPrefixLengthAt(i) != length)
+                {
+                    continue;
+                }
+
                 var candidate = BindingAt(i);
-                if (candidate.PrefixLength != length)
-                {
-                    continue;
-                }
-
-                if (length == 0)
-                {
-                    binding = candidate;
-                    return true;
-                }
-
-                if (candidate.PrefixStart >= 0)
-                {
-                    if (length == 1)
-                    {
-                        if (_span[candidate.PrefixStart] == prefix[0])
-                        {
-                            binding = candidate;
-                            return true;
-                        }
-
-                        continue;
-                    }
-
-                    if (prefix.SequenceEqual(_span.Slice(candidate.PrefixStart, length)))
-                    {
-                        binding = candidate;
-                        return true;
-                    }
-
-                    continue;
-                }
-
-                if (prefix.SequenceEqual(candidate.PrefixOwned))
+                if (length == 0 || prefix.SequenceEqual(BindingPrefix(candidate)))
                 {
                     binding = candidate;
                     return true;
@@ -588,12 +557,95 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            _nsPrefixCacheValid = false;
+            _nsPrefixCacheMask = 0;
+            _nsDefaultIndex = NsIndexUnknown;
             do
             {
                 _nsCount--;
             }
             while (_nsCount > 0 && BindingDepthAt(_nsCount - 1) == depth);
+        }
+
+        /// <summary>
+        /// Returns the index of the innermost default-namespace binding, or -1 when none is in scope.
+        /// </summary>
+        /// <returns>The binding index, or -1.</returns>
+        internal readonly int FindDefaultBinding()
+        {
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                if (BindingPrefixLengthAt(i) == 0)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Finds the in-scope binding for the prefix at <paramref name="start"/> in the current buffer.
+        /// </summary>
+        /// <param name="start">The byte offset of the prefix.</param>
+        /// <param name="length">The prefix byte length, at least 1.</param>
+        /// <returns>The binding index, or -1 when the prefix is not declared.</returns>
+        /// <remarks>
+        /// A document reuses a handful of prefixes thousands of times, and the bindings that declare them
+        /// usually sit at the bottom of the stack (on the root element). This is the byte-level equivalent
+        /// of the BCL's interned prefix: a small direct-mapped cache from prefix to binding index, emptied
+        /// whenever a binding is pushed or popped, so a hit costs one short compare instead of a scan of
+        /// every binding in scope.
+        /// </remarks>
+        internal int LookupPrefixIndex(int start, int length)
+        {
+            var slot = (_span[start] ^ (_span[start + length - 1] << 1) ^ length) & 7;
+            if ((_nsPrefixCacheMask & (1 << slot)) != 0 && _nsPrefixCacheLengths[slot] == length)
+            {
+                var cached = _nsPrefixCacheStarts[slot];
+                if (cached == start || _span.Slice(cached, length).SequenceEqual(_span.Slice(start, length)))
+                {
+                    return _nsPrefixCacheIndexes[slot];
+                }
+            }
+
+            var prefix = _span.Slice(start, length);
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                if (BindingPrefixLengthAt(i) != length || !BindingPrefix(BindingAt(i)).SequenceEqual(prefix))
+                {
+                    continue;
+                }
+
+                _nsPrefixCacheMask |= 1 << slot;
+                _nsPrefixCacheStarts[slot] = start;
+                _nsPrefixCacheLengths[slot] = length;
+                _nsPrefixCacheIndexes[slot] = i;
+                return i;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Returns the prefix byte length of the namespace binding at <paramref name="index"/> without copying the binding.
+        /// </summary>
+        /// <param name="index">The binding index.</param>
+        /// <returns>The prefix length, or 0 for a default-namespace binding.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal readonly int BindingPrefixLengthAt(int index)
+        {
+            return index < 8 ? _nsBindingsInline[index].PrefixLength : _nsBindings![index].PrefixLength;
+        }
+
+        /// <summary>
+        /// Returns the URI byte length of the namespace binding at <paramref name="index"/> without copying the binding.
+        /// </summary>
+        /// <param name="index">The binding index.</param>
+        /// <returns>The URI length, or 0 when the binding undeclares its prefix.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal readonly int BindingUriLengthAt(int index)
+        {
+            return index < 8 ? _nsBindingsInline[index].UriLength : _nsBindings![index].UriLength;
         }
 
         /// <summary>
@@ -635,7 +687,8 @@ namespace CloudNimble.Text.Xml
         /// <param name="binding">The binding to store.</param>
         internal void StoreBinding(NamespaceBinding binding)
         {
-            _nsPrefixCacheValid = false;
+            _nsPrefixCacheMask = 0;
+            _nsDefaultIndex = NsIndexUnknown;
             if (_nsCount < 8)
             {
                 _nsBindingsInline[_nsCount] = binding;
@@ -668,30 +721,49 @@ namespace CloudNimble.Text.Xml
         /// <returns>UTF-8 URI bytes.</returns>
         internal readonly ReadOnlySpan<byte> ResolveAttributeNamespace(AttributeRecord attribute)
         {
-            var prefix = AttributePrefix(attribute);
-            var local = AttributeLocalName(attribute);
-            if (prefix.IsEmpty && local.SequenceEqual("xmlns"u8))
+            return attribute.NsIndex switch
             {
-                return XmlUtf8.Xmlns;
-            }
+                AttributeRecord.NoNamespace => [],
+                AttributeRecord.XmlnsNamespace => XmlUtf8.Xmlns,
+                AttributeRecord.XmlNamespace => XmlUtf8.Xml,
+                _ => BindingUri(BindingAt(attribute.NsIndex - AttributeRecord.FirstBinding)),
+            };
+        }
 
-            if (prefix.SequenceEqual("xmlns"u8))
+        /// <summary>
+        /// Looks up the prefix of every prefixed attribute on the current start tag and records its binding.
+        /// </summary>
+        /// <exception cref="XmlException">A prefix is not declared, or is undeclared in XML 1.1.</exception>
+        /// <remarks>
+        /// Runs once per start tag, after the tag's own xmlns declarations are in scope. Afterwards the
+        /// duplicate check and <see cref="Utf8XmlReader.NamespaceUriSpan"/> read the recorded binding
+        /// instead of searching the binding stack again.
+        /// </remarks>
+        internal void ResolveAttributeNamespaces()
+        {
+            for (var i = 0; i < _attributeCount; i++)
             {
-                return XmlUtf8.Xmlns;
-            }
+                var attribute = AttributeAt(i);
+                if (attribute.NsIndex != AttributeRecord.UnresolvedNamespace)
+                {
+                    continue;
+                }
 
-            if (prefix.IsEmpty)
-            {
-                return [];
-            }
+                var index = LookupPrefixIndex(attribute.NameStart, attribute.PrefixLength);
+                if (index < 0 || BindingUriLengthAt(index) == 0)
+                {
+                    throw Error("Undeclared namespace prefix.");
+                }
 
-            var uri = LookupNamespace(prefix, out var declared);
-            if (!declared || uri.IsEmpty)
-            {
-                throw Error("Undeclared namespace prefix.");
+                if (i < 8)
+                {
+                    _attributesInline[i].NsIndex = AttributeRecord.FirstBinding + index;
+                }
+                else
+                {
+                    _attributes![i].NsIndex = AttributeRecord.FirstBinding + index;
+                }
             }
-
-            return uri;
         }
 
         /// <summary>

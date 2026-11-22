@@ -86,9 +86,9 @@ if (avgLine + 1e-9 < 1.0)
     return 1;
 }
 
-if (avgBranch + 1e-9 < 0.80)
+if (avgBranch + 1e-9 < 1.0)
 {
-    Console.Error.WriteLine("Branch coverage is below 80% on CloudNimble.XmlEssentials.");
+    Console.Error.WriteLine("Branch coverage is below 100% on CloudNimble.XmlEssentials.");
     return 1;
 }
 

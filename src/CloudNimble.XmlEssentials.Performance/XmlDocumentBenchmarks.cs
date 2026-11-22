@@ -239,7 +239,7 @@ namespace CloudNimble.XmlEssentials.Performance
         public void XmlEssentials_WriteCatalog()
         {
             _writer.Reset();
-            _buffer.Clear();
+            _buffer.ResetWrittenCount();
             _catalogDocument.WriteTo(_writer);
             _writer.Flush();
         }

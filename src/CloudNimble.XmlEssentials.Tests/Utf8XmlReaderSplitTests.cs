@@ -30,6 +30,10 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<a><b><c><d><e><f><g><h><i><j><k><l><m><n><o><p><q><r><s><t> x <u/> </t></s></r></q></p></o></n></m></l></k></j></i></h></g></f></e></d></c></b></a>", DisplayName = "twenty levels")]
         [DataRow("<a><b><c><d><e><f><g><h><i><j><k><l><m><n><o><p><q><r><s><t><z:u xmlns:z=\"urn:z\"><v/></z:u><w>1</w></t></s></r></q></p></o></n></m></l></k></j></i></h></g></f></e></d></c></b></a>", DisplayName = "first namespace at depth twenty-one")]
         [DataRow("<a:e xmlns:a=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:b=\"http://www.w3.org/2001/XMLSchema-instance\"><a:f>1</b:f></b:e>", DisplayName = "two prefixes on a well-known namespace")]
+        [DataRow("<r a=\"é☃\" b='x\"y'>aé☃𝄞z é<c d=\"1\" e='2'/>ü</r>", DisplayName = "multi-byte text and attribute values")]
+        [DataRow("<?xml version=\"1.1\"?><e a=\"é☃ü\" b='ü'>é☃ü<c d=\"é\"/>ü</e>", DisplayName = "XML 1.1 multi-byte text and attribute values")]
+        [DataRow("<p:r xmlns:p=\"urn:1\" xmlns:q=\"urn:q\"><p:a p:x=\"1\" q:x=\"2\"><p:b xmlns:p=\"urn:2\" p:x=\"3\"/><p:c p:x=\"4\"/></p:a><xml:d xml:lang=\"en\"/></p:r>", DisplayName = "repeated and shadowed prefixes")]
+        [DataRow("<a><b><c><d><e><f><g><h><z:i xmlns:z=\"urn:z\"><z:j><z:k><z:l><z:m><z:n><z:o><z:p><z:q><z:r><z:s z:t=\"1\">x</z:s></z:r></z:q></z:p></z:o></z:n></z:m></z:l></z:k></z:j></z:i></h></g></f></e></d></c></b></a>", DisplayName = "namespace from depth nine through depth nineteen")]
         public void Split_AtEveryByte_MatchesSinglePass(string xml)
         {
             var bytes = Encoding.UTF8.GetBytes(xml);

@@ -102,7 +102,7 @@ namespace CloudNimble.XmlEssentials.Performance
         public void XmlEssentials_WriteCatalog()
         {
             _writer.Reset();
-            _buffer.Clear();
+            _buffer.ResetWrittenCount();
             WriteEssentialsCatalog(_writer);
         }
 
@@ -114,7 +114,7 @@ namespace CloudNimble.XmlEssentials.Performance
         public void XmlEssentials_WriteTiny()
         {
             _writer.Reset();
-            _buffer.Clear();
+            _buffer.ResetWrittenCount();
             _writer.WriteStartElement("root");
             _writer.WriteAttributeString("id", "1");
             _writer.WriteElementNumber("n", 42);
