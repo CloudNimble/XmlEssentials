@@ -539,7 +539,7 @@ Q-17: 89.90 EUR
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
 
 <Warning>
-Adding a type to a default-mode context changes more than the calls that name the context. With [interceptors](/guides/reflection-vs-source-generation#interceptors) on, `XmlSerializer.Serialize(value, options)` for that type runs the generated converter too, and the custom converters of its class and struct members stop applying. A member whose type has only read-only properties, like `GeoPoint`, is then written with its property names and read back with default values. The same goes for every type the context reaches through the members of a listed type. Keep a type that depends on custom converters out of default-mode contexts.
+Adding a type to a default-mode context changes more than the calls that name the context. With [interceptors](/guides/reflection-vs-source-generation#interceptors) on, a call that passes no options, such as `XmlSerializer.Serialize(value)`, runs the generated converter for that type too, and a converter set with `[XmlConverter]` on the type of a class or struct member stops applying. A member whose type has only read-only properties, like `GeoPoint`, is then written with its property names and read back with default values. The same goes for every type the context reaches through the members of a listed type. A call that passes options is never redirected, so converters in `options.Converters` always apply. Keep a type that depends on `[XmlConverter]` out of default-mode contexts.
 </Warning>
 
 ## Keep converters safe to share

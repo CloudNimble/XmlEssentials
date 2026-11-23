@@ -120,6 +120,30 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Private Methods
 
         /// <summary>
+        /// Builds the document element name of <paramref name="type"/>.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>
+        /// The local name from <see cref="XmlRootAttribute.ElementName"/>, or the XML name of the type under the
+        /// element naming policy when the attribute gives none; in the namespace from
+        /// <see cref="XmlRootAttribute.Namespace"/>, or <see cref="XmlSerializerOptions.DefaultNamespace"/> when
+        /// the attribute gives none.
+        /// </returns>
+        /// <remarks>
+        /// Every kind of type info uses this one rule, so a type has the same document element whether the
+        /// reflection resolver, a generated context, or a converter of the caller's reads and writes it.
+        /// </remarks>
+        internal static XmlName CreateRootName(Type type, XmlSerializerOptions options)
+        {
+            var root = (XmlRootAttribute?)Attribute.GetCustomAttribute(type, typeof(XmlRootAttribute), inherit: true);
+            var local = root?.ElementName is { Length: > 0 } name
+                ? name
+                : options.ConvertElementName(XmlBuiltInConverters.GetXmlTypeName(type));
+            return new XmlName(local, root?.Namespace ?? options.DefaultNamespace);
+        }
+
+        /// <summary>
         /// Checks that the start tag <paramref name="reader"/> is on is the document element
         /// of <see cref="Type"/>.
         /// </summary>

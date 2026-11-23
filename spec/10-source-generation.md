@@ -14,7 +14,7 @@ STJ’s source generator has two modes (`JsonSourceGenerationMode`). XmlEssentia
 | **Metadata** | `XmlTypeInfo<T>` metadata only (property list, converters, root name, create-object). The **runtime** library then drives serialize/deserialize from that metadata. | Smaller generated source; still needs the runtime mapper. |
 | **Default** | `Metadata \| Serialization` (STJ). Emit both. |
 
-Both modes ship ([K41](01-identity-and-decisions.md#key-decisions)). Interceptors ([K42](01-identity-and-decisions.md#key-decisions)): when a context is in the compilation, intercept `XmlSerializer.Serialize`/`Deserialize` overloads that take options (or default) and rewrite to the generated type-info overload.
+Both modes ship ([K41](01-identity-and-decisions.md#key-decisions)). Interceptors ([K42](01-identity-and-decisions.md#key-decisions)): when a context is in the compilation, intercept `XmlSerializer.Serialize<T>(value)` and `Deserialize<T>(input)` calls that pass no options argument and rewrite them to the type-info overload with `Context.Default.T`. The interceptor takes its parameter type, `ref` kind and return type from the intercepted overload, so every input kind (string, character span, UTF-8 span, sequence, stream, `ref Utf8XmlReader`, `XmlDocument`, `XmlElement`, `XmlNode`) and a value-type `T` compile. A call that passes options, even `null`, is not intercepted. The document element of a generated type info follows the same rule as the reflection resolver (`[XmlRoot]` name and namespace, else the type name under the naming policy and `DefaultNamespace`), and generated converters write member, attribute, wrapper and repeated-item namespaces as the reflection resolver does.
 
 ## Project
 

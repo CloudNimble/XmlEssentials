@@ -1,4 +1,4 @@
-- The declared base type must be a concrete class. The attribute can be applied to an interface or an abstract class, but the built-in object mapping doesn't support those as a declared type, and using one throws `NotSupportedException`.
+- The declared base type can be a concrete class, an abstract class, or an interface. An abstract class or an interface must list its derived types with `[XmlDerivedType<T>]`. When the serializer reads an element that doesn't identify one of them, it throws `XmlException`, because it can't create the declared type.
 - Derived types inherit the attribute and the list of derived types. Serializing a derived type directly also writes its discriminator.
 - `InferClosedTypePolymorphism` is not read in this release, here or on `XmlSerializerOptions`. Derived types must be listed.
 - Generated converters don't read or write derived types. The source generator reports error XMLXE008 for a type that declares them, so use the reflection resolver for the hierarchy.

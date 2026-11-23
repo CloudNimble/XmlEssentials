@@ -142,12 +142,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <returns>The root name.</returns>
         internal static XmlName CreateRootName(XmlSerializerOptions options)
         {
-            var root = typeof(T).GetCustomAttribute<XmlRootAttribute>();
-            var local = root?.ElementName is { Length: > 0 } name
-                ? name
-                : options.ConvertElementName(XmlBuiltInConverters.GetXmlTypeName(typeof(T)));
-            var ns = root?.Namespace ?? options.DefaultNamespace;
-            return new XmlName(local, ns);
+            return CreateRootName(typeof(T), options);
         }
 
         #endregion

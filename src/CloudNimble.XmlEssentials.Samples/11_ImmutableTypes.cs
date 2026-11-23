@@ -36,28 +36,32 @@ namespace CloudNimble.XmlEssentials.Samples
         public static void ParameterizedConstructor(TextWriter output)
         {
             const string xml = "<Measurement><Name>Voltage</Name><Value>230</Value></Measurement>";
-            var options = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml, options);
+            Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml);
 
             output.WriteLine($"{measurement!.Name} = {measurement.Value}");
         }
 
         /// <summary>
-        /// Shows that a constructor whose parameter names differ from the property names only by case is not used under the default options.
+        /// Shows that the case of a constructor parameter never matters, while the case of an element name matters unless
+        /// <see cref="XmlSerializerOptions.PropertyNameCaseInsensitive"/> is set.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void ParameterNameCase(TextWriter output)
         {
-            const string xml = "<Measurement><Name>Voltage</Name><Value>230</Value></Measurement>";
+            const string xml = "<Measurement><name>Voltage</name><value>230</value></Measurement>";
+            var options = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml, options);
+            output.WriteLine($"{measurement!.Name} = {measurement.Value}");
 
             try
             {
                 XmlSerializer.Deserialize<Measurement>(xml);
             }
-            catch (MissingMethodException ex)
+            catch (XmlException ex)
             {
-                output.WriteLine(ex.GetType().Name);
+                output.WriteLine(ex.Message);
             }
         }
 
@@ -67,7 +71,7 @@ namespace CloudNimble.XmlEssentials.Samples
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void ChosenConstructor(TextWriter output)
         {
-            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNameCaseInsensitive = true };
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
             var week = new DateRange(new DateOnly(2026, 3, 9), days: 7);
 
             string xml = XmlSerializer.Serialize(week, options);

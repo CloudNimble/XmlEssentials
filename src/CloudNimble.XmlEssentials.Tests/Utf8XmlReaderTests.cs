@@ -17,6 +17,12 @@ namespace CloudNimble.XmlEssentials.Tests
     public class Utf8XmlReaderTests
     {
 
+        #region Fields
+
+        private static readonly XmlReaderOptions ValueOptions = new() { CommentHandling = XmlCommentHandling.Allow };
+
+        #endregion
+
         #region Public Methods
 
         [TestMethod]
@@ -936,6 +942,90 @@ namespace CloudNimble.XmlEssentials.Tests
             resumed.CurrentDepth.Should().Be(1);
         }
 
+        [TestMethod]
+        [DataRow("<?xml version=\"1.0\"?><r/>",
+            "XmlDeclaration xml [version=\"1.0\"|version=\"1.0\"|version=\"1.0\"|plain|value]\n" +
+            "StartElement r [|||plain|empty]",
+            DisplayName = "start tag after a declaration")]
+        [DataRow("<!--k--><r/>",
+            "Comment  [k|k|k|plain|value]\n" +
+            "StartElement r [|||plain|empty]",
+            DisplayName = "start tag after a comment")]
+        [DataRow("<?p q?><r/>",
+            "ProcessingInstruction p [q|q|q|plain|value]\n" +
+            "StartElement r [|||plain|empty]",
+            DisplayName = "start tag after a processing instruction")]
+        [DataRow("<r>text<a/></r>",
+            "StartElement r [|||plain|empty]\n" +
+            "Text  [text|text|text|plain|value]\n" +
+            "StartElement a [|||plain|empty]\n" +
+            "EndElement r [|||plain|empty]",
+            DisplayName = "empty element after text")]
+        [DataRow("<r>a&lt;b<a>c</a></r>",
+            "StartElement r [|||plain|empty]\n" +
+            "Text  [a<b|a<b|a<b|escaped|value]\n" +
+            "StartElement a [|||plain|empty]\n" +
+            "Text  [c|c|c|plain|value]\n" +
+            "EndElement a [|||plain|empty]\n" +
+            "EndElement r [|||plain|empty]",
+            DisplayName = "start and end tags after text that was decoded")]
+        [DataRow("<r><![CDATA[z]]><a></a></r>",
+            "StartElement r [|||plain|empty]\n" +
+            "CData  [z|z|z|plain|value]\n" +
+            "StartElement a [|||plain|empty]\n" +
+            "EndElement a [|||plain|empty]\n" +
+            "EndElement r [|||plain|empty]",
+            DisplayName = "start and end tags after a CDATA section")]
+        [DataRow("<r>x<a b=\"1&amp;2\" c='3'/>y</r>",
+            "StartElement r [|||plain|empty]\n" +
+            "Text  [x|x|x|plain|value]\n" +
+            "StartElement a [|||plain|empty] @b [1&2|1&2|1&2|escaped|value] @c [3|3|3|plain|value] element [|||plain|empty]\n" +
+            "Text  [y|y|y|plain|value]\n" +
+            "EndElement r [|||plain|empty]",
+            DisplayName = "the element again after its attributes")]
+        [DataRow("<p:r xmlns:p=\"urn:p\"><p:a>1</p:a><!--k--><p:b/><?p q?></p:r>",
+            "StartElement r [|||plain|empty] @p [urn:p|urn:p|urn:p|plain|value] element [|||plain|empty]\n" +
+            "StartElement a [|||plain|empty]\n" +
+            "Text  [1|1|1|plain|value]\n" +
+            "EndElement a [|||plain|empty]\n" +
+            "Comment  [k|k|k|plain|value]\n" +
+            "StartElement b [|||plain|empty]\n" +
+            "ProcessingInstruction p [q|q|q|plain|value]\n" +
+            "EndElement r [|||plain|empty]",
+            DisplayName = "prefixed names between a comment and a processing instruction")]
+        public void ValueMembers_OnStartAndEndTags_AreEmpty(string xml, string expected)
+        {
+            var bytes = Encoding.UTF8.GetBytes(xml);
+            var tokens = new List<string>();
+            var reader = new Utf8XmlReader(bytes, ValueOptions);
+            AppendValues(ref reader, tokens);
+            string.Join("\n", tokens).Should().Be(expected);
+
+            for (var split = 1; split < bytes.Length; split++)
+            {
+                var resumed = new List<string>();
+                var first = new Utf8XmlReader(bytes.AsSpan(0, split), false, new XmlReaderState(ValueOptions));
+                AppendValues(ref first, resumed);
+                var second = new Utf8XmlReader(bytes.AsSpan((int)first.BytesConsumed), true, first.CurrentState);
+                AppendValues(ref second, resumed);
+                string.Join("\n", resumed).Should().Be(expected, "the values must not depend on a split at byte {0}", split);
+            }
+        }
+
+        [TestMethod]
+        public void ValueMembers_OnEndTagAfterSkip_AreEmpty()
+        {
+            var reader = new Utf8XmlReader("<r><a>text<b>deep</b></a><c/></r>"u8);
+            reader.Read();
+            reader.Read();
+            reader.Skip();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            Encoding.UTF8.GetString(reader.LocalNameSpan).Should().Be("a");
+            reader.GetString().Should().Be("");
+            reader.ValueSpan.Length.Should().Be(0);
+            reader.ValueIsEscaped.Should().BeFalse();
+        }
+
         #endregion
 
         #region Private Methods
@@ -1005,6 +1095,47 @@ namespace CloudNimble.XmlEssentials.Tests
                 return next;
             }
 
+        }
+
+        /// <summary>
+        /// Appends one line per token that holds the token's value as every value member reports it, so a
+        /// value left over from an earlier token shows up on the token that has none.
+        /// </summary>
+        /// <param name="reader">The reader.</param>
+        /// <param name="tokens">Receives the lines.</param>
+        private static void AppendValues(ref Utf8XmlReader reader, List<string> tokens)
+        {
+            while (reader.Read())
+            {
+                var line = new StringBuilder();
+                line.Append(reader.TokenType).Append(' ').Append(Encoding.UTF8.GetString(reader.LocalNameSpan));
+                AppendValue(ref reader, line);
+                if (reader.TokenType is XmlTokenType.StartElement && reader.HasAttributes)
+                {
+                    while (reader.MoveToNextAttribute())
+                    {
+                        line.Append(" @").Append(Encoding.UTF8.GetString(reader.LocalNameSpan));
+                        AppendValue(ref reader, line);
+                    }
+
+                    reader.MoveToElement();
+                    line.Append(" element");
+                    AppendValue(ref reader, line);
+                }
+
+                tokens.Add(line.ToString());
+            }
+        }
+
+        private static void AppendValue(ref Utf8XmlReader reader, StringBuilder line)
+        {
+            Span<char> copied = stackalloc char[64];
+            var written = reader.CopyString(copied);
+            line.Append(" [").Append(reader.GetString()).Append('|')
+                .Append(Encoding.UTF8.GetString(reader.ValueSpan)).Append('|')
+                .Append(copied[..written]).Append('|')
+                .Append(reader.ValueIsEscaped ? "escaped" : "plain").Append('|')
+                .Append(reader.ValueTextEquals(""u8) ? "empty" : "value").Append(']');
         }
 
         private static Utf8XmlReader OnText(string xml)

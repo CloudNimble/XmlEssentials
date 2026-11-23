@@ -1393,6 +1393,10 @@ namespace CloudNimble.Text.Xml
             _isEmptyElement = false;
             _decodedLength = 0;
             _valueIsEscaped = false;
+
+            // A start tag and an end tag have no value. Without this they would report the value of the token
+            // read before them.
+            _valueLength = 0;
             _incomplete = false;
             if (_pendingEmptyNsDepth > 0)
             {

@@ -308,17 +308,6 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             WriteStart(writer);
-            if (!_isScalar && options.ReferenceHandler is { } handler && XmlReferenceScope.Current is { } resolver)
-            {
-                var id = resolver.GetReference(value, out var alreadyExists);
-                if (alreadyExists)
-                {
-                    WriteReference(writer, handler, id);
-                    writer.WriteEndElement();
-                    return;
-                }
-            }
-
             if (_converter is not null)
             {
                 _converter.Write(writer, value, options);
@@ -412,25 +401,6 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             writer.WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes the content of an element whose value was already written: a reference to it, or nil.
-        /// </summary>
-        /// <param name="writer">The writer, inside the member start tag.</param>
-        /// <param name="handler">The reference handler in use.</param>
-        /// <param name="id">The identifier the value was written under.</param>
-        internal static void WriteReference(Utf8XmlWriter writer, XmlReferenceHandler handler, string id)
-        {
-            if (handler == XmlReferenceHandler.Preserve && id.Length > 0)
-            {
-                writer.WriteStartAttribute(null, "ref", XmlNamespaces.Refs);
-                writer.WriteStringValue(id);
-                writer.WriteEndAttribute();
-                return;
-            }
-
-            writer.WriteNilValue();
         }
 
         #endregion

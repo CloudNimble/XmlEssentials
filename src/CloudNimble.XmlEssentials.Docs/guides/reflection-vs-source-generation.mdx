@@ -149,14 +149,19 @@ For the full tables, see [Benchmarks](/benchmarks).
 
 ## Interceptors
 
-The package also turns on *interceptors*. When a context in your project lists a type, the generator redirects calls that pass no type info for that type to the generated context. You don't change the call.
+The package also turns on *interceptors*. When a context in your project lists a type, the generator redirects calls that pass no options and no type info for that type to the generated context. You don't change the call.
 
 ```csharp Program.cs
 var shipment = new Shipment { OrderId = 1042, Carrier = "Contoso Freight" };
-var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
 
-string xml = XmlSerializer.Serialize(shipment, options);
+string xml = XmlSerializer.Serialize(shipment);
 output.WriteLine(xml);
+
+Shipment? copy = XmlSerializer.Deserialize<Shipment>(Encoding.UTF8.GetBytes(xml));
+output.WriteLine($"Shipment {copy!.OrderId}: {copy.Carrier}");
+
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(shipment, options));
 output.WriteLine(options.TypeInfoResolver!.GetType().Name);
 ```
 
@@ -170,25 +175,25 @@ public partial class ShippingXmlContext : XmlSerializerContext
 The code produces the following output:
 
 ```text
+<?xml version="1.0" encoding="utf-8"?><Shipment><Carrier>Contoso Freight</Carrier><OrderId>1042</OrderId></Shipment>
+Shipment 1042: Contoso Freight
 <Shipment><Carrier>Contoso Freight</Carrier><OrderId>1042</OrderId></Shipment>
-ShippingXmlContext
+DefaultXmlTypeInfoResolver
 ```
 
-The call looks like a reflection call, but the second line shows what happened: the generator rewrote it to create a `ShippingXmlContext` from your options, and that context made itself the options' resolver.
+The first two calls look like reflection calls, but the generator rewrote them to use `ShippingXmlContext.Default.Shipment`. The document is the one the reflection resolver would write. The third call passes options, so it isn't redirected: your options decide how it runs, and the last line shows that their resolver is still the one they had.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)
 
-The generator intercepts two shapes of call: `XmlSerializer.Serialize<T>(value)` and `XmlSerializer.Deserialize<T>(xml)`, each with or without an `XmlSerializerOptions` argument, where `T` is a type that a context in the same project lists or reaches through the members of a listed type. Interceptors are on when the `InterceptorsNamespaces` build property contains `CloudNimble.Text.Xml.Generated`, which the package's build file adds for you.
+The generator intercepts two shapes of call: `XmlSerializer.Serialize<T>(value)` and `XmlSerializer.Deserialize<T>(input)`, where `T` is a type that a context in the same project lists or reaches through the members of a listed type. The input can be any of the kinds `Deserialize<T>` accepts: a string, a span of characters, UTF-8 bytes, a sequence, a stream, a `Utf8XmlReader`, an `XmlDocument`, an `XmlElement`, or an `XmlNode`. Interceptors are on when the `InterceptorsNamespaces` build property contains `CloudNimble.Text.Xml.Generated`, which the package's build file adds for you.
 
-<Warning>
-Interception changes what a call does, so know its limits:
+A call is never intercepted when it passes an `XmlSerializerOptions` argument, even `null`. Options say how the call is to run: which resolver, which converters, which names. The call runs as you wrote it, and your options aren't changed. To use a generated context with your own options, create the context from them and pass its type info: `new MyContext(options).Order`.
 
-- A call that passes options creates a new context for every call and sets `options.TypeInfoResolver` to it. A read-only instance, such as `XmlSerializerOptions.Default` or `XmlSerializerOptions.Web`, makes the call throw `InvalidOperationException`.
-- The interceptor for `Deserialize<T>` accepts a `string`. A call that passes UTF-8 bytes or a stream for a listed type fails to compile with error `CS9144`. Pass the type info instead: `XmlSerializer.Deserialize(utf8Xml, MyContext.Default.Order)`.
-- An intercepted call runs the generated converter, with the limits in the comparison table. When two contexts list the same type, the call goes to one of them.
+<Note>
+An intercepted call runs the generated converter with the context's own options, which the `[XmlSourceGenerationOptions]` attribute on the context seeds. The generated converter has the limits in the comparison table. When two contexts list the same type, the call goes to one of them.
 
 To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those calls are never intercepted.
-</Warning>
+</Note>
 
 ## How to choose
 

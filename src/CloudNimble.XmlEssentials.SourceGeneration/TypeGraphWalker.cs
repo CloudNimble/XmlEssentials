@@ -345,7 +345,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </remarks>
         internal static void BindConstructor(INamedTypeSymbol type, List<MemberSpec> members, List<Diagnostic> diagnostics)
         {
-            var names = new HashSet<string>();
+            // A parameter fills the member with the same C# name or XML name, without regard to case, as the
+            // reflection resolver has it: a parameter is conventionally "name" where its property is "Name".
+            var names = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
             foreach (var member in members)
             {
                 names.Add(member.ClrName);
@@ -433,7 +435,16 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             foreach (var parameter in chosen.Parameters)
             {
+                // A member spelled exactly like the parameter is preferred, so two members that differ only by
+                // case each take their own parameter.
                 var index = members.FindIndex(member => (member.ClrName == parameter.Name || member.LocalName == parameter.Name) && member.ConstructorParameter is null);
+                if (index < 0)
+                {
+                    index = members.FindIndex(member =>
+                        (string.Equals(member.ClrName, parameter.Name, System.StringComparison.OrdinalIgnoreCase) || string.Equals(member.LocalName, parameter.Name, System.StringComparison.OrdinalIgnoreCase))
+                        && member.ConstructorParameter is null);
+                }
+
                 if (index < 0)
                 {
                     // No member fills it, or the member already fills an earlier parameter. It is left out

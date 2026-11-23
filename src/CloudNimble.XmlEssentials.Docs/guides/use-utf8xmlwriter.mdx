@@ -184,11 +184,14 @@ The code produces the following output:
 
 The typed methods of [`Utf8XmlReader`](/guides/use-utf8xmlreader#read-text-and-typed-values) read every one of these forms back.
 
-Call a value method more than once in the same element and the values are written one after the other, as one run of text. `WriteStringValueSegment` does the same. It exists so that code written for `Utf8JsonWriter` ports without change.
+Call a value method more than once in the same element and the values are written one after the other, as one run of text.
 
-<Warning>
-Write binary data with one call to `WriteBase64StringValue`. `WriteBase64StringSegment` encodes each segment by itself, padding included, so two segments of one byte each produce `AQ==Ag==` and not the Base64 form of the two bytes together.
-</Warning>
+To write one value from several buffers, use `WriteStringValueSegment` or `WriteBase64StringSegment` and pass `isFinalSegment: true` with the last buffer. The segments are written as one call with the whole value writes them, wherever you cut:
+
+- A text segment can end in the middle of a multi-byte UTF-8 character, or between the two halves of a surrogate pair. The writer keeps the incomplete character and writes it when the next segment completes it.
+- A binary segment can be any length. The writer pads the Base64 text only at the end of the value, so two segments of one byte each produce `AQI=`.
+
+After a segment that isn't final, the next call must be the next segment of the same kind. You can call `Flush` or `FlushAsync` between segments. Any other call throws `XmlException`.
 
 ## Write a complete element in one call
 
@@ -367,8 +370,9 @@ The rules the writer follows:
 
 | You call | The writer |
 | --- | --- |
-| `WriteStartElement(localName, namespaceUri)` | Uses the prefix that's bound to the namespace in scope. If the namespace is the default one in scope, writes no prefix. Otherwise, declares the namespace as the default on this element. |
-| `WriteStartElement(prefix, localName, namespaceUri)` | Writes the element with your prefix, and declares the prefix on this element if the namespace isn't in scope. |
+| `WriteStartElement(localName, namespaceUri)` | If the namespace is the default one in scope, writes no prefix. If a prefix in scope is bound to it, uses that prefix. Otherwise, declares the namespace as the default on this element. |
+| `WriteStartElement(localName, "")` | Writes an element in no namespace. Under a default namespace, that means `xmlns=""` on this element. |
+| `WriteStartElement(prefix, localName, namespaceUri)` | Writes the element with your prefix, and declares the prefix on this element unless it's already bound to that namespace. |
 | `WriteAttributeString(localName, namespaceUri, value)` | Uses the prefix that's bound to the namespace. If there's none, generates one: `ns1`, `ns2`, and so on. An attribute in a namespace always needs a prefix. |
 | `WriteAttributeString(name, value)` | Writes an attribute in no namespace. |
 | `WriteNamespaceDeclaration(prefix, namespaceUri)` | Writes `xmlns:prefix="..."` on the open start tag and puts the prefix in scope for the element and its descendants. |
@@ -377,7 +381,7 @@ The rules the writer follows:
 A declaration ends with the element it's on. That's why `s` had to be generated again as `ns1` on `entry`: the `s` prefix was declared on `s:order` and went out of scope with it. To avoid repeated declarations, declare the prefixes you need on the root element, as the sample does with `dc`.
 
 <Note>
-An element that you write without a namespace argument, such as `WriteStartElement("title")`, gets no prefix and no declaration. Under a default namespace, a reader therefore puts it in that default namespace. To take an element out of the default namespace, call `WriteDefaultNamespace("")` on its start tag, which writes `xmlns=""`.
+An element that you write without a namespace argument, such as `WriteStartElement("title")`, gets no prefix and no declaration. Under a default namespace, a reader therefore puts it in that default namespace. A `null` namespace argument means the same. To take an element out of the default namespace, pass an empty string as its namespace: `WriteStartElement("title", "")` writes `<title xmlns="">`.
 </Note>
 
 The writer rejects declarations that Namespaces in XML forbids: binding the `xmlns` prefix, binding `xml` to any namespace but its own, binding another prefix to either reserved namespace, and, in XML 1.0, `xmlns:p=""`. For namespaces in the serializer, see [Namespaces](/guides/namespaces).

@@ -44,6 +44,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         public override T? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
         {
+            if (typeof(T).IsAbstract)
+            {
+                // The element was read as the declared type because nothing in it named a derived type.
+                throw new XmlException($"The type '{typeof(T)}' is abstract or an interface, so the element must identify one of its derived types.");
+            }
+
             var binding = _typeInfo.Binding;
             Span<bool> seen = stackalloc bool[binding.SlotCount];
             XmlObjectReadState state = default;
@@ -139,18 +145,80 @@ namespace CloudNimble.Text.Xml.Serialization
         public override void Write(Utf8XmlWriter writer, T value, XmlSerializerOptions options)
         {
             ArgumentNullException.ThrowIfNull(value);
-            if (options.ReferenceHandler is { } handler && XmlReferenceScope.Current is { } resolver)
+
+            // A value type is copied wherever it is held, so it has no identity to repeat or to form a cycle with.
+            if (typeof(T).IsValueType || options.ReferenceHandler is null || XmlReferenceScope.Current is not { } resolver)
             {
-                var id = resolver.GetReference(value, out _);
-                if (handler == XmlReferenceHandler.Preserve && id.Length > 0)
-                {
-                    writer.WriteStartAttribute(null, "id", XmlNamespaces.Refs);
-                    writer.WriteStringValue(id);
-                    writer.WriteEndAttribute();
-                }
+                WriteMembers(writer, value, options);
+                return;
             }
 
-            var instance = (object)value;
+            if (resolver is XmlIgnoreCyclesReferenceResolver cycles)
+            {
+                // Only an object that is still being written is a cycle. One that was written earlier and
+                // finished is written again in full.
+                if (!cycles.TryEnter(value))
+                {
+                    writer.WriteNilValue();
+                    return;
+                }
+
+                WriteMembers(writer, value, options);
+                cycles.Exit(value);
+                return;
+            }
+
+            // The element is already open, whether it is the root, a member, or a collection item, so every
+            // place an object can be written gets the same id and the same reference back to it.
+            var id = resolver.GetReference(value, out var alreadyExists);
+            if (alreadyExists)
+            {
+                WriteReference(writer, id);
+                return;
+            }
+
+            if (id.Length > 0)
+            {
+                writer.WriteStartAttribute(null, "id", XmlNamespaces.Refs);
+                writer.WriteStringValue(id);
+                writer.WriteEndAttribute();
+            }
+
+            WriteMembers(writer, value, options);
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Writes, on the open start tag of an element, what stands for an object that was already written: a
+        /// reference to its identifier, or nil when the resolver gives no identifier.
+        /// </summary>
+        /// <param name="writer">The writer, on the open start tag.</param>
+        /// <param name="id">The identifier the object was written under, or an empty string.</param>
+        internal static void WriteReference(Utf8XmlWriter writer, string id)
+        {
+            if (id.Length == 0)
+            {
+                writer.WriteNilValue();
+                return;
+            }
+
+            writer.WriteStartAttribute(null, "ref", XmlNamespaces.Refs);
+            writer.WriteStringValue(id);
+            writer.WriteEndAttribute();
+        }
+
+        /// <summary>
+        /// Writes the attributes and content of <paramref name="value"/> inside the element that is open.
+        /// </summary>
+        /// <param name="writer">The writer.</param>
+        /// <param name="value">The object.</param>
+        /// <param name="options">The serializer options.</param>
+        internal void WriteMembers(Utf8XmlWriter writer, T value, XmlSerializerOptions options)
+        {
+            var instance = (object)value!;
             var binding = _typeInfo.Binding;
             var extra = binding.ExtensionData?.GetValue(instance);
             foreach (var property in binding.Attributes)
@@ -179,10 +247,6 @@ namespace CloudNimble.Text.Xml.Serialization
                 element.WriteTo(writer);
             }
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Keeps an unmapped attribute as extension data, or rejects it when unmapped members are not allowed.

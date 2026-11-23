@@ -17,6 +17,17 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
     public sealed class SerializerGenerator : IIncrementalGenerator
     {
 
+        #region Fields
+
+        /// <summary>
+        /// How a type is written in the signature of an interceptor: fully qualified, with the <c>?</c> of a
+        /// nullable reference type, so the signature is the one the compiler compares it with.
+        /// </summary>
+        private static readonly SymbolDisplayFormat SignatureFormat = SymbolDisplayFormat.FullyQualifiedFormat
+            .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
+        #endregion
+
         #region Public Methods
 
         /// <inheritdoc />
@@ -150,31 +161,19 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return null;
             }
 
-            if (symbol.Parameters.Length is 0 or > 2)
+            // The overloads that take a value or an input and then options: Serialize<T>(value, options) and
+            // Deserialize<T>(input, options) for every kind of input.
+            if (symbol.TypeArguments.Length != 1
+                || symbol.Parameters.Length != 2
+                || symbol.Parameters[1].Type.ToDisplayString() is not "CloudNimble.Text.Xml.XmlSerializerOptions?")
             {
                 return null;
             }
 
-            var last = symbol.Parameters[symbol.Parameters.Length - 1];
-            if (last.Type.ToDisplayString() is not "CloudNimble.Text.Xml.XmlSerializerOptions?")
-            {
-                if (symbol.Parameters.Length != 1)
-                {
-                    return null;
-                }
-            }
-
-            ITypeSymbol? valueType = null;
-            if (symbol.Name is "Serialize" && symbol.TypeArguments.Length == 1)
-            {
-                valueType = symbol.TypeArguments[0];
-            }
-            else if (symbol.Name is "Deserialize" && symbol.TypeArguments.Length == 1)
-            {
-                valueType = symbol.TypeArguments[0];
-            }
-
-            if (valueType is null)
+            // Only a call that passes no options is redirected. Options the caller passes say how the call
+            // is to be done (their resolver, their converters, their naming), and a generated context would
+            // replace all of that, so such a call runs exactly as it was written.
+            if (invocation.ArgumentList.Arguments.Count != 1 || invocation.ArgumentList.Arguments[0].NameColon is { Name.Identifier.ValueText: "options" })
             {
                 return null;
             }
@@ -185,7 +184,17 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return null;
             }
 
-            return new InterceptorSpec(location.Version, location.Data, symbol.Name is "Deserialize", SymbolHelpers.FullName(valueType), "", "");
+            // An interceptor must have the parameter types, the ref kinds, and the return type of the method
+            // it stands in for, so they are taken from that method and not assumed.
+            var input = symbol.Parameters[0];
+            return new InterceptorSpec(
+                location.Version,
+                location.Data,
+                symbol.Name is "Deserialize",
+                SymbolHelpers.FullName(symbol.TypeArguments[0]),
+                input.RefKind is RefKind.Ref ? "ref " : "",
+                input.Type.ToDisplayString(SignatureFormat),
+                symbol.ReturnType.ToDisplayString(SignatureFormat));
         }
 
         /// <summary>
@@ -233,13 +242,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                         continue;
                     }
 
-                    list.Add(new InterceptorSpec(
-                        candidate.Version,
-                        candidate.Data,
-                        candidate.IsDeserialize,
-                        candidate.ValueTypeName,
-                        spec.ClrTypeName,
-                        typeMatch.PropertyName));
+                    list.Add(candidate.WithContext(spec.ClrTypeName, typeMatch.PropertyName));
                     break;
                 }
             }

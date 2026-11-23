@@ -42,8 +42,12 @@ namespace CloudNimble.Text.Xml.Serialization
             var members = Discover<T>(options);
             var extensionMember = PeelExtensionData(typeof(T), members);
             ValidateSimpleContent(typeof(T), members);
-            var ctor = SelectConstructor(typeof(T), members, options);
-            var map = MapConstructor(ctor, members, options.PropertyNameCaseInsensitive);
+            // An abstract class or an interface is never created: a document names one of its derived types.
+            // It is bound for its members, which describe it and are what is written when an undeclared
+            // derived type falls back to the declared type.
+            var isAbstract = typeof(T).IsAbstract;
+            var ctor = isAbstract ? null : SelectConstructor(typeof(T), members);
+            var map = MapConstructor(ctor, members);
             var bound = new XmlBoundProperty[members.Count];
             var nextSlot = map.Length;
             for (var i = 0; i < members.Count; i++)
@@ -73,7 +77,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             ValidateElementNames(bound, options.PropertyNameCaseInsensitive);
             Func<object>? create = null;
-            if (ctor is null || ctor.GetParameters().Length == 0)
+            if (!isAbstract && (ctor is null || ctor.GetParameters().Length == 0))
             {
                 create = typeof(T).IsValueType || ctor is { IsPublic: true }
                     ? CreatePublic<T>
@@ -310,14 +314,27 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Returns whether <paramref name="type"/> is mapped as an object with properties.
         /// </summary>
         /// <param name="type">The CLR type.</param>
-        /// <returns><see langword="true"/> for a concrete class or struct that is not a built-in primitive.</returns>
+        /// <returns>
+        /// <see langword="true"/> for a concrete class or struct that is not a built-in primitive, and for an
+        /// abstract class or an interface that declares derived types with <see cref="XmlDerivedTypeAttribute"/>.
+        /// </returns>
+        /// <remarks>
+        /// An abstract type with no declared derived types stays unsupported: nothing could be created for it
+        /// when reading, and writing a value as its declared type would silently drop the members of the
+        /// value's own type.
+        /// </remarks>
         internal static bool IsObjectType(Type type)
         {
-            if (type.IsPrimitive || type.IsEnum || type.IsArray || type.IsPointer || type.IsInterface || type.IsAbstract
+            if (type.IsPrimitive || type.IsEnum || type.IsArray || type.IsPointer
                 || type == typeof(object) || type == typeof(string) || typeof(Delegate).IsAssignableFrom(type)
                 || Nullable.GetUnderlyingType(type) is not null)
             {
                 return false;
+            }
+
+            if (type.IsInterface || type.IsAbstract)
+            {
+                return type.IsDefined(typeof(XmlDerivedTypeAttribute), inherit: true);
             }
 
             return type.IsClass || type.IsValueType;
@@ -393,13 +410,45 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Finds the member a constructor parameter fills.
+        /// </summary>
+        /// <param name="members">The members.</param>
+        /// <param name="parameterName">The parameter name.</param>
+        /// <returns>The index of the member, or -1 when no member has that name.</returns>
+        /// <remarks>
+        /// A parameter fills the member with the same C# name or the same XML name. Case does not matter,
+        /// because a parameter is conventionally <c>name</c> where its property is <c>Name</c>. A member
+        /// spelled exactly like the parameter is preferred, so two members that differ only by case each
+        /// take their own parameter.
+        /// </remarks>
+        internal static int FindConstructorMember(List<XmlMemberModel> members, string parameterName)
+        {
+            for (var i = 0; i < members.Count; i++)
+            {
+                if (members[i].Member.Name.Equals(parameterName, StringComparison.Ordinal) || members[i].LocalName.Equals(parameterName, StringComparison.Ordinal))
+                {
+                    return i;
+                }
+            }
+
+            for (var i = 0; i < members.Count; i++)
+            {
+                if (members[i].Member.Name.Equals(parameterName, StringComparison.OrdinalIgnoreCase) || members[i].LocalName.Equals(parameterName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
         /// Maps each constructor parameter to a member index.
         /// </summary>
         /// <param name="constructor">The constructor, or null.</param>
         /// <param name="members">The members.</param>
-        /// <param name="caseInsensitive">Whether names are compared without regard to case.</param>
         /// <returns>The map.</returns>
-        internal static int[] MapConstructor(ConstructorInfo? constructor, List<XmlMemberModel> members, bool caseInsensitive)
+        internal static int[] MapConstructor(ConstructorInfo? constructor, List<XmlMemberModel> members)
         {
             if (constructor is null)
             {
@@ -408,7 +457,6 @@ namespace CloudNimble.Text.Xml.Serialization
 
             var parameters = constructor.GetParameters();
             var map = new int[parameters.Length];
-            var comparison = caseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             for (var i = 0; i < parameters.Length; i++)
             {
                 map[i] = -1;
@@ -418,15 +466,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     continue;
                 }
 
-                for (var m = 0; m < members.Count; m++)
-                {
-                    if (members[m].Member.Name.Equals(name, comparison) || members[m].LocalName.Equals(name, comparison))
-                    {
-                        map[i] = m;
-                        break;
-                    }
-                }
-
+                map[i] = FindConstructorMember(members, name);
                 if (map[i] < 0 && !parameters[i].HasDefaultValue)
                 {
                     throw new NotSupportedException($"The constructor parameter '{name}' is not a serialized member.");
@@ -441,10 +481,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         /// <param name="type">The CLR type.</param>
         /// <param name="members">The serializable members.</param>
-        /// <param name="options">The serializer options.</param>
         /// <returns>The constructor, or null to use <see cref="Activator.CreateInstance{T}"/>.</returns>
+        /// <remarks>
+        /// A constructor marked <see cref="XmlConstructorAttribute"/> is used. Otherwise the public constructor
+        /// with the most parameters is used, among those whose every parameter names a member. A parameter
+        /// names a member as <see cref="FindConstructorMember"/> has it, without regard to case.
+        /// </remarks>
         [UnconditionalSuppressMessage("Trimming", "IL2070")]
-        internal static ConstructorInfo? SelectConstructor(Type type, List<XmlMemberModel> members, XmlSerializerOptions options)
+        internal static ConstructorInfo? SelectConstructor(Type type, List<XmlMemberModel> members)
         {
             var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             ConstructorInfo? marked = null;
@@ -470,12 +514,6 @@ namespace CloudNimble.Text.Xml.Serialization
 
             ConstructorInfo? best = null;
             var bestCount = -1;
-            var memberNames = new HashSet<string>(options.PropertyNameCaseInsensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-            foreach (var member in members)
-            {
-                memberNames.Add(member.Member.Name);
-            }
-
             foreach (var constructor in constructors)
             {
                 if (!constructor.IsPublic)
@@ -487,7 +525,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 var subset = true;
                 foreach (var parameter in parameters)
                 {
-                    if (parameter.Name is null || !memberNames.Contains(parameter.Name))
+                    if (parameter.Name is null || FindConstructorMember(members, parameter.Name) < 0)
                     {
                         subset = false;
                         break;

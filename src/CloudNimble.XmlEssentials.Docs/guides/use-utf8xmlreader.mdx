@@ -114,7 +114,7 @@ The reader reports these token types:
 | `ProcessingInstruction` | A processing instruction. | `LocalNameSpan` (the target), `ValueSpan` (the data) |
 
 <Warning>
-Read a value only on a token that has one: `Text`, `CData`, `Attribute`, `Comment`, or `ProcessingInstruction`. On a start tag or an end tag, `ValueSpan` and `GetString` aren't cleared and can return the value of an earlier token.
+Read a value only on a token that has one: `Text`, `CData`, `Attribute`, `Comment`, or `ProcessingInstruction`. A start tag and an end tag have no value: `ValueSpan` is empty and `GetString` returns an empty string.
 </Warning>
 
 ## Find elements and read attributes

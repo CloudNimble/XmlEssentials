@@ -6,7 +6,7 @@ A reader can't be stored in a field of a class, captured by a lambda, or used ac
 
 ### Lifetime of spans
 
-`ValueSpan`, `LocalNameSpan`, `PrefixSpan`, and `NamespaceUriSpan` point into your input, or into a buffer that the reader reuses for the next decoded value. They're valid until the reader moves. On a start tag or an end tag, `ValueSpan` isn't cleared and can hold the value of an earlier token.
+`ValueSpan`, `LocalNameSpan`, `PrefixSpan`, and `NamespaceUriSpan` point into your input, or into a buffer that the reader reuses for the next decoded value. They're valid until the reader moves. On a start tag or an end tag, `ValueSpan` is empty.
 
 ### Allocation
 

@@ -27,6 +27,7 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 9 | Benchmarks vs BCL XmlSerializer vs STJ | Implemented (uncommitted): `XmlSerializerGraphBenchmarks` adds first-call reflection and source-gen context on the Customer graph; existing object/scalar/sequence/reader/writer/DOM rows remain. |
 | 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
 | 11 | Breakdance freeze + coverage slogan check | Not started |
+| 12 | Doc findings resolution | Slice 1 (F1 to F10) **done** (uncommitted); slices 2 and 3 not started; see [doc findings resolution](24-doc-findings-resolution.md) |
 
 Reader and writer speed work is tracked in [optimization](23-optimization.md), not as a new PR. Prefix resolution is done (every benchmark row is under BCL). Still open there: per-reader allocations on real documents (80 B to 10504 B per drain).
 
@@ -157,7 +158,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 - **Title:** `feat: XmlSerializerContext source generator packed in XmlEssentials`
 - **Depends on:** PR 6e
 - **Files:** generator (`IsSourceGeneratorProject`, `IsRoslynComponent`, pack both analyzer folders), `[XmlSerializable]`, `Default` singleton, XMLXE007 = BCL `XmlIncludeAttribute`
-- **Description:** **Metadata and Serialization** modes (`Default` = both). Interceptors for `XmlSerializer` options overloads.
+- **Description:** **Metadata and Serialization** modes (`Default` = both). Interceptors for `XmlSerializer` calls that pass no options ([K42](01-identity-and-decisions.md#key-decisions)).
 
 ## PR 7b: XSD generator
 

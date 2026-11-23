@@ -456,7 +456,7 @@ public abstract class XmlReferenceResolver
 }
 ```
 
-Preserve writes `id` / `ref` attributes in namespace `urn:CloudNimble.Text.Xml:refs`. IgnoreCycles omits already-seen objects (empty nillable element). A type created through a constructor with parameters is registered under its `id` once it has been constructed, so a later `ref` to it resolves; it cannot hold a reference to itself. Without a handler an `id` attribute is ignored and a `ref` attribute is an `XmlException`.
+Preserve writes `id` / `ref` attributes in namespace `urn:CloudNimble.Text.Xml:refs`, wherever an object appears: the document element, a member, a collection item, an item in a wrapper. IgnoreCycles writes an empty nillable element in place of an object that is reached from inside itself, and only then: an object that repeats without a cycle is written in full each time (STJ). A caller-defined handler gets the same `id` / `ref` attributes from the identifiers its resolver returns; an empty identifier means no `id`, and nil for an object the resolver has already seen. Value types and collections are not tracked. A type created through a constructor with parameters is registered under its `id` once it has been constructed, so a later `ref` to it resolves; it cannot hold a reference to itself. Without a handler an `id` attribute is ignored and a `ref` attribute is an `XmlException`.
 
 Feature switch:
 

@@ -33,8 +33,10 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample31_ReflectionVsSourceGeneration_Interceptors()
         {
             SampleOutput.Capture(ReflectionVsSourceGeneration.Interceptors).Should().Be(
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?><Shipment><Carrier>Contoso Freight</Carrier><OrderId>1042</OrderId></Shipment>\n" +
+                "Shipment 1042: Contoso Freight\n" +
                 "<Shipment><Carrier>Contoso Freight</Carrier><OrderId>1042</OrderId></Shipment>\n" +
-                "ShippingXmlContext");
+                "DefaultXmlTypeInfoResolver");
         }
 
         [TestMethod]

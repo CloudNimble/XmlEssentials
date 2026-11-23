@@ -111,7 +111,7 @@ The mutable tree (`XmlNode`) keeps namespace declarations and attribute order th
 
 **Indentation never changes content.** With `Indented`, whitespace is inserted only between elements. An element that holds character data is written on one line, including its child elements and its end tag, because whitespace next to character data is significant.
 
-**Writer overloads and the default namespace.** `WriteStartElement(localName)` and the other overloads that take no namespace write the bare name and therefore inherit the default namespace in scope, as `System.Xml.XmlWriter` does for a null namespace. The DOM and node tree, which know an element is in *no* namespace, write `xmlns=""` when that differs.
+**Writer overloads and the default namespace.** `WriteStartElement(localName)` and the other overloads that take no namespace write the bare name and therefore inherit the default namespace in scope, as `System.Xml.XmlWriter` does for a null namespace. A `null` namespace argument on the `string` overloads means the same. An overload that is given a namespace writes the element in exactly that namespace: an empty string or an empty span means *no* namespace, and under a non-empty default namespace the writer adds `xmlns=""`, as `System.Xml.XmlWriter` does and as the DOM and node tree already did. With a prefix, the element keeps that prefix, and the prefix is declared on the element unless it is already bound to the namespace; another prefix for the same namespace does not count. Without a prefix, the writer uses the default namespace if it matches, then a prefix bound to the namespace that an inner element has not rebound, and otherwise declares the namespace as the default on the element.
 
 ## Names
 

@@ -281,14 +281,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     {
                         builder.Append(indent).Append("if (value.").Append(member.ClrName).AppendLine(" is not null)");
                         builder.Append(indent).AppendLine("{");
-                        builder.Append(indent).Append("    writer.WriteStartAttribute(\"").Append(Escape(member.LocalName)).AppendLine("\");");
+                        EmitStartAttribute(builder, indent + "    ", member.LocalName, member.NamespaceUri);
                         builder.Append(indent).Append("    ").Append(WriteScalar("value." + member.ClrName, member.ClrTypeName)).AppendLine(";");
                         builder.Append(indent).AppendLine("    writer.WriteEndAttribute();");
                         builder.Append(indent).AppendLine("}");
                     }
                     else
                     {
-                        builder.Append(indent).Append("writer.WriteStartAttribute(\"").Append(Escape(member.LocalName)).AppendLine("\");");
+                        EmitStartAttribute(builder, indent, member.LocalName, member.NamespaceUri);
                         builder.Append(indent).Append(WriteScalar("value." + member.ClrName, member.ClrTypeName)).AppendLine(";");
                         builder.Append(indent).AppendLine("writer.WriteEndAttribute();");
                     }
@@ -319,13 +319,17 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                         EmitStartElement(builder, indent + "    ", member.LocalName, member.NamespaceUri, leaf: false);
                     }
 
+                    // The member's namespace belongs to the element named after the member: the wrapper when
+                    // there is one, each item when there is not. An item inside a wrapper is written as it is
+                    // named, as the reflection resolver writes it.
                     var itemName = member.IsWrapped ? member.ItemLocalName : member.LocalName;
-                    var itemLeaf = IsLeafScalar(member.ItemTypeName) && CanLeafTag(itemName, member.NamespaceUri);
+                    var itemNamespace = member.IsWrapped ? "" : member.NamespaceUri;
+                    var itemLeaf = IsLeafScalar(member.ItemTypeName) && CanLeafTag(itemName, itemNamespace);
                     builder.Append(indent).Append("    foreach (var item in value.").Append(member.ClrName).AppendLine(")");
                     builder.Append(indent).AppendLine("    {");
-                    EmitStartElement(builder, indent + "        ", itemName, member.NamespaceUri, itemLeaf);
+                    EmitStartElement(builder, indent + "        ", itemName, itemNamespace, itemLeaf);
                     builder.Append(indent).Append("        if (item is not null) ").Append(WriteContent("item", member.ItemTypeName)).AppendLine(";");
-                    EmitEndElement(builder, indent + "        ", itemName, member.NamespaceUri, itemLeaf);
+                    EmitEndElement(builder, indent + "        ", itemName, itemNamespace, itemLeaf);
                     builder.Append(indent).AppendLine("    }");
                     if (member.IsWrapped)
                     {
@@ -437,7 +441,33 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return;
             }
 
-            builder.Append(indent).Append("writer.WriteStartElement(\"").Append(Escape(localName)).AppendLine("\");");
+            if (string.IsNullOrEmpty(namespaceUri))
+            {
+                // No namespace was declared for the member, so the name is written as it is and inherits the
+                // default namespace in scope, as the reflection resolver writes it.
+                builder.Append(indent).Append("writer.WriteStartElement(\"").Append(Escape(localName)).AppendLine("\");");
+                return;
+            }
+
+            builder.Append(indent).Append("writer.WriteStartElement(\"").Append(Escape(localName)).Append("\", \"").Append(Escape(namespaceUri)).AppendLine("\");");
+        }
+
+        /// <summary>
+        /// Emits the start of an attribute, in its namespace when it has one.
+        /// </summary>
+        /// <param name="builder">The source.</param>
+        /// <param name="indent">The indent.</param>
+        /// <param name="localName">The XML local name.</param>
+        /// <param name="namespaceUri">The namespace URI, or empty for none.</param>
+        internal static void EmitStartAttribute(StringBuilder builder, string indent, string localName, string namespaceUri)
+        {
+            if (string.IsNullOrEmpty(namespaceUri))
+            {
+                builder.Append(indent).Append("writer.WriteStartAttribute(\"").Append(Escape(localName)).AppendLine("\");");
+                return;
+            }
+
+            builder.Append(indent).Append("writer.WriteStartAttribute(null, \"").Append(Escape(localName)).Append("\", \"").Append(Escape(namespaceUri)).AppendLine("\");");
         }
 
         /// <summary>

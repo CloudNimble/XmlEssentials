@@ -40,7 +40,7 @@ Elements may appear in any order. The serializer holds the values until it reach
 
 ## Classes with a parameterized constructor
 
-A class with read-only properties and a constructor works the same way, with one difference from records: C# constructor parameters are usually camelCase, and the serializer matches parameter names to member names **with case** by default.
+A class with read-only properties and a constructor works the same way. C# constructor parameters are usually camelCase, and the serializer matches a parameter to the member with the same name without regard to case, as System.Text.Json does.
 
 ```csharp Measurement.cs
 public sealed class Measurement
@@ -57,13 +57,12 @@ public sealed class Measurement
 }
 ```
 
-Set `PropertyNameCaseInsensitive` to `true` so that the parameter `name` matches the property `Name`:
+The parameter `name` fills the property `Name` with the default options:
 
 ```csharp Program.cs
 const string xml = "<Measurement><Name>Voltage</Name><Value>230</Value></Measurement>";
-var options = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
 
-Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml, options);
+Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml);
 
 output.WriteLine($"{measurement!.Name} = {measurement.Value}");
 ```
@@ -74,30 +73,33 @@ The code produces the following output:
 Voltage = 230
 ```
 
-<Warning>
-This is a difference from System.Text.Json, which always matches constructor parameters to properties without regard to case. With the default options, the constructor above isn't recognized. Because `Measurement` has no parameterless constructor either, deserializing fails with a `MissingMethodException`.
-</Warning>
+The case of a parameter never matters. The case of an element or attribute name in the document does, unless you set `PropertyNameCaseInsensitive`:
 
 ```csharp Program.cs
-const string xml = "<Measurement><Name>Voltage</Name><Value>230</Value></Measurement>";
+const string xml = "<Measurement><name>Voltage</name><value>230</value></Measurement>";
+var options = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
+
+Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml, options);
+output.WriteLine($"{measurement!.Name} = {measurement.Value}");
 
 try
 {
     XmlSerializer.Deserialize<Measurement>(xml);
 }
-catch (MissingMethodException ex)
+catch (XmlException ex)
 {
-    output.WriteLine(ex.GetType().Name);
+    output.WriteLine(ex.Message);
 }
 ```
 
 The code produces the following output:
 
 ```text
-MissingMethodException
+Voltage = 230
+The required constructor parameter 'Name' is missing.
 ```
 
-`PropertyNameCaseInsensitive` also makes element and attribute names match without regard to case when reading. If you don't want that, the alternatives are to name the parameters exactly like the properties, or to use a record or `init`-only properties.
+If two members differ only by case, each takes the parameter that is spelled exactly like it.
 
 ## Choose a constructor with XmlConstructor
 
@@ -125,7 +127,7 @@ public sealed class DateRange
 ```
 
 ```csharp Program.cs
-var options = new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNameCaseInsensitive = true };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
 var week = new DateRange(new DateOnly(2026, 3, 9), days: 7);
 
 string xml = XmlSerializer.Serialize(week, options);
@@ -142,7 +144,7 @@ The code produces the following output:
 2026-03-09 to 2026-03-15
 ```
 
-Each parameter of the marked constructor must match a serialized member, by the member's C# name or by its XML name, unless the parameter has a default value. If one doesn't, the serializer throws a `NotSupportedException` the first time it uses the type, for serializing as well as deserializing. That is why this example also sets `PropertyNameCaseInsensitive`: without it, `start` doesn't match `Start`.
+Each parameter of the marked constructor must match a serialized member, by the member's C# name or by its XML name and without regard to case, unless the parameter has a default value. If one doesn't, the serializer throws a `NotSupportedException` the first time it uses the type, for serializing as well as deserializing.
 
 ### How the constructor is chosen
 

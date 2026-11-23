@@ -51,6 +51,7 @@ using CloudNimble.Text.Xml.Serialization;
 | [21-references.md](21-references.md) | References |
 | [22-pr-plan.md](22-pr-plan.md) | PR plan |
 | [23-optimization.md](23-optimization.md) | Tokenizer/writer optimization playbook and backlog |
+| [24-doc-findings-resolution.md](24-doc-findings-resolution.md) | Defects found by the documentation pass, and their resolution |
 
 ## How to read the spec
 

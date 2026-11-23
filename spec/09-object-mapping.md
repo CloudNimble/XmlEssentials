@@ -53,7 +53,7 @@ Serialize a member if:
 5. Records: compiler-generated parameters bind like STJ.
 6. Record structs and structs are supported. Parameterless constructor is not required if `[XmlConstructor]` or a unique parameterized constructor can bind all required members.
 
-Deserialize needs: setter, or `init`, or constructor parameter (name match, case-insensitive if `PropertyNameCaseInsensitive`), or `[XmlConstructor]`.
+Deserialize needs: setter, or `init`, or constructor parameter (name match against the member's C# name or XML name, always without regard to case as in STJ; an exact-case match wins when two members differ only by case), or `[XmlConstructor]`.
 
 Multiple parameterized constructors: `[XmlConstructor]` wins; else the public constructor whose parameters are a subset of serializable members, preferring most parameters. Ambiguity is `NotSupportedException` at type-info build.
 
@@ -210,6 +210,8 @@ public class Product
     public string Title { get; set; }
 }
 ```
+
+**Declared type.** A concrete class, an abstract class, or an interface. An abstract class or an interface must declare at least one `[XmlDerivedType]`; with none it is unsupported (`NotSupportedException`, "The type '…' is not supported."). It is never created: an element read as the declared type because nothing in it identifies a derived type is an `XmlException` ("The type '…' is abstract or an interface, so the element must identify one of its derived types."). Its type info lists its own members and has no `CreateObject`. Writing an undeclared derived type throws `NotSupportedException` unless `UnknownDerivedTypeHandling` falls back, in which case the declared type's own members are written.
 
 **ElementName (default):** the **element name itself** is the discriminator. An unwrapped `List<Product> Products` emits derived names, not `Products`:
 

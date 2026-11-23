@@ -5,7 +5,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 {
 
     /// <summary>
-    /// Emits interceptor methods for <c>XmlSerializer</c> options overloads.
+    /// Emits interceptor methods for <c>XmlSerializer</c> calls that pass a value or an input and no options.
     /// </summary>
     internal static class InterceptorEmitter
     {
@@ -51,28 +51,17 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var index = 0;
             foreach (var interceptor in interceptors)
             {
+                // The signature is the intercepted method's own. Only a call that passes no options is
+                // intercepted, so the options parameter is always null here and the context's own are used.
+                var name = interceptor.IsDeserialize ? "Deserialize" : "Serialize";
                 builder.Append("        [InterceptsLocation(").Append(interceptor.Version).Append(", \"").Append(interceptor.Data).AppendLine("\")]");
-                if (interceptor.IsDeserialize)
-                {
-                    builder.Append("        public static ").Append(interceptor.ValueTypeName).Append("? Deserialize").Append(index).Append("(");
-                    builder.Append("string xml, XmlSerializerOptions? options = null)");
-                    builder.AppendLine();
-                    builder.AppendLine("        {");
-                    builder.Append("            var context = options is null ? ").Append(interceptor.ContextTypeName).Append(".Default : new ").Append(interceptor.ContextTypeName).AppendLine("(options);");
-                    builder.Append("            return XmlSerializer.Deserialize(xml, context.").Append(interceptor.PropertyName).AppendLine(");");
-                    builder.AppendLine("        }");
-                }
-                else
-                {
-                    builder.Append("        public static string Serialize").Append(index).Append("(");
-                    builder.Append(interceptor.ValueTypeName).Append(" value, XmlSerializerOptions? options = null)");
-                    builder.AppendLine();
-                    builder.AppendLine("        {");
-                    builder.Append("            var context = options is null ? ").Append(interceptor.ContextTypeName).Append(".Default : new ").Append(interceptor.ContextTypeName).AppendLine("(options);");
-                    builder.Append("            return XmlSerializer.Serialize(value, context.").Append(interceptor.PropertyName).AppendLine(");");
-                    builder.AppendLine("        }");
-                }
-
+                builder.Append("        public static ").Append(interceptor.ReturnTypeName).Append(' ').Append(name).Append(index).Append('(');
+                builder.Append(interceptor.InputModifier).Append(interceptor.InputTypeName).AppendLine(" input, XmlSerializerOptions? options = null)");
+                builder.AppendLine("        {");
+                builder.AppendLine("            _ = options;");
+                builder.Append("            return XmlSerializer.").Append(name).Append('(').Append(interceptor.InputModifier).Append("input, ");
+                builder.Append(interceptor.ContextTypeName).Append(".Default.").Append(interceptor.PropertyName).AppendLine(");");
+                builder.AppendLine("        }");
                 builder.AppendLine();
                 index++;
             }

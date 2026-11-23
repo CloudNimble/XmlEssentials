@@ -331,7 +331,7 @@ Check the last row against your schema. The generated enumeration reads and writ
 
 A context generated from a schema is a default-mode context, with the limits those have. In particular, `NilHandling`, `DefaultIgnoreCondition`, and custom converters for class members don't apply. See [Which options generated converters apply](/guides/source-generation#which-options-generated-converters-apply).
 
-To use the generated classes with reflection instead, pass them to an `XmlSerializer` overload that takes options. Be aware of [interceptors](/guides/reflection-vs-source-generation#interceptors) when you do.
+To use the generated classes with reflection instead, pass them to an `XmlSerializer` overload that takes options, and pass the options. A call that passes none is redirected to the generated context by an [interceptor](/guides/reflection-vs-source-generation#interceptors).
 
 ## See also
 

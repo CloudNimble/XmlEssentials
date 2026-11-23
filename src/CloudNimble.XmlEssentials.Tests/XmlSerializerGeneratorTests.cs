@@ -555,6 +555,87 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void GeneratedContext_ConstructorParameters_FillMembersWhateverTheirCase()
+        {
+            // The same shapes as XmlSerializerConstructorCaseTests, through generated converters.
+            RunGenerated("""
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Camel
+                {
+                    public string Name { get; }
+                    public double Value { get; }
+                    public Camel(string name, double value) { Name = name; Value = value; }
+                }
+
+                public sealed class Marked
+                {
+                    public int First { get; }
+                    public int Second { get; }
+                    [XmlIgnore] public string CreatedBy { get; }
+                    [XmlConstructor] public Marked(int first) { First = first; Second = first + 1; CreatedBy = "marked"; }
+                    public Marked(int first, int second) { First = first; Second = second; CreatedBy = "both"; }
+                }
+
+                public sealed class Either
+                {
+                    [XmlIgnore] public string CreatedBy { get; }
+                    public string? Name { get; set; }
+                    public Either() { CreatedBy = "parameterless"; }
+                    public Either(string? name) { Name = name; CreatedBy = "parameterized"; }
+                }
+
+                public sealed class Twins
+                {
+                    public string Name { get; }
+                    public string name { get; }
+                    public Twins(string name, string Name) { this.name = name; this.Name = Name; }
+                }
+
+                public sealed class Titled
+                {
+                    [XmlElement("title")] public string Heading { get; }
+                    public Titled(string TITLE) { Heading = TITLE; }
+                }
+
+                [XmlSerializable(typeof(Camel))]
+                [XmlSerializable(typeof(Marked))]
+                [XmlSerializable(typeof(Either))]
+                [XmlSerializable(typeof(Twins))]
+                [XmlSerializable(typeof(Titled))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var context = new AppXmlContext(new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        var camel = XmlSerializer.Deserialize("<Camel><Name>Voltage</Name><Value>230</Value></Camel>", context.Camel)!;
+                        var marked = XmlSerializer.Deserialize("<Marked><First>4</First><Second>9</Second></Marked>", context.Marked)!;
+                        var either = XmlSerializer.Deserialize("<Either><Name>Ada</Name></Either>", context.Either)!;
+                        var twins = XmlSerializer.Deserialize("<Twins><Name>upper</Name><name>lower</name></Twins>", context.Twins)!;
+                        var titled = XmlSerializer.Deserialize("<Titled><title>Dune</title></Titled>", context.Titled)!;
+                        return camel.Name + "=" + camel.Value
+                            + "|" + marked.CreatedBy + ":" + marked.First + "," + marked.Second
+                            + "|" + either.CreatedBy + ":" + either.Name
+                            + "|" + twins.Name + "," + twins.name
+                            + "|" + titled.Heading
+                            + "|" + XmlSerializer.Serialize(new Camel("Voltage", 230), context.Camel)
+                            + XmlSerializer.Serialize(new Twins("lower", "upper"), context.Twins)
+                            + XmlSerializer.Serialize(new Titled("Dune"), context.Titled);
+                    }
+                }
+                """).Should().Be(
+                "Voltage=230|marked:4,5|parameterized:Ada|upper,lower|Dune|"
+                + "<Camel><Name>Voltage</Name><Value>230</Value></Camel>"
+                + "<Twins><Name>upper</Name><name>lower</name></Twins>"
+                + "<Titled><title>Dune</title></Titled>");
+        }
+
+        [TestMethod]
         public void GeneratedContext_MarkedConstructor_IsUsedAndAParameterNoMemberFillsTakesItsDefault()
         {
             RunGenerated("""

@@ -331,7 +331,7 @@ These options take effect when reading. See [Deserialize](/guides/deserialize) a
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `PropertyNameCaseInsensitive` | `false` | Matches element and attribute names to members, and constructor parameters to members, without regard to the case of ASCII letters. |
+| `PropertyNameCaseInsensitive` | `false` | Matches element and attribute names in the document to members without regard to the case of ASCII letters. Constructor parameters always match members without regard to case. |
 | `UnmappedMemberHandling` | `XmlUnmappedMemberHandling.Skip` | Whether an element or attribute that no member maps to is skipped or rejected. |
 | `AllowDuplicateProperties` | `true` | When `true`, a repeated element overwrites the earlier value. When `false`, it throws an `XmlException`. |
 | `RespectRequiredConstructorParameters` | `true` | Rejects XML that lacks a value for a constructor parameter with no default value. |

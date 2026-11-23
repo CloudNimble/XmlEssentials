@@ -594,4 +594,4 @@ The remaining object-graph columns (first call, source-generated context) come w
 
 ---
 
-[Index](README.md) · [Previous: PR plan](22-pr-plan.md)
+[Index](README.md) · [Previous: PR plan](22-pr-plan.md) · [Next: Doc findings resolution](24-doc-findings-resolution.md)

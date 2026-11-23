@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Buffers.Text;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -56,6 +57,8 @@ namespace CloudNimble.Text.Xml
         private XmlWriterName[]? _attrLocalsHeap;
         private XmlWriterName8 _attrNsInline;
         private XmlWriterName[]? _attrNsHeap;
+        private long _bracketEnd;
+        private int _bracketRun;
         private int _buffered;
         private byte[] _buffer;
         private IBufferWriter<byte>? _bufferWriter;
@@ -83,6 +86,9 @@ namespace CloudNimble.Text.Xml
         private int _nsInternedCount;
         private XmlWriterOptions _options;
         private bool _seenRoot;
+        private XmlWriterSegment _segment;
+        private int _segmentCarry;
+        private int _segmentCarryLength;
         private Stream? _stream;
         private XmlVersion _version;
         private bool _wroteDeclaration;
@@ -238,7 +244,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void Flush()
         {
-            ThrowIfDisposed();
+            ObjectDisposedException.ThrowIf(_disposed, this);
             FlushBuffer();
             _stream?.Flush();
         }
@@ -260,7 +266,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public async Task FlushAsync(CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
+            ObjectDisposedException.ThrowIf(_disposed, this);
             if (_buffered > 0)
             {
                 if (_stream is not null)
@@ -296,9 +302,13 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void Reset()
         {
-            ThrowIfDisposed();
+            ObjectDisposedException.ThrowIf(_disposed, this);
             FlushBuffer();
             _autoNs = 0;
+            _bracketRun = 0;
+            _segment = XmlWriterSegment.None;
+            _segmentCarry = 0;
+            _segmentCarryLength = 0;
             _committed = 0;
             _depth = 0;
             _emittedBom = false;
@@ -425,7 +435,7 @@ namespace CloudNimble.Text.Xml
         /// namespace URI specified as strings.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -530,7 +540,7 @@ namespace CloudNimble.Text.Xml
         /// Writes an empty element with the local name and the namespace URI specified as strings.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -550,7 +560,7 @@ namespace CloudNimble.Text.Xml
         public void WriteEmptyElement(string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            WriteEmptyElementChars(localName, default, namespaceUri.AsSpan());
+            WriteEmptyElementChars(localName, default, namespaceUri.AsSpan(), explicitNamespace: namespaceUri is not null);
         }
 
         /// <summary>
@@ -558,7 +568,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -580,7 +590,7 @@ namespace CloudNimble.Text.Xml
         public void WriteEmptyElement(string? prefix, string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            WriteEmptyElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan());
+            WriteEmptyElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), explicitNamespace: namespaceUri is not null);
         }
 
         /// <summary>
@@ -599,14 +609,14 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         public void WriteEmptyElement(ReadOnlySpan<char> localName)
         {
-            WriteEmptyElementChars(localName, default, default);
+            WriteEmptyElementChars(localName, default, default, explicitNamespace: false);
         }
 
         /// <summary>
         /// Writes an empty element with the local name and the namespace URI specified as read-only spans of characters.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or an empty span for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty span means no namespace.</param>
         /// <exception cref="XmlException">
         /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
@@ -622,7 +632,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteEmptyElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
         {
-            WriteEmptyElementChars(localName, default, namespaceUri);
+            WriteEmptyElementChars(localName, default, namespaceUri, explicitNamespace: true);
         }
 
         /// <summary>
@@ -648,7 +658,7 @@ namespace CloudNimble.Text.Xml
         /// Writes an empty element with the local name and the namespace URI specified as read-only spans of UTF-8 bytes.
         /// </summary>
         /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
         /// <exception cref="XmlException">
         /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
@@ -664,7 +674,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
-            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: true);
+            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: true, explicitNamespace: true);
         }
 
         /// <summary>
@@ -673,7 +683,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
         /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
         /// <exception cref="XmlException">
         /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
@@ -691,7 +701,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteEmptyElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
-            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: true);
+            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: true, explicitNamespace: true);
         }
 
         /// <summary>
@@ -771,7 +781,7 @@ namespace CloudNimble.Text.Xml
         /// Writes the start tag of an element with the local name and the namespace URI specified as strings.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -786,9 +796,10 @@ namespace CloudNimble.Text.Xml
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// If <paramref name="namespaceUri"/> is bound to a prefix that is in scope, the element is written with
-        /// that prefix. If it is the default namespace in scope, the element is written without a prefix. Otherwise,
-        /// the writer declares it as the default namespace on the element.
+        /// If <paramref name="namespaceUri"/> is the default namespace in scope, the element is written without a
+        /// prefix. If it is bound to a prefix that is in scope, the element is written with that prefix. Otherwise,
+        /// the writer declares it as the default namespace on the element. For an empty string, that declaration
+        /// is <c>xmlns=""</c>, and it is written only when a default namespace is in scope.
         /// </remarks>
         public void WriteStartElement(string localName, string? namespaceUri)
         {
@@ -801,7 +812,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -818,9 +829,10 @@ namespace CloudNimble.Text.Xml
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The element is written with <paramref name="prefix"/>. If <paramref name="namespaceUri"/> is not bound
-        /// in scope, the writer declares <paramref name="prefix"/> for it on the element. Without a prefix, this
-        /// overload behaves as <see cref="WriteStartElement(string, string)"/> does.
+        /// The element is written with <paramref name="prefix"/>. Unless <paramref name="prefix"/> is already bound
+        /// to <paramref name="namespaceUri"/>, the writer declares it on the element, even when the namespace has
+        /// another prefix in scope. Without a prefix, this overload behaves as
+        /// <see cref="WriteStartElement(string, string)"/> does.
         /// </remarks>
         public void WriteStartElement(string? prefix, string localName, string? namespaceUri)
         {
@@ -844,7 +856,7 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         public void WriteStartElement(ReadOnlySpan<char> localName)
         {
-            WriteStartElementChars(localName, default, default);
+            WriteStartElementChars(localName, default, default, empty: false, explicitNamespace: false);
         }
 
         /// <summary>
@@ -890,7 +902,7 @@ namespace CloudNimble.Text.Xml
         /// spans of characters.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or an empty span for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty span means no namespace.</param>
         /// <exception cref="XmlException">
         /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
@@ -906,7 +918,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteStartElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
         {
-            WriteStartElementChars(localName, default, namespaceUri);
+            WriteStartElementChars(localName, default, namespaceUri, empty: false, explicitNamespace: true);
         }
 
         /// <summary>
@@ -914,7 +926,7 @@ namespace CloudNimble.Text.Xml
         /// spans of UTF-8 bytes.
         /// </summary>
         /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
         /// <exception cref="XmlException">
         /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
@@ -930,7 +942,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
-            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri);
+            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: false, explicitNamespace: true);
         }
 
         /// <summary>
@@ -939,7 +951,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
         /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
         /// <exception cref="XmlException">
         /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
@@ -957,7 +969,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteStartElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
-            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri);
+            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: false, explicitNamespace: true);
         }
 
         /// <summary>
@@ -1075,7 +1087,7 @@ namespace CloudNimble.Text.Xml
         /// Writes an element with the local name and the namespace URI specified as strings and a string value as its content.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <param name="value">The text to write as the content of the element, escaped as needed, or <see langword="null"/> to write an empty element.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
@@ -1098,8 +1110,9 @@ namespace CloudNimble.Text.Xml
         public void WriteElementString(string localName, string? namespaceUri, string? value)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            if (string.IsNullOrEmpty(namespaceUri))
+            if (namespaceUri is null || (namespaceUri.Length == 0 && LookupUri([]) is not { Length: > 0 }))
             {
+                // No namespace was given, or none was asked for and no default namespace is in scope to leave.
                 WriteCompleteElement(localName, value, valueIsNull: value is null);
                 return;
             }
@@ -2167,7 +2180,9 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public void WriteStringValue(ReadOnlySpan<char> value)
         {
-            if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : XmlChars.PlainTextChars) < 0)
+            ThrowIfDisposed();
+            if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : XmlChars.PlainTextChars) < 0
+                && (_inAttribute || PendingBrackets() == 0))
             {
                 if (_inAttribute)
                 {
@@ -2543,23 +2558,74 @@ namespace CloudNimble.Text.Xml
         /// element or to the value of the current attribute.
         /// </summary>
         /// <param name="value">The UTF-8 encoded segment of the text to write.</param>
-        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the text; otherwise, <see langword="false"/>. The writer does not use this value.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the text; otherwise, <see langword="false"/>.</param>
         /// <exception cref="XmlException">
         /// The writer is not inside an element or an attribute.
         /// -or-
-        /// <paramref name="value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// The text is not valid UTF-8, or contains a character that XML does not allow.
+        /// -or-
+        /// A value of another kind is being written in segments.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
+        /// <example>
+        /// <code>
+        /// writer.WriteStartElement("note");
+        /// writer.WriteStringValueSegment(firstBlock, isFinalSegment: false);
+        /// writer.WriteStringValueSegment(lastBlock, isFinalSegment: true);
+        /// writer.WriteEndElement();
+        /// </code>
+        /// </example>
         /// <remarks>
-        /// Each segment is written as it is by <see cref="WriteStringValue(ReadOnlySpan{byte})"/>, so a segment must
-        /// not end in the middle of a multi-byte character.
+        /// The segments together are written as <see cref="WriteStringValue(ReadOnlySpan{byte})"/> writes the whole
+        /// text. A segment can end in the middle of a multi-byte character: the writer keeps the bytes of the
+        /// incomplete character and writes it when the next segment completes it. After a segment that is not
+        /// final, the next call on the writer must be the next segment, apart from <see cref="Flush"/> and
+        /// <see cref="FlushAsync(CancellationToken)"/>; any other call throws an <see cref="XmlException"/>.
         /// </remarks>
         public void WriteStringValueSegment(ReadOnlySpan<byte> value, bool isFinalSegment)
         {
-            _ = isFinalSegment;
-            WriteStringValue(value);
+            var carry = BeginSegment(XmlWriterSegment.Utf8Text, out var carryLength);
+            if (carryLength > 0)
+            {
+                // The segment before ended inside a character. Its bytes and the first bytes of this segment
+                // are that character, or are not UTF-8 at all, which the value writer reports.
+                Span<byte> joined = stackalloc byte[4];
+                for (var i = 0; i < carryLength; i++)
+                {
+                    joined[i] = (byte)(carry >> (8 * i));
+                }
+
+                var take = Math.Min(joined.Length - carryLength, value.Length);
+                value[..take].CopyTo(joined[carryLength..]);
+                joined = joined[..(carryLength + take)];
+                var status = Rune.DecodeFromUtf8(joined, out _, out var consumed);
+                if (status is OperationStatus.NeedMoreData && !isFinalSegment)
+                {
+                    EndSegment(XmlWriterSegment.Utf8Text, PackCarry(joined), joined.Length);
+                    return;
+                }
+
+                if (status is not OperationStatus.Done)
+                {
+                    // The bytes are not the start of any character, or the text ended inside one. Writing
+                    // the whole text in one call reports the same.
+                    throw new XmlException("Invalid UTF-8 in XML value.");
+                }
+
+                WriteStringValue(joined[..consumed]);
+                value = value[(consumed - carryLength)..];
+            }
+
+            var tail = isFinalSegment ? 0 : IncompleteUtf8Tail(value);
+            WriteStringValue(value[..^tail]);
+            if (isFinalSegment)
+            {
+                return;
+            }
+
+            EndSegment(XmlWriterSegment.Utf8Text, PackCarry(value[^tail..]), tail);
         }
 
         /// <summary>
@@ -2567,20 +2633,56 @@ namespace CloudNimble.Text.Xml
         /// element or to the value of the current attribute.
         /// </summary>
         /// <param name="value">The segment of the text to write.</param>
-        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the text; otherwise, <see langword="false"/>. The writer does not use this value.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the text; otherwise, <see langword="false"/>.</param>
         /// <exception cref="XmlException">
         /// The writer is not inside an element or an attribute.
         /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// The text contains a character that XML does not allow.
+        /// -or-
+        /// A value of another kind is being written in segments.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// Each segment is written as it is by <see cref="WriteStringValue(ReadOnlySpan{char})"/>, so a segment must
-        /// not end between the two halves of a surrogate pair.
+        /// The segments together are written as <see cref="WriteStringValue(ReadOnlySpan{char})"/> writes the whole
+        /// text. A segment can end between the two halves of a surrogate pair: the writer keeps the first half
+        /// and writes the character when the next segment brings the second. After a segment that is not final,
+        /// the next call on the writer must be the next segment, apart from <see cref="Flush"/> and
+        /// <see cref="FlushAsync(CancellationToken)"/>; any other call throws an <see cref="XmlException"/>.
         /// </remarks>
         public void WriteStringValueSegment(ReadOnlySpan<char> value, bool isFinalSegment)
         {
-            _ = isFinalSegment;
-            WriteStringValue(value);
+            var carry = BeginSegment(XmlWriterSegment.CharText, out var carryLength);
+            if (carryLength > 0)
+            {
+                Span<char> pair = [(char)carry, '\0'];
+                if (!value.IsEmpty && char.IsLowSurrogate(value[0]))
+                {
+                    pair[1] = value[0];
+                    WriteStringValue(pair);
+                    value = value[1..];
+                }
+                else if (value.IsEmpty && !isFinalSegment)
+                {
+                    EndSegment(XmlWriterSegment.CharText, carry, 1);
+                    return;
+                }
+                else
+                {
+                    // The other half never came. The half that did is written as it is in a single call.
+                    WriteStringValue(pair[..1]);
+                }
+            }
+
+            var tail = !isFinalSegment && !value.IsEmpty && char.IsHighSurrogate(value[^1]) ? 1 : 0;
+            WriteStringValue(value[..^tail]);
+            if (isFinalSegment)
+            {
+                return;
+            }
+
+            EndSegment(XmlWriterSegment.CharText, tail == 0 ? 0 : value[^1], tail);
         }
 
         /// <summary>
@@ -2588,22 +2690,65 @@ namespace CloudNimble.Text.Xml
         /// value of the current attribute.
         /// </summary>
         /// <param name="value">The segment of the binary data to write as base64 encoded text.</param>
-        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the binary data; otherwise, <see langword="false"/>. The writer does not use this value.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the binary data; otherwise, <see langword="false"/>.</param>
         /// <exception cref="XmlException">
         /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// A value of another kind is being written in segments.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
+        /// <example>
+        /// <code>
+        /// writer.WriteStartElement("data");
+        /// writer.WriteBase64StringSegment([1], isFinalSegment: false);
+        /// writer.WriteBase64StringSegment([2], isFinalSegment: true);
+        /// writer.WriteEndElement();
+        /// // &lt;data&gt;AQI=&lt;/data&gt;
+        /// </code>
+        /// </example>
         /// <remarks>
-        /// Each segment is encoded on its own, as it is by <see cref="WriteBase64StringValue(ReadOnlySpan{byte})"/>.
-        /// For the segments to form one base64 value, the length of every segment except the last must be a
-        /// multiple of 3.
+        /// The segments together are written as <see cref="WriteBase64StringValue(ReadOnlySpan{byte})"/> writes the
+        /// whole data: one base64 value, padded only at its end. A segment can be any length. The writer keeps the
+        /// one or two bytes that do not fill a group of three and encodes them with the next segment. After a
+        /// segment that is not final, the next call on the writer must be the next segment, apart from
+        /// <see cref="Flush"/> and <see cref="FlushAsync(CancellationToken)"/>; any other call throws an
+        /// <see cref="XmlException"/>.
         /// </remarks>
         public void WriteBase64StringSegment(ReadOnlySpan<byte> value, bool isFinalSegment)
         {
-            _ = isFinalSegment;
-            WriteBase64StringValue(value);
+            var carry = BeginSegment(XmlWriterSegment.Base64, out var carryLength);
+            if (carryLength > 0)
+            {
+                Span<byte> group = stackalloc byte[3];
+                for (var i = 0; i < carryLength; i++)
+                {
+                    group[i] = (byte)(carry >> (8 * i));
+                }
+
+                var take = Math.Min(group.Length - carryLength, value.Length);
+                value[..take].CopyTo(group[carryLength..]);
+                group = group[..(carryLength + take)];
+                value = value[take..];
+                if (group.Length < 3 && !isFinalSegment)
+                {
+                    EndSegment(XmlWriterSegment.Base64, PackCarry(group), group.Length);
+                    return;
+                }
+
+                // A whole group encodes with no padding. A short one is the end of the data, and nothing follows it.
+                WriteBase64StringValue(group);
+            }
+
+            var tail = isFinalSegment ? 0 : value.Length % 3;
+            WriteBase64StringValue(value[..^tail]);
+            if (isFinalSegment)
+            {
+                return;
+            }
+
+            EndSegment(XmlWriterSegment.Base64, PackCarry(value[^tail..]), tail);
         }
 
         /// <summary>
@@ -2944,29 +3089,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a start tag from UTF-16 parts.
-        /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        internal void WriteStartElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri)
-        {
-            WriteStartElementChars(localName, prefix, namespaceUri, empty: false);
-        }
-
-        /// <summary>
         /// Writes a start tag or empty element from UTF-16 parts.
         /// </summary>
         /// <param name="localName">The local name.</param>
         /// <param name="prefix">The prefix.</param>
         /// <param name="namespaceUri">The namespace URI.</param>
         /// <param name="empty">When true, closes as <c>/&gt;</c> without keeping a frame name.</param>
-        internal void WriteStartElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool empty)
+        /// <param name="explicitNamespace">
+        /// Whether the caller stated the namespace. An empty <paramref name="namespaceUri"/> then means no
+        /// namespace; otherwise it means the name is written as given and inherits the default namespace.
+        /// </param>
+        internal void WriteStartElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool empty, bool explicitNamespace)
         {
             var localUtf8 = EncodeUtf8(localName, stackalloc byte[256], out var localHeap);
             var prefixUtf8 = EncodeUtf8(prefix, stackalloc byte[64], out var prefixHeap);
             var nsUtf8 = EncodeUtf8(namespaceUri, stackalloc byte[256], out var nsHeap);
-            WriteStartElementUtf8(localUtf8, prefixUtf8, nsUtf8, empty);
+            WriteStartElementUtf8(localUtf8, prefixUtf8, nsUtf8, empty, explicitNamespace);
             _ = localHeap;
             _ = prefixHeap;
             _ = nsHeap;
@@ -2978,9 +3116,10 @@ namespace CloudNimble.Text.Xml
         /// <param name="localName">The local name.</param>
         /// <param name="prefix">The prefix.</param>
         /// <param name="namespaceUri">The namespace URI.</param>
-        internal void WriteEmptyElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri)
+        /// <param name="explicitNamespace">Whether the caller stated the namespace, so that an empty one means no namespace.</param>
+        internal void WriteEmptyElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool explicitNamespace)
         {
-            WriteStartElementChars(localName, prefix, namespaceUri, empty: true);
+            WriteStartElementChars(localName, prefix, namespaceUri, empty: true, explicitNamespace);
         }
 
         /// <summary>
@@ -3190,7 +3329,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal void EnsureXsi()
         {
-            if (LookupPrefix(XmlUtf8.Xsi) is not null)
+            // The attribute is written as xsi:nil, so it is the xsi prefix that has to be bound to the
+            // namespace. Another prefix for the same namespace does not help.
+            if (XmlUtf8.Xsi.AsSpan().SequenceEqual(LookupUri("xsi"u8)))
             {
                 return;
             }
@@ -3220,35 +3361,6 @@ namespace CloudNimble.Text.Xml
             _committed += _buffered;
             _buffered = 0;
             _memory = default;
-        }
-
-        /// <summary>
-        /// Returns the in-scope prefix bound to <paramref name="uri"/>, or null.
-        /// </summary>
-        /// <param name="uri">The namespace URI.</param>
-        /// <returns>The prefix bytes, empty for the default xmlns, or null if unbound.</returns>
-        internal byte[]? LookupPrefix(ReadOnlySpan<byte> uri)
-        {
-            for (var i = _nsCount - 1; i >= 0; i--)
-            {
-                var binding = NsAt(i);
-                if (uri.SequenceEqual(binding.Uri))
-                {
-                    return binding.Prefix;
-                }
-            }
-
-            if (uri.SequenceEqual(XmlUtf8.Xml))
-            {
-                return XmlUtf8.XmlPrefix;
-            }
-
-            if (uri.SequenceEqual(XmlUtf8.Xmlns))
-            {
-                return XmlUtf8.XmlnsPrefix;
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -3646,6 +3758,11 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal void RequireOpenTag()
         {
+            if (_segment is not XmlWriterSegment.None)
+            {
+                ThrowSegmentOpen();
+            }
+
             if (_depth == 0 || !CurrentFrame().TagOpen || _inAttribute)
             {
                 throw new XmlException("Attributes must be written on an open start tag.");
@@ -3653,11 +3770,118 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Throws if the writer has been disposed.
+        /// Throws if the writer has been disposed, or if a value is part way through being written in segments.
         /// </summary>
+        /// <exception cref="ObjectDisposedException">The writer has been disposed.</exception>
+        /// <exception cref="XmlException">A segmented value is open, and this call is not its next segment.</exception>
         internal void ThrowIfDisposed()
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_segment is not XmlWriterSegment.None)
+            {
+                ThrowSegmentOpen();
+            }
+        }
+
+        /// <summary>
+        /// Throws for a write that is not the next segment of the value being written in segments.
+        /// </summary>
+        /// <exception cref="XmlException">Always.</exception>
+        [DoesNotReturn]
+        internal static void ThrowSegmentOpen()
+        {
+            throw new XmlException("A value is being written in segments. Write its final segment before anything else.");
+        }
+
+        /// <summary>
+        /// Starts a segment of <paramref name="kind"/> and takes what the segment before it left over.
+        /// </summary>
+        /// <param name="kind">The kind of value the segment belongs to.</param>
+        /// <param name="carryLength">The number of bytes or characters left over by the segment before.</param>
+        /// <returns>What was left over: UTF-8 or binary bytes, lowest byte first, or one UTF-16 character.</returns>
+        /// <exception cref="ObjectDisposedException">The writer has been disposed.</exception>
+        /// <exception cref="XmlException">
+        /// A segmented value of another kind is open, or the writer is at the document level.
+        /// </exception>
+        /// <remarks>
+        /// The writer is left with no segmented value open, so the segment can write through the ordinary value
+        /// methods and an exception leaves nothing behind. The caller calls <see cref="EndSegment"/> last.
+        /// </remarks>
+        internal int BeginSegment(XmlWriterSegment kind, out int carryLength)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_segment is not XmlWriterSegment.None && _segment != kind)
+            {
+                ThrowSegmentOpen();
+            }
+
+            if (!_inAttribute && _depth == 0)
+            {
+                throw new XmlException("Text is not allowed at the document level.");
+            }
+
+            var carry = _segmentCarry;
+            carryLength = _segmentCarryLength;
+            _segment = XmlWriterSegment.None;
+            _segmentCarry = 0;
+            _segmentCarryLength = 0;
+            return carry;
+        }
+
+        /// <summary>
+        /// Ends a segment, keeping what it left over for the next one.
+        /// </summary>
+        /// <param name="kind">The kind of value, or <see cref="XmlWriterSegment.None"/> after the final segment.</param>
+        /// <param name="carry">What is left over.</param>
+        /// <param name="carryLength">The number of bytes or characters in <paramref name="carry"/>.</param>
+        internal void EndSegment(XmlWriterSegment kind, int carry, int carryLength)
+        {
+            _segment = kind;
+            _segmentCarry = carry;
+            _segmentCarryLength = carryLength;
+        }
+
+        /// <summary>
+        /// Packs up to three bytes into one number, lowest byte first.
+        /// </summary>
+        /// <param name="bytes">The bytes.</param>
+        /// <returns>The packed bytes.</returns>
+        internal static int PackCarry(ReadOnlySpan<byte> bytes)
+        {
+            var carry = 0;
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                carry |= bytes[i] << (8 * i);
+            }
+
+            return carry;
+        }
+
+        /// <summary>
+        /// Returns the number of bytes at the end of <paramref name="utf8"/> that are the start of a character
+        /// whose other bytes have not arrived.
+        /// </summary>
+        /// <param name="utf8">A segment of UTF-8 text.</param>
+        /// <returns>1 to 3, or 0 when the text ends on a character boundary or ends with bytes that are not valid UTF-8.</returns>
+        internal static int IncompleteUtf8Tail(ReadOnlySpan<byte> utf8)
+        {
+            for (var back = 1; back <= 3 && back <= utf8.Length; back++)
+            {
+                var b = utf8[^back];
+                if (b < 0x80)
+                {
+                    return 0;
+                }
+
+                if ((b & 0xC0) == 0x80)
+                {
+                    continue;
+                }
+
+                return Rune.DecodeFromUtf8(utf8[^back..], out _, out _) is OperationStatus.NeedMoreData ? back : 0;
+            }
+
+            return 0;
         }
 
         /// <summary>
@@ -3989,13 +4213,25 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8">The raw UTF-8 text.</param>
         internal void WriteElementText(ReadOnlySpan<byte> utf8)
         {
-            if (utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) < 0)
+            // Text may arrive in several calls, and "]]" at the end of one followed by ">" at the start of
+            // the next is the same "]]>" as in one call.
+            var bracket = PendingBrackets();
+            if (bracket == 0 && utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) < 0)
             {
                 WriteRaw(utf8);
                 return;
             }
 
-            var bracket = 0;
+            WriteElementText(utf8, bracket);
+        }
+
+        /// <summary>
+        /// Writes escaped element text that follows <paramref name="bracket"/> closing brackets already written.
+        /// </summary>
+        /// <param name="utf8">The raw UTF-8 text.</param>
+        /// <param name="bracket">The number of <c>]</c> characters that end the text written just before.</param>
+        internal void WriteElementText(ReadOnlySpan<byte> utf8, int bracket)
+        {
             var i = 0;
             while (i < utf8.Length)
             {
@@ -4053,6 +4289,23 @@ namespace CloudNimble.Text.Xml
                 WriteValueSlice(utf8[start..i], cp);
                 bracket = cp is ']' ? bracket + 1 : 0;
             }
+
+            _bracketRun = bracket;
+            _bracketEnd = _committed + _buffered;
+        }
+
+        /// <summary>
+        /// Returns how many <c>]</c> characters end the element text written so far, when that text is the
+        /// last thing written.
+        /// </summary>
+        /// <returns>The count, or 0 when anything else has been written since.</returns>
+        /// <remarks>
+        /// The count is kept with the output position it was true at. Any write moves the position, so nothing
+        /// has to clear the count.
+        /// </remarks>
+        internal int PendingBrackets()
+        {
+            return _bracketRun > 0 && _bracketEnd == _committed + _buffered ? _bracketRun : 0;
         }
 
         /// <summary>
@@ -4306,6 +4559,34 @@ namespace CloudNimble.Text.Xml
         /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
         internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty)
         {
+            WriteStartElementUtf8(local, prefix, ns, empty, explicitNamespace: false);
+        }
+
+        /// <summary>
+        /// Writes a start tag from UTF-8 parts in the namespace given, optionally closing it as empty.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="ns">The namespace URI, or empty.</param>
+        /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
+        /// <param name="explicitNamespace">
+        /// Whether the caller stated the namespace. An empty <paramref name="ns"/> then means no namespace, and
+        /// <c>xmlns=""</c> is written when a default namespace is in scope. Otherwise an empty
+        /// <paramref name="ns"/> says nothing: the name is written as given and inherits the default namespace.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// A name with a prefix is written with that prefix, which is declared on the element unless it is
+        /// already bound to <paramref name="ns"/>. Whether <paramref name="ns"/> has another prefix does not matter.
+        /// </para>
+        /// <para>
+        /// A name with no prefix is written bare when <paramref name="ns"/> is the default namespace in scope,
+        /// with a prefix that is bound to <paramref name="ns"/> when there is one, and otherwise bare with
+        /// <paramref name="ns"/> declared as the default namespace on the element.
+        /// </para>
+        /// </remarks>
+        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty, bool explicitNamespace)
+        {
             ThrowIfDisposed();
             ValidateNcName(local);
             if (!prefix.IsEmpty)
@@ -4358,14 +4639,28 @@ namespace CloudNimble.Text.Xml
 
             WriteElementIndent(_depth);
             byte[]? autoPrefix = null;
-            if (prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is { Length: > 0 } bound)
+            var declarePrefixed = false;
+            var declareDefault = false;
+            if (!prefix.IsEmpty)
             {
-                autoPrefix = bound;
+                declarePrefixed = !nsUri.IsEmpty && !nsUri.SequenceEqual(LookupUri(prefix));
+            }
+            else if (!nsUri.IsEmpty)
+            {
+                if (!nsUri.SequenceEqual(LookupUri([])))
+                {
+                    autoPrefix = LookupPrefixedPrefix(nsUri);
+                    declareDefault = autoPrefix is null;
+                }
+            }
+            else if (explicitNamespace)
+            {
+                // No namespace under a default namespace: only xmlns="" keeps the element out of it
+                // (Namespaces in XML, section 6.2).
+                declareDefault = LookupUri([]) is { Length: > 0 };
             }
 
             WriteTagOpen(autoPrefix is null ? prefix : autoPrefix, local);
-            var declarePrefixed = !prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is null;
-            var declareDefault = prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is null;
             if (empty)
             {
                 if (!declarePrefixed && !declareDefault)
@@ -4509,8 +4804,9 @@ namespace CloudNimble.Text.Xml
             for (var i = _nsCount - 1; i >= 0; i--)
             {
                 var binding = NsAt(i);
-                if (binding.Prefix.Length > 0 && uri.SequenceEqual(binding.Uri))
+                if (binding.Prefix.Length > 0 && uri.SequenceEqual(binding.Uri) && uri.SequenceEqual(LookupUri(binding.Prefix)))
                 {
+                    // The second test skips a prefix that an inner element has bound to something else.
                     return binding.Prefix;
                 }
             }
@@ -4840,9 +5136,11 @@ namespace CloudNimble.Text.Xml
         /// <param name="empty">When true, writes <c>/&gt;</c> without pushing a frame.</param>
         internal void WriteStartElementLiteral(string localName, string? prefix, string? namespaceUri, bool empty)
         {
-            if (!string.IsNullOrEmpty(namespaceUri))
+            // A null namespace says nothing about the namespace and the name is written as given. An empty
+            // string says "no namespace", which needs xmlns="" when a default namespace is in scope.
+            if (namespaceUri is not null && (namespaceUri.Length > 0 || LookupUri([]) is { Length: > 0 }))
             {
-                WriteStartElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), empty);
+                WriteStartElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), empty, explicitNamespace: true);
                 return;
             }
 

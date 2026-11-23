@@ -18,7 +18,7 @@ A writer that's reused with `Reset` allocates nothing per document. In the libra
 
 ### Namespaces
 
-The writer tracks the namespaces in scope and declares what's missing: a default namespace for an element written with a namespace and no prefix, your prefix for an element written with one, and a generated prefix (`ns1`, `ns2`, and so on) for an attribute in a namespace that has no prefix in scope. An element written with no namespace argument gets no declaration, so under a default namespace a reader puts it in that namespace.
+The writer tracks the namespaces in scope and declares what's missing: a default namespace for an element written with a namespace and no prefix, your prefix for an element written with one, and a generated prefix (`ns1`, `ns2`, and so on) for an attribute in a namespace that has no prefix in scope. An element written with no namespace argument, or with a `null` one, gets no declaration, so under a default namespace a reader puts it in that namespace. An element written with an empty namespace is in no namespace: under a default namespace the writer adds `xmlns=""`.
 
 ### Indentation
 
@@ -27,8 +27,6 @@ With `Indented` set, only elements get a line break and indentation. An element 
 ### What isn't checked
 
 - `WriteRawValue` copies its input without checking or escaping it. The `skipInputValidation` parameter has no effect.
-- `WriteStringValueSegment` and `WriteBase64StringSegment` ignore `isFinalSegment`. Each call writes its input at once, and `WriteBase64StringSegment` pads each segment by itself, so use `WriteBase64StringValue` for binary data.
-
 ### Differences from Utf8JsonWriter
 
 - There's no property-name step. Structure comes from `WriteStartElement` and `WriteEndElement`, and attributes are written on the open start tag.

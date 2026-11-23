@@ -356,7 +356,9 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         [TestMethod]
         public void Sample11_ImmutableTypes_ParameterNameCase()
         {
-            SampleOutput.Capture(ImmutableTypes.ParameterNameCase).Should().Be("MissingMethodException");
+            SampleOutput.Capture(ImmutableTypes.ParameterNameCase).Should().Be(
+                "Voltage = 230\n" +
+                "The required constructor parameter 'Name' is missing.");
         }
 
         [TestMethod]

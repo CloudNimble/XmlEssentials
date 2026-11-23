@@ -114,7 +114,7 @@ The code produces the following output:
 - **Type info belongs to the context's options.** `OrderXmlContext.Default.Order.Options` is the options of `Default`, whichever options instance asked for it.
 - **Contexts don't combine through `TypeInfoResolverChain`.** A generated `GetTypeInfo` never returns `null` for a type the reflection resolver can map, so the first context in a chain answers every request.
 - **A generated converter applies a subset of the options.** `WriteIndented`, `NewLine`, `OmitXmlDeclaration`, and `DefaultNamespace` apply. `NilHandling`, `DefaultIgnoreCondition`, and converters for class, struct, and built-in member types don't. A `ReferenceHandler` makes the converter throw `NotSupportedException`.
-- **Interceptors route other calls to the context.** With the package's build file in effect, `XmlSerializer.Serialize<T>(value, options)` and `XmlSerializer.Deserialize<T>(xml, options)` for a listed type are rewritten to use the context. See [Interceptors](/guides/reflection-vs-source-generation#interceptors).
+- **Interceptors route other calls to the context.** With the package's build file in effect, `XmlSerializer.Serialize<T>(value)` and `XmlSerializer.Deserialize<T>(input)` for a listed type are rewritten to use the context's `Default` instance. A call that passes an `XmlSerializerOptions` argument is never rewritten. See [Interceptors](/guides/reflection-vs-source-generation#interceptors).
 - **Unlike `JsonSerializerContext`,** the class has no `GeneratedSerializerOptions` member. The generated code is a constructor and properties.
 
 ## Constructors

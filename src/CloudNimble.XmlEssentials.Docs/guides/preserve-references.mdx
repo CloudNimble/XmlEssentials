@@ -172,13 +172,15 @@ False
 - An element with a `ref` attribute is replaced by the referenced object. Any content it has is skipped.
 - An object that is created through a constructor with parameters is registered under its identifier after the constructor runs. A document can refer to it later, but the object can't hold a reference to itself.
 
-### What Preserve doesn't cover
+### Where Preserve applies
 
-`Preserve` replaces a repeated object when a *member* holds it. It doesn't replace the items of a collection. If the same object is in a list twice, each item is written in full with the same `id`, and the list reads back as two separate objects. An object that first appears as a collection item does get an identifier, so a member elsewhere in the graph can refer to it, as `Manager` does in the first example.
+`Preserve` replaces a repeated object wherever it appears: as the value of a member, as an item of a collection, and as an item inside a wrapper element. If the same object is in a list twice, the second item is written as an empty element with a `ref` attribute, and the list reads back as one object held twice.
+
+Value types and the collections themselves have no identifier. A list that two members share is written in full each time, and its items are still written once.
 
 ## Ignore cycles
 
-`XmlReferenceHandler.IgnoreCycles` writes no identifiers. When a member holds an object that was already written, the serializer writes the member as nil.
+`XmlReferenceHandler.IgnoreCycles` writes no identifiers. When the serializer reaches an object from inside that same object, it writes nil in its place and goes no deeper.
 
 ```csharp Program.cs
 var tyler = new Employee { Name = "Tyler Stein" };
@@ -219,9 +221,7 @@ True
 
 The document is plain XML that any consumer can read, and it is no longer the same graph: the report's `Manager` is `null` after a round trip.
 
-<Warning>
-`IgnoreCycles` writes nil for every repeated object, not only for an object that contains itself. In the `Project` example above, `Reviewer` would be written as nil, because `Owner` already wrote the same employee. System.Text.Json behaves differently: its `IgnoreCycles` writes a shared object in full each time and writes `null` only for a true cycle. If you need shared objects, use `Preserve`.
-</Warning>
+Only a cycle is written as nil. An object that two members share, or that is in a list twice, is written in full each time, as System.Text.Json writes it. In the `Project` example above, `Owner` and `Reviewer` would both hold the whole employee, and the document would read back as two separate objects. To keep them as one object, use `Preserve`.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/17_PreserveReferences.cs)
 
@@ -229,10 +229,10 @@ The document is plain XML that any consumer can read, and it is no longer the sa
 
 | | No handler (default) | `Preserve` | `IgnoreCycles` |
 | --- | --- | --- | --- |
-| A cycle | `XmlException` at `MaxDepth` | Written once, then referenced | Repeated object written as nil |
-| A shared object in two members | Written twice | Written once, then referenced | Second member written as nil |
+| A cycle | `XmlException` at `MaxDepth` | Written once, then referenced | The object that closes the cycle is written as nil |
+| A shared object in two members or two list items | Written twice | Written once, then referenced | Written twice |
 | Round trip gives back the same graph | No | Yes | No |
-| Extra markup | None | `id` and `ref` attributes | `xsi:nil` on repeated objects |
+| Extra markup | None | `id` and `ref` attributes | `xsi:nil` where a cycle closes |
 | Readable by a consumer that doesn't know XmlEssentials | Yes | Only if it resolves `id` and `ref` itself | Yes |
 
 ## Use a custom resolver
@@ -325,14 +325,14 @@ The code produces the following output:
 True
 Dana Birkby
 atlas, dana
-<Project><Name>Atlas</Name><Owner><Name>Dana Birkby</Name><Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/><DirectReports/></Owner><Reviewer xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/></Project>
+<Project xmlns:ns1="urn:CloudNimble.Text.Xml:refs" ns1:id="object-1"><Name>Atlas</Name><Owner ns1:id="object-2"><Name>Dana Birkby</Name><Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/><DirectReports/></Owner><Reviewer ns1:ref="object-2"/></Project>
 ```
 
-The first three lines show the custom resolver at work while reading: identifiers don't have to be numbers, and the handler's dictionary holds both objects afterward.
+The first three lines show the custom resolver at work while reading: identifiers don't have to be numbers, and the handler's dictionary holds both objects afterward. The last line shows it at work while writing: the serializer writes the identifiers that `GetReference` returns as `id` attributes, and writes `ref` for an object the resolver says it has already seen.
 
-<Warning>
-A custom handler takes full effect only when reading. When writing, the serializer asks your resolver whether an object was already seen, but it writes `id` and `ref` attributes only for the built-in `XmlReferenceHandler.Preserve` instance. With any other handler, a repeated object is written as nil, as the last line of the output shows. To write preserved references, use `XmlReferenceHandler.Preserve`.
-</Warning>
+<Note>
+If `GetReference` returns an empty string, the serializer writes no `id`. For an object that the resolver reports as already seen, an empty string makes the serializer write nil in its place.
+</Note>
 
 A resolver holds state for one call. If your handler shares state between calls, as this one does, don't use the same options for calls that run at the same time.
 

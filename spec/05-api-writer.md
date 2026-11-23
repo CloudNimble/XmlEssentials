@@ -184,6 +184,16 @@ Namespace declarations: if the caller writes an element in a URI that is not in 
 
 `WriteNilValue` after attributes: legal. After content: `XmlException`. Other attributes plus `xsi:nil` on deserialize: attributes are applied; the nillable **element value** is null.
 
+## Segmented values
+
+`WriteStringValueSegment` and `WriteBase64StringSegment` write one value from several buffers. The segments together produce exactly what one call with the whole value produces, wherever they are cut:
+
+- A UTF-8 segment may end inside a multi-byte character, and a character segment between the halves of a surrogate pair. The writer keeps the incomplete character (at most three bytes, or one `char`) and writes it with the next segment. Text that ends inside a character at the final segment is `XmlException` ("Invalid UTF-8 in XML value."), as it is in one call; half a surrogate pair is written as one call writes it.
+- A base64 segment may be any length. The writer keeps the one or two bytes that do not fill a group of three, and pads only at the end of the value.
+- After a segment with `isFinalSegment: false`, the next call must be the next segment of the same kind. `Flush` and `FlushAsync` are allowed in between. Anything else is `XmlException` ("A value is being written in segments. Write its final segment before anything else."). `Reset` discards an open value.
+
+Element text written in several calls, segments or not, never forms `]]>`: the writer remembers how many `]` end the text it wrote last, for as long as nothing else has been written since, and escapes a `>` that follows two of them.
+
 ## Writer escaping
 
 The writer escapes whatever a reader would otherwise change, so a value is read back exactly as it was written. The full table and its reasons are in [XML fidelity](02-xml-fidelity.md#round-trip-guarantees).

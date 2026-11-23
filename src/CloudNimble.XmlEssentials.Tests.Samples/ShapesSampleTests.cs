@@ -260,7 +260,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "True\n" +
                 "Dana Birkby\n" +
                 "atlas, dana\n" +
-                "<Project><Name>Atlas</Name><Owner><Name>Dana Birkby</Name><Manager " + XsiNil + "/><DirectReports/></Owner><Reviewer " + XsiNil + "/></Project>");
+                "<Project xmlns:ns1=\"urn:CloudNimble.Text.Xml:refs\" ns1:id=\"object-1\"><Name>Atlas</Name><Owner ns1:id=\"object-2\"><Name>Dana Birkby</Name><Manager " + XsiNil + "/><DirectReports/></Owner><Reviewer ns1:ref=\"object-2\"/></Project>");
         }
 
         [TestMethod]

@@ -11,14 +11,15 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets a handler that ignores an object when it is reached again during serialization.
+        /// Gets a handler that ignores an object when it is reached again from inside itself during serialization.
         /// </summary>
         /// <value>
-        /// A handler that writes an empty element marked <c>xsi:nil="true"</c> in place of an object that was already written
-        /// in the same operation.
+        /// A handler that writes an empty element marked <c>xsi:nil="true"</c> in place of an object that is still being
+        /// written, which is the object that closes a cycle.
         /// </value>
         /// <remarks>
-        /// The handler tracks every object written in the operation, so a repeated object is replaced whether or not it forms a cycle.
+        /// Only a cycle is replaced. An object that is held in two places without a cycle, such as two members or two items
+        /// of a list, is written in full each time, as it is by <c>ReferenceHandler.IgnoreCycles</c> in <c>System.Text.Json</c>.
         /// </remarks>
         public static XmlReferenceHandler IgnoreCycles { get; } = new XmlIgnoreCyclesReferenceHandler();
 
@@ -29,6 +30,10 @@ namespace CloudNimble.Text.Xml.Serialization
         /// A handler that writes an <c>id</c> attribute on each object and a <c>ref</c> attribute in place of an object that
         /// was already written. Both attributes are in the <c>urn:CloudNimble.Text.Xml:refs</c> namespace.
         /// </value>
+        /// <remarks>
+        /// A repeated object is replaced wherever it appears: as the document element, as the value of a member, and as an
+        /// item of a collection. Value types and collections have no identifier.
+        /// </remarks>
         public static XmlReferenceHandler Preserve { get; } = new XmlPreserveReferenceHandler();
 
         #endregion

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using CloudNimble.Text.Xml;
 using CloudNimble.XmlEssentials.Samples.Models.Advanced;
 
@@ -32,16 +33,22 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
-        /// Shows that a call that passes no type info is redirected to the generated context that lists the type.
+        /// Shows that a call that passes no options and no type info is redirected to the generated context that lists the
+        /// type, and that a call that passes options runs as it is written.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void Interceptors(TextWriter output)
         {
             var shipment = new Shipment { OrderId = 1042, Carrier = "Contoso Freight" };
-            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
 
-            string xml = XmlSerializer.Serialize(shipment, options);
+            string xml = XmlSerializer.Serialize(shipment);
             output.WriteLine(xml);
+
+            Shipment? copy = XmlSerializer.Deserialize<Shipment>(Encoding.UTF8.GetBytes(xml));
+            output.WriteLine($"Shipment {copy!.OrderId}: {copy.Carrier}");
+
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            output.WriteLine(XmlSerializer.Serialize(shipment, options));
             output.WriteLine(options.TypeInfoResolver!.GetType().Name);
         }
 

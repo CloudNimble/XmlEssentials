@@ -30,6 +30,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </returns>
         /// <remarks>
         /// The serializer calls this method before it writes an object, to decide whether to write the object or a reference to it.
+        /// For a new object, it writes the returned identifier as an <c>id</c> attribute. For an object that already exists, it
+        /// writes the identifier as a <c>ref</c> attribute on an empty element. When the identifier is an empty string, it writes
+        /// no <c>id</c>, and writes <c>xsi:nil="true"</c> in place of an object that already exists.
         /// </remarks>
         public abstract string GetReference(object value, out bool alreadyExists);
 

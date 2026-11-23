@@ -99,9 +99,11 @@ Notice the following:
 
 `[XmlDerivedType<T>]` is a generic attribute, so the derived type is checked by the compiler. The discriminator is always a string. There is no integer form.
 
-<Warning>
-The declared base type must be a concrete class. An abstract class or an interface as the declared type isn't supported: the serializer throws `NotSupportedException` with the message `The type '...' is not supported.` This is different from System.Text.Json, where an abstract base type is common. Give the hierarchy a concrete base class, or write a [custom converter](/guides/custom-converters) for the base type.
-</Warning>
+The declared base type can be a concrete class, an abstract class, or an interface. An abstract class or an interface must list its derived types with `[XmlDerivedType<T>]`, because the serializer can't create the declared type itself:
+
+- When reading, an element that doesn't identify a derived type throws `XmlException`. A concrete base class would be created instead.
+- When writing, a value whose type isn't listed throws `NotSupportedException`, unless the base type sets `UnknownDerivedTypeHandling`.
+- An abstract class or an interface with no `[XmlDerivedType<T>]` isn't supported, and the serializer throws `NotSupportedException` with the message `The type '...' is not supported.`
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
@@ -352,7 +354,6 @@ The code produces the following output:
 - **Members of type `object`.** A member declared as `object` has no contract to serialize. Without a [custom converter](/guides/custom-converters), the serializer throws `NotSupportedException`: `The type 'System.Object' is not supported.` The `XmlSerializerOptions.UnknownTypeHandling` property exists, but the serializer doesn't read it in this release.
 - **Inferred derived types.** `InferClosedTypePolymorphism`, on the attribute and on the options, is not read in this release. List each derived type with `[XmlDerivedType<T>]`.
 - **A namespace per derived type.** `XmlDerivedTypeAttribute.Namespace` is not read. A derived type's element is written in the namespace that is in scope.
-- **Interfaces and abstract classes as the declared type.** The attributes can be applied to an interface or an abstract class, but the built-in object mapping handles only concrete classes and structs, so serializing or deserializing such a type throws `NotSupportedException`.
 - **Configuring polymorphism at run time.** The attributes are the only way to declare derived types. There is no contract-customization API for it.
 
 ## See also

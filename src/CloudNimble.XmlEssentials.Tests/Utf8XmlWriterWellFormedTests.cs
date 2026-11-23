@@ -320,7 +320,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 w.WriteStartElement("e");
                 w.WriteStringValueSegment("he"u8, false);
-                w.WriteStringValueSegment("llo".AsSpan(), true);
+                w.WriteStringValueSegment("llo"u8, true);
                 w.WriteEndElement();
             }).Should().Be("<e>hello</e>");
             XmlWriterHarness.ToXml(w =>

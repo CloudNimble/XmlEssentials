@@ -657,6 +657,23 @@ namespace CloudNimble.XmlEssentials.Tests
             message.Should().Be("Invalid XML name.");
         }
 
+        [TestMethod]
+        public void StringValue_AfterDispose_IsRejected()
+        {
+            // Every overload checks, including the ones that copy text that needs no escaping straight through.
+            var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true });
+            writer.WriteStartElement("e");
+            writer.Dispose();
+            FluentActions.Invoking(() => writer.WriteStringValue("plain")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStringValue("a<b")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStringValue("plain".AsSpan())).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStringValue("a<b".AsSpan())).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStringValue("plain"u8)).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStringValueSegment("plain"u8, true)).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStringValueSegment("plain".AsSpan(), true)).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteBase64StringSegment([1], true)).Should().ThrowExactly<ObjectDisposedException>();
+        }
+
         #endregion
 
         #region Private Methods

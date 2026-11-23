@@ -2302,6 +2302,7 @@ namespace CloudNimble.Text.Xml
             _attributeIndex = -1;
             _decodedLength = 0;
             _valueIsEscaped = false;
+            _valueLength = 0;
             _tokenStartIndex = _documentBytesConsumedBase + end;
             _tokenLineNumber = _lineNumber;
             _tokenLineStart = _lineStart;
