@@ -7,8 +7,12 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// A mutable XML element with attributes and mixed children.
+    /// Represents a mutable XML element with attributes and child nodes. This class cannot be inherited.
     /// </summary>
+    /// <remarks>
+    /// The children can be elements, text nodes, CDATA sections, comments, and processing instructions, in any order.
+    /// Enumerating the element enumerates <see cref="Children"/>.
+    /// </remarks>
     public sealed class XmlElementNode : XmlNode, IEnumerable<XmlNode>
     {
 
@@ -25,16 +29,27 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <summary>
         /// Gets the attributes of this element.
         /// </summary>
+        /// <value>
+        /// The list of attributes of this element, in the order they are written. The list can be changed.
+        /// </value>
         public XmlAttributeNodeList Attributes { get; }
 
         /// <summary>
         /// Gets the child nodes of this element.
         /// </summary>
+        /// <value>
+        /// The list of child nodes of this element, in document order. The list can be changed.
+        /// </value>
         public XmlNodeList Children { get; }
 
         /// <summary>
-        /// Gets or sets concatenated descendant text. Setting replaces all children with one text node.
+        /// Gets or sets the text content of this element.
         /// </summary>
+        /// <value>
+        /// The text of all text nodes and CDATA sections inside this element, in document order. Setting
+        /// the value removes all children and adds one text node that holds the value. Setting
+        /// <see langword="null"/> or an empty string removes all children and adds nothing.
+        /// </value>
         public string InnerText
         {
             get
@@ -54,8 +69,17 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets or sets the local name.
+        /// Gets or sets the local name of this element.
         /// </summary>
+        /// <value>
+        /// The local name of the element, without a prefix.
+        /// </value>
+        /// <exception cref="ArgumentNullException">
+        /// The value in a set operation is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// The value in a set operation is empty or consists only of white-space characters.
+        /// </exception>
         public string LocalName
         {
             get => _localName;
@@ -67,8 +91,12 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets or sets the namespace URI.
+        /// Gets or sets the namespace URI of this element.
         /// </summary>
+        /// <value>
+        /// The namespace URI of the element, or an empty string if the element is in no namespace. The
+        /// value is never <see langword="null"/>. Setting <see langword="null"/> stores an empty string.
+        /// </value>
         public override string? NamespaceUri
         {
             get => _namespaceUri;
@@ -76,8 +104,12 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets or sets the prefix.
+        /// Gets or sets the namespace prefix of this element.
         /// </summary>
+        /// <value>
+        /// The prefix of the element name, or an empty string if the name has no prefix. Setting
+        /// <see langword="null"/> stores an empty string.
+        /// </value>
         public string Prefix
         {
             get => _prefix;
@@ -88,9 +120,18 @@ namespace CloudNimble.Text.Xml.Nodes
         public override XmlValueKind ValueKind => XmlValueKind.Element;
 
         /// <summary>
-        /// Gets the first child element with <paramref name="localName"/>, or <see langword="null"/>.
+        /// Gets the first child element that has the specified local name, in any namespace.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <value>
+        /// The first child element that has the specified local name, or <see langword="null"/> if there is none.
+        /// </value>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants.
+        /// </remarks>
         public XmlElementNode? this[string localName]
         {
             get
@@ -109,10 +150,20 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets the first child element with <paramref name="localName"/> in <paramref name="namespaceUri"/>, or <see langword="null"/>.
+        /// Gets the first child element that has the specified local name and namespace URI.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the child element, or an empty string for an element in no namespace.</param>
+        /// <value>
+        /// The first child element that has the specified local name and namespace URI, or
+        /// <see langword="null"/> if there is none.
+        /// </value>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> or <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants.
+        /// </remarks>
         public XmlElementNode? this[string localName, string namespaceUri]
         {
             get
@@ -138,11 +189,20 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Constructors
 
         /// <summary>
-        /// Creates an element.
+        /// Initializes a new instance of the <see cref="XmlElementNode"/> class with the specified local name, namespace URI, and prefix.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="prefix">The prefix.</param>
+        /// <param name="localName">The local name of the element, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for an element in no namespace. The default is <see langword="null"/>.</param>
+        /// <param name="prefix">The prefix of the element name, or <see langword="null"/> or an empty string for no prefix. The default is <see langword="null"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="localName"/> is empty or consists only of white-space characters.
+        /// </exception>
+        /// <remarks>
+        /// The new element has no attributes, no children, and no parent.
+        /// </remarks>
         public XmlElementNode(string localName, string? namespaceUri = null, string? prefix = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(localName);
@@ -158,20 +218,34 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Public Methods
 
         /// <summary>
-        /// Appends <paramref name="node"/> to the child list.
+        /// Adds the specified node to the end of the child nodes of this element.
         /// </summary>
-        /// <param name="node">The node.</param>
+        /// <param name="node">The node to add. It must not have a parent.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="node"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="node"/> already has a parent.
+        /// </exception>
         public void Add(XmlNode node)
         {
             Children.Add(node);
         }
 
         /// <summary>
-        /// Creates and appends a child element.
+        /// Creates an element with the specified local name and namespace URI and adds it to the end of the child nodes of this element.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <returns>The new child.</returns>
+        /// <param name="localName">The local name of the new element, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the new element, or <see langword="null"/> or an empty string for an element in no namespace. The default is <see langword="null"/>.</param>
+        /// <returns>
+        /// The new child element. It has no prefix.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="localName"/> is empty or consists only of white-space characters.
+        /// </exception>
         public XmlElementNode AddElement(string localName, string? namespaceUri = null)
         {
             var child = new XmlElementNode(localName, namespaceUri);
@@ -203,12 +277,24 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Sets or replaces an attribute.
+        /// Sets the value of the attribute that has the specified name, or adds the attribute if this element does not have it.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <returns>The attribute node.</returns>
+        /// <param name="localName">The local name of the attribute, without a prefix.</param>
+        /// <param name="value">The value of the attribute. <see langword="null"/> is stored as an empty string.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> to match the first attribute that has <paramref name="localName"/> in any namespace. The default is <see langword="null"/>.</param>
+        /// <returns>
+        /// The attribute that was changed, or the new attribute that was added.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="localName"/> is empty or consists only of white-space characters.
+        /// </exception>
+        /// <remarks>
+        /// An attribute that this method adds has no prefix. When <paramref name="namespaceUri"/> is
+        /// <see langword="null"/>, the new attribute is in no namespace.
+        /// </remarks>
         public XmlAttributeNode SetAttribute(string localName, string? value, string? namespaceUri = null)
         {
             var existing = namespaceUri is null

@@ -1,5 +1,10 @@
-# Summary
+`CloudNimble.Text.Xml` is the main namespace of XmlEssentials. It holds the four ways to work with XML, all of them over UTF-8 and all of them shaped like their counterparts in `System.Text.Json`:
 
-`CloudNimble.Text.Xml` is the UTF-8 XML pipeline for XmlEssentials. It is shaped like `System.Text.Json`: a `ref struct` reader, a writer, an immutable `XmlDocument` / `XmlElement` DOM, a mutable `Nodes.XmlNode` tree, and a later static serializer. There is no `System.Xml` dependency.
+| To do this | Use | Like |
+| --- | --- | --- |
+| Convert between your types and XML | [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | `JsonSerializer` |
+| Parse a document and query it | [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument) and [`XmlElement`](/api-reference/CloudNimble/Text/Xml/XmlElement) | `JsonDocument` and `JsonElement` |
+| Read XML one token at a time | [`Utf8XmlReader`](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | `Utf8JsonReader` |
+| Write XML one call at a time | [`Utf8XmlWriter`](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | `Utf8JsonWriter` |
 
-This release ships `Utf8XmlReader`, `Utf8XmlWriter`, and the DOM. `XmlSerializer` is not in this surface yet.
+The tree that you can change, `XmlNode`, is in `CloudNimble.Text.Xml.Nodes`. Attributes, converters, and source generation support are in `CloudNimble.Text.Xml.Serialization`. Nothing in the library depends on `System.Xml`.

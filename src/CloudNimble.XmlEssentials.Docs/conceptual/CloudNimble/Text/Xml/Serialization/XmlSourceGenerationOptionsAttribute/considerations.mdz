@@ -1,5 +1,4 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlSourceGenerationOptionsAttribute` here.
-
+- **The generator acts on some of the properties.** `GenerationMode`, `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, and `IncludeFields` take effect.
+- **The other properties aren't copied to the options.** Setting `NilHandling`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `DiscriminatorPlacement`, `EnumHandling`, `EmitByteOrderMark`, `IgnoreReadOnlyFields`, `IgnoreReadOnlyProperties`, `MaxDepth`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `UseStringEnumConverter`, or `XmlVersion` leaves the options of `Default` at their defaults. To use those settings, pass an `XmlSerializerOptions` instance to the constructor of a context in metadata mode.
+- **Naming policies are applied twice.** The generator fixes member names in the generated converters at compile time, and sets the policy on the default options, which name the document element at run time. If you pass your own options to the constructor, set the same policy on them, or the document element and its members follow different policies.
+- **Indented output uses `Environment.NewLine`.** The attribute has no `NewLine` property. Pass options to the constructor to choose the line ending.

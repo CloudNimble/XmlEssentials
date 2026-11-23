@@ -1,8 +1,9 @@
 ---
 title: XmlPropertyNameAttribute
+description: "Sets the XML local name of a property or field, analogous to `JsonPropertyNameAttribute`."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute']
 ---
 
 ## Definition
@@ -19,9 +20,57 @@ keywords: ['XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPr
 CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
 ```
 
+## Summary
+
+Sets the XML local name of a property or field, analogous to `JsonPropertyNameAttribute`.
+
+## Usage
+
+Apply `[XmlPropertyName]` to a property or field to set its XML name. It is the counterpart of `[JsonPropertyName]`, and it works whether the member is written as an element or as an XML attribute.
+
+```csharp
+[XmlPropertyName("title")]
+public string? Name { get; set; }
+```
+
+In the following type, `Name` is written as the `title` element.
+
+```csharp
+[XmlRoot("product")]
+public sealed class CatalogItem
+{
+    [XmlAttribute("sku")]
+    public string? Sku { get; set; }
+
+    [XmlPropertyName("title")]
+    public string? Name { get; set; }
+
+    [XmlElement("unit-price")]
+    public decimal UnitPrice { get; set; }
+}
+```
+
+Serializing a `CatalogItem` with these attributes produces the following XML:
+
+```xml
+<product sku="KB-101"><title>Keyboard</title><unit-price>49.95</unit-price></product>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+## Considerations
+
+- The name takes precedence over a name set in `[XmlElement]`, `[XmlAttribute]`, or `[XmlArray]` on the same member, and a naming policy doesn't convert it.
+- The attribute sets the local name only. To set a namespace, use the `Namespace` property of `[XmlElement]`, `[XmlAttribute]`, or `[XmlArray]`.
+- On a collection with no `[XmlArray]`, the name applies to each repeated item. With `[XmlArray]`, it names the wrapper element.
+- Two members of one type can't have the same element name or the same attribute name. The serializer throws an `InvalidOperationException` the first time it uses such a type.
+- The attribute isn't read on enumeration members. Enumeration values are always written as their C# names or as numbers. To write other names, use a [custom converter](/guides/custom-converters).
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -33,7 +82,7 @@ public XmlPropertyNameAttribute(string name)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | - |
+| `name` | `string` | The XML local name. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -58,6 +107,8 @@ public Object()
 ## Properties
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Name
+
+Gets the XML local name.
 
 #### Syntax
 
@@ -950,4 +1001,12 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.XmlNamingPolicy
+- CloudNimble.Text.Xml.Serialization.XmlElementAttribute
+- CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
+- CloudNimble.Text.Xml.Serialization.XmlRootAttribute
+- CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute
 

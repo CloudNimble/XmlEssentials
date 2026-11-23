@@ -1,5 +1,10 @@
-# Considerations
-
-`InnerText` get walks descendant text and CDATA. Set replaces all children. `WriteTo` skips attributes named `xmlns` or prefixed `xmlns` so the writer can declare namespaces from `Prefix` and `NamespaceUri`.
-
-`ValueKind` is always `Element` (there is no empty-element flag on the mutable node; empty vs paired end tag is decided at write time).
+- `ValueKind` is always `Element`. The tree doesn't distinguish `<e/>` from `<e></e>`: an element with no children is written as an empty-element tag, and an element with children is written with an end tag.
+- The one-argument indexer and `SetAttribute(name, value)` match a local name in any namespace. The overloads that take a namespace URI match that namespace only; pass an empty string for no namespace.
+- The indexers return `null` when nothing matches. They search direct children only.
+- `SetAttribute` stores a `null` value as an empty string. It doesn't remove the attribute.
+- Setting `InnerText` removes every child, including child elements and comments, and adds one text node. Setting it to `null` or an empty string leaves the element empty.
+- `LocalName` rejects `null`, an empty string, and white space when it's set. Whether the name is a valid XML name is checked only when the element is written.
+- The element's namespace comes from its `NamespaceUri`. When the element is written, a namespace declaration attribute for the element's own prefix is written with the element's namespace, even if the attribute's value says something else.
+- A prefix with no namespace can't be written; `ToString` and `WriteTo` throw an `XmlException` with the message "Prefixed names require a namespace URI.".
+- `XmlElementNode` implements `IEnumerable<XmlNode>` over `Children`, so `foreach` and LINQ work on it directly. Changing `Children` while enumerating throws `InvalidOperationException`.
+- An element allocates two lists when it's created, whether or not it ever has attributes or children.

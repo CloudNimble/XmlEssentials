@@ -1,12 +1,40 @@
-# Usage
+`XmlDeclarationNode` is the XML declaration, `<?xml version="1.0" encoding="utf-8"?>`, as a node you can set up and write. `Version` defaults to `1.0`, `Encoding` to `utf-8`, and `Standalone` to `null`, which leaves `standalone` out.
+
+You seldom need it. A `Utf8XmlWriter` writes a declaration by itself unless `XmlWriterOptions.OmitXmlDeclaration` is `true`, as the first half of this example shows. Use the node when you want to state the declaration yourself, for example to write `standalone="yes"`. Write it first, to a writer that omits its own declaration.
 
 ```csharp
-var node = new XmlDeclarationNode
+var order = new XmlElementNode("Order");
+order.SetAttribute("id", "1042");
+order.AddElement("Item").InnerText = "Keyboard";
+
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+using (var writer = new Utf8XmlWriter(buffer, options))
 {
-    Version = "1.1",
-    Encoding = "utf-8",
-    Standalone = false,
-};
+    order.WriteTo(writer);
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+
+buffer.ResetWrittenCount();
+options = new XmlWriterOptions { OmitXmlDeclaration = true };
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    new XmlDeclarationNode { Version = "1.0", Standalone = true }.WriteTo(writer);
+    order.WriteTo(writer);
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
 ```
 
-Immutable documents use `XmlDeclarationInfo` instead.
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Item>Keyboard</Item>
+</Order>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><Order id="1042"><Item>Keyboard</Item></Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

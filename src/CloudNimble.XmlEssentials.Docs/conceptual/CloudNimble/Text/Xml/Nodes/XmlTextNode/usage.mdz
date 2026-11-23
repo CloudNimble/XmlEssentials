@@ -1,6 +1,33 @@
-# Usage
+`XmlTextNode` is character data inside an element. `Value` holds the text as you'd read it, not as markup: the characters `<` and `&` are escaped when the node is written. For an element that holds only text, setting `XmlElementNode.InnerText` is shorter than adding a text node. Create text nodes yourself for mixed content, where text sits beside child elements.
 
 ```csharp
-root.Add(new XmlTextNode("Ada"));
-root.InnerText = "Ada"; // replaces children with one text node
+var note = new XmlElementNode("Note");
+note.Add(new XmlCommentNode(" reviewed "));
+note.Add(new XmlTextNode("Use <b> & </b> for bold. "));
+note.Add(new XmlCDataNode("<b>Raw</b> & unescaped"));
+note.Add(new XmlProcessingInstructionNode("print", "copies=\"2\""));
+note.AddElement("Signature");
+
+output.WriteLine(note.ToString());
+
+foreach (XmlNode child in note.Children)
+{
+    output.WriteLine($"{child.GetType().Name}: {child.ValueKind}");
+}
+
+output.WriteLine($"InnerText: {note.InnerText}");
 ```
+
+The code produces the following output:
+
+```text
+<Note><!-- reviewed -->Use &lt;b> &amp; &lt;/b> for bold. <![CDATA[<b>Raw</b> & unescaped]]><?print copies="2"?><Signature/></Note>
+XmlCommentNode: Comment
+XmlTextNode: Text
+XmlCDataNode: CData
+XmlProcessingInstructionNode: ProcessingInstruction
+XmlElementNode: Element
+InnerText: Use <b> & </b> for bold. <b>Raw</b> & unescaped
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

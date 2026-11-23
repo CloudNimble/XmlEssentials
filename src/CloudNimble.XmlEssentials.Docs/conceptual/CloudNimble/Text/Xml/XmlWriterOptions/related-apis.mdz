@@ -1,5 +1,5 @@
-# Related APIs
-
-- `Utf8XmlWriter`
-- `XmlVersion`
-- `XmlReaderOptions`
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlVersion
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.XmlException

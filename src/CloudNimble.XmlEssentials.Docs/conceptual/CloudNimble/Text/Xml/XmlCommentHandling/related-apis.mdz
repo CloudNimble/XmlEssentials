@@ -1,5 +1,5 @@
-# Related APIs
-
-- `XmlReaderOptions.CommentHandling`
-- `XmlTokenType.Comment`
-- `Utf8XmlReader.GetComment`
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlDocumentOptions
+CloudNimble.Text.Xml.XmlTokenType
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.XmlWhitespaceHandling

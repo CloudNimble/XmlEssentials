@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlObjectCreationHandling` is the type of `XmlSerializerOptions.PreferredObjectCreationHandling`. Its two values, `Replace` and `Populate`, mirror `JsonObjectCreationHandling`.
 
-Describe how to use `XmlObjectCreationHandling` here.
+In version 1.0 the serializer doesn't read the option. Whatever its value, deserializing a member replaces the member's value with a new object or collection. A collection property with no setter isn't filled, and an existing object isn't updated in place.
 
+If you need to read into a collection property, give it a setter or an `init` accessor, or make it a constructor parameter. See [Immutable types](/guides/immutable-types).

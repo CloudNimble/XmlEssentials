@@ -6,8 +6,11 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Metadata for serializing a CLR type.
+    /// Provides XML serialization-related metadata about a type.
     /// </summary>
+    /// <remarks>
+    /// Instances are created by the library. This class cannot be derived from outside the library.
+    /// </remarks>
     public abstract class XmlTypeInfo
     {
 
@@ -24,38 +27,64 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets the converter used to read and write values of <see cref="Type"/>.
+        /// Gets the <see cref="XmlConverter"/> associated with the current type.
         /// </summary>
+        /// <value>
+        /// The converter that reads and writes values of <see cref="Type"/>.
+        /// </value>
         public XmlConverter Converter { get; }
 
         /// <summary>
-        /// Gets a factory that creates an instance of <see cref="Type"/>, or null when the type is not an object with a parameterless constructor.
+        /// Gets a parameterless factory that creates an instance of <see cref="Type"/> on deserialization.
         /// </summary>
+        /// <value>
+        /// A factory that creates an instance of <see cref="Type"/>, or <see langword="null"/> if the type is not mapped as an
+        /// object or is created through a constructor that has parameters.
+        /// </value>
         public virtual Func<object>? CreateObject => null;
 
         /// <summary>
-        /// Gets whether a null value is written as a nillable element.
+        /// Gets a value that indicates whether a value of <see cref="Type"/> can be <see langword="null"/>.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if <see cref="Type"/> is a reference type or a <see cref="Nullable{T}"/>; otherwise, <see langword="false"/>.
+        /// </value>
+        /// <remarks>
+        /// Only a nillable type can be read from an element marked <c>xsi:nil="true"</c> or written from a <see langword="null"/> value.
+        /// How a <see langword="null"/> value is written depends on <see cref="XmlSerializerOptions.NilHandling"/>.
+        /// </remarks>
         public bool IsNillable { get; }
 
         /// <summary>
-        /// Gets the options that produced this metadata.
+        /// Gets the <see cref="XmlSerializerOptions"/> value associated with the current <see cref="XmlTypeInfo"/> instance.
         /// </summary>
+        /// <value>
+        /// The options that the metadata was created for.
+        /// </value>
         public XmlSerializerOptions Options { get; }
 
         /// <summary>
-        /// Gets the serialized members of an object type, in write order. Empty for a scalar.
+        /// Gets the list of <see cref="XmlPropertyInfo"/> metadata corresponding to the current type.
         /// </summary>
+        /// <value>
+        /// The serialized members of an object type, in the order they are written. The list is empty for a type that is not mapped as an object.
+        /// </value>
         public virtual IList<XmlPropertyInfo> Properties => EmptyProperties;
 
         /// <summary>
-        /// Gets the document element name.
+        /// Gets the name of the document element that a value of <see cref="Type"/> is serialized as.
         /// </summary>
+        /// <value>
+        /// The name of the document element.
+        /// </value>
         public XmlName RootName { get; }
 
         /// <summary>
-        /// Gets the CLR type.
+        /// Gets the <see cref="System.Type"/> for which the XML serialization contract is defined.
         /// </summary>
+        /// <value>
+        /// The type that the metadata describes.
+        /// </value>
         public Type Type { get; }
 
         #endregion

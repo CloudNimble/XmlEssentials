@@ -1,7 +1,5 @@
-# Considerations
-
-`Disallow = 0`. A defaulted `XmlReaderOptions` struct (including `Utf8XmlReader`'s optional-parameter `default`) is Disallow. `new XmlReaderOptions()` sets `Skip`.
-
-Comments containing `--` are always well-formedness errors, regardless of this setting.
-
-`MaxCommentByteCount` applies when a comment is parsed, including when it is skipped.
+- **`Allow` is the zero value, and the default.** `new XmlReaderOptions()`, `default(XmlReaderOptions)`, a reader created without options, and `new XmlReaderState()` all report comments. Comments are kept by default so that XML that's read and written back doesn't lose them.
+- **The serializer's default is different.** `XmlSerializerOptions.ReadCommentHandling` defaults to `Skip`, because a comment has no place in an object.
+- **A skipped comment is still checked.** A comment that contains `--`, or that's longer than `XmlReaderOptions.MaxCommentByteCount`, throws an `XmlException` under every setting.
+- **The setting covers the whole document,** including comments before and after the root element.
+- **`XmlDocument` uses the same enumeration.** `XmlDocumentOptions.CommentHandling` also defaults to `Allow`.

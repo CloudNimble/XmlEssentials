@@ -1,0 +1,373 @@
+---
+title: "How to serialize properties of derived classes"
+sidebarTitle: "Serialize derived classes"
+description: "Serialize and deserialize a type hierarchy with XmlSerializer, and choose whether an element name or an attribute identifies each derived type."
+icon: "sitemap"
+---
+
+In this article, you learn how to serialize a member whose runtime type is a class derived from its declared type, and how to get the same derived type back when you deserialize. You need this whenever a property, a list, or the document root is declared as a base class.
+
+The model follows System.Text.Json: you opt in on the base type, and you list every derived type that is allowed. `[XmlPolymorphic]` and `[XmlDerivedType<T>]` play the roles of `[JsonPolymorphic]` and `[JsonDerivedType]`. The difference is where the type name goes. JSON needs a `$type` property. XML already has a place for it: the name of the element.
+
+<Note>
+The examples on this page use the reflection-based serializer. Generated converters don't read or write derived types, and the source generator reports error XMLXE008 for a type that declares them. See [Source generation](/guides/source-generation).
+</Note>
+
+## Serialize the declared type only
+
+Without any attributes, the serializer writes the members of the declared type and nothing else. A derived class that isn't declared is not written by accident. This is the same default as System.Text.Json, and it prevents a derived type from exposing data that the contract never mentioned.
+
+## Declare the derived types
+
+To opt in, put [`[XmlPolymorphic]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPolymorphicAttribute) on the base type and one [`[XmlDerivedType<T>]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) for each derived type. By default, each derived type is written under an element named after it. Pass a string to choose another name.
+
+```csharp Product.cs
+[XmlPolymorphic]
+[XmlDerivedType<Book>]
+[XmlDerivedType<Dvd>("Disc")]
+public class Product
+{
+    public string? Title { get; set; }
+}
+
+public class Book : Product
+{
+    public string? Author { get; set; }
+}
+
+public sealed class Dvd : Product
+{
+    public int Runtime { get; set; }
+}
+
+public sealed class Catalog
+{
+    public List<Product> Products { get; set; } = [];
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var catalog = new Catalog
+{
+    Products =
+    [
+        new Book { Title = "Clean Code", Author = "Robert C. Martin" },
+        new Dvd { Title = "The Matrix", Runtime = 136 },
+        new Product { Title = "Gift card" },
+    ],
+};
+
+string xml = XmlSerializer.Serialize(catalog, options);
+output.WriteLine(xml);
+
+Catalog? copy = XmlSerializer.Deserialize<Catalog>(xml, options);
+foreach (Product product in copy!.Products)
+{
+    output.WriteLine($"{product.GetType().Name}: {product.Title}");
+}
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Catalog>
+  <Book>
+    <Title>Clean Code</Title>
+    <Author>Robert C. Martin</Author>
+  </Book>
+  <Disc>
+    <Title>The Matrix</Title>
+    <Runtime>136</Runtime>
+  </Disc>
+  <Products>
+    <Title>Gift card</Title>
+  </Products>
+</Catalog>
+Book: Clean Code
+Dvd: The Matrix
+Product: Gift card
+```
+
+Notice the following:
+
+- The element name is the discriminator. `<Book>` becomes a `Book` and `<Disc>` becomes a `Dvd`, with every member of the derived type.
+- An object of the base type itself is written under the member's own name, `<Products>`, and is read back as a `Product`.
+- The naming policy for elements applies to a discriminator that is used as an element name. With `PropertyNamingPolicy = XmlNamingPolicy.CamelCase`, `Book` is written as `<book>`.
+- A discriminator can't be the element name of another member of the containing type. If two members could claim the same element name, the serializer throws an `InvalidOperationException` when it first builds the type's metadata. Give each derived type its own discriminator.
+
+`[XmlDerivedType<T>]` is a generic attribute, so the derived type is checked by the compiler. The discriminator is always a string. There is no integer form.
+
+<Warning>
+The declared base type must be a concrete class. An abstract class or an interface as the declared type isn't supported: the serializer throws `NotSupportedException` with the message `The type '...' is not supported.` This is different from System.Text.Json, where an abstract base type is common. Give the hierarchy a concrete base class, or write a [custom converter](/guides/custom-converters) for the base type.
+</Warning>
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## Choose where the discriminator is written
+
+Set `XmlPolymorphicAttribute.DiscriminatorPlacement` to one of the [`XmlDiscriminatorPlacement`](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement) values.
+
+| Placement | The derived type is identified by | Example |
+| --- | --- | --- |
+| `ElementName` (default) | The name of the element | `<Book>...</Book>` |
+| `Attribute` | An attribute that you name with `TypeDiscriminatorPropertyName` | `<Payment kind="card">...</Payment>` |
+| `XsiType` | The `xsi:type` attribute from XML Schema | `<Vehicle xsi:type="Truck">...</Vehicle>` |
+
+Use an attribute when the element name must stay the same for every derived type, for example because a schema fixes it.
+
+### Use an attribute
+
+With `XmlDiscriminatorPlacement.Attribute`, `TypeDiscriminatorPropertyName` is required. The string you pass to `[XmlDerivedType<T>]` is the attribute's value.
+
+```csharp Payment.cs
+[XmlPolymorphic(DiscriminatorPlacement = XmlDiscriminatorPlacement.Attribute, TypeDiscriminatorPropertyName = "kind")]
+[XmlDerivedType<CardPayment>("card")]
+[XmlDerivedType<BankTransfer>("transfer")]
+public class Payment
+{
+    public decimal Amount { get; set; }
+}
+
+public sealed class CardPayment : Payment
+{
+    public string? LastFour { get; set; }
+}
+
+public sealed class BankTransfer : Payment
+{
+    public string? Reference { get; set; }
+}
+
+public sealed class Checkout
+{
+    public int OrderId { get; set; }
+
+    public Payment? Payment { get; set; }
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var checkout = new Checkout
+{
+    OrderId = 1042,
+    Payment = new CardPayment { Amount = 59.90m, LastFour = "4242" },
+};
+
+string xml = XmlSerializer.Serialize(checkout, options);
+output.WriteLine(xml);
+
+Checkout? copy = XmlSerializer.Deserialize<Checkout>(xml, options);
+output.WriteLine(copy!.Payment!.GetType().Name);
+
+try
+{
+    XmlSerializer.Deserialize<Checkout>(
+        """<Checkout><OrderId>1042</OrderId><Payment kind="voucher"><Amount>5</Amount></Payment></Checkout>""");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Checkout>
+  <OrderId>1042</OrderId>
+  <Payment kind="card">
+    <Amount>59.90</Amount>
+    <LastFour>4242</LastFour>
+  </Payment>
+</Checkout>
+CardPayment
+Unknown type discriminator 'voucher'.
+```
+
+The last line shows the default when a document names a discriminator that the base type doesn't declare: an `XmlException`. An element with no discriminator attribute at all is read as the declared type.
+
+The discriminator attribute can appear anywhere in the start tag. Unlike a JSON `$type` property, it never has to come first, because the serializer sees every attribute of an element before it reads the element's content.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+### Use xsi:type
+
+`XmlDiscriminatorPlacement.XsiType` writes the discriminator as `xsi:type`, the attribute that XML Schema defines for this purpose and that `System.Xml.Serialization.XmlSerializer` also writes. The value is the discriminator string exactly as you declared it. The serializer doesn't write or resolve a namespace prefix inside the value. The next example uses this placement.
+
+## Handle a type that isn't declared
+
+A runtime type that the base type doesn't declare is rejected by default. `Ebook` derives from `Book`, but `Product` doesn't list it:
+
+```csharp Program.cs
+var catalog = new Catalog
+{
+    Products = [new Ebook { Title = "Refactoring", Author = "Martin Fowler", Format = "EPUB" }],
+};
+
+try
+{
+    XmlSerializer.Serialize(catalog);
+}
+catch (NotSupportedException ex)
+{
+    output.WriteLine(ex.Message);
+}
+```
+
+The code produces the following output:
+
+```text
+The type 'CloudNimble.XmlEssentials.Samples.Models.Shapes.Ebook' is not a declared derived type of 'CloudNimble.XmlEssentials.Samples.Models.Shapes.Product'.
+```
+
+To accept such a type, set `XmlPolymorphicAttribute.UnknownDerivedTypeHandling` to one of the [`XmlUnknownDerivedTypeHandling`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnknownDerivedTypeHandling) values.
+
+| Value | When writing a type that isn't declared | When reading a discriminator that isn't declared |
+| --- | --- | --- |
+| `FailSerialization` (default) | Throws `NotSupportedException`. | Throws `XmlException`. |
+| `FallBackToBaseType` | Writes the object as the declared base type. | Reads the element as the declared base type. |
+| `FallBackToNearestAncestor` | Writes the object as the closest base class that is declared, or as the declared base type if none is. | Reads the element as the declared base type. |
+
+The following hierarchy uses `xsi:type` and falls back to the nearest ancestor. `SportsCar` derives from `Car` and isn't declared.
+
+```csharp Vehicle.cs
+[XmlPolymorphic(DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType, UnknownDerivedTypeHandling = XmlUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
+[XmlDerivedType<Car>]
+[XmlDerivedType<Truck>]
+public class Vehicle
+{
+    public string? Make { get; set; }
+}
+
+public class Car : Vehicle
+{
+    public int Doors { get; set; }
+}
+
+public sealed class Truck : Vehicle
+{
+    public int Payload { get; set; }
+}
+
+public sealed class SportsCar : Car
+{
+    public int TopSpeed { get; set; }
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+Vehicle truck = new Truck { Make = "Northwind", Payload = 12000 };
+output.WriteLine(XmlSerializer.Serialize(truck, options));
+
+Vehicle sportsCar = new SportsCar { Make = "Contoso", Doors = 2, TopSpeed = 310 };
+string xml = XmlSerializer.Serialize(sportsCar, options);
+output.WriteLine(xml);
+
+Vehicle? copy = XmlSerializer.Deserialize<Vehicle>(xml, options);
+output.WriteLine(copy!.GetType().Name);
+```
+
+The code produces the following output:
+
+```text
+<Vehicle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Truck"><Make>Northwind</Make><Payload>12000</Payload></Vehicle>
+<Vehicle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Car"><Make>Contoso</Make><Doors>2</Doors></Vehicle>
+Car
+```
+
+The `SportsCar` is written as a `Car`. Its `TopSpeed` isn't written, and the document reads back as a `Car`. A fallback loses the members of the undeclared type, so choose it only when that loss is acceptable.
+
+This example also shows a polymorphic document root: the variable is declared as `Vehicle`, so the root element is `<Vehicle>` and the attribute names the derived type.
+
+<Note>
+With `XmlDiscriminatorPlacement.ElementName`, an element whose name isn't declared doesn't reach the polymorphism logic at all. Inside an object, it is content that no member maps, and [`UnmappedMemberHandling`](/guides/mixed-content#keep-content-that-no-member-maps) decides whether it is skipped or rejected. At the document root, it is an `XmlException` because the root name doesn't match.
+</Note>
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## Mind the type you serialize as
+
+The serializer uses the type you declare, not the runtime type, to choose the document element. The next example serializes the same `CardPayment` three ways: as `Payment`, as its own type through type inference, and as its runtime type through the overload that takes a `Type`.
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var card = new CardPayment { Amount = 59.90m, LastFour = "4242" };
+
+output.WriteLine(XmlSerializer.Serialize<Payment>(card, options));
+output.WriteLine(XmlSerializer.Serialize(card, options));
+output.WriteLine(XmlSerializer.Serialize(card, card.GetType(), options));
+```
+
+The code produces the following output:
+
+```xml
+<Payment kind="card"><Amount>59.90</Amount><LastFour>4242</LastFour></Payment>
+<CardPayment kind="card"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
+<CardPayment kind="card"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
+```
+
+A derived type inherits the polymorphism attributes of its base type, so the discriminator is written even when you serialize the derived type directly. System.Text.Json leaves the discriminator out in that case. Read a document with the same type argument that wrote it: a document written as `Payment` has a `<Payment>` root, and `Deserialize<CardPayment>` expects `<CardPayment>`.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## XmlInclude is not for derived types
+
+If you come from `System.Xml.Serialization`, you know `[XmlInclude(typeof(Book))]` as the way to declare a known derived type. In XmlEssentials that job belongs to `[XmlDerivedType<T>]`.
+
+[`[XmlInclude]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIncludeAttribute) in this library is the counterpart of `[JsonInclude]`: it goes on a property or field that isn't public, and opts that member in to serialization.
+
+```csharp Account.cs
+public sealed class Account
+{
+    public string? Name { get; set; }
+
+    [XmlInclude]
+    internal string? LedgerCode { get; set; }
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var account = new Account { Name = "Operations", LedgerCode = "OPS-17" };
+
+output.WriteLine(XmlSerializer.Serialize(account, options));
+```
+
+The code produces the following output:
+
+```xml
+<Account><Name>Operations</Name><LedgerCode>OPS-17</LedgerCode></Account>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## What isn't supported
+
+- **Members of type `object`.** A member declared as `object` has no contract to serialize. Without a [custom converter](/guides/custom-converters), the serializer throws `NotSupportedException`: `The type 'System.Object' is not supported.` The `XmlSerializerOptions.UnknownTypeHandling` property exists, but the serializer doesn't read it in this release.
+- **Inferred derived types.** `InferClosedTypePolymorphism`, on the attribute and on the options, is not read in this release. List each derived type with `[XmlDerivedType<T>]`.
+- **A namespace per derived type.** `XmlDerivedTypeAttribute.Namespace` is not read. A derived type's element is written in the namespace that is in scope.
+- **Interfaces and abstract classes as the declared type.** The attributes can be applied to an interface or an abstract class, but the built-in object mapping handles only concrete classes and structs, so serializing or deserializing such a type throws `NotSupportedException`.
+- **Configuring polymorphism at run time.** The attributes are the only way to declare derived types. There is no contract-customization API for it.
+
+## See also
+
+<Columns cols={2}>
+  <Card title="Serialize" icon="arrow-right-from-bracket" href="/guides/serialize">
+    The basics of writing objects as XML.
+  </Card>
+  <Card title="Collections" icon="list" href="/guides/collections">
+    Wrap a list of derived types in a parent element.
+  </Card>
+  <Card title="Custom converters" icon="wand-magic-sparkles" href="/guides/custom-converters">
+    Take over reading and writing for a type the attributes can't describe.
+  </Card>
+  <Card title="XmlPolymorphicAttribute" icon="code" href="/api-reference/CloudNimble/Text/Xml/Serialization/XmlPolymorphicAttribute">
+    API reference for the attribute.
+  </Card>
+</Columns>

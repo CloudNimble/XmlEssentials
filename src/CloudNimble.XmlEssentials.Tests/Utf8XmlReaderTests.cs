@@ -86,7 +86,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_Comment_SkipAndDisallow()
         {
-            var skip = new Utf8XmlReader("<!--c--><e/>"u8);
+            var skip = new Utf8XmlReader("<!--c--><e/>"u8, new XmlReaderOptions { CommentHandling = XmlCommentHandling.Skip });
             skip.Read().Should().BeTrue();
             skip.TokenType.Should().Be(XmlTokenType.StartElement);
 
@@ -927,7 +927,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_CurrentState_CapturesDepth()
         {
-            var reader = new Utf8XmlReader("<a><b/></a>"u8);
+            var reader = new Utf8XmlReader("<a><b/></a>"u8, new XmlReaderOptions { CommentHandling = XmlCommentHandling.Skip });
             reader.Read();
             reader.Read();
             var state = reader.CurrentState;

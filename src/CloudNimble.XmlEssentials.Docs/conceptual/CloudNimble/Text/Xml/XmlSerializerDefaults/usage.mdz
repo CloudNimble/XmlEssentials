@@ -1,5 +1,17 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlSerializerDefaults` names a starting set of option values. Pass a value to the [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) constructor, then set whatever else you need. It is the counterpart of `JsonSerializerDefaults`.
 
-Describe how to use `XmlSerializerDefaults` here.
+| Value | Differences from `General` | Ready-made instance |
+| --- | --- | --- |
+| `General` | None. Names are unchanged, the XML declaration is written, and `null` is written as `xsi:nil="true"`. | `XmlSerializerOptions.Default` |
+| `Web` | `PropertyNamingPolicy` is `XmlNamingPolicy.CamelCase` and `OmitXmlDeclaration` is `true`. | `XmlSerializerOptions.Web` |
+| `Strict` | `AllowDuplicateProperties` is `false`, `ReadCommentHandling` is `XmlCommentHandling.Disallow`, and `UnmappedMemberHandling` is `XmlUnmappedMemberHandling.Disallow`. | `XmlSerializerOptions.Strict` |
 
+```csharp
+var web = new XmlSerializerOptions(XmlSerializerDefaults.Web)
+{
+    WriteIndented = true,
+    NewLine = "\n",
+};
+```
+
+When you need a set of defaults exactly as it is, use the ready-made instance instead of creating your own. It is shared and already read-only.

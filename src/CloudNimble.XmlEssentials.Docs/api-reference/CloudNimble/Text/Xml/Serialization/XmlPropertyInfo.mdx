@@ -1,8 +1,9 @@
 ---
 title: XmlPropertyInfo
+description: "Metadata for one serialized member of an object."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization', 'class']
+keywords: ['XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute']
 ---
 
 ## Definition
@@ -16,6 +17,40 @@ keywords: ['XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInf
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlPropertyInfo
 ```
+
+## Summary
+
+Metadata for one serialized member of an object.
+
+## Usage
+
+An `XmlPropertyInfo` describes how one member of an object is mapped: its XML name, whether it's an attribute, an element, or the text of its parent, whether it's required, and the type info of its value. You read these objects from `XmlTypeInfo.Properties`. You don't create them.
+
+```csharp
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Root element: {metadata.RootName.LocalName}");
+foreach (XmlPropertyInfo property in metadata.Properties)
+{
+    string kind = property.IsAttribute ? "attribute" : "element";
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+}
+```
+
+The code produces the following output:
+
+```text
+Root element: Order
+Id: attribute, Int32
+Customer: element, String
+Line: element, List`1
+```
+
+`Name` is the XML name, after attributes and naming policies: the `Lines` property appears as `Line` because of `[XmlElement("Line")]`. `Order` is the explicit order of the member among its siblings, or `-1` when it has none.
+
+The list is filled only for type info that the run-time resolver builds: the reflection path, and contexts in metadata mode. The class is read-only. Unlike `JsonPropertyInfo` in System.Text.Json, it can't be used to change a contract.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)
 
 ## Constructors
 
@@ -33,6 +68,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsAttribute
 
+Gets whether the member is mapped as an XML attribute.
+
 #### Syntax
 
 ```csharp
@@ -44,6 +81,8 @@ public bool IsAttribute { get; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNillable
+
+Gets whether a null value is written as a nillable element.
 
 #### Syntax
 
@@ -57,6 +96,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsRequired
 
+Gets whether the member must be present when deserializing.
+
 #### Syntax
 
 ```csharp
@@ -68,6 +109,8 @@ public bool IsRequired { get; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsText
+
+Gets whether the member is mapped as simple content of the parent element.
 
 #### Syntax
 
@@ -81,6 +124,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Name
 
+Gets the XML name of the member.
+
 #### Syntax
 
 ```csharp
@@ -93,6 +138,8 @@ Type: `CloudNimble.Text.Xml.XmlName`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Order
 
+Gets the order among sibling members. `-1` means unset.
+
 #### Syntax
 
 ```csharp
@@ -104,6 +151,8 @@ public int Order { get; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyType
+
+Gets the type info of the member's CLR type.
 
 #### Syntax
 
@@ -234,4 +283,14 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+- CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
+- CloudNimble.Text.Xml.Serialization.XmlElementAttribute
+- CloudNimble.Text.Xml.Serialization.XmlTextAttribute
+- CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute
+- CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute
+- CloudNimble.Text.Xml.XmlName
 

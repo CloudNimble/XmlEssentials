@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Use CDATA when the payload is markup-like text you do not want escaped as `&lt;`.
+Document common patterns for `XmlCDataNode` here.
+

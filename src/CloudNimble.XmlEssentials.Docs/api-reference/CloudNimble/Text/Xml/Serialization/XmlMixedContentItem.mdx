@@ -1,8 +1,9 @@
 ---
 title: XmlMixedContentItem
+description: "One item of mixed content: text or a child element."
 icon: shapes
 tag: "ABSTRACT"
-keywords: ['XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization.XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization', 'class']
+keywords: ['XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization.XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedText', 'CloudNimble.Text.Xml.Serialization.XmlMixedElement']
 ---
 
 ## Definition
@@ -16,6 +17,46 @@ keywords: ['XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization.XmlMixedCo
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlMixedContentItem
 ```
+
+## Summary
+
+One item of mixed content: text or a child element.
+
+## Usage
+
+`XmlMixedContentItem` is the abstract base of the two kinds of item in a mixed-content list: `XmlMixedText` for a run of text and `XmlMixedElement` for a child element. Use it as the element type of the list that you mark with `[XmlMixed]`, and use pattern matching to tell the items apart.
+
+```csharp
+string xml = "<Paragraph>Press <Key>Ctrl</Key> and <Key>S</Key> to save.</Paragraph>";
+
+Paragraph? paragraph = XmlSerializer.Deserialize<Paragraph>(xml);
+foreach (XmlMixedContentItem item in paragraph!.Content)
+{
+    switch (item)
+    {
+        case XmlMixedText text:
+            output.WriteLine($"Text: \"{text.Text}\"");
+            break;
+        case XmlMixedElement { Element: { } element }:
+            output.WriteLine($"Element: {element.LocalName} = {element.InnerText}");
+            break;
+    }
+}
+```
+
+The loop prints the following:
+
+```text
+Text: "Press "
+Element: Key = Ctrl
+Text: " and "
+Element: Key = S
+Text: " to save."
+```
+
+The class has no members of its own. The serializer writes only `XmlMixedText` and `XmlMixedElement` items, and skips an item of any other derived type.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)
 
 ## Constructors
 
@@ -148,4 +189,10 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
+- CloudNimble.Text.Xml.Serialization.XmlMixedText
+- CloudNimble.Text.Xml.Serialization.XmlMixedElement
 

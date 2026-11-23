@@ -1,9 +1,80 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Examples
+The following examples show the built-in policies, separate policies for elements and attributes, and a policy of your own.
 
-Provide examples of using `XmlNamingPolicy` here.
+### The built-in policies
 
 ```csharp
-// Example code here
+const string name = "StreetAddress";
+
+output.WriteLine($"CamelCase:      {XmlNamingPolicy.CamelCase.ConvertName(name)}");
+output.WriteLine($"PascalCase:     {XmlNamingPolicy.PascalCase.ConvertName("streetAddress")}");
+output.WriteLine($"SnakeCaseLower: {XmlNamingPolicy.SnakeCaseLower.ConvertName(name)}");
+output.WriteLine($"SnakeCaseUpper: {XmlNamingPolicy.SnakeCaseUpper.ConvertName(name)}");
+output.WriteLine($"KebabCaseLower: {XmlNamingPolicy.KebabCaseLower.ConvertName(name)}");
+output.WriteLine($"KebabCaseUpper: {XmlNamingPolicy.KebabCaseUpper.ConvertName(name)}");
 ```
 
+The code produces the following output:
+
+```text
+CamelCase:      streetAddress
+PascalCase:     StreetAddress
+SnakeCaseLower: street_address
+SnakeCaseUpper: STREET_ADDRESS
+KebabCaseLower: street-address
+KebabCaseUpper: STREET-ADDRESS
+```
+
+### Different policies for elements and attributes
+
+```csharp
+var warehouse = new Warehouse { WarehouseCode = "SEA-2", StreetAddress = "400 Dock Rd", LoadingDocks = 12 };
+
+var options = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    ElementNamingPolicy = XmlNamingPolicy.KebabCaseLower,
+    AttributeNamingPolicy = XmlNamingPolicy.SnakeCaseLower,
+};
+
+string xml = XmlSerializer.Serialize(warehouse, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<warehouse warehouse_code="SEA-2"><street-address>400 Dock Rd</street-address><loading-docks>12</loading-docks></warehouse>
+```
+
+### A custom policy
+
+```csharp
+public sealed class LowerCaseNamingPolicy : XmlNamingPolicy
+{
+    public override string ConvertName(string name)
+    {
+        return name.ToLowerInvariant();
+    }
+}
+```
+
+```csharp
+var warehouse = new Warehouse { WarehouseCode = "SEA-2", StreetAddress = "400 Dock Rd", LoadingDocks = 12 };
+
+var options = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    PropertyNamingPolicy = new LowerCaseNamingPolicy(),
+};
+
+string xml = XmlSerializer.Serialize(warehouse, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<warehouse warehousecode="SEA-2"><streetaddress>400 Dock Rd</streetaddress><loadingdocks>12</loadingdocks></warehouse>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)

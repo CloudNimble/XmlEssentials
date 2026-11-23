@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlTypeInfo` here.
-
+- **Type info is read-only.** Every property has a getter only. Unlike `JsonTypeInfo`, you can't add, remove, or change members to customize a contract. Change the mapping with attributes, options, or a custom converter.
+- **You can't derive from it or construct it.** The constructors aren't accessible outside the library.
+- **`Properties` is filled only by the run-time resolver.** Type info from the reflection resolver, or from a context in metadata mode, lists one `XmlPropertyInfo` for each member in the order they're written. Type info for a generated converter, a simple value, or a custom converter has an empty list.
+- **`CreateObject` is `null` unless the type is an object with a parameterless constructor** that the run-time resolver bound. It's `null` for type info from a generated converter.
+- **Type info is bound to its `Options`.** The serializer uses those options when you pass the type info, whatever other options exist. Type info from `XmlSerializerOptions.GetTypeInfo` is cached on that instance, and asking for it makes the instance read-only.
+- **It's safe to share.** Keep and reuse type info across threads, as you would the options or the context it came from.

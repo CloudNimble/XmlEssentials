@@ -1,10 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-A typical mapper:
+Document common patterns for `XmlTokenType` here.
 
-1. `XmlDeclaration` — record `Version`, ignore encoding (UTF-8 only).
-2. `ProcessingInstruction` — ignore or stash.
-3. `StartElement` — push a frame; if `IsEmptyElement`, pop immediately.
-4. `Attribute` — only while walking with `MoveToNextAttribute`.
-5. `Text` / `CData` — bind to a property via `TryGet*`.
-6. `EndElement` — pop the frame.

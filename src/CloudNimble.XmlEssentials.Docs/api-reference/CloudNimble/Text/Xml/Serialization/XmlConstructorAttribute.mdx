@@ -1,8 +1,9 @@
 ---
 title: XmlConstructorAttribute
+description: "Marks the constructor used to create an instance when deserializing."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute', 'CloudNimble.Text.Xml.XmlException']
 ---
 
 ## Definition
@@ -18,6 +19,66 @@ keywords: ['XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization.XmlCon
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute
 ```
+
+## Summary
+
+Marks the constructor used to create an instance when deserializing.
+
+## Usage
+
+Apply `[XmlConstructor]` to the constructor that the serializer should call when it deserializes the type. It is the counterpart of `[JsonConstructor]`. You need it when a type has more than one constructor that could be used, or when the constructor isn't public.
+
+```csharp
+public sealed class DateRange
+{
+    public DateOnly Start { get; }
+
+    public DateOnly End { get; }
+
+    public DateRange(DateOnly start, int days)
+        : this(start, start.AddDays(days - 1))
+    {
+    }
+
+    [XmlConstructor]
+    public DateRange(DateOnly start, DateOnly end)
+    {
+        Start = start;
+        End = end;
+    }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNameCaseInsensitive = true };
+var week = new DateRange(new DateOnly(2026, 3, 9), days: 7);
+
+string xml = XmlSerializer.Serialize(week, options);
+output.WriteLine(xml);
+
+DateRange? copy = XmlSerializer.Deserialize<DateRange>(xml, options);
+output.WriteLine($"{copy!.Start:yyyy-MM-dd} to {copy.End:yyyy-MM-dd}");
+```
+
+The code produces the following output:
+
+```text
+<DateRange><Start>2026-03-09</Start><End>2026-03-15</End></DateRange>
+2026-03-09 to 2026-03-15
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/11_ImmutableTypes.cs)
+
+The serializer reads the whole element, then calls the constructor with the values it found. Members that aren't constructor parameters are set afterward.
+
+## Considerations
+
+- **Parameter names are matched with case.** Each parameter must have the C# name or the XML name of a serialized member. A camelCase parameter such as `start` doesn't match a property named `Start` unless `XmlSerializerOptions.PropertyNameCaseInsensitive` is `true`, which is why the example sets it. System.Text.Json matches without regard to case.
+- A parameter that matches no member, and has no default value, makes the serializer throw a `NotSupportedException` the first time the type is used. That includes serializing the type.
+- Only one constructor of a type can be marked. Marking two throws a `NotSupportedException`.
+- A parameter with no default value is required: XML that lacks it is rejected with an `XmlException`, unless `RespectRequiredConstructorParameters` is `false`.
+- Without the attribute, the serializer picks the public constructor with the most parameters among those whose parameters are all named after serialized members. A positional record needs no attribute, because its parameters have the same names as its properties.
+- Don't combine constructor-set, get-only properties with `IgnoreReadOnlyProperties`. The option removes those properties from the mapping.
 
 ## Constructors
 
@@ -932,4 +993,10 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute
+- CloudNimble.Text.Xml.XmlException
 

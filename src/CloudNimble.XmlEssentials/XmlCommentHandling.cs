@@ -2,30 +2,33 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// How <see cref="Utf8XmlReader"/> treats comment tokens.
+    /// Specifies how a <see cref="Utf8XmlReader"/> handles comments.
     /// </summary>
     /// <remarks>
-    /// The default for <see cref="XmlReaderOptions"/> is <see cref="Skip"/>.
-    /// <see cref="Disallow"/> is the enum zero-value, so construct options with
-    /// <c>new XmlReaderOptions()</c> rather than <c>default</c> when you want the documented default.
+    /// <see cref="Allow"/> is the zero value of the enumeration, so it is the default wherever a comment
+    /// handling value is not set: in <see cref="XmlReaderOptions"/> and <see cref="XmlDocumentOptions"/>,
+    /// whether they are created with <see langword="new"/> or as <see langword="default"/>. Comments are kept
+    /// by default so that XML that is read and written back does not lose them.
+    /// <see cref="XmlSerializerOptions.ReadCommentHandling"/> defaults to <see cref="Skip"/>, because a
+    /// comment has no place in an object.
     /// </remarks>
     public enum XmlCommentHandling : byte
     {
 
         /// <summary>
-        /// Comments are a well-formedness error and throw <see cref="XmlException"/>.
+        /// Comments are reported as <see cref="XmlTokenType.Comment"/> tokens. This is the default.
         /// </summary>
-        Disallow = 0,
+        Allow = 0,
 
         /// <summary>
-        /// Comments are consumed and not reported. This is the <see cref="XmlReaderOptions"/> default.
+        /// Comments are consumed and not reported.
         /// </summary>
         Skip = 1,
 
         /// <summary>
-        /// Comments are reported as <see cref="XmlTokenType.Comment"/>.
+        /// Comments are not allowed. The reader throws an <see cref="XmlException"/> when it reads one.
         /// </summary>
-        Allow = 2,
+        Disallow = 2,
 
     }
 

@@ -1,11 +1,46 @@
-# Usage
+`XmlNode` is the base class of every node in the mutable tree. It's the XML counterpart of `JsonNode`. You rarely create one directly: you create an `XmlElementNode` or one of the other derived types, or you call one of the static methods that parse XML into a tree.
 
-`XmlNode` is the mutable base type. Parse a document to its root element, write it, or deep-clone it.
+- `Parse` reads a whole document from a `string` or from UTF-8 bytes and returns its root element.
+- `ParseValue` reads the element a `Utf8XmlReader` is positioned on.
+- `WriteTo` writes the node to a `Utf8XmlWriter`, and `ToString` returns its markup.
+- `DeepClone` copies the node and everything inside it.
+- `ValueKind`, `Parent`, and `NamespaceUri` are available on every node.
 
 ```csharp
-XmlNode? root = XmlNode.Parse("<e a=\"1\">x</e>");
-root!.WriteTo(writer);
-var copy = root.DeepClone();
+const string xml = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <!-- exported nightly -->
+    <Order>
+      <!-- rush -->
+      <Item> Keyboard </Item>
+      <Notes></Notes>
+    </Order>
+    """;
+
+XmlNode? order = XmlNode.Parse(xml);
+output.WriteLine(order!.ToString());
+
+try
+{
+    XmlNode.Parse("<Order><Item>Keyboard</Order>");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
 ```
 
-`ParseValue(ref Utf8XmlReader)` captures the current element. `ToString` is the XML markup for that node.
+The code produces the following output:
+
+```text
+<Order>
+  <!-- rush -->
+  <Item> Keyboard </Item>
+  <Notes/>
+</Order>
+End tag does not match start tag.
+```
+
+The tree keeps the root element with its comments and indentation. The declaration and the comment before the root aren't part of it, and `<Notes></Notes>` is written as `<Notes/>`.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)

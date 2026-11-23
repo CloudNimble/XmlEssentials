@@ -2,13 +2,13 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Where a polymorphic type discriminator is written.
+    /// Specifies where a polymorphic type discriminator is written.
     /// </summary>
     public enum XmlDiscriminatorPlacement : byte
     {
 
         /// <summary>
-        /// The derived type's element name is the discriminator.
+        /// The element name of the derived type, which serves as the discriminator.
         /// </summary>
         ElementName = 0,
 

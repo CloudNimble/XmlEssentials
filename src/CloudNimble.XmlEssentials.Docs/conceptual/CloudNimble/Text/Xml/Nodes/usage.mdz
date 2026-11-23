@@ -1,14 +1,36 @@
-# Usage
-
-Parse into a mutable root element, then edit children and attributes.
+Create an `XmlElementNode` and add to it, or parse existing XML with `XmlNode.Parse`. `ToString` returns the markup.
 
 ```csharp
-using CloudNimble.Text.Xml.Nodes;
+var order = new XmlElementNode("Order");
+order.SetAttribute("id", "1042");
 
-var root = (XmlElementNode)XmlNode.Parse("<e/>")!;
-root.SetAttribute("id", "1");
-root.AddElement("Name").InnerText = "Ada";
-Console.WriteLine(root);
+XmlElementNode customer = order.AddElement("Customer");
+customer.Add(new XmlTextNode("Ada Lovelace"));
+
+order.AddElement("Item").InnerText = "Keyboard";
+order.AddElement("Item").InnerText = "Mouse & pad";
+order.AddElement("Notes");
+
+output.WriteLine(order.ToString());
 ```
 
-Prolog comments and PIs are discarded. Clone from an `XmlDocument` with `RootElement.CloneNode()` when you need the immutable parse first.
+The code produces the following output:
+
+```xml
+<Order id="1042"><Customer>Ada Lovelace</Customer><Item>Keyboard</Item><Item>Mouse &amp; pad</Item><Notes/></Order>
+```
+
+| Type | Represents |
+| --- | --- |
+| `XmlElementNode` | An element, with `Attributes` and `Children` |
+| `XmlAttributeNode` | An attribute |
+| `XmlTextNode` | Character data |
+| `XmlCDataNode` | A CDATA section |
+| `XmlCommentNode` | A comment |
+| `XmlProcessingInstructionNode` | A processing instruction |
+| `XmlDeclarationNode` | The XML declaration |
+| `XmlNodeList`, `XmlAttributeNodeList` | The lists behind `Children` and `Attributes` |
+
+For a walkthrough, see [How to build and change XML with XmlNode](/guides/use-xmlnode).
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

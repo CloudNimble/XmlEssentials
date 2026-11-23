@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlRootAttribute` here.
-
+- The name is used exactly as written. A naming policy doesn't convert it.
+- When reading, the document element must have this name, matched with case, or the serializer throws an `XmlException`. `PropertyNameCaseInsensitive` doesn't apply to the document element.
+- The attribute names the type as a document element. When the type is the type of a member of another object, the element is named after that member.
+- When `Namespace` is `null`, `XmlSerializerOptions.DefaultNamespace` is used.
+- The serializer doesn't read `IsNullable`. A `null` reference at the root is written as the document element marked `xsi:nil="true"` whatever its value.

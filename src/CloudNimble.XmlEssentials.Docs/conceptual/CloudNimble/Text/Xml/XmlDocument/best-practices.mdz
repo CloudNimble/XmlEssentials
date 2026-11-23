@@ -1,7 +1,10 @@
-# Best Practices
-
-- Always dispose. The extra buffer and row store are `ArrayPool` rentals.
-- Prefer `Parse(ReadOnlySpan<byte>)` when you already have UTF-8. `Parse(string)` encodes first.
-- Set `MaxDocumentByteCount`, `MaxDepth`, and `MaxAttributeCount` on untrusted input.
-- Use `CommentHandling.Allow` only when comments must round-trip. The default skips them.
-- For lookup, `TryGetChild` / `TryGetAttribute` avoid exceptions on missing names.
+- **Dispose every document.** Use a `using` statement. A document that isn't disposed never returns its buffers to the array pool. That includes a document returned by `TryParse`, `ParseValue`, and `XmlSerializer.SerializeToDocument`.
+- **Copy values out before the document is disposed.** An `XmlElement` is usable only while its document is alive. Return strings, numbers, or a `CloneNode` copy from a method, not an `XmlElement`.
+- **Pass UTF-8 when you have UTF-8.** The `string` and `ReadOnlySpan<char>` overloads convert the text to UTF-8 before they parse it.
+- **Set `MaxDocumentByteCount` for input from outside your process.** It's the only limit that is off by default, and a document holds its whole input in memory.
+- **Expect comments and white space when you enumerate.** Both are kept by default so that a round trip doesn't lose comments or indentation. Check `ValueKind` in every loop over `EnumerateChildren`.
+- **Turn them off when you only read values.** Parse with `CommentHandling = XmlCommentHandling.Skip` and `WhitespaceHandling = XmlWhitespaceHandling.Insignificant`, and the children of an element are only what carries data.
+- **Read values from leaf elements.** The text of an element that has child elements includes the white space between them.
+- **Don't rely on identical bytes after a round trip.** Content, comments, and indentation inside the root are preserved. Quote style, the declaration, CRLF line ends, and white space outside the root are written the writer's way.
+- **Use `TryGetChild` and `TryGetAttribute` for optional names.** `GetChild` and `GetAttribute` throw an `XmlException` when the name is missing.
+- **Don't parse into a document only to deserialize it.** `XmlSerializer.Deserialize` reads text, bytes, and streams directly. Deserialize from a document or an element when you need to inspect the XML first.

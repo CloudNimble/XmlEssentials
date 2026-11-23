@@ -1,5 +1,5 @@
-# Best Practices
-
-- Construct with `new XmlDocumentOptions()`. Do not use `default`.
-- Set `MaxDocumentByteCount` on `Parse(Stream)` for untrusted sources.
-- Keep `CommentHandling` at `Skip` unless the infoset must round-trip comments.
+- **Keep the defaults when the document is written back.** `CommentHandling.Allow` and `WhitespaceHandling.Significant` are what keep comments and indentation through a round trip.
+- **Set `Skip` and `Insignificant` when you only read values.** The children of an element are then only the nodes that carry data, and the text of an element doesn't include indentation.
+- **Set `MaxDocumentByteCount` for input you don't control.** It's the only limit with no default, and with the `Stream` overload of `Parse` it stops the read as soon as the stream is found to be longer.
+- **Lower `MaxDepth` when you know the shape.** The default of 64 is generous for most formats.
+- **Use `Disallow` or `None` to enforce a contract,** for example a message format that must not carry comments.

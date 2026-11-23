@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Use `SetAttribute` for upsert. Use the list when you need order, insert, or remove.
+Document best practices for `XmlAttributeNodeList` here.
+

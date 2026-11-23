@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlRequiredAttribute` here.
-
+- A missing required member throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException) whose message names the member by its XML name.
+- A required element that is present but marked `xsi:nil="true"` is also rejected, with the message `The required member 'Email' cannot be nil.`
+- An empty element satisfies the requirement. For a `string` member, the value is the empty string. The attribute checks presence, not content.
+- The attribute affects reading only. A required member whose value is `null` is still written as nil, or left out, by the usual rules.
+- A required collection that is written as repeated elements counts as present when the XML has at least one item.
+- Constructor parameters with no default value are required without the attribute. See [Constructor parameters](/guides/required-properties#constructor-parameters).

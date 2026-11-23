@@ -5,9 +5,14 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Metadata for serializing <typeparamref name="T"/>.
+    /// Provides XML serialization-related metadata about a type.
     /// </summary>
-    /// <typeparam name="T">The CLR type.</typeparam>
+    /// <typeparam name="T">
+    /// The type that the metadata describes.
+    /// </typeparam>
+    /// <remarks>
+    /// Instances are created by the library. This class cannot be derived from outside the library.
+    /// </remarks>
     public abstract class XmlTypeInfo<T> : XmlTypeInfo
     {
 
@@ -21,8 +26,11 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets the converter used to read and write <typeparamref name="T"/>.
+        /// Gets the converter that reads and writes values of type <typeparamref name="T"/>.
         /// </summary>
+        /// <value>
+        /// The converter associated with the type.
+        /// </value>
         public new XmlConverter<T> Converter { get; }
 
         #endregion

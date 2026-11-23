@@ -46,10 +46,12 @@
     <File Path="coverage-gate.cs" />
   </Folder>
   <Folder Name="/Samples/">
+    <Project Path="CloudNimble.XmlEssentials.Samples/CloudNimble.XmlEssentials.Samples.csproj" />
     <Project Path="CloudNimble.XmlEssentials.Samples.Cli/CloudNimble.XmlEssentials.Samples.Cli.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj" />
     <Project Path="CloudNimble.XmlEssentials.Tests.Aot/CloudNimble.XmlEssentials.Tests.Aot.csproj" />
+    <Project Path="CloudNimble.XmlEssentials.Tests.Samples/CloudNimble.XmlEssentials.Tests.Samples.csproj" />
   </Folder>
 </Solution>

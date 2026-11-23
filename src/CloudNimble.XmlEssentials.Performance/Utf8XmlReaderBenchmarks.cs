@@ -12,7 +12,7 @@ namespace CloudNimble.XmlEssentials.Performance
     /// Compares <see cref="Utf8XmlReader"/> to BCL <see cref="XmlReader"/> on the same UTF-8 payloads.
     /// </summary>
     /// <remarks>
-    /// Settings match XmlEssentials defaults: comments skipped, insignificant whitespace skipped, DTDs prohibited.
+    /// The payloads hold no comments and no whitespace between elements, so both readers report the same tokens whatever their comment and whitespace settings are. DTDs are prohibited on both.
     /// BCL reuses a <see cref="MemoryStream"/> with <see cref="XmlReaderSettings.CloseInput"/> false so the
     /// comparison is the tokenizer, not stream construction. XmlEssentials reads the byte span directly.
     /// </remarks>

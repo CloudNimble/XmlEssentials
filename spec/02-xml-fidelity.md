@@ -143,14 +143,14 @@ maps to `[XmlAttribute] string Currency` + `[XmlText] decimal Amount`.
 
 | Layer | Default | Option |
 | --- | --- | --- |
-| Reader | Skip **insignificant** whitespace (CharData that is only `Space`, `Tab`, `LF`, `CR` and is not a child of an element that currently has mixed/simple text being accumulated as a value) | `XmlReaderOptions.WhitespaceHandling = XmlWhitespaceHandling.None \| Significant \| Insignificant` |
+| Reader and DOM | Report whitespace-only text between elements (`Significant`, the zero value). With `Insignificant`: skip **insignificant** whitespace (CharData that is only `Space`, `Tab`, `LF`, `CR` and is not a child of an element that currently has mixed/simple text being accumulated as a value) | `XmlReaderOptions.WhitespaceHandling = XmlWhitespaceHandling.None \| Significant \| Insignificant` |
 | Writer | No extra whitespace unless `Indented` | `IndentCharacter`, `IndentSize`, `NewLine` |
 | Serializer | Does not preserve significant whitespace on **write**. Indent is a write-only cosmetic. On **read**, `XmlSerializerOptions.WhitespaceHandling` is forwarded to the `Utf8XmlReader` only ([K38](01-identity-and-decisions.md#key-decisions)). | `WriteIndented` |
 
 `XmlWhitespaceHandling`:
 
-- `Insignificant` (default): whitespace-only text between elements is not reported as tokens. Whitespace inside a leaf element's value is **significant** and is part of the value (`<n> a </n>` is `" a "`).
-- `Significant`: every whitespace-only text node is reported as `XmlTokenType.Text`.
+- `Insignificant` (the serializer default): whitespace-only text between elements is not reported as tokens. Whitespace inside a leaf element's value is **significant** and is part of the value (`<n> a </n>` is `" a "`).
+- `Significant` (the reader and DOM default): every whitespace-only text node is reported as `XmlTokenType.Text`.
 - `None`: reject whitespace-only text between elements (`XmlException`). Rare; available for strict payload contracts.
 
 ## Rejected constructs (errors, not silent skip)

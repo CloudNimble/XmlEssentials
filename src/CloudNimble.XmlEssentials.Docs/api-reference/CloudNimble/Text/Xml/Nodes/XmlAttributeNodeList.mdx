@@ -1,8 +1,9 @@
 ---
 title: XmlAttributeNodeList
+description: "An ordered list of [XmlAttributeNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode) instances on an element."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes', 'class', '# Related APIs', '- `XmlAttributeNode`', '- `XmlElementNode`', '- `XmlNodeList`']
+keywords: ['XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes', 'class', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNode', 'CloudNimble.Text.Xml.Nodes.XmlElementNode', 'CloudNimble.Text.Xml.Nodes.XmlNodeList']
 ---
 
 ## Definition
@@ -17,44 +18,45 @@ keywords: ['XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNodeL
 CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList
 ```
 
+## Summary
+
+An ordered list of [XmlAttributeNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode) instances on an element.
+
 ## Usage
 
-# Usage
-
-`XmlElementNode.Attributes` is an `IList<XmlAttributeNode>` with name indexers.
+`XmlAttributeNodeList` is the type of `XmlElementNode.Attributes`. It's an `IList<XmlAttributeNode>` in document order, with two indexers that find an attribute by name: `Attributes["id"]` matches a local name in any namespace, and `Attributes["language", namespaceUri]` matches one namespace. Both return `null` when there is no such attribute.
 
 ```csharp
-root.SetAttribute("a", "1");
-root.Attributes["a"]!.Value; // 1
-root.Attributes["a", ""] ;   // by local name + namespace
+var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""")!;
+
+order.SetAttribute("status", "shipped");
+order.SetAttribute("carrier", "Contoso Freight");
+order.Attributes["id"]!.Value = "1043";
+
+XmlAttributeNode draft = order.Attributes["draft"]!;
+order.Attributes.Remove(draft);
+
+output.WriteLine(order.ToString());
 ```
 
-## Examples
+The code produces the following output:
 
-# Examples
-
-```csharp
-root.Attributes.Insert(0, new XmlAttributeNode("id", "1"));
-root.Attributes.RemoveAt(0);
+```xml
+<Order id="1043" status="shipped" carrier="Contoso Freight"/>
 ```
 
-## Best Practices
+You don't create a list. Every `XmlElementNode` has one.
 
-# Best Practices
-
-Use `SetAttribute` for upsert. Use the list when you need order, insert, or remove.
-
-## Patterns
-
-# Patterns
-
-Replace in place with the indexer setter. `Clear` detaches every attribute.
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
 
 ## Considerations
 
-# Considerations
-
-Adding an attribute that already has a parent throws. Indexers return null when the name is missing. The list is never read-only.
+- Attributes are written in list order. `Insert` and the index setter let you control that order.
+- `Add`, `Insert`, and the index setter throw an `XmlException` when the attribute already belongs to an element. `Remove`, `RemoveAt`, `Clear`, and replacing through the index setter clear the parent of the attribute that leaves the list.
+- The list doesn't check for duplicate names. Two attributes with the same name throw "Duplicate attribute." when the element is written. `XmlElementNode.SetAttribute` updates an existing attribute instead of adding a second one.
+- The list of a parsed element includes its namespace declarations (`xmlns` and `xmlns:prefix`), so `Count` can be larger than the number of attributes you think of as data.
+- The name indexers search the list from the start each time. That's the right trade for the handful of attributes a typical element has.
+- Changing the list while a `foreach` loop enumerates it throws `InvalidOperationException`.
 
 ## Constructors
 
@@ -108,6 +110,8 @@ Type: `CloudNimble.Text.Xml.Nodes.XmlAttributeNode`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> this[]
 
+Gets the first attribute with *localName*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+
 #### Syntax
 
 ```csharp
@@ -119,6 +123,8 @@ public CloudNimble.Text.Xml.Nodes.XmlAttributeNode this { get; }
 Type: `CloudNimble.Text.Xml.Nodes.XmlAttributeNode?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> this[]
+
+Gets the first attribute with *localName* in *namespaceUri*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 #### Syntax
 
@@ -384,8 +390,7 @@ Type: `string?`
 
 ## Related APIs
 
-- # Related APIs
-- - `XmlAttributeNode`
-- - `XmlElementNode`
-- - `XmlNodeList`
+- CloudNimble.Text.Xml.Nodes.XmlAttributeNode
+- CloudNimble.Text.Xml.Nodes.XmlElementNode
+- CloudNimble.Text.Xml.Nodes.XmlNodeList
 

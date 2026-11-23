@@ -2,7 +2,7 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// XML recommendation version in force for the current document.
+    /// Specifies the version of the XML recommendation that is in force for a document.
     /// </summary>
     /// <remarks>
     /// <see cref="Utf8XmlReader"/> takes the version from the XML declaration. An omitted declaration
@@ -13,7 +13,7 @@ namespace CloudNimble.Text.Xml
     public enum XmlVersion : byte
     {
         /// <summary>
-        /// XML 1.0 Fifth Edition. Default when the declaration is omitted or says <c>version="1.0"</c>.
+        /// XML 1.0 Fifth Edition. This is the version when the declaration is omitted or says <c>version="1.0"</c>.
         /// </summary>
         Version10 = 0,
 

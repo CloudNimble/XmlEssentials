@@ -1,3 +1,3 @@
-# Considerations
-
-`WriteTo` calls `WriteCData`. A payload containing `]]>` throws. CDATA is significant whitespace; it is not skipped by whitespace options on the mutable tree.
+- The value can't contain `]]>`, which would end the section. The check happens when the node is written, and it throws an `XmlException` ("CDATA must not contain ']]>'."). The node doesn't split the value into two sections for you.
+- A CDATA section in parsed XML stays a CDATA section in the tree and is written back as one.
+- A `null` value is stored as an empty string.

@@ -15,9 +15,11 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Serializes CLR values to UTF-8 XML and back. Analogous to <c>JsonSerializer</c>.
+    /// Provides functionality to serialize objects or value types to XML and to deserialize XML into objects or value types.
+    /// This class cannot be inherited.
     /// </summary>
     /// <remarks>
+    /// This class is the XML counterpart of <c>System.Text.Json.JsonSerializer</c>.
     /// Every overload resolves an <see cref="XmlTypeInfo"/> and then goes through one of the internal
     /// <c>Read</c> or <c>Write</c> methods in this file. All reading is done by <see cref="Utf8XmlReader"/> and
     /// all writing by <see cref="Utf8XmlWriter"/>.
@@ -58,11 +60,18 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets whether options with no <see cref="XmlSerializerOptions.TypeInfoResolver"/> fall back to
-        /// <see cref="DefaultXmlTypeInfoResolver"/>. It is <see langword="true"/> unless the
-        /// <c>CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault</c> switch is <see langword="false"/>.
-        /// Native AOT consumers set that switch to <see langword="false"/> so the trimmer can drop the reflection resolver.
+        /// Gets a value that indicates whether unconfigured <see cref="XmlSerializerOptions"/> instances use the
+        /// reflection-based <see cref="DefaultXmlTypeInfoResolver"/>.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if options with no <see cref="XmlSerializerOptions.TypeInfoResolver"/> fall back to
+        /// <see cref="DefaultXmlTypeInfoResolver"/>; otherwise, <see langword="false"/>. The default is <see langword="true"/>.
+        /// </value>
+        /// <remarks>
+        /// The value is <see langword="true"/> unless the
+        /// <c>CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault</c> feature switch is <see langword="false"/>.
+        /// Native AOT consumers set that switch to <see langword="false"/> so the trimmer can drop the reflection resolver.
+        /// </remarks>
         [FeatureSwitchDefinition("CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault")]
         public static bool IsReflectionEnabledByDefault { get; internal set; } =
             !AppContext.TryGetSwitch("CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault", out var enabled) || enabled;

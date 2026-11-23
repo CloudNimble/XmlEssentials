@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlArrayAttribute` here.
-
+- `System.Xml.Serialization.XmlSerializer` wraps collections by default. This serializer doesn't, so add `[XmlArray]` when you need XML that matches what that serializer produced.
+- The default item name is the .NET type name of the item, such as `Int32`, `String`, or the name of your class, converted by the element naming policy.
+- `[XmlPropertyName]` on the same member takes precedence over `ElementName`, and `[XmlPropertyOrder]` and `[XmlElement(Order = n)]` take precedence over `Order`.
+- The serializer doesn't read `IsNullable`. A `null` wrapped collection is written as the wrapper marked `xsi:nil="true"`. It is left out only when the ignore condition that applies to the member is `WhenWritingNull`. `WhenWritingDefault` doesn't leave it out, and with `NilHandling` set to `Omit` or `WriteEmptyElement` it is written as an empty wrapper.
+- The attribute applies to collections. A dictionary is always written inside an element named after the member, without it.

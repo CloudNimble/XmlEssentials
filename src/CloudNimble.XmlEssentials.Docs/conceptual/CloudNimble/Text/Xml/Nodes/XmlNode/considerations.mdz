@@ -1,5 +1,9 @@
-# Considerations
-
-`Parent` is null until the node is added to an `XmlNodeList` or `XmlAttributeNodeList`. The default `NamespaceUri` getter is null; elements and attributes override it.
-
-`Parse` requires a document element. Prolog comments/PIs are discarded.
+- `Parse` returns the root element of the document. It doesn't return `null`; input with no root element throws an `XmlException`.
+- `Parse` keeps comments and the white space between elements inside the root. It drops the XML declaration and everything outside the root element, and the tree doesn't record whether an empty element was written as `<e/>` or `<e></e>`.
+- `Parse` takes no options, so the default limits of `XmlDocumentOptions` apply (for example, a depth of 64) and the document size isn't limited. It has no `Stream` overload.
+- `Parse` builds an `XmlDocument` and copies its root into the tree. That costs more time and memory than `XmlDocument.Parse` alone, and the cost grows with the number of nodes.
+- `ParseValue` uses the options of the reader you pass. By default a reader reports comments and white-space-only text between elements, so the tree keeps both.
+- `Parent` is `null` until the node is added to an element's `Children` or `Attributes`, and `null` again after it's removed.
+- `NamespaceUri` is `null` on nodes that have no name (text, CDATA, comments, processing instructions, and the declaration). On an element or an attribute, it's an empty string when the name is in no namespace.
+- `ToString` writes with a `Utf8XmlWriter` that omits the XML declaration, doesn't indent, and writes XML 1.0. It throws an `XmlException` when the node can't be written as it stands: a text node or an attribute on its own, an invalid name, or a prefix with no namespace.
+- `WriteTo` and `ToString` are where the tree is validated. Building the tree doesn't check names or values.

@@ -1,5 +1,33 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlMixedContentItem` is the abstract base of the two kinds of item in a mixed-content list: `XmlMixedText` for a run of text and `XmlMixedElement` for a child element. Use it as the element type of the list that you mark with `[XmlMixed]`, and use pattern matching to tell the items apart.
 
-Describe how to use `XmlMixedContentItem` here.
+```csharp
+string xml = "<Paragraph>Press <Key>Ctrl</Key> and <Key>S</Key> to save.</Paragraph>";
 
+Paragraph? paragraph = XmlSerializer.Deserialize<Paragraph>(xml);
+foreach (XmlMixedContentItem item in paragraph!.Content)
+{
+    switch (item)
+    {
+        case XmlMixedText text:
+            output.WriteLine($"Text: \"{text.Text}\"");
+            break;
+        case XmlMixedElement { Element: { } element }:
+            output.WriteLine($"Element: {element.LocalName} = {element.InnerText}");
+            break;
+    }
+}
+```
+
+The loop prints the following:
+
+```text
+Text: "Press "
+Element: Key = Ctrl
+Text: " and "
+Element: Key = S
+Text: " to save."
+```
+
+The class has no members of its own. The serializer writes only `XmlMixedText` and `XmlMixedElement` items, and skips an item of any other derived type.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)

@@ -1,5 +1,53 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+A converter reads one type from XML and writes it back. To write your own, derive from `XmlConverter<T>` and override `Read` and `Write`. You can't derive from the non-generic `XmlConverter` class directly: it's the common base of `XmlConverter<T>` and `XmlConverterFactory`.
 
-Describe how to use `XmlConverter` here.
+```csharp
+public sealed class MoneyConverter : XmlConverter<Money>
+{
+    public override Money Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+    {
+        Money value = default;
+        if (reader.IsEmptyElement)
+        {
+            return value;
+        }
 
+        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+        {
+            if (reader.TokenType is XmlTokenType.Text or XmlTokenType.CData)
+            {
+                value = Parse(reader.GetString()!);
+            }
+        }
+
+        return value;
+    }
+
+    public override void Write(Utf8XmlWriter writer, Money value, XmlSerializerOptions options)
+    {
+        writer.WriteStringValue(string.Create(CultureInfo.InvariantCulture, $"{value.Amount:0.00} {value.Currency}"));
+    }
+
+    private static Money Parse(string text)
+    {
+        int space = text.IndexOf(' ');
+        if (space < 0 || !decimal.TryParse(text.AsSpan(0, space), NumberStyles.Number, CultureInfo.InvariantCulture, out decimal amount))
+        {
+            throw new XmlException($"'{text}' is not an amount followed by a currency code.");
+        }
+
+        return new Money(amount, text[(space + 1)..]);
+    }
+}
+```
+
+Register the converter by adding an instance to `XmlSerializerOptions.Converters`, or by naming it in `[XmlConverter]` on the type it converts.
+
+### Where Read starts and stops
+
+`Read` is called with the reader on the start tag of the element that holds the value. It must leave the reader on the last token of that element: the end tag, or the start tag itself when the element is an empty-element tag such as `<Total/>`, which has no end-tag token. Check `reader.IsEmptyElement` before the first call to `reader.Read()`.
+
+### What Write writes
+
+`Write` is called after the serializer has written the element's start tag. Write the content, text or child elements, and return. The serializer writes the end tag.
+
+The classes correspond to `JsonConverter` and `JsonConverter<T>` in System.Text.Json. For the factory pattern, registration, and attribute support, see [How to write custom converters](/guides/custom-converters).

@@ -1,5 +1,4 @@
-# Best Practices
-
-- Encode names once, not per element.
-- Do not use this type for text values; it does not apply `&amp;` / `&lt;` escaping.
-- Compare with `Equals` or `==`, not `ToString()`.
+- **Encode once and keep the value.** A `static readonly` field on the type that writes the element is the usual place. Calling `Encode` each time you write gains nothing.
+- **Use it for names only.** A name is never escaped, so text passed this way isn't either.
+- **Compare values with `==` or `Equals`.** Both compare the bytes. Comparing the results of `ToString` creates two strings to do the same thing.
+- **Reach for a `u8` literal first.** `writer.WriteStartElement("Item"u8)` also skips the conversion and needs no field. Use `XmlEncodedText` when the name isn't known at compile time, or when you want one named value to share.

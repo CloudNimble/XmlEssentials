@@ -1,8 +1,9 @@
 ---
 title: XmlAttributeAttribute
+description: "Maps a member to an XML attribute. Simple types only."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlPropertyMapping', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute']
 ---
 
 ## Definition
@@ -19,9 +20,69 @@ keywords: ['XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttri
 CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
 ```
 
+## Summary
+
+Maps a member to an XML attribute. Simple types only.
+
+## Usage
+
+Apply `[XmlAttribute]` to a property or field to write it as an XML attribute of the element that represents the object, instead of as a child element. Pass a name to the constructor to name the attribute, and set `Namespace` to put it in a namespace.
+
+```csharp
+public sealed class Price
+{
+    [XmlAttribute]
+    public string? Currency { get; set; }
+
+    [XmlText]
+    public decimal Amount { get; set; }
+}
+
+public sealed class Listing
+{
+    public string? Name { get; set; }
+
+    public Price? Price { get; set; }
+}
+```
+
+```csharp
+var listing = new Listing
+{
+    Name = "Keyboard",
+    Price = new Price { Currency = "USD", Amount = 49.95m },
+};
+
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(listing, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Listing><Name>Keyboard</Name><Price Currency="USD">49.95</Price></Listing>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+To write every simple member as an attribute without annotating each one, set `XmlSerializerOptions.DefaultPropertyMapping` to `XmlPropertyMapping.Attribute`.
+
+## Considerations
+
+- Only a simple value can be an XML attribute: a string, a number, a Boolean, a date or time, a GUID, a URI, an enumeration, and the nullable forms of those. On a member of any other type, such as an object or a collection, the serializer throws a `NotSupportedException` the first time the type is used.
+- A `null` value is left out. An attribute can't be marked nil, so `NilHandling` doesn't apply.
+- Attributes are written before element text and child elements. Among themselves they follow declaration order, or `[XmlPropertyOrder]` when it is set.
+- `[XmlPropertyName]` on the same member takes precedence over `AttributeName`. When neither is set, the member name is converted by `AttributeNamingPolicy`, or by `PropertyNamingPolicy` when that is `null`.
+- `[XmlAttribute]` can't be combined with `[XmlElement]`, `[XmlText]`, or `[XmlCData]` on one member.
+- Characters that aren't allowed in an attribute value, such as `"`, `<`, and `&`, are escaped when written and restored when read.
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute with the member name as the attribute name.
 
 #### Syntax
 
@@ -30,6 +91,8 @@ public XmlAttributeAttribute()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -41,9 +104,11 @@ public XmlAttributeAttribute(string attributeName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `attributeName` | `string` | - |
+| `attributeName` | `string` | The attribute local name. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -55,8 +120,8 @@ public XmlAttributeAttribute(string attributeName, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `attributeName` | `string` | - |
-| `namespaceUri` | `string?` | - |
+| `attributeName` | `string` | The attribute local name. |
+| `namespaceUri` | `string?` | The namespace URI. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -82,6 +147,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeName
 
+Gets or sets the attribute local name. When null or empty, the member name after the naming policy is used.
+
 #### Syntax
 
 ```csharp
@@ -93,6 +160,8 @@ public string AttributeName { get; set; }
 Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
+
+Gets or sets the namespace URI of the attribute.
 
 #### Syntax
 
@@ -985,4 +1054,13 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.XmlPropertyMapping
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.Serialization.XmlElementAttribute
+- CloudNimble.Text.Xml.Serialization.XmlTextAttribute
+- CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
+- CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute
 

@@ -4,11 +4,12 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Thrown when XML is not well-formed or a DoS limit is exceeded.
+    /// The exception that is thrown when XML is not well formed, a reader limit is exceeded, or a value
+    /// cannot be read as the requested type. This class cannot be inherited.
     /// </summary>
     /// <remarks>
-    /// This type is not <c>System.Xml.XmlException</c> and does not wrap it. Location properties
-    /// are optional; they are set when the reader knows the byte offset and line.
+    /// This type is not <c>System.Xml.XmlException</c> and does not wrap it. The location properties
+    /// are optional. They are set when the reader knows the byte offset and line.
     /// </remarks>
     public sealed class XmlException : Exception
     {
@@ -16,23 +17,36 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the 0-based byte offset in the UTF-8 document, if known.
+        /// Gets the zero-based byte offset in the UTF-8 document at which the error occurred.
         /// </summary>
+        /// <value>
+        /// The zero-based byte offset in the UTF-8 document, or <see langword="null"/> if it is not known.
+        /// </value>
         public long? BytePosition { get; }
 
         /// <summary>
-        /// Gets the 1-based line number after end-of-line normalization, if known.
+        /// Gets the one-based number of the line on which the error occurred.
         /// </summary>
+        /// <value>
+        /// The one-based line number, counted after end-of-line normalization, or <see langword="null"/> if
+        /// it is not known.
+        /// </value>
         public long? LineNumber { get; }
 
         /// <summary>
-        /// Gets the 1-based UTF-8 byte offset in the current line, if known.
+        /// Gets the one-based byte position within the line at which the error occurred.
         /// </summary>
+        /// <value>
+        /// The one-based UTF-8 byte offset in the line, or <see langword="null"/> if it is not known.
+        /// </value>
         public long? LinePosition { get; }
 
         /// <summary>
-        /// Gets the document path such as <c>/Person/@id</c>, if known.
+        /// Gets the path in the document at which the error occurred.
         /// </summary>
+        /// <value>
+        /// The document path, such as <c>/Person/@id</c>, or <see langword="null"/> if it is not known.
+        /// </value>
         public string? Path { get; }
 
         #endregion
@@ -40,32 +54,35 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Creates an exception with a message and no location.
+        /// Initializes a new instance of the <see cref="XmlException"/> class with a specified error message
+        /// and no location.
         /// </summary>
-        /// <param name="message">The error message.</param>
+        /// <param name="message">The message that describes the error.</param>
         public XmlException(string message)
             : base(message)
         {
         }
 
         /// <summary>
-        /// Creates an exception with a message and an inner exception.
+        /// Initializes a new instance of the <see cref="XmlException"/> class with a specified error message
+        /// and a reference to the inner exception that is the cause of this exception.
         /// </summary>
-        /// <param name="message">The error message.</param>
-        /// <param name="innerException">The inner exception, or null.</param>
+        /// <param name="message">The message that describes the error.</param>
+        /// <param name="innerException">The exception that is the cause of the current exception, or <see langword="null"/> if there is none.</param>
         public XmlException(string message, Exception? innerException)
             : base(message, innerException)
         {
         }
 
         /// <summary>
-        /// Creates an exception with parse location.
+        /// Initializes a new instance of the <see cref="XmlException"/> class with a specified error message
+        /// and the location of the error in the document.
         /// </summary>
-        /// <param name="message">The error message.</param>
-        /// <param name="bytePosition">0-based byte offset in the UTF-8 document, if known.</param>
-        /// <param name="lineNumber">1-based line after end-of-line normalization, if known.</param>
-        /// <param name="linePosition">1-based UTF-8 byte offset in the current line, if known.</param>
-        /// <param name="path">Document path such as <c>/Person/@id</c>, if known.</param>
+        /// <param name="message">The message that describes the error.</param>
+        /// <param name="bytePosition">The zero-based byte offset in the UTF-8 document, or <see langword="null"/> if it is not known.</param>
+        /// <param name="lineNumber">The one-based line number, counted after end-of-line normalization, or <see langword="null"/> if it is not known.</param>
+        /// <param name="linePosition">The one-based UTF-8 byte offset in the line, or <see langword="null"/> if it is not known.</param>
+        /// <param name="path">The document path, such as <c>/Person/@id</c>, or <see langword="null"/> if it is not known.</param>
         public XmlException(string message, long? bytePosition, long? lineNumber, long? linePosition, string? path)
             : base(message)
         {

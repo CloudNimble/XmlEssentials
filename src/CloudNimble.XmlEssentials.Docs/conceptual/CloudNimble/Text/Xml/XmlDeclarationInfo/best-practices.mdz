@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Read `Declaration` only while the document is undisposed. Treat a missing declaration as XML 1.0 with no standalone flag.
+Document best practices for `XmlDeclarationInfo` here.
+

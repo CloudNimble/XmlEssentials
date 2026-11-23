@@ -1,6 +1,5 @@
-# Related APIs
-
-- `XmlDocument`
-- `XmlVersion`
-- `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`
-- `Utf8XmlWriter`
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.XmlVersion
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.XmlWriterOptions
+CloudNimble.Text.Xml.Nodes.XmlDeclarationNode

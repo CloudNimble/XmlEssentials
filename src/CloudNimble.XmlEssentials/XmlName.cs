@@ -4,11 +4,11 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// A namespace-qualified XML name: local name, namespace URI, and optional prefix.
+    /// Represents a namespace-qualified XML name: a local name, a namespace URI, and an optional prefix.
     /// </summary>
     /// <remarks>
-    /// Equality is the ordinal combination of <see cref="LocalName"/> and <see cref="NamespaceUri"/>.
-    /// <see cref="Prefix"/> is serialization sugar and is not significant for equality or mapping.
+    /// Two names are equal when <see cref="LocalName"/> and <see cref="NamespaceUri"/> are equal by ordinal comparison.
+    /// <see cref="Prefix"/> only affects how the name is written. It is not used for equality or for mapping.
     /// </remarks>
     public readonly struct XmlName : IEquatable<XmlName>
     {
@@ -16,18 +16,27 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the local name.
+        /// Gets the local part of the name.
         /// </summary>
+        /// <value>
+        /// The local name.
+        /// </value>
         public string LocalName { get; }
 
         /// <summary>
-        /// Gets the namespace URI, or an empty string when the name is in no namespace.
+        /// Gets the namespace URI of the name.
         /// </summary>
+        /// <value>
+        /// The namespace URI, or an empty string if the name is in no namespace.
+        /// </value>
         public string NamespaceUri { get; }
 
         /// <summary>
-        /// Gets the prefix, or an empty string when the name is unprefixed.
+        /// Gets the prefix of the name.
         /// </summary>
+        /// <value>
+        /// The prefix, or an empty string if the name has no prefix.
+        /// </value>
         public string Prefix { get; }
 
         #endregion
@@ -35,11 +44,17 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Creates a qualified name.
+        /// Initializes a new instance of the <see cref="XmlName"/> struct with the specified local name, namespace URI, and prefix.
         /// </summary>
-        /// <param name="localName">The local name. Cannot be null or whitespace.</param>
-        /// <param name="namespaceUri">The namespace URI, or null for no namespace.</param>
-        /// <param name="prefix">The prefix, or null for none. Not used in equality.</param>
+        /// <param name="localName">The local name. It cannot be <see langword="null"/>, empty, or white space.</param>
+        /// <param name="namespaceUri">The namespace URI, or <see langword="null"/> for no namespace. The default is <see langword="null"/>.</param>
+        /// <param name="prefix">The prefix, or <see langword="null"/> for none. The default is <see langword="null"/>. The prefix is not used for equality.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="localName"/> is empty or consists only of white-space characters.
+        /// </exception>
         /// <example>
         /// <code>
         /// var name = new XmlName("Person", "https://example.com", "e");
@@ -47,8 +62,8 @@ namespace CloudNimble.Text.Xml
         /// </code>
         /// </example>
         /// <remarks>
-        /// Pass a namespace URI without a prefix when comparing names. Prefix is only written
-        /// by <see cref="ToString"/> when it is non-empty.
+        /// Pass a namespace URI without a prefix when the name is only compared with other names.
+        /// <see cref="ToString"/> writes the prefix only when it is not empty.
         /// </remarks>
         public XmlName(string localName, string? namespaceUri = null, string? prefix = null)
         {
@@ -63,10 +78,13 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
-        /// Returns true when <paramref name="other"/> has the same local name and namespace URI.
+        /// Determines whether this name and a specified <see cref="XmlName"/> have the same local name and namespace URI.
         /// </summary>
-        /// <param name="other">The name to compare.</param>
-        /// <returns><see langword="true"/> if the names are equal.</returns>
+        /// <param name="other">The name to compare with this name.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="other"/> has the same local name and namespace URI as this name,
+        /// by ordinal comparison; otherwise, <see langword="false"/>.
+        /// </returns>
         public bool Equals(XmlName other)
         {
             return string.Equals(LocalName, other.LocalName, StringComparison.Ordinal)
@@ -74,29 +92,36 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns true when <paramref name="obj"/> is an <see cref="XmlName"/> equal to this instance.
+        /// Determines whether this name and a specified object are equal.
         /// </summary>
-        /// <param name="obj">The object to compare.</param>
-        /// <returns><see langword="true"/> if the names are equal.</returns>
+        /// <param name="obj">The object to compare with this name.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="obj"/> is an <see cref="XmlName"/> with the same local name and
+        /// namespace URI as this name; otherwise, <see langword="false"/>.
+        /// </returns>
         public override bool Equals(object? obj)
         {
             return obj is XmlName other && Equals(other);
         }
 
         /// <summary>
-        /// Returns a hash code over <see cref="LocalName"/> and <see cref="NamespaceUri"/>.
+        /// Returns the hash code for this name, computed from <see cref="LocalName"/> and <see cref="NamespaceUri"/>.
         /// </summary>
-        /// <returns>The hash code.</returns>
+        /// <returns>
+        /// A 32-bit signed integer hash code.
+        /// </returns>
         public override int GetHashCode()
         {
             return HashCode.Combine(LocalName, NamespaceUri);
         }
 
         /// <summary>
-        /// Returns <c>prefix:local</c> when a prefix is set, <c>{uri}local</c> when a namespace is set,
-        /// otherwise the local name.
+        /// Returns a string that represents this name.
         /// </summary>
-        /// <returns>A display form of the name.</returns>
+        /// <returns>
+        /// <c>prefix:local</c> if the name has a prefix; otherwise, <c>{uri}local</c> if the name has a namespace URI;
+        /// otherwise, the local name.
+        /// </returns>
         public override string ToString()
         {
             if (Prefix.Length > 0)
@@ -124,22 +149,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns true when <paramref name="left"/> and <paramref name="right"/> are equal.
+        /// Determines whether two <see cref="XmlName"/> values have the same local name and namespace URI.
         /// </summary>
-        /// <param name="left">The first name.</param>
-        /// <param name="right">The second name.</param>
-        /// <returns><see langword="true"/> if the names are equal.</returns>
+        /// <param name="left">The first name to compare.</param>
+        /// <param name="right">The second name to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are equal; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public static bool operator ==(XmlName left, XmlName right)
         {
             return left.Equals(right);
         }
 
         /// <summary>
-        /// Returns true when <paramref name="left"/> and <paramref name="right"/> are not equal.
+        /// Determines whether two <see cref="XmlName"/> values have a different local name or namespace URI.
         /// </summary>
-        /// <param name="left">The first name.</param>
-        /// <param name="right">The second name.</param>
-        /// <returns><see langword="true"/> if the names differ.</returns>
+        /// <param name="left">The first name to compare.</param>
+        /// <param name="right">The second name to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are not equal; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public static bool operator !=(XmlName left, XmlName right)
         {
             return !left.Equals(right);

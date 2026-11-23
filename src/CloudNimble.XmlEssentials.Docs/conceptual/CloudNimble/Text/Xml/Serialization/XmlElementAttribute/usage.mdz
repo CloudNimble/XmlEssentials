@@ -1,5 +1,42 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Apply `[XmlElement]` to a property or field to say that it is a child element and, optionally, to set the element's name, namespace, or order. A member is an element by default, so you need the attribute in three cases:
 
-Describe how to use `XmlElementAttribute` here.
+- To name the element, as an alternative to `[XmlPropertyName]`.
+- To keep one member as an element when `XmlSerializerOptions.DefaultPropertyMapping` is `XmlPropertyMapping.Attribute`.
+- To set `Namespace` or `Order`.
 
+```csharp
+[XmlElement("unit-price")]
+public decimal UnitPrice { get; set; }
+```
+
+On a collection that has no `[XmlArray]`, the name applies to each repeated item:
+
+```csharp
+public sealed class NewsFeed
+{
+    public string? Title { get; set; }
+
+    [XmlElement("Entry")]
+    public List<string> Entries { get; set; } = [];
+}
+```
+
+```csharp
+var feed = new NewsFeed { Title = "Releases", Entries = ["1.0.0 is out", "1.0.1 fixes a typo"] };
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(feed, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<NewsFeed>
+  <Title>Releases</Title>
+  <Entry>1.0.0 is out</Entry>
+  <Entry>1.0.1 fixes a typo</Entry>
+</NewsFeed>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/12_SerializeCollections.cs)

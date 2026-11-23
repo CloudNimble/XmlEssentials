@@ -1,5 +1,5 @@
-# Related APIs
-
-- `XmlElementNode`
-- `XmlAttributeNodeList`
-- `XmlNode`
+CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList
+CloudNimble.Text.Xml.Nodes.XmlElementNode
+CloudNimble.Text.Xml.Nodes.XmlNode
+CloudNimble.Text.Xml.XmlNamespaces
+CloudNimble.Text.Xml.XmlAttributes

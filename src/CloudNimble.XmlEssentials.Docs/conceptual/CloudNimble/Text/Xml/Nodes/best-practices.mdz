@@ -1,5 +1,7 @@
-# Best Practices
-
-- Use `XmlDocument` when you only read. Use this namespace when you must edit.
-- Do not move a node to a second parent; clone it.
-- Keep prefixes and namespace URIs in sync on elements and attributes you write.
+- **Use the tree to change or build XML, and `XmlDocument` to read it.** The tree allocates an object for every node and a string for every name and value. The document doesn't.
+- **Clone only what you edit.** For one change in a large document, parse with `XmlDocument` and call `XmlElement.CloneNode` on the element that changes.
+- **Find elements by name or type, not by position.** A tree parsed from an indented document has a text node for each run of indentation, so `Children[0]` is often white space.
+- **Use `SetAttribute` to add or change an attribute.** It updates an attribute that exists. `Attributes.Add` doesn't check for a duplicate, and a duplicate fails when the tree is written.
+- **Give every namespaced element its namespace.** A child doesn't inherit the namespace of its parent.
+- **Copy with `DeepClone` to use a node in two places.** A node has one parent, and adding a node that already has one throws.
+- **Write to a `Utf8XmlWriter` for anything but a quick look.** `ToString` builds a string with no declaration and no indentation of its own. `WriteTo` writes UTF-8 to a stream or a buffer with the options you choose.

@@ -1,8 +1,9 @@
 ---
 title: XmlDocumentOptions
+description: "Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse)."
 icon: cubes
 tag: "SEALED"
-keywords: ['XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `XmlDocument`', '- `XmlReaderOptions`', '- `XmlCommentHandling`', '- `XmlWhitespaceHandling`']
+keywords: ['XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlException']
 ---
 
 ## Definition
@@ -19,80 +20,195 @@ keywords: ['XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'Clo
 CloudNimble.Text.Xml.XmlDocumentOptions
 ```
 
+## Summary
+
+Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse).
+
 ## Usage
 
-# Usage
+Pass an `XmlDocumentOptions` to `XmlDocument.Parse` or `XmlDocument.TryParse` to choose what the parser keeps and what it rejects. `default`, `new XmlDocumentOptions()`, and a call to `Parse` without options all mean the same options.
 
-Pass a constructed options struct into `XmlDocument.Parse`:
+The defaults are chosen so that there are no surprises on a round trip: a document that is parsed and written back with `XmlDocument.WriteTo` keeps its comments and the white space between its elements. When you only read values and don't want either in the document:
+
+- Set `CommentHandling` to `XmlCommentHandling.Skip` to leave comments out. `Disallow` rejects a document that contains one.
+- Set `WhitespaceHandling` to `XmlWhitespaceHandling.Insignificant` to leave out text that is only white space between elements. `None` rejects a document that contains it.
+
+```csharp
+const string xml = "<Order><!-- rush --><Item>Keyboard</Item></Order>";
+
+using (XmlDocument kept = XmlDocument.Parse(xml))
+{
+    output.WriteLine($"Allow (the default): {CountChildren(kept.RootElement)} children");
+    foreach (XmlElement child in kept.RootElement.EnumerateChildren())
+    {
+        output.WriteLine($"  {child.ValueKind}: '{child.GetString()}'");
+    }
+}
+
+var skip = new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Skip };
+using (XmlDocument skipped = XmlDocument.Parse(xml, skip))
+{
+    output.WriteLine($"Skip: {CountChildren(skipped.RootElement)} child");
+}
+
+var disallow = new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Disallow };
+try
+{
+    using XmlDocument rejected = XmlDocument.Parse(xml, disallow);
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Disallow: {ex.Message}");
+}
+```
+
+`CountChildren` is a helper in the sample that counts the nodes `EnumerateChildren` returns. The code produces the following output:
+
+```text
+Allow (the default): 2 children
+  Comment: ' rush '
+  Element: 'Keyboard'
+Skip: 1 child
+Disallow: Comments are not allowed.
+```
+
+The options are:
+
+| Property | Controls | Default |
+| --- | --- | --- |
+| `CommentHandling` | Whether comments are kept, dropped, or rejected | `Allow` (kept) |
+| `WhitespaceHandling` | What happens to white space that is the only text between two tags | `Significant` (kept) |
+| `MaxDepth` | How deeply elements nest | 0, which means 64 |
+| `MaxAttributeCount` | Attributes on one element, namespace declarations included | 0, which means 1,000 |
+| `MaxNameByteCount` | One element or attribute name, in UTF-8 bytes | 0, which means 1,024 |
+| `MaxTextByteCount` | One text node or CDATA section, in UTF-8 bytes | 0, which means 16,777,216 |
+| `MaxCommentByteCount` | One comment, in UTF-8 bytes | 0, which means 1,048,576 |
+| `MaxDocumentByteCount` | The whole document, in UTF-8 bytes | 0, which means no limit |
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)
+
+## Remarks
+
+A max-* of 0 means the default from the DoS table, except [XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount)
+which stays unbounded. Construct with `new XmlDocumentOptions()` so
+[XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) defaults to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+
+## Examples
+
+### Limit untrusted input
+
+A limit that is exceeded throws an `XmlException` whose message names the limit.
 
 ```csharp
 var options = new XmlDocumentOptions
 {
-    MaxDepth = 32,
-    CommentHandling = XmlCommentHandling.Allow,
-    MaxDocumentByteCount = 1_048_576,
+    MaxDepth = 2,
+    MaxDocumentByteCount = 64,
 };
-using var document = XmlDocument.Parse(utf8, options);
+
+try
+{
+    using XmlDocument tooDeep = XmlDocument.Parse("<a>**<c/>**</a>", options);
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+try
+{
+    using XmlDocument tooLarge = XmlDocument.Parse($"<a>{new string('x', 100)}</a>", options);
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
 ```
 
-Omit the argument for defaults: comments skipped, insignificant whitespace between elements skipped, every max-* at `0` (table defaults).
+The code produces the following output:
 
-## Examples
+```text
+MaxDepth exceeded (2).
+MaxDocumentByteCount exceeded (64).
+```
 
-# Examples
+### Leave out white space between elements
 
-Cap an untrusted payload:
+By default the indentation of a document is kept as `Text` nodes. `Insignificant` leaves it out.
 
 ```csharp
-using var document = XmlDocument.Parse(stream, new XmlDocumentOptions
+const string xml = """
+    <Order>
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+    </Order>
+    """;
+
+using (XmlDocument document = XmlDocument.Parse(xml))
 {
-    MaxDocumentByteCount = 64 * 1024,
-    MaxDepth = 16,
-});
+    XmlElement order = document.RootElement;
+    output.WriteLine($"Significant (the default): {CountChildren(order)} children");
+    foreach (XmlElement child in order.EnumerateChildren())
+    {
+        output.WriteLine($"  {child.ValueKind}");
+    }
+
+    output.WriteLine($"  Text of the root: '{order.GetString()!.Replace("\n", "\\n")}'");
+    output.WriteLine($"  Text of the first Item: '{order.GetChild("Item").GetString()}'");
+}
+
+var options = new XmlDocumentOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant };
+using (XmlDocument document = XmlDocument.Parse(xml, options))
+{
+    XmlElement order = document.RootElement;
+    output.WriteLine($"Insignificant: {CountChildren(order)} children");
+    output.WriteLine($"  Text of the root: '{order.GetString()}'");
+}
 ```
 
-Keep insignificant whitespace as text nodes with `WhitespaceHandling = XmlWhitespaceHandling.All`.
+The code produces the following output:
+
+```text
+Significant (the default): 5 children
+  Text
+  Element
+  Text
+  Element
+  Text
+  Text of the root: '\n  Keyboard\n  Mouse\n'
+  Text of the first Item: 'Keyboard'
+Insignificant: 2 children
+  Text of the root: 'KeyboardMouse'
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)
 
 ## Best Practices
 
-# Best Practices
-
-- Construct with `new XmlDocumentOptions()`. Do not use `default`.
-- Set `MaxDocumentByteCount` on `Parse(Stream)` for untrusted sources.
-- Keep `CommentHandling` at `Skip` unless the infoset must round-trip comments.
-
-## Patterns
-
-# Patterns
-
-**Untrusted input.** Set `MaxDocumentByteCount` and `MaxDepth` together. A stream that exceeds the cap throws `XmlException` before the tokenizer runs on the overflow.
-
-**Comments.** `Skip` (default) drops comments. `Allow` stores them. `Disallow` throws.
-
-**Reader.** The same limits apply if you tokenize first and call `XmlDocument.ParseValue`.
+- **Keep the defaults when the document is written back.** `CommentHandling.Allow` and `WhitespaceHandling.Significant` are what keep comments and indentation through a round trip.
+- **Set `Skip` and `Insignificant` when you only read values.** The children of an element are then only the nodes that carry data, and the text of an element doesn't include indentation.
+- **Set `MaxDocumentByteCount` for input you don't control.** It's the only limit with no default, and with the `Stream` overload of `Parse` it stops the read as soon as the stream is found to be longer.
+- **Lower `MaxDepth` when you know the shape.** The default of 64 is generous for most formats.
+- **Use `Disallow` or `None` to enforce a contract,** for example a message format that must not carry comments.
 
 ## Considerations
 
-# Considerations
-
-`XmlDocumentOptions` is a struct. `new XmlDocumentOptions()` runs the constructor and sets `CommentHandling` to `Skip`. `default(XmlDocumentOptions)` leaves `CommentHandling` at `Disallow` (enum zero). Prefer `new`.
-
-A max-* of `0` means “use the table default”:
-
-| Property | When 0 |
-| --- | --- |
-| `MaxDepth` | 64 |
-| `MaxAttributeCount` | 1000 |
-| `MaxNameByteCount` | 1024 |
-| `MaxCommentByteCount` | 1,048,576 |
-| `MaxTextByteCount` | 16,777,216 |
-| `MaxDocumentByteCount` | unbounded (stays 0) |
-
-Limits are forwarded to `Utf8XmlReader`. `MaxDocumentByteCount` is also enforced on `Parse(Stream)` as the stream is read.
+- `XmlDocumentOptions` is a struct. `default(XmlDocumentOptions)` and `new XmlDocumentOptions()` are the same options: `CommentHandling` is `Allow` and `WhitespaceHandling` is `Significant` in both.
+- `XmlReaderOptions` has the same two defaults, so a `Utf8XmlReader` reports comments and white-space-only text as well. `XmlSerializer` skips both. A document keeps them so that `XmlDocument.WriteTo` reproduces the comments and the layout that were parsed.
+- Because white space is kept, `XmlElement.EnumerateChildren` on an indented document returns a `Text` node for each run of indentation, and the text of an element that has child elements includes it. Lookups by name and the values of leaf elements aren't affected.
+- `WhitespaceHandling` applies only to text that is nothing but white space between two tags. White space inside a value, such as `<Item> Keyboard </Item>`, is always kept.
+- White space outside the root element isn't stored under any setting.
+- A limit of 0 means the default limit in the table under Usage, except `MaxDocumentByteCount`, where 0 means no limit.
+- `MaxDocumentByteCount` counts UTF-8 bytes. For the `string` and `ReadOnlySpan<char>` overloads of `Parse`, it applies to the size after conversion to UTF-8.
+- `XmlDocument.ParseValue` doesn't take these options. The `XmlReaderOptions` of the reader you pass apply.
+- `XmlNode.Parse` takes no options. It keeps comments and white space and uses the default limits. To build a mutable tree with other options, parse with `XmlDocument` and call `XmlElement.CloneNode`.
 
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options with [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) set to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling)
+and every max-* at 0 (table defaults).
 
 #### Syntax
 
@@ -124,6 +240,9 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CommentHandling
 
+Gets or sets how comments are handled.
+Default is [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) when constructed with [XmlDocumentOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#.ctor).
+
 #### Syntax
 
 ```csharp
@@ -135,6 +254,9 @@ public CloudNimble.Text.Xml.XmlCommentHandling CommentHandling { get; set; }
 Type: `CloudNimble.Text.Xml.XmlCommentHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
+
+Gets or sets the maximum attributes on one element, including xmlns*.
+0 means 1000.
 
 #### Syntax
 
@@ -148,6 +270,9 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxCommentByteCount
 
+Gets or sets the maximum comment payload in UTF-8 bytes.
+0 means 1,048,576.
+
 #### Syntax
 
 ```csharp
@@ -159,6 +284,9 @@ public int MaxCommentByteCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
+
+Gets or sets the maximum element depth.
+0 means 64.
 
 #### Syntax
 
@@ -172,6 +300,9 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDocumentByteCount
 
+Gets or sets the maximum document size in bytes.
+0 means unbounded.
+
 #### Syntax
 
 ```csharp
@@ -183,6 +314,9 @@ public int MaxDocumentByteCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
+
+Gets or sets the maximum UTF-8 byte length of an element or attribute name.
+0 means 1024.
 
 #### Syntax
 
@@ -196,6 +330,9 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
 
+Gets or sets the maximum UTF-8 byte length of a text or CDATA node.
+0 means 16,777,216.
+
 #### Syntax
 
 ```csharp
@@ -207,6 +344,9 @@ public int MaxTextByteCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
+
+Gets or sets how whitespace-only text between elements is handled.
+Default is [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
 
 #### Syntax
 
@@ -388,10 +528,9 @@ Type: `string?`
 
 ## Related APIs
 
-- # Related APIs
-- - `XmlDocument`
-- - `XmlReaderOptions`
-- - `XmlCommentHandling`
-- - `XmlWhitespaceHandling`
-- - `XmlException`
+- CloudNimble.Text.Xml.XmlDocument
+- CloudNimble.Text.Xml.XmlCommentHandling
+- CloudNimble.Text.Xml.XmlWhitespaceHandling
+- CloudNimble.Text.Xml.XmlReaderOptions
+- CloudNimble.Text.Xml.XmlException
 

@@ -1,3 +1,7 @@
-# Best Practices
-
-Use `SetAttribute` instead of adding duplicate `XmlAttributeNode` instances. Remove from `Children` / `Attributes` before attaching a node to another parent.
+- **Use `SetAttribute` to add or change an attribute.** It never creates a duplicate.
+- **Pass the namespace to `AddElement` for every element that belongs to one.** `feed.AddElement("title")` under a namespaced parent creates a `title` in no namespace, which is written with `xmlns=""`.
+- **Set a prefix only when the spelling matters.** An element with a namespace and no prefix is written with a default namespace declaration. An attribute with a namespace and no prefix gets a generated prefix such as `ns1`.
+- **Declare a shared prefix once on an ancestor.** Add an attribute with the prefix as its local name, `xmlns` as its prefix, and `XmlNamespaces.Xmlns` as its namespace.
+- **Use the indexer for one child and a loop for many.** `order["Item"]` returns the first match only.
+- **Read `InnerText` from the element that holds the value.** On an element with child elements it joins all the text below it, including the white space between the children in a tree parsed from an indented document.
+- **Add your own white space when the layout matters.** A node you add to an indented tree isn't indented. Either add text nodes for the line break and indentation, or work on a tree without white space and write it with an indenting `Utf8XmlWriter`.

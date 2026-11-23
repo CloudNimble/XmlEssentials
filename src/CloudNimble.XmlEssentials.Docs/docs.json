@@ -13,7 +13,71 @@
         "pages": [
           "index",
           "why-xmlessentials",
-          "quickstart"
+          "quickstart",
+          "benchmarks"
+        ]
+      },
+      {
+        "group": "Serialize and Deserialize",
+        "icon": "arrows-rotate",
+        "pages": [
+          "guides/serialize",
+          "guides/deserialize",
+          "guides/customize-names",
+          "guides/ignore-properties",
+          "guides/required-properties",
+          "guides/immutable-types",
+          "guides/collections",
+          "guides/namespaces",
+          "guides/null-and-nil",
+          "guides/polymorphism",
+          "guides/preserve-references",
+          "guides/mixed-content",
+          "guides/streaming",
+          "guides/configure-options"
+        ]
+      },
+      {
+        "group": "Read and Write XML Directly",
+        "icon": "file-code",
+        "pages": [
+          "guides/use-utf8xmlreader",
+          "guides/use-utf8xmlwriter",
+          "guides/use-xmldocument",
+          "guides/use-xmlnode"
+        ]
+      },
+      {
+        "group": "Source Generation and AOT",
+        "icon": "wand-magic-sparkles",
+        "pages": [
+          "guides/reflection-vs-source-generation",
+          "guides/source-generation",
+          "guides/source-generation-modes",
+          "guides/native-aot",
+          "guides/custom-converters",
+          "guides/xsd-source-generation"
+        ]
+      },
+      {
+        "group": "Migrate",
+        "icon": "right-left",
+        "pages": [
+          "guides/migrate/from-xmlserializer",
+          "guides/migrate/from-xmlreader-xmlwriter",
+          "guides/migrate/from-xdocument",
+          "guides/migrate/from-system-text-json",
+          "guides/migrate/system-text-xml-proposal"
+        ]
+      },
+      {
+        "group": "Reference",
+        "icon": "book",
+        "pages": [
+          "guides/supported-types",
+          "guides/xml-conformance",
+          "guides/security",
+          "guides/thread-safety"
         ]
       },
       {

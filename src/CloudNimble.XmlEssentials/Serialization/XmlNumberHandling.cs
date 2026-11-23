@@ -4,19 +4,20 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// How floating-point named literals are treated.
+    /// Specifies how <see cref="XmlSerializer"/> handles the named floating-point literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c>
+    /// when serializing and deserializing.
     /// </summary>
     [Flags]
     public enum XmlNumberHandling
     {
 
         /// <summary>
-        /// Reject <c>INF</c>, <c>-INF</c>, and <c>NaN</c>.
+        /// Strict handling, in which <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are rejected on both reading and writing.
         /// </summary>
         Strict = 0,
 
         /// <summary>
-        /// Accept and write the XSD named literals (any letter case on read).
+        /// Lenient handling, in which the XML Schema named literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are read, in any letter case, and written.
         /// </summary>
         AllowNamedFloatingPointLiterals = 1,
 

@@ -1,9 +1,9 @@
-# Related APIs
-
-- `XmlElement`
-- `XmlDocumentOptions`
-- `XmlDeclarationInfo`
-- `Utf8XmlReader`
-- `Utf8XmlWriter`
-- `CloudNimble.Text.Xml.Nodes.XmlNode`
-- `System.Text.Json.JsonDocument`
+CloudNimble.Text.Xml.XmlElement
+CloudNimble.Text.Xml.XmlDocumentOptions
+CloudNimble.Text.Xml.XmlDeclarationInfo
+CloudNimble.Text.Xml.XmlValueKind
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.Nodes.XmlNode

@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Do not assume every child is an element. Check `ValueKind` is `Element`, `EmptyElement`, or `Nil` before `GetChild`-style navigation on a cursor you enumerated.
+Document best practices for `XmlValueKind` here.
+

@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlMixedAttribute` here.
-
+- A type can have one `[XmlMixed]` member. It can also have members mapped to attributes. It can't have members mapped to child elements, or an `[XmlText]` or `[XmlCData]` member. The serializer throws `NotSupportedException` for those combinations when it builds the type's metadata.
+- Every child element goes into the list as an `XmlMixedElement`. Child elements aren't deserialized into typed objects.
+- Text that is only white space between two elements is dropped unless `XmlSerializerOptions.WhitespaceHandling` is `XmlWhitespaceHandling.Significant`.
+- A CDATA section is read as text and written back as escaped text. Comments and processing instructions are not kept.
+- Each element is held as a mutable `XmlElementNode`, which allocates a node for the element and for each of its descendants. For large documents that are mostly mixed content, consider reading with `Utf8XmlReader` or `XmlDocument` instead.

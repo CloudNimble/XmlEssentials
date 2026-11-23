@@ -1,13 +1,25 @@
-# Patterns
+These are the shapes that code using the reader takes most often.
 
-**Token loop.** `while (reader.Read())` then `switch (reader.TokenType)`. Handle `StartElement` with a check of `IsEmptyElement` before descending.
+### Token loop
 
-**Attribute walk.** Only valid on `StartElement`. `MoveToNextAttribute` sets `TokenType` to `Attribute`. `MoveToElement` restores the start tag.
+`while (reader.Read())` with a `switch` on `TokenType` is the basic shape, as with `Utf8JsonReader`. Handle `StartElement` and check `IsEmptyElement` before you expect content or an end tag.
 
-**Nil.** `GetNil()` is true when the current start tag has `xsi:nil` of `true` or `1` in the XML Schema instance namespace. An unprefixed `nil` attribute does not count.
+### Attribute walk
 
-**Resume.** When `Read` returns false on a non-final buffer, construct a new reader over the unconsumed remainder plus the next chunk, passing `CurrentState`. The snapshot copies element names and xmlns bindings; it does not alias the previous buffer.
+On a start tag, call `MoveToNextAttribute` until it returns `false`. While the reader is on an attribute, `TokenType` is `Attribute` and the name and value members describe the attribute. Namespace declarations are part of the walk. `MoveToElement` returns to the start tag, and `Read` continues after the start tag whether or not you call it.
 
-**Comments.** Default options skip comments. `XmlCommentHandling.Allow` reports `XmlTokenType.Comment`. `Disallow` throws.
+### Element with a value
 
-**Fragments.** `AllowMultipleRoots = true` accepts more than one top-level element, and an empty buffer.
+After a start tag that you know holds text, call `Read` once and use a `Get*` or `TryGet*` method. For an element that can be empty, check that the token is `Text` or `CData` first.
+
+### Look ahead
+
+Copy the reader (`var lookahead = reader;`), read ahead with the copy inside the current element, and then drop the copy or carry on with it. A copy shares working memory with the original, so don't advance both in turn.
+
+### Read in blocks
+
+Construct a reader for each block with `isFinalBlock` and the state from the previous reader. When `Read` returns `false`, save `CurrentState`, keep the bytes after `BytesConsumed`, and add more data. The complete loop is in the example for [`XmlReaderState`](/api-reference/CloudNimble/Text/Xml/XmlReaderState).
+
+### Custom converter
+
+`XmlConverter<T>.Read` receives the reader by reference, positioned on the value to convert. See [Custom converters](/guides/custom-converters).

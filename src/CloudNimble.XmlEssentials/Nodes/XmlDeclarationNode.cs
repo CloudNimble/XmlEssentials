@@ -4,29 +4,45 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// A mutable XML declaration. Immutable documents use <see cref="XmlDeclarationInfo"/> instead.
+    /// Represents a mutable XML declaration. This class cannot be inherited.
     /// </summary>
+    /// <remarks>
+    /// The read-only <see cref="XmlDocument"/> reports its declaration as an <see cref="XmlDeclarationInfo"/> instead.
+    /// <see cref="WriteTo(Utf8XmlWriter)"/> writes <see cref="Version"/> and <see cref="Encoding"/> as they
+    /// are, without validating them.
+    /// </remarks>
     public sealed class XmlDeclarationNode : XmlNode
     {
 
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the encoding.
+        /// Gets or sets the encoding name that the declaration states.
         /// </summary>
+        /// <value>
+        /// The value of the <c>encoding</c> pseudo-attribute. The default is <c>utf-8</c>.
+        /// </value>
         public string Encoding { get; set; } = "utf-8";
 
         /// <summary>
-        /// Gets or sets the standalone flag, or <see langword="null"/> to omit it.
+        /// Gets or sets the standalone document declaration.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> to write <c>standalone="yes"</c>; <see langword="false"/> to write
+        /// <c>standalone="no"</c>; <see langword="null"/> to omit the <c>standalone</c> pseudo-attribute.
+        /// The default is <see langword="null"/>.
+        /// </value>
         public bool? Standalone { get; set; }
 
         /// <inheritdoc />
         public override XmlValueKind ValueKind => XmlValueKind.XmlDeclaration;
 
         /// <summary>
-        /// Gets or sets the XML version.
+        /// Gets or sets the XML version that the declaration states.
         /// </summary>
+        /// <value>
+        /// The value of the <c>version</c> pseudo-attribute. The default is <c>1.0</c>.
+        /// </value>
         public string Version { get; set; } = "1.0";
 
         #endregion

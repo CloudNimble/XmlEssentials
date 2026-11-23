@@ -1,8 +1,9 @@
 ---
 title: XmlNilHandling
+description: "How a nillable null value is written."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlNilHandling', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlNilHandling', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml.XmlAttributes', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute']
 ---
 
 ## Definition
@@ -19,18 +20,106 @@ keywords: ['XmlNilHandling', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble
 CloudNimble.Text.Xml.XmlNilHandling
 ```
 
+## Summary
+
+How a nillable null value is written.
+
+## Usage
+
+`XmlNilHandling` is the type of `XmlSerializerOptions.NilHandling`. It decides what the serializer writes for a member whose value is `null`.
+
+| Value | A `null` member is written as | Reads back as `null` |
+| --- | --- | --- |
+| `WriteXsiNil` (default) | `<Name xsi:nil="true"/>` | Yes |
+| `WriteEmptyElement` | `<Name/>` | No. An empty element is an empty string. |
+| `Omit` | Nothing | Yes, when the member starts as `null` |
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    NilHandling = XmlNilHandling.Omit,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+var contact = new Contact { Name = "Ada", Nickname = null, Age = null };
+output.WriteLine(XmlSerializer.Serialize(contact, options));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Contact>
+  <Name>Ada</Name>
+</Contact>
+```
+
+The setting affects writing only. When the serializer reads, it treats a missing element, an empty element, and an `xsi:nil` element the same way whatever the option is. See [Handle null values](/guides/null-and-nil).
+
+## Examples
+
+### Write null members as xsi:nil
+
+With the default value, each `null` member is an empty element marked `xsi:nil="true"`, and the document reads back with the members `null`.
+
+```csharp
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var contact = new Contact { Name = "Ada", Nickname = null, Age = null };
+
+string xml = XmlSerializer.Serialize(contact, options);
+output.WriteLine(xml);
+
+Contact? copy = XmlSerializer.Deserialize<Contact>(xml, options);
+output.WriteLine($"Nickname is null: {copy!.Nickname is null}");
+output.WriteLine($"Age is null: {copy.Age is null}");
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Contact>
+  <Name>Ada</Name>
+  <Nickname xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <Age xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+</Contact>
+Nickname is null: True
+Age is null: True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/15_NullAndNil.cs)
+
+## Best Practices
+
+- Keep `WriteXsiNil` when a document must round-trip exactly, or when a schema declares the element nillable.
+- Choose `Omit` for smaller documents when the reader treats a missing element as no value.
+- Avoid `WriteEmptyElement` unless a consumer can't process `xsi:nil`. A `null` string reads back as an empty string, and a `null` number produces a document that can't be read back at all.
+- To change the behavior for one member instead of all of them, use `[XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]` on that member.
+
+## Considerations
+
+- Only elements are affected. A `null` member that is mapped to an attribute or to the element's text is always left out.
+- `Omit` can't apply to the document root. Serializing a `null` root with `Omit` throws `InvalidOperationException` with the message `A null document root cannot be omitted.`
+- `Omit` doesn't remove a `null` collection that has an `[XmlArray]` wrapper. The wrapper is written as an empty element.
+- A `null` item inside a collection is written as an element in every mode. `Omit` and `WriteEmptyElement` write it as an empty element.
+- Every nil element declares the `xsi` prefix itself. The declaration isn't moved to the document element.
+- A reference handler writes a repeated object as `xsi:nil` regardless of this setting. See `XmlReferenceHandler.IgnoreCycles`.
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `WriteXsiNil` | 0 |  |
-| `WriteEmptyElement` | 1 |  |
-| `Omit` | 2 |  |
+| `WriteXsiNil` | 0 | Write `xsi:nil="true"` on an empty element. |
+| `WriteEmptyElement` | 1 | Write an empty element without `xsi:nil`. |
+| `Omit` | 2 | Omit the member. A null document root throws. |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlNamespaces
+- CloudNimble.Text.Xml.XmlAttributes
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
+- CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute
 

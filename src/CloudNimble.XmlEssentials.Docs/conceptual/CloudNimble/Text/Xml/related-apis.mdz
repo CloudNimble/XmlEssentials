@@ -1,12 +1,8 @@
-# Related APIs
-
-- `Utf8XmlReader`
-- `Utf8XmlWriter`
-- `XmlDocument`
-- `XmlElement`
-- `CloudNimble.Text.Xml.Nodes.XmlNode`
-- `XmlReaderOptions`
-- `XmlTokenType`
-- `XmlException`
-- `XmlName`
-- `Utf8JsonReader` / `JsonDocument` (shape analogues in `System.Text.Json`)
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.XmlElement
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.Nodes.XmlNode

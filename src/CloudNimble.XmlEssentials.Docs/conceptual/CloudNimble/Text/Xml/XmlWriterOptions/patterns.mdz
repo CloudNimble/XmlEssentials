@@ -1,7 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-**Fragments.** `OmitXmlDeclaration = true` when the caller wraps the bytes in a larger document.
+Document common patterns for `XmlWriterOptions` here.
 
-**DoS.** Set `MaxDepth`, `MaxAttributeCount`, and `MaxNameByteCount` together. Zero means “use the default,” not “unlimited.”
-
-**SkipValidation.** Turns off name and well-formedness checks. Limits still apply. Unclosed `Dispose` does not throw.

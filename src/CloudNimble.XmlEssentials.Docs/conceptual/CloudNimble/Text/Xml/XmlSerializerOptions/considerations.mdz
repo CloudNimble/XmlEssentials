@@ -1,5 +1,28 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
+An options instance carries a cache as well as settings, which explains most of what follows.
 
-Document considerations for `XmlSerializerOptions` here.
+### Read-only after first use
 
+Serializing, deserializing, or calling `GetTypeInfo` or `TryGetTypeInfo` makes the instance read-only. From then on every setter throws an `InvalidOperationException` with the message `This XmlSerializerOptions instance is read-only.`, and so do changes to `Converters` and `TypeInfoResolverChain`. The three static instances are read-only from the start. To change a read-only instance, copy it with `new XmlSerializerOptions(existing)`.
+
+### The cache lives on the instance
+
+Each instance caches the converter and the type metadata for every type it has been used with. In the library's benchmark of a customer object with two addresses and 20 line items, a write with a new instance takes 612,933 ns and allocates 75,440 bytes, against 1,710 ns and no allocation with a cached instance. See [Benchmarks](/benchmarks). The cache is never trimmed, so an application that keeps creating instances also keeps their metadata alive for as long as it holds them.
+
+### Zero means the built-in default
+
+`IndentSize`, `DefaultBufferSize`, and the `Max*` limits are `0` on a new instance. For each of them, `0` selects the built-in value: an indent of 2, a 16,384-byte buffer, a depth of 64, 1,000 attributes, 1,024 bytes for a name, 16,777,216 bytes for a text value, and 1,048,576 bytes for a comment. `MaxDocumentByteCount` is the exception: `0` means no limit.
+
+### Options that have no effect
+
+The serializer doesn't read `AllowOutOfOrderMetadataProperties`, `InferClosedTypePolymorphism`, `PreferredObjectCreationHandling`, `RespectNullableAnnotations`, or `UnknownTypeHandling` in version 1.0. They can be set and copied, but they change nothing.
+
+### Differences from JsonSerializerOptions
+
+- `XmlSerializerDefaults.Web` sets only `PropertyNamingPolicy` to camelCase and `OmitXmlDeclaration` to `true`. It doesn't turn on case-insensitive matching.
+- `RespectRequiredConstructorParameters` defaults to `true`.
+- There are three naming policies for members instead of one: `PropertyNamingPolicy`, and `ElementNamingPolicy` and `AttributeNamingPolicy`, which override it for their kind of name.
+- XML has options that JSON has no use for, such as `DefaultPropertyMapping`, `NilHandling`, `DefaultNamespace`, `OmitXmlDeclaration`, and `XmlVersion`.
+
+### Thread safety
+
+A read-only instance is meant to be shared between threads. See [Thread safety](/guides/thread-safety).

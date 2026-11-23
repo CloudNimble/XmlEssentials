@@ -1,5 +1,10 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlUnknownTypeHandling` is the type of `XmlSerializerOptions.UnknownTypeHandling`. It names the two DOM types a member declared as `object` could be read into: `XmlElement` or `XmlNode`. It corresponds to `JsonUnknownTypeHandling` in System.Text.Json.
 
-Describe how to use `XmlUnknownTypeHandling` here.
+The serializer doesn't read this option in this release. A member declared as `object` has no built-in mapping, and serializing or deserializing a type that has one throws `NotSupportedException` with the message `The type 'System.Object' is not supported.`
 
+To handle such a member today, do one of the following:
+
+- Declare the member with a concrete type.
+- Declare it as a base class with `[XmlDerivedType<T>]` attributes. See [Serialize derived classes](/guides/polymorphism).
+- Keep content that no member maps in an `XmlExtensionData` member. See [Mixed content and overflow](/guides/mixed-content).
+- Write a [custom converter](/guides/custom-converters) for the member.

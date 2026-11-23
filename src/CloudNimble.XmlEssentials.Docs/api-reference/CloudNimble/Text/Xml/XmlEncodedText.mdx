@@ -1,8 +1,9 @@
 ---
 title: XmlEncodedText
+description: "Cached escaped UTF-8 for hot element and attribute names."
 icon: cubes
 tag: "SEALED"
-keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `Utf8XmlWriter`', '- `XmlName`', '- `System.Text.Json.JsonEncodedText`']
+keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml.XmlName']
 ---
 
 ## Definition
@@ -19,54 +20,74 @@ keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble
 CloudNimble.Text.Xml.XmlEncodedText
 ```
 
+## Summary
+
+Cached escaped UTF-8 for hot element and attribute names.
+
 ## Usage
 
-# Usage
+`XmlEncodedText` holds an element name as UTF-8 bytes, so that a `Utf8XmlWriter` can write the name many times without converting it from a `string` each time. It's the counterpart of `JsonEncodedText`.
 
-Cache a name once and pass it to `Utf8XmlWriter.WriteStartElement`:
-
-```csharp
-var root = XmlEncodedText.Encode("root");
-writer.WriteStartElement(root);
-writer.WriteEndElement();
-```
-
-`Encode` accepts `string`, `ReadOnlySpan<char>`, or UTF-8 `ReadOnlySpan<byte>`. `EncodedUtf8Bytes` is the cached name.
-
-## Examples
-
-# Examples
+Create a value once with `XmlEncodedText.Encode` and keep it in a static field:
 
 ```csharp
-var name = XmlEncodedText.Encode("Person"u8);
-var copy = XmlEncodedText.Encode("Person");
-name.Equals(copy); // true
-name.ToString();   // "Person"
+private static readonly XmlEncodedText ItemName = XmlEncodedText.Encode("Item");
+
+private static readonly XmlEncodedText SoldOutName = XmlEncodedText.Encode("SoldOut"u8);
 ```
+
+Then pass it to `Utf8XmlWriter.WriteStartElement` or `Utf8XmlWriter.WriteEmptyElement`:
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+string?[] items = ["Keyboard", "Mouse", null];
+
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+{
+    writer.WriteStartElement("Items"u8);
+    foreach (var item in items)
+    {
+        if (item is null)
+        {
+            writer.WriteEmptyElement(SoldOutName);
+            continue;
+        }
+
+        writer.WriteStartElement(ItemName);
+        writer.WriteStringValue(item);
+        writer.WriteEndElement();
+    }
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+output.WriteLine($"{ItemName} is {ItemName.EncodedUtf8Bytes.Length} bytes");
+```
+
+```text
+<Items><Item>Keyboard</Item><Item>Mouse</Item><SoldOut/></Items>
+Item is 4 bytes
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+`Encode` accepts a `string`, a `ReadOnlySpan<char>`, or UTF-8 bytes. `EncodedUtf8Bytes` returns the stored bytes, and `ToString` returns the name as a string.
 
 ## Best Practices
 
-# Best Practices
-
-- Encode names once, not per element.
-- Do not use this type for text values; it does not apply `&amp;` / `&lt;` escaping.
-- Compare with `Equals` or `==`, not `ToString()`.
-
-## Patterns
-
-# Patterns
-
-**Static cache.** Store `XmlEncodedText` in a `static readonly` field on the serializer or converter that writes that element name in a loop.
-
-**UTF-8 literal.** `XmlEncodedText.Encode("id"u8)` avoids a UTF-16 transcode at cache-fill time.
+- **Encode once and keep the value.** A `static readonly` field on the type that writes the element is the usual place. Calling `Encode` each time you write gains nothing.
+- **Use it for names only.** A name is never escaped, so text passed this way isn't either.
+- **Compare values with `==` or `Equals`.** Both compare the bytes. Comparing the results of `ToString` creates two strings to do the same thing.
+- **Reach for a `u8` literal first.** `writer.WriteStartElement("Item"u8)` also skips the conversion and needs no field. Use `XmlEncodedText` when the name isn't known at compile time, or when you want one named value to share.
 
 ## Considerations
 
-# Considerations
-
-`XmlEncodedText` stores UTF-8 name bytes. It does not escape markup; XML names are not escaped. Invalid names still fail at write time unless `SkipValidation` is set.
-
-Equality is ordinal UTF-8 byte equality. The prefix is not part of this type; it is a local name (or other name token) only.
+- **`Encode` doesn't check the name.** It only converts to UTF-8. The writer checks that the bytes are a valid XML name each time it writes them, unless `XmlWriterOptions.SkipValidation` is set. This is unlike `JsonEncodedText`, which escapes when it encodes.
+- **`Encode` allocates one array** and copies its input into it, including the overload that takes UTF-8 bytes.
+- **Only two writer methods take it:** `WriteStartElement(XmlEncodedText)` and `WriteEmptyElement(XmlEncodedText)`. They write an element with no prefix and no namespace argument. For attribute names, prefixed names, and names in a namespace, use the `string` or UTF-8 overloads.
+- **The default value is an empty name.** `default(XmlEncodedText)` has an empty `EncodedUtf8Bytes`, and the writer rejects an empty name.
+- **Equality is by bytes.** Two values are equal when their UTF-8 bytes are the same, with no Unicode normalization.
 
 ## Constructors
 
@@ -94,6 +115,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EncodedUtf8Bytes
 
+Gets the encoded UTF-8 bytes.
+
 #### Syntax
 
 ```csharp
@@ -108,6 +131,8 @@ Type: `System.ReadOnlySpan<byte>`
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
 
+Encodes *value* as UTF-8 name bytes.
+
 #### Syntax
 
 ```csharp
@@ -118,13 +143,16 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `string` | - |
+| `value` | `string` | The name. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
+The encoded name.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
+
+Encodes *value* as UTF-8 name bytes.
 
 #### Syntax
 
@@ -136,13 +164,16 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<cha
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<char>` | - |
+| `value` | `System.ReadOnlySpan<char>` | The name. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
+The encoded name.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
+
+Encodes *utf8Value* as UTF-8 name bytes.
 
 #### Syntax
 
@@ -154,11 +185,12 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<byt
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 name. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
+The encoded name.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
 
@@ -388,8 +420,7 @@ Type: `string?`
 
 ## Related APIs
 
-- # Related APIs
-- - `Utf8XmlWriter`
-- - `XmlName`
-- - `System.Text.Json.JsonEncodedText`
+- CloudNimble.Text.Xml.Utf8XmlWriter
+- CloudNimble.Text.Xml.XmlWriterOptions
+- CloudNimble.Text.Xml.XmlName
 

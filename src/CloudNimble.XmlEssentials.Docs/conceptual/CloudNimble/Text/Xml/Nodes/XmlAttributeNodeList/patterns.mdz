@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Replace in place with the indexer setter. `Clear` detaches every attribute.
+Document common patterns for `XmlAttributeNodeList` here.
+

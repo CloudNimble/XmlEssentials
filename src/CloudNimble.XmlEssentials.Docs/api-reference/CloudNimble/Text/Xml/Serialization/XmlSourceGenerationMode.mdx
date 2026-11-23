@@ -1,8 +1,9 @@
 ---
 title: XmlSourceGenerationMode
+description: "What the source generator emits for a context."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver']
 ---
 
 ## Definition
@@ -19,18 +20,69 @@ keywords: ['XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlSou
 CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode
 ```
 
+## Summary
+
+What the source generator emits for a context.
+
+## Usage
+
+Set the mode with the `GenerationMode` property of `[XmlSourceGenerationOptions]` on a context. It applies to every type the context lists.
+
+```csharp
+[XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
+[XmlSerializable(typeof(Order))]
+public partial class MetadataOrderXmlContext : XmlSerializerContext
+{
+}
+```
+
+| Member | What the generator writes for each object type |
+| --- | --- |
+| `Default` | The same as `Serialization`. |
+| `Serialization` | A converter that reads and writes the type with `Utf8XmlReader` and `Utf8XmlWriter`, with no reflection. Safe for trimming and Native AOT. |
+| `Metadata` | No converter. The context's `XmlTypeInfo<T>` property asks `DefaultXmlTypeInfoResolver` for the type info at run time, so every option and custom converter applies. Not safe for Native AOT. |
+
+`Metadata | Serialization` behaves as `Serialization` does.
+
+The following example shows the converter behind the type info of each mode and the number of members the type info describes:
+
+```csharp
+XmlTypeInfo<Order> generated = OrderXmlContext.Default.Order;
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Default:  {generated.Converter.GetType().Name}, {generated.Properties.Count} properties");
+output.WriteLine($"Metadata: {metadata.Converter.GetType().Name}, {metadata.Properties.Count} properties");
+
+var order = new Order { Id = 7, Customer = "Grace" };
+output.WriteLine(XmlSerializer.Serialize(order, generated));
+output.WriteLine(XmlSerializer.Serialize(order, metadata));
+```
+
+The code produces the following output:
+
+```text
+Default:  OrderXmlConverter, 0 properties
+Metadata: XmlObjectConverter`1, 3 properties
+<?xml version="1.0" encoding="utf-8"?><Order Id="7"><Customer>Grace</Customer></Order>
+<?xml version="1.0" encoding="utf-8"?><Order Id="7"><Customer>Grace</Customer></Order>
+```
+
+The names match `JsonSourceGenerationMode` in System.Text.Json, but metadata mode differs: here it defers to the run-time resolver instead of emitting metadata. For a comparison of the modes, see [Source-generation modes](/guides/source-generation-modes).
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Default` | 0 |  |
-| `Metadata` | 1 |  |
-| `Serialization` | 2 |  |
+| `Default` | 0 | Metadata and serialization (`Metadata | Serialization`). |
+| `Metadata` | 1 | Type info only. |
+| `Serialization` | 2 | Serialize and deserialize methods. |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute
+- CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute
+- CloudNimble.Text.Xml.Serialization.XmlSerializerContext
+- CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver
 

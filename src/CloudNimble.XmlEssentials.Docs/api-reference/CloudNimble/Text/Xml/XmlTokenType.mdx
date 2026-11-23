@@ -1,8 +1,9 @@
 ---
 title: XmlTokenType
+description: "Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlTokenType', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `Utf8XmlReader.TokenType`', '- `Utf8XmlReader.IsEmptyElement`', '- `XmlCommentHandling`', '- `XmlVersion`']
+keywords: ['XmlTokenType', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlValueKind']
 ---
 
 ## Definition
@@ -19,96 +20,117 @@ keywords: ['XmlTokenType', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Tex
 CloudNimble.Text.Xml.XmlTokenType
 ```
 
+## Summary
+
+Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document.
+
 ## Usage
 
-# Usage
-
-After each successful `Read()`, `Utf8XmlReader.TokenType` is the kind of token under the cursor. Switch on it to decide whether to inspect `LocalNameSpan`, `ValueSpan`, or attributes.
-
-`MoveToNextAttribute` sets `TokenType` to `Attribute` until `MoveToElement` restores the start tag.
-
-## Examples
-
-# Examples
+After each call to `Utf8XmlReader.Read` that returns `true`, `Utf8XmlReader.TokenType` says what the reader is on. Switch on it to decide which members to read.
 
 ```csharp
+// Leave out comments and the white space between elements, so that the loop sees data only.
+var options = new XmlReaderOptions
+{
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
+};
+
+var reader = new Utf8XmlReader(xml, options);
 while (reader.Read())
 {
     switch (reader.TokenType)
     {
         case XmlTokenType.StartElement:
-            if (reader.IsEmptyElement)
-            {
-                break;
-            }
-            break;
         case XmlTokenType.EndElement:
+            output.WriteLine($"{reader.TokenType} {Encoding.UTF8.GetString(reader.LocalNameSpan)} (depth {reader.CurrentDepth})");
             break;
+
         case XmlTokenType.Text:
         case XmlTokenType.CData:
+            output.WriteLine($"{reader.TokenType} \"{reader.GetString()}\" (depth {reader.CurrentDepth})");
             break;
-        case XmlTokenType.Comment:
-            Console.WriteLine(reader.GetComment());
-            break;
-        case XmlTokenType.XmlDeclaration:
-            Console.WriteLine(reader.Version);
+
+        default:
+            output.WriteLine($"{reader.TokenType} (depth {reader.CurrentDepth})");
             break;
     }
 }
 ```
 
-## Best Practices
+For the document below, the loop prints the token types in the order shown.
 
-# Best Practices
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Item>Keyboard</Item>
+  <Gift/>
+  <Note><![CDATA[Leave at <door>]]></Note>
+</Order>
+```
 
-Handle `StartElement` and `IsEmptyElement` together so empty tags do not look like missing end tags.
+```text
+XmlDeclaration (depth 0)
+StartElement Order (depth 1)
+StartElement Item (depth 2)
+Text "Keyboard" (depth 2)
+EndElement Item (depth 1)
+StartElement Gift (depth 1)
+StartElement Note (depth 2)
+CData "Leave at <door>" (depth 2)
+EndElement Note (depth 1)
+EndElement Order (depth 0)
+```
 
-Treat `Text` and `CData` as the same infoset for mapping unless you must preserve CDATA delimiters. Both expose `ValueSpan` after entity handling (CDATA has no entity expansion).
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/20_ReadTokensAndValues.cs)
 
-## Patterns
+| Token type | Members that describe it |
+| --- | --- |
+| `StartElement` | `LocalNameSpan`, `PrefixSpan`, `NamespaceUriSpan`, `IsEmptyElement`, `AttributeCount`, `GetNil` |
+| `EndElement` | `LocalNameSpan`, `PrefixSpan`, `NamespaceUriSpan` |
+| `Attribute` | The name properties, `ValueSpan`, `GetString`, `Get*`, `TryGet*` |
+| `Text`, `CData` | `ValueSpan`, `GetString`, `Get*`, `TryGet*`, `ValueIsEscaped` |
+| `Comment` | `GetComment`, `ValueSpan` |
+| `ProcessingInstruction` | `LocalNameSpan` (the target), `ValueSpan` (the data) |
+| `XmlDeclaration` | `Utf8XmlReader.Version` |
 
-# Patterns
+## Remarks
 
-A typical mapper:
-
-1. `XmlDeclaration` — record `Version`, ignore encoding (UTF-8 only).
-2. `ProcessingInstruction` — ignore or stash.
-3. `StartElement` — push a frame; if `IsEmptyElement`, pop immediately.
-4. `Attribute` — only while walking with `MoveToNextAttribute`.
-5. `Text` / `CData` — bind to a property via `TryGet*`.
-6. `EndElement` — pop the frame.
+Empty elements (`<e/>`) are reported as [XmlTokenType.StartElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) with
+[Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement) set. The reader does not synthesize an
+[XmlTokenType.EndElement](/api-reference/CloudNimble/Text/Xml/XmlTokenType) token. Callers must check [Utf8XmlReader.IsEmptyElement](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isemptyelement)
+before expecting a matching end tag.
 
 ## Considerations
 
-# Considerations
-
-`None` means no token yet, or `Read` has already returned false.
-
-`StartElement` covers both `<e>` and `<e/>`. Distinguish them with `IsEmptyElement`. The reader never synthesizes `EndElement` for an empty tag.
-
-`Comment` appears only when `XmlCommentHandling.Allow` is set. Otherwise comments are skipped or rejected.
-
-`XmlDeclaration` is reported as its own token. It is legal only as the first token in the document.
+- **`StartElement` covers `<e>` and `<e/>`.** For an empty element, `Utf8XmlReader.IsEmptyElement` is `true` and no `EndElement` token follows. Check it wherever you count depth or wait for an end tag.
+- **`Attribute` never comes from `Read`.** `TokenType` is `Attribute` only between a call to `MoveToNextAttribute` that returns `true` and the next call to `MoveToElement` or `Read`.
+- **`Comment` is reported by default.** Set `XmlReaderOptions.CommentHandling` to `XmlCommentHandling.Skip` when you don't want comments.
+- **White space between elements is a `Text` token by default.** Set `XmlReaderOptions.WhitespaceHandling` to `XmlWhitespaceHandling.Insignificant` when you don't want it. The example in the usage section does both.
+- **`Text` and `CData` carry the same kind of value.** They differ only in how the document wrote it. Handle them together unless you need to know which form was used.
+- **`XmlDeclaration` can only be the first token.** A document doesn't have to have one.
+- **`None` means there's no current token:** before the first `Read`, and after `Read` returns `false` at the end of the document.
+- **There's no token for a document type declaration.** The reader rejects one with an `XmlException`.
 
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `None` | 0 |  |
-| `StartElement` | 1 |  |
-| `EndElement` | 2 |  |
-| `Attribute` | 3 |  |
-| `Text` | 4 |  |
-| `CData` | 5 |  |
-| `Comment` | 6 |  |
-| `ProcessingInstruction` | 7 |  |
-| `XmlDeclaration` | 8 |  |
+| `None` | 0 | No token has been read yet, or the reader has reached the end of a complete document. |
+| `StartElement` | 1 | A start tag, including empty elements such as `<e/>`. |
+| `EndElement` | 2 | An end tag such as `</e>`. |
+| `Attribute` | 3 | An attribute selected by [Utf8XmlReader.MoveToNextAttribute](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#movetonextattribute). |
+| `Text` | 4 | Character data, after entity expansion and end-of-line handling. |
+| `CData` | 5 | A CDATA section. The value is the payload between `<![CDATA[` and `]]>`. |
+| `Comment` | 6 | A comment, reported only when [XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) is set. |
+| `ProcessingInstruction` | 7 | A processing instruction other than the XML declaration. |
+| `XmlDeclaration` | 8 | The XML declaration (`<?xml ...?>`), which must be the first token in the document. |
 
 ## Related APIs
 
-- # Related APIs
-- - `Utf8XmlReader.TokenType`
-- - `Utf8XmlReader.IsEmptyElement`
-- - `XmlCommentHandling`
-- - `XmlVersion`
+- CloudNimble.Text.Xml.Utf8XmlReader
+- CloudNimble.Text.Xml.XmlReaderOptions
+- CloudNimble.Text.Xml.XmlCommentHandling
+- CloudNimble.Text.Xml.XmlWhitespaceHandling
+- CloudNimble.Text.Xml.XmlValueKind
 

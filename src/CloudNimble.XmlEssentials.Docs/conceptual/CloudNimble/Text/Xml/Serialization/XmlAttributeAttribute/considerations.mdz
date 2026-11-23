@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlAttributeAttribute` here.
-
+- Only a simple value can be an XML attribute: a string, a number, a Boolean, a date or time, a GUID, a URI, an enumeration, and the nullable forms of those. On a member of any other type, such as an object or a collection, the serializer throws a `NotSupportedException` the first time the type is used.
+- A `null` value is left out. An attribute can't be marked nil, so `NilHandling` doesn't apply.
+- Attributes are written before element text and child elements. Among themselves they follow declaration order, or `[XmlPropertyOrder]` when it is set.
+- `[XmlPropertyName]` on the same member takes precedence over `AttributeName`. When neither is set, the member name is converted by `AttributeNamingPolicy`, or by `PropertyNamingPolicy` when that is `null`.
+- `[XmlAttribute]` can't be combined with `[XmlElement]`, `[XmlText]`, or `[XmlCData]` on one member.
+- Characters that aren't allowed in an attribute value, such as `"`, `<`, and `&`, are escaped when written and restored when read.

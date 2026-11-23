@@ -1,7 +1,9 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
+Provide examples of using `XmlTextNode` here.
+
 ```csharp
-var root = new XmlElementNode("e");
-root.Add(new XmlTextNode("a & b"));
-root.ToString(); // <e>a &amp; b</e>
+// Example code here
 ```
+

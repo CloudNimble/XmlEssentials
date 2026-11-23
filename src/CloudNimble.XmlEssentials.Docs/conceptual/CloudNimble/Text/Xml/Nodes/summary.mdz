@@ -1,3 +1,1 @@
-# Summary
-
-`CloudNimble.Text.Xml.Nodes` is the mutable XML tree: `XmlNode` plus `XmlElementNode`, attributes, text, CDATA, comments, processing instructions, and a declaration node. Lists are `XmlNodeList` and `XmlAttributeNodeList`, not BCL `System.Xml` types.
+The `CloudNimble.Text.Xml.Nodes` namespace contains the mutable XML tree: `XmlNode` and the types that derive from it for elements, attributes, text, CDATA sections, comments, processing instructions, and the XML declaration, together with the two list types that hold an element's children and attributes. It's the XML counterpart of `System.Text.Json.Nodes`. Use it to build XML node by node or to change XML that you parsed. To read XML without changing it, use `XmlDocument` in the `CloudNimble.Text.Xml` namespace.

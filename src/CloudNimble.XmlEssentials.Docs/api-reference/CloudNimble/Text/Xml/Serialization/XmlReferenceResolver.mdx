@@ -1,8 +1,9 @@
 ---
 title: XmlReferenceResolver
+description: "Maps objects to reference ids for one serialize or deserialize operation."
 icon: shapes
 tag: "ABSTRACT"
-keywords: ['XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization', 'class']
+keywords: ['XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamespaces']
 ---
 
 ## Definition
@@ -16,6 +17,106 @@ keywords: ['XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization.XmlRefere
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlReferenceResolver
 ```
+
+## Summary
+
+Maps objects to reference ids for one serialize or deserialize operation.
+
+## Usage
+
+An `XmlReferenceResolver` maps objects to identifiers and back for one call to `Serialize` or `Deserialize`. The serializer gets it from `XmlReferenceHandler.CreateResolver`. Derive from both classes to control how the identifiers in a document are resolved. The class corresponds to `ReferenceResolver` in System.Text.Json.
+
+| Method | Called when |
+| --- | --- |
+| `AddReference(referenceId, value)` | Reading: an element has an `id` attribute. Store the object under that identifier. |
+| `ResolveReference(referenceId)` | Reading: an element has a `ref` attribute. Return the object, or `null` if the identifier is unknown, in which case the serializer throws `XmlException`. |
+| `GetReference(value, out alreadyExists)` | Writing: an object is about to be written. Return its identifier, and report whether the object was seen before. |
+
+The following resolver keeps the objects in a dictionary that its handler owns, so the caller can look them up after the document has been read.
+
+```csharp
+private sealed class DirectoryReferenceHandler : XmlReferenceHandler
+{
+    public Dictionary<string, object> Directory { get; } = new(StringComparer.Ordinal);
+
+    public override XmlReferenceResolver CreateResolver()
+    {
+        return new DirectoryReferenceResolver(Directory);
+    }
+}
+
+private sealed class DirectoryReferenceResolver(Dictionary<string, object> directory) : XmlReferenceResolver
+{
+    public override void AddReference(string referenceId, object value)
+    {
+        directory[referenceId] = value;
+    }
+
+    public override string GetReference(object value, out bool alreadyExists)
+    {
+        foreach (KeyValuePair<string, object> pair in directory)
+        {
+            if (ReferenceEquals(pair.Value, value))
+            {
+                alreadyExists = true;
+                return pair.Key;
+            }
+        }
+
+        alreadyExists = false;
+        string id = $"object-{directory.Count + 1}";
+        directory[id] = value;
+        return id;
+    }
+
+    public override object? ResolveReference(string referenceId)
+    {
+        return directory.TryGetValue(referenceId, out object? value) ? value : null;
+    }
+}
+```
+
+Reading a document with this handler resolves its references and fills the dictionary:
+
+```csharp
+string xml = """
+    <Project xmlns:r="urn:CloudNimble.Text.Xml:refs" r:id="atlas">
+      <Name>Atlas</Name>
+      <Owner r:id="dana">
+        <Name>Dana Birkby</Name>
+      </Owner>
+      <Reviewer r:ref="dana" />
+    </Project>
+    """;
+
+var handler = new DirectoryReferenceHandler();
+var options = new XmlSerializerOptions { ReferenceHandler = handler };
+
+Project? project = XmlSerializer.Deserialize<Project>(xml, options);
+output.WriteLine(ReferenceEquals(project!.Owner, project.Reviewer));
+
+var dana = (Employee)handler.Directory["dana"];
+output.WriteLine(dana.Name);
+output.WriteLine(string.Join(", ", handler.Directory.Keys));
+```
+
+The code produces the following output:
+
+```text
+True
+Dana Birkby
+atlas, dana
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/17_PreserveReferences.cs)
+
+## Considerations
+
+- A custom resolver takes full effect when reading. When writing, the serializer calls `GetReference` to learn whether an object was already seen, but it writes `id` and `ref` attributes only for the built-in `XmlReferenceHandler.Preserve` instance. With a custom handler, a repeated object is written as nil.
+- When writing, `GetReference` can be called twice for one object: once by the member that holds it and once when the object itself is written. Return the same identifier both times.
+- Compare objects by reference, not with `Equals`. Two different objects that happen to be equal must not share an identifier. `ReferenceEqualityComparer.Instance` does this for a dictionary or a set.
+- A resolver is used for one operation and isn't called from more than one thread during it. If your handler shares state between resolvers, as the example does, that state needs its own protection when the options are used from several threads.
+- An object that is created through a constructor with parameters is passed to `AddReference` after the constructor runs. A `ref` to it from inside its own content can't be resolved.
 
 ## Constructors
 
@@ -33,6 +134,8 @@ public Object()
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AddReference <Badge color="orange">Abstract</Badge>
 
+Records *value* under *referenceId* for later resolve.
+
 #### Syntax
 
 ```csharp
@@ -43,8 +146,8 @@ public abstract void AddReference(string referenceId, object value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `referenceId` | `string` | - |
-| `value` | `object` | - |
+| `referenceId` | `string` | The id. |
+| `value` | `object` | The object. |
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -103,6 +206,8 @@ Type: `int`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetReference <Badge color="orange">Abstract</Badge>
 
+Returns the id for *value* and whether it was already seen.
+
 #### Syntax
 
 ```csharp
@@ -113,12 +218,13 @@ public abstract string GetReference(object value, out bool alreadyExists)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object` | - |
-| `alreadyExists` | `bool` | - |
+| `value` | `object` | The object. |
+| `alreadyExists` | `bool` | When this method returns, whether the object was already assigned an id. |
 
 #### Returns
 
 Type: `string`
+The id.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
 
@@ -171,6 +277,8 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ResolveReference <Badge color="orange">Abstract</Badge>
 
+Returns the object previously recorded under *referenceId*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+
 #### Syntax
 
 ```csharp
@@ -181,11 +289,12 @@ public abstract object ResolveReference(string referenceId)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `referenceId` | `string` | - |
+| `referenceId` | `string` | The id. |
 
 #### Returns
 
 Type: `object?`
+The object, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -200,4 +309,10 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlNamespaces
 

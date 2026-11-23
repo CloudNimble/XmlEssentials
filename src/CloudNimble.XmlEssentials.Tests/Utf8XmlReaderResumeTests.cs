@@ -155,7 +155,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 " lead and trail ",
             ];
             var xml = declaration + "<r>\n  <a>" + string.Join("</a>\n  <a>", texts) + "</a>\n  <a>a&amp;b</a>\n  <a>line\r\nend</a>\n</r>";
-            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml));
+            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml), new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant });
             var read = new System.Collections.Generic.List<string>();
             while (reader.Read())
             {

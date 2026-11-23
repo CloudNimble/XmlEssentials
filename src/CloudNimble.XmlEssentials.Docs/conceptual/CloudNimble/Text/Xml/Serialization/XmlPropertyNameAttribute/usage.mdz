@@ -1,5 +1,31 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Apply `[XmlPropertyName]` to a property or field to set its XML name. It is the counterpart of `[JsonPropertyName]`, and it works whether the member is written as an element or as an XML attribute.
 
-Describe how to use `XmlPropertyNameAttribute` here.
+```csharp
+[XmlPropertyName("title")]
+public string? Name { get; set; }
+```
 
+In the following type, `Name` is written as the `title` element.
+
+```csharp
+[XmlRoot("product")]
+public sealed class CatalogItem
+{
+    [XmlAttribute("sku")]
+    public string? Sku { get; set; }
+
+    [XmlPropertyName("title")]
+    public string? Name { get; set; }
+
+    [XmlElement("unit-price")]
+    public decimal UnitPrice { get; set; }
+}
+```
+
+Serializing a `CatalogItem` with these attributes produces the following XML:
+
+```xml
+<product sku="KB-101"><title>Keyboard</title><unit-price>49.95</unit-price></product>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)

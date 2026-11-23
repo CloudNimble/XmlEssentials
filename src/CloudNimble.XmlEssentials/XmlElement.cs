@@ -7,7 +7,7 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// A struct cursor into an <see cref="XmlDocument"/>, analogous to <c>JsonElement</c>.
+    /// Represents a specific XML node within an <see cref="XmlDocument"/>.
     /// </summary>
     /// <example>
     /// <code>
@@ -20,6 +20,14 @@ namespace CloudNimble.Text.Xml
     /// </code>
     /// </example>
     /// <remarks>
+    /// This struct is the XML counterpart of <c>JsonElement</c> in System.Text.Json. A value can represent
+    /// an element, an attribute, a text node, a CDATA section, a comment, or a processing instruction;
+    /// <see cref="ValueKind"/> tells which. A value is usable only while its parent
+    /// <see cref="XmlDocument"/> is not disposed.
+    /// The value of an attribute, a text node, a CDATA section, a comment, or a processing instruction
+    /// is its content. The value of an element is the text of all text nodes and CDATA sections inside
+    /// it, in document order.
+    /// The typed getters, such as <see cref="GetInt32"/>, ignore leading and trailing white space in the value.
     /// Name lookups, enumeration, the numeric and Boolean getters, and <see cref="WriteTo"/> do not allocate.
     /// Members that return a <see cref="string"/>, a <see cref="T:byte[]"/>, or an <see cref="XmlNode"/>
     /// allocate only that result.
@@ -39,6 +47,15 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Gets the number of attributes on this element.
         /// </summary>
+        /// <value>
+        /// The number of attributes on this element, including namespace declarations, or 0 if this node is not an element.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public int AttributeCount
         {
             get
@@ -49,18 +66,49 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets whether this element is empty (<c>&lt;e/&gt;</c>).
+        /// Gets a value that indicates whether this node is an element that is written as an empty-element tag (<c>&lt;e/&gt;</c>).
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if this node is an element that is written as an empty-element tag; otherwise,
+        /// <see langword="false"/>. An element with a start tag and an end tag and no content
+        /// (<c>&lt;e&gt;&lt;/e&gt;</c>) gives <see langword="false"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public bool IsEmptyElement => EnsureDocument().Row(_index).IsEmpty;
 
         /// <summary>
-        /// Gets whether this element carries <c>xsi:nil="true"</c>.
+        /// Gets a value that indicates whether this node is an element that is marked as nil with the <c>xsi:nil</c> attribute.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if this node is an element whose <c>xsi:nil</c> attribute is <c>true</c> or
+        /// <c>1</c>; otherwise, <see langword="false"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public bool IsNil => EnsureDocument().Row(_index).Kind is XmlValueKind.Nil;
 
         /// <summary>
-        /// Gets the local name.
+        /// Gets the local name of this node.
         /// </summary>
+        /// <value>
+        /// The local name of an element or an attribute, without its prefix, or the target of a processing
+        /// instruction. The value is an empty string for a node that has no name.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public string LocalName
         {
             get
@@ -71,8 +119,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the namespace URI, or empty.
+        /// Gets the namespace URI of this node.
         /// </summary>
+        /// <value>
+        /// The namespace URI of the element or attribute, or an empty string if the node is in no namespace.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public string NamespaceUri
         {
             get
@@ -83,8 +140,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the prefix, or empty.
+        /// Gets the namespace prefix of this node.
         /// </summary>
+        /// <value>
+        /// The prefix of the element or attribute name, or an empty string if the name has no prefix.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public string Prefix
         {
             get
@@ -95,8 +161,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the token type corresponding to this cursor.
+        /// Gets the reader token type that corresponds to this node.
         /// </summary>
+        /// <value>
+        /// One of the enumeration values that indicates the token a <see cref="Utf8XmlReader"/> reports for
+        /// this kind of node. An element gives <see cref="XmlTokenType.StartElement"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public XmlTokenType TokenType
         {
             get
@@ -115,8 +191,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the value kind of this cursor.
+        /// Gets the kind of the current XML node.
         /// </summary>
+        /// <value>
+        /// One of the enumeration values that indicates the kind of this node. A default
+        /// <see cref="XmlElement"/> gives <see cref="XmlValueKind.Undefined"/>.
+        /// </value>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public XmlValueKind ValueKind
         {
             get
@@ -151,9 +234,21 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
-        /// Deep-clones this cursor into a mutable node.
+        /// Creates a mutable copy of this node and all of its attributes and descendants.
         /// </summary>
-        /// <returns>The mutable clone.</returns>
+        /// <returns>
+        /// A new <see cref="XmlNode"/> that has no parent. Its type matches the kind of this node, for
+        /// example an <see cref="XmlElementNode"/> for an element.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The copy does not depend on the parent <see cref="XmlDocument"/> and stays valid after the document is disposed.
+        /// </remarks>
         public XmlNode CloneNode()
         {
             return EnsureDocument().CloneRow(_index);
@@ -172,9 +267,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Enumerates attributes on this element.
+        /// Gets an enumerator to enumerate the attributes of this element.
         /// </summary>
-        /// <returns>An attribute enumerator.</returns>
+        /// <returns>
+        /// An enumerator to enumerate the attributes of this element, in document order. Namespace
+        /// declarations are included. The enumerator yields nothing if this node is not an element.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public AttributeEnumerator EnumerateAttributes()
         {
             var document = EnsureDocument();
@@ -184,9 +288,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Enumerates child nodes of this element.
+        /// Gets an enumerator to enumerate the child nodes of this element.
         /// </summary>
-        /// <returns>A child enumerator.</returns>
+        /// <returns>
+        /// An enumerator to enumerate the child nodes of this element, in document order. Child nodes are
+        /// elements, text nodes, CDATA sections, comments, and processing instructions. Attributes are not
+        /// included. The enumerator yields nothing if this node is not an element.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
         public Enumerator EnumerateChildren()
         {
             var document = EnsureDocument();
@@ -195,10 +309,24 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the named attribute.
+        /// Gets the first attribute of this element that has the specified local name, in any namespace.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <returns>The attribute cursor.</returns>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the attribute.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no attribute with the specified local name.
+        /// </exception>
         public XmlElement GetAttribute(string localName)
         {
             if (!TryGetAttribute(localName, out var value))
@@ -210,11 +338,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the named attribute in <paramref name="namespaceUri"/>.
+        /// Gets the attribute of this element that has the specified local name and namespace URI.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <returns>The attribute cursor.</returns>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or an empty string for an attribute in no namespace.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the attribute.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> or <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no attribute with the specified local name and namespace URI.
+        /// </exception>
         public XmlElement GetAttribute(string localName, string namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -228,9 +370,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a boolean.
+        /// Gets the value of this node as a <see cref="bool"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="bool"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:boolean</c>, which is <c>true</c>, <c>false</c>, <c>1</c>, or <c>0</c>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
         public bool GetBoolean()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -245,9 +400,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as base64-decoded bytes.
+        /// Gets the value of this node as a byte array, decoded from Base64 text.
         /// </summary>
-        /// <returns>The decoded bytes.</returns>
+        /// <returns>
+        /// The value decoded as a byte array.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not valid Base64 text (<c>xs:base64Binary</c>).
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
         public byte[] GetBytesFromBase64()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -262,10 +430,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the named child element.
+        /// Gets the first child element of this element that has the specified local name, in any namespace.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <returns>The child cursor.</returns>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the child element.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no child element with the specified local name.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants.
+        /// </remarks>
         public XmlElement GetChild(string localName)
         {
             if (!TryGetChild(localName, out var value))
@@ -277,11 +462,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the named child element in <paramref name="namespaceUri"/>.
+        /// Gets the first child element of this element that has the specified local name and namespace URI.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <returns>The child cursor.</returns>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the child element, or an empty string for an element in no namespace.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the child element.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> or <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no child element with the specified local name and namespace URI.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants.
+        /// </remarks>
         public XmlElement GetChild(string localName, string namespaceUri)
         {
             if (!TryGetChild(localName, namespaceUri, out var value))
@@ -293,9 +495,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a <see cref="DateTime"/>.
+        /// Gets the value of this node as a <see cref="DateTime"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="DateTime"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:dateTime</c> that a <see cref="DateTime"/> can represent.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// A value with no time zone gives <see cref="DateTimeKind.Unspecified"/>. A value with <c>Z</c> or
+        /// a zero offset gives <see cref="DateTimeKind.Utc"/>. A value with a non-zero offset is converted
+        /// to local time and gives <see cref="DateTimeKind.Local"/>.
+        /// </remarks>
         public DateTime GetDateTime()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -310,9 +530,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a <see cref="DateTimeOffset"/>.
+        /// Gets the value of this node as a <see cref="DateTimeOffset"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="DateTimeOffset"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:dateTime</c> that a <see cref="DateTimeOffset"/> can represent.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// A value with no time zone takes the local offset that is in force at that date and time.
+        /// </remarks>
         public DateTimeOffset GetDateTimeOffset()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -327,9 +563,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a decimal.
+        /// Gets the value of this node as a <see cref="decimal"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="decimal"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:decimal</c> that a <see cref="decimal"/> can represent.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
         public decimal GetDecimal()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -344,9 +593,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a double.
+        /// Gets the value of this node as a <see cref="double"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="double"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:double</c>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// The literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are accepted in any letter case.
+        /// </remarks>
         public double GetDouble()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -361,9 +626,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a <see cref="Guid"/>.
+        /// Gets the value of this node as a <see cref="Guid"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="Guid"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not a GUID in the <c>D</c>, <c>N</c>, <c>B</c>, or <c>P</c> format.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
         public Guid GetGuid()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -384,9 +662,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns concatenated descendant text.
+        /// Gets the text content of this node.
         /// </summary>
-        /// <returns>The inner text.</returns>
+        /// <returns>
+        /// For an element, the text of all text nodes and CDATA sections inside it, in document order. For an
+        /// attribute, a text node, or a CDATA section, its value. For a comment or a processing instruction,
+        /// an empty string.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Unlike <see cref="GetString"/>, this method does not return <see langword="null"/> for an element that is marked as nil.
+        /// </remarks>
         public string GetInnerText()
         {
             if (EnsureDocument().Row(_index).Kind is XmlValueKind.Comment or XmlValueKind.ProcessingInstruction)
@@ -398,9 +689,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a 32-bit integer.
+        /// Gets the value of this node as an <see cref="int"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as an <see cref="int"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:int</c>, or it is outside the range of an <see cref="int"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
         public int GetInt32()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -415,9 +719,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a 64-bit integer.
+        /// Gets the value of this node as a <see cref="long"/>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="long"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:long</c>, or it is outside the range of a <see cref="long"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
         public long GetInt64()
         {
             var utf8 = TypedValueUtf8(out var rented);
@@ -432,9 +749,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reconstructs this node as XML text. An attribute has no markup outside its element, so the result is empty for one.
+        /// Gets a string that holds this node written as XML.
         /// </summary>
-        /// <returns>The XML markup.</returns>
+        /// <returns>
+        /// The XML markup of this node, including its attributes and descendants. The result is an empty
+        /// string for an attribute, because an attribute has no markup outside its element.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The markup is written again from the parsed node with <see cref="WriteTo"/>, without an XML
+        /// declaration. It is not a copy of the original input.
+        /// </remarks>
         public string GetRawXml()
         {
             var buffer = new ArrayBufferWriter<byte>();
@@ -445,20 +775,49 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the current value as a string.
+        /// Gets the value of this node as a <see cref="string"/>.
         /// </summary>
-        /// <returns>The string value, or <see langword="null"/> when this element is nil.</returns>
+        /// <returns>
+        /// The value of this node as a <see cref="string"/>, or <see langword="null"/> if this node is an
+        /// element that is marked as nil.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Entity and character references in the value are expanded. Leading and trailing white space is kept.
+        /// </remarks>
         public string? GetString()
         {
             return IsNil ? null : ValueString();
         }
 
         /// <summary>
-        /// Attempts to get the named attribute.
+        /// Looks for the first attribute of this element that has the specified local name, in any namespace.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">When this method returns true, the attribute cursor.</param>
-        /// <returns><see langword="true"/> if the attribute exists.</returns>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <param name="value">
+        /// When this method returns, contains the attribute if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the attribute was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// This method returns <see langword="false"/> if this node is not an element.
+        /// </remarks>
         public bool TryGetAttribute(string localName, out XmlElement value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -466,11 +825,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Attempts to get the named child element.
+        /// Looks for the first child element of this element that has the specified local name, in any namespace.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">When this method returns true, the child cursor.</param>
-        /// <returns><see langword="true"/> if the child exists.</returns>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <param name="value">
+        /// When this method returns, contains the child element if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the child element was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants. This method returns
+        /// <see langword="false"/> if this node is not an element.
+        /// </remarks>
         public bool TryGetChild(string localName, out XmlElement value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -478,12 +855,30 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Attempts to get the named child element in <paramref name="namespaceUri"/>.
+        /// Looks for the first child element of this element that has the specified local name and namespace URI.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="value">When this method returns true, the child cursor.</param>
-        /// <returns><see langword="true"/> if the child exists.</returns>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the child element, or an empty string for an element in no namespace.</param>
+        /// <param name="value">
+        /// When this method returns, contains the child element if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the child element was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> or <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants. This method returns
+        /// <see langword="false"/> if this node is not an element.
+        /// </remarks>
         public bool TryGetChild(string localName, string namespaceUri, out XmlElement value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -492,9 +887,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes this node to <paramref name="writer"/>.
+        /// Writes this node to the specified writer as XML.
         /// </summary>
-        /// <param name="writer">The destination writer.</param>
+        /// <param name="writer">The writer to which to write the node.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// An element is written with its attributes and descendants. Nothing is written for an attribute,
+        /// because an attribute has no markup outside its element.
+        /// </remarks>
         public void WriteTo(Utf8XmlWriter writer)
         {
             ArgumentNullException.ThrowIfNull(writer);
@@ -502,22 +910,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares two cursors.
+        /// Determines whether two <see cref="XmlElement"/> values refer to the same node of the same <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="left">The first cursor.</param>
-        /// <param name="right">The second cursor.</param>
-        /// <returns><see langword="true"/> if both point at the same row.</returns>
+        /// <param name="left">The first value to compare.</param>
+        /// <param name="right">The second value to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> refer to the same
+        /// node of the same document; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <remarks>
+        /// Two nodes with the same content at different positions, or in different documents, are not equal.
+        /// </remarks>
         public static bool operator ==(XmlElement left, XmlElement right)
         {
             return left.Equals(right);
         }
 
         /// <summary>
-        /// Compares two cursors.
+        /// Determines whether two <see cref="XmlElement"/> values refer to different nodes.
         /// </summary>
-        /// <param name="left">The first cursor.</param>
-        /// <param name="right">The second cursor.</param>
-        /// <returns><see langword="true"/> if the cursors differ.</returns>
+        /// <param name="left">The first value to compare.</param>
+        /// <param name="right">The second value to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> refer to different
+        /// nodes or to nodes of different documents; otherwise, <see langword="false"/>.
+        /// </returns>
         public static bool operator !=(XmlElement left, XmlElement right)
         {
             return !left.Equals(right);
@@ -712,8 +1129,12 @@ namespace CloudNimble.Text.Xml
         #endregion
 
         /// <summary>
-        /// Enumerates child nodes of an <see cref="XmlElement"/>.
+        /// Represents an enumerator for the child nodes of an <see cref="XmlElement"/>.
         /// </summary>
+        /// <remarks>
+        /// <see cref="XmlElement.EnumerateChildren"/> returns this enumerator. It can be used directly in a
+        /// <see langword="foreach"/> statement and does not allocate.
+        /// </remarks>
         public struct Enumerator
         {
 
@@ -729,8 +1150,12 @@ namespace CloudNimble.Text.Xml
             #region Public Properties
 
             /// <summary>
-            /// Gets the current child.
+            /// Gets the child node at the current position of the enumerator.
             /// </summary>
+            /// <value>
+            /// The child node at the current position, or a default <see cref="XmlElement"/> before the first
+            /// call to <see cref="MoveNext"/>.
+            /// </value>
             public readonly XmlElement Current => _current;
 
             #endregion
@@ -756,18 +1181,26 @@ namespace CloudNimble.Text.Xml
             #region Public Methods
 
             /// <summary>
-            /// Returns this enumerator.
+            /// Returns an enumerator that iterates through the child nodes.
             /// </summary>
-            /// <returns>This enumerator.</returns>
+            /// <returns>
+            /// A copy of this enumerator.
+            /// </returns>
             public readonly Enumerator GetEnumerator()
             {
                 return this;
             }
 
             /// <summary>
-            /// Advances to the next child.
+            /// Advances the enumerator to the next child node.
             /// </summary>
-            /// <returns><see langword="true"/> if a child is available.</returns>
+            /// <returns>
+            /// <see langword="true"/> if the enumerator was advanced to the next child node; otherwise,
+            /// <see langword="false"/>, because the enumerator has passed the last child node.
+            /// </returns>
+            /// <exception cref="ObjectDisposedException">
+            /// The parent <see cref="XmlDocument"/> has been disposed.
+            /// </exception>
             public bool MoveNext()
             {
                 if (_next >= _end)
@@ -786,8 +1219,12 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Enumerates attributes of an <see cref="XmlElement"/>.
+        /// Represents an enumerator for the attributes of an <see cref="XmlElement"/>.
         /// </summary>
+        /// <remarks>
+        /// <see cref="XmlElement.EnumerateAttributes"/> returns this enumerator. It can be used directly in a
+        /// <see langword="foreach"/> statement and does not allocate.
+        /// </remarks>
         public struct AttributeEnumerator
         {
 
@@ -803,8 +1240,12 @@ namespace CloudNimble.Text.Xml
             #region Public Properties
 
             /// <summary>
-            /// Gets the current attribute.
+            /// Gets the attribute at the current position of the enumerator.
             /// </summary>
+            /// <value>
+            /// The attribute at the current position, or a default <see cref="XmlElement"/> before the first
+            /// call to <see cref="MoveNext"/>.
+            /// </value>
             public readonly XmlElement Current => _current;
 
             #endregion
@@ -830,18 +1271,26 @@ namespace CloudNimble.Text.Xml
             #region Public Methods
 
             /// <summary>
-            /// Returns this enumerator.
+            /// Returns an enumerator that iterates through the attributes.
             /// </summary>
-            /// <returns>This enumerator.</returns>
+            /// <returns>
+            /// A copy of this enumerator.
+            /// </returns>
             public readonly AttributeEnumerator GetEnumerator()
             {
                 return this;
             }
 
             /// <summary>
-            /// Advances to the next attribute.
+            /// Advances the enumerator to the next attribute.
             /// </summary>
-            /// <returns><see langword="true"/> if an attribute is available.</returns>
+            /// <returns>
+            /// <see langword="true"/> if the enumerator was advanced to the next attribute; otherwise,
+            /// <see langword="false"/>, because the enumerator has passed the last attribute.
+            /// </returns>
+            /// <exception cref="ObjectDisposedException">
+            /// The parent <see cref="XmlDocument"/> has been disposed.
+            /// </exception>
             public bool MoveNext()
             {
                 if (_next >= _end)

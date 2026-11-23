@@ -4,7 +4,7 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// A mutable XML attribute.
+    /// Represents a mutable XML attribute. This class cannot be inherited.
     /// </summary>
     public sealed class XmlAttributeNode : XmlNode
     {
@@ -21,8 +21,17 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the local name.
+        /// Gets or sets the local name of this attribute.
         /// </summary>
+        /// <value>
+        /// The local name of the attribute, without a prefix.
+        /// </value>
+        /// <exception cref="ArgumentNullException">
+        /// The value in a set operation is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// The value in a set operation is empty or consists only of white-space characters.
+        /// </exception>
         public string LocalName
         {
             get => _localName;
@@ -34,8 +43,12 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets or sets the namespace URI.
+        /// Gets or sets the namespace URI of this attribute.
         /// </summary>
+        /// <value>
+        /// The namespace URI of the attribute, or an empty string if the attribute is in no namespace. The
+        /// value is never <see langword="null"/>. Setting <see langword="null"/> stores an empty string.
+        /// </value>
         public override string? NamespaceUri
         {
             get => _namespaceUri;
@@ -43,8 +56,12 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets or sets the prefix.
+        /// Gets or sets the namespace prefix of this attribute.
         /// </summary>
+        /// <value>
+        /// The prefix of the attribute name, or an empty string if the name has no prefix. Setting
+        /// <see langword="null"/> stores an empty string.
+        /// </value>
         public string Prefix
         {
             get => _prefix;
@@ -52,8 +69,11 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets or sets the attribute value.
+        /// Gets or sets the value of this attribute.
         /// </summary>
+        /// <value>
+        /// The value of the attribute, without escaping. Setting <see langword="null"/> stores an empty string.
+        /// </value>
         public string Value
         {
             get => _value;
@@ -68,12 +88,18 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Constructors
 
         /// <summary>
-        /// Creates an attribute.
+        /// Initializes a new instance of the <see cref="XmlAttributeNode"/> class with the specified local name, value, namespace URI, and prefix.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="prefix">The prefix.</param>
+        /// <param name="localName">The local name of the attribute, without a prefix.</param>
+        /// <param name="value">The value of the attribute. The default is <see langword="null"/>, which is stored as an empty string.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for an attribute in no namespace. The default is <see langword="null"/>.</param>
+        /// <param name="prefix">The prefix of the attribute name, or <see langword="null"/> or an empty string for no prefix. The default is <see langword="null"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="localName"/> is empty or consists only of white-space characters.
+        /// </exception>
         public XmlAttributeNode(string localName, string? value = null, string? namespaceUri = null, string? prefix = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(localName);

@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Do not put `--` in comment text. Prefer `CommentHandling.Allow` on `XmlDocument` when comments are part of the contract.
+Document best practices for `XmlCommentNode` here.
+

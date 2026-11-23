@@ -1,5 +1,14 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlMetadataServices` is infrastructure for source-generated code. The code that the XmlEssentials generator writes into your `XmlSerializerContext` classes calls these methods to create type info from a generated converter, to read and write members through type info, and to write the start and end tags of simple elements from bytes prepared at compile time.
 
-Describe how to use `XmlMetadataServices` here.
+The class isn't meant to be called from your code. Its methods are public only because generated code lives in your assembly and has to reach them. `WriteLeafStart` and `WriteLeafEnd` are hidden from IntelliSense for that reason: they write a tag as raw bytes and rely on the generator to pass a well-formed one.
 
+To do the same things in application code, use the public entry points instead:
+
+| Instead of | Use |
+| --- | --- |
+| `CreateValueInfo`, `CreateEnumConverter` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
+| `Read`, `ReadAttribute` | `XmlSerializer.Deserialize` with type info, or `Utf8XmlReader` directly. |
+| `Write`, `WriteAttribute` | `XmlSerializer.Serialize` with type info, or `Utf8XmlWriter` directly. |
+| `WriteLeafStart`, `WriteLeafEnd` | `Utf8XmlWriter.WriteStartElement` and `WriteEndElement`. |
+
+The class is the counterpart of `JsonMetadataServices` in System.Text.Json. To see how generated code is produced and used, see [How to use source generation](/guides/source-generation).

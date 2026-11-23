@@ -1,5 +1,4 @@
-# Related APIs
-
-- `XmlTextNode`
-- `XmlElementNode`
-- `Utf8XmlWriter`
+CloudNimble.Text.Xml.Nodes.XmlTextNode
+CloudNimble.Text.Xml.Nodes.XmlElementNode
+CloudNimble.Text.Xml.Nodes.XmlNode
+CloudNimble.Text.Xml.Utf8XmlWriter

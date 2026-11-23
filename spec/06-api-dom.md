@@ -41,8 +41,8 @@ public readonly struct XmlDeclarationInfo
 
 public struct XmlDocumentOptions
 {
-    public XmlCommentHandling CommentHandling { get; set; }
-    public XmlWhitespaceHandling WhitespaceHandling { get; set; }
+    public XmlCommentHandling CommentHandling { get; set; }         // default Allow, the zero value: a parsed document keeps its comments so that WriteTo round-trips them. Set Skip to leave them out.
+    public XmlWhitespaceHandling WhitespaceHandling { get; set; }   // default Significant, the zero value: indentation between elements is kept so that WriteTo does not change the layout. Set Insignificant to leave it out.
     public int MaxDepth { get; set; }
     public int MaxAttributeCount { get; set; }
     public int MaxNameByteCount { get; set; }

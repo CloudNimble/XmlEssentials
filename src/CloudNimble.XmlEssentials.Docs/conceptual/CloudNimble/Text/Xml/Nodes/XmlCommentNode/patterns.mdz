@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Immutable `XmlDocument` keeps prolog/epilog comments for `WriteTo` without exposing them as `RootElement` children. Mutable trees only keep comments you add as children.
+Document common patterns for `XmlCommentNode` here.
+

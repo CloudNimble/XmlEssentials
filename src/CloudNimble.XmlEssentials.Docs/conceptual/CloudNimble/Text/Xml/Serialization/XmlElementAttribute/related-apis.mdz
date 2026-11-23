@@ -1,6 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Related APIs
-
-- API 1
-- API 2
-
+CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
+CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute
+CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
+CloudNimble.Text.Xml.Serialization.XmlTextAttribute
+CloudNimble.Text.Xml.Serialization.XmlArrayAttribute
+CloudNimble.Text.Xml.XmlPropertyMapping

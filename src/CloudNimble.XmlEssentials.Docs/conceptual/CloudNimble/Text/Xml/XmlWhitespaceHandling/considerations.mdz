@@ -1,7 +1,7 @@
-# Considerations
-
-Indentation between child elements is insignificant by default, matching typical document and SOAP payloads.
-
-`None` is a strict policy for producers that never emit inter-element whitespace. Pretty-printed XML will throw.
-
-Prolog and epilog whitespace (before the root, after the root) is skipped at depth 0 and is not governed by this enum.
+- **`Significant` is the zero value, and the default.** `new XmlReaderOptions()`, `default(XmlReaderOptions)`, and a reader created without options all report white space between elements. It's kept by default so that XML that's read and written back doesn't change its layout.
+- **Set `Insignificant` in a loop that only wants data.** Otherwise the token after a start tag that has child elements is usually a `Text` token that holds indentation.
+- **The serializer's default is different.** `XmlSerializerOptions.WhitespaceHandling` defaults to `Insignificant`, because indentation has no place in an object.
+- **The setting never changes a value.** White space inside an element's text is part of the value under every setting: `<Name> Ada </Name>` is `" Ada "`. The reader doesn't trim. Line ends are read as a line feed under every setting, as XML requires.
+- **White space outside the root element is never reported.** The line break after the XML declaration and anything after the root's end tag are skipped under every setting.
+- **`None` rejects formatted documents.** Use it only when the producer is known to write no white space between elements and anything else is an error.
+- **`XmlDocument` uses the same enumeration.** `XmlDocumentOptions.WhitespaceHandling` also defaults to `Significant`.

@@ -1,8 +1,9 @@
 ---
 title: XmlCDataAttribute
+description: "Maps a member to the simple content of the current element, written as a CDATA section."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute', 'CloudNimble.Text.Xml.Utf8XmlWriter']
 ---
 
 ## Definition
@@ -18,6 +19,56 @@ keywords: ['XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttr
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlCDataAttribute
 ```
+
+## Summary
+
+Maps a member to the simple content of the current element, written as a CDATA section.
+
+## Usage
+
+Put `[XmlCData]` on a member to make it the text of its containing element, written as a CDATA section. A CDATA section holds characters such as `<` and `&` without escaping, which keeps embedded code or markup readable.
+
+```csharp
+public sealed class Script
+{
+    [XmlAttribute("language")]
+    public string? Language { get; set; }
+
+    [XmlCData]
+    public string? Code { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var script = new Script { Language = "js", Code = "if (a < b && b > 0) { run(); }" };
+
+string xml = XmlSerializer.Serialize(script, options);
+output.WriteLine(xml);
+
+Script? copy = XmlSerializer.Deserialize<Script>(xml, options);
+output.WriteLine(copy!.Code);
+```
+
+The code produces the following output:
+
+```text
+<Script language="js"><![CDATA[if (a < b && b > 0) { run(); }]]></Script>
+if (a < b && b > 0) { run(); }
+```
+
+The member doesn't get an element of its own: `Code` is the content of `<Script>`. The other members of the type are attributes.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)
+
+## Considerations
+
+- `[XmlCData]` follows the rules of `[XmlText]`. A type can have one member with either attribute, and it can't also have members mapped to child elements. The serializer throws `NotSupportedException` otherwise.
+- The member must have a simple type: a type with a built-in value converter, an enumeration, or the nullable form of either.
+- The attribute affects writing only. When reading, escaped text and CDATA sections are accepted alike, so `<Script>a &lt; b</Script>` gives the same value as the CDATA form.
+- A value that contains `]]>` can't be written. The serializer throws `XmlException` with the message `CDATA must not contain ']]>'.` The value is not split into several sections. Use `[XmlText]` when the value can contain that sequence.
+- A `null` value writes no content, which leaves the element empty.
+- CDATA is a way of writing text, not a different kind of data. A consumer that parses the document sees the same characters either way.
 
 ## Constructors
 
@@ -932,4 +983,11 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlTextAttribute
+- CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
+- CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
+- CloudNimble.Text.Xml.Utf8XmlWriter
 

@@ -2,28 +2,28 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// When a member is skipped during serialize or deserialize.
+    /// Specifies when a property or field is ignored on serialization and deserialization.
     /// </summary>
     public enum XmlIgnoreCondition
     {
 
         /// <summary>
-        /// The member is always written and read.
+        /// A member that is always serialized and deserialized.
         /// </summary>
         Never = 0,
 
         /// <summary>
-        /// The member is always ignored.
+        /// A member that is always ignored, on both serialization and deserialization.
         /// </summary>
         Always = 1,
 
         /// <summary>
-        /// Skip when the value equals the default for its type.
+        /// A member that is not written when its value is <see langword="null"/> or equals the default value for its type.
         /// </summary>
         WhenWritingDefault = 2,
 
         /// <summary>
-        /// Skip when the value is null.
+        /// A member that is not written when its value is <see langword="null"/>.
         /// </summary>
         WhenWritingNull = 3,
 

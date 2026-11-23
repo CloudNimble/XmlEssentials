@@ -1,8 +1,9 @@
 ---
 title: XmlDerivedTypeAttribute
+description: "Declares that *T* can appear where the annotated type is expected."
 icon: code-branch
 tag: "SEALED"
-keywords: ['XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute<T>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute']
+keywords: ['XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute<T>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.XmlDiscriminatorPlacement']
 ---
 
 ## Definition
@@ -19,9 +20,55 @@ keywords: ['XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDer
 CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute<T>
 ```
 
+## Summary
+
+Declares that *T* can appear where the annotated type is expected.
+
+## Usage
+
+`XmlDerivedTypeAttribute` is the abstract base of `XmlDerivedTypeAttribute<T>`, which is the attribute you apply. Put one `[XmlDerivedType<T>]` on a base class for each derived type that can appear where the base type is declared.
+
+```csharp
+[XmlPolymorphic]
+[XmlDerivedType<Book>]
+[XmlDerivedType<Dvd>("Disc")]
+public class Product
+{
+    public string? Title { get; set; }
+}
+```
+
+- `[XmlDerivedType<Book>]` uses the type's name, `Book`, as the discriminator.
+- `[XmlDerivedType<Dvd>("Disc")]` sets the discriminator to `Disc`.
+
+What the discriminator is depends on `XmlPolymorphicAttribute.DiscriminatorPlacement`: the name of the element, the value of a named attribute, or the value of `xsi:type`. With the default placement, a `Dvd` in a list of products is written as `<Disc>`:
+
+```xml
+<Disc>
+  <Title>The Matrix</Title>
+  <Runtime>136</Runtime>
+</Disc>
+```
+
+See [Serialize derived classes](/guides/polymorphism) and the [polymorphism sample](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs).
+
+## Type Parameters
+
+- `T` - The derived CLR type.
+
+## Considerations
+
+- The type argument is checked by the compiler, which is why the attribute is generic. The serializer doesn't verify that `T` derives from the type the attribute is on, so keep the two in the same hierarchy.
+- The discriminator is always a string. `TypeDiscriminator` is typed as `object` to match the shape of `JsonDerivedTypeAttribute`, but there is no integer form.
+- When the discriminator is an element name, the element naming policy of the options is applied to it. When it is an attribute value, it is written as declared.
+- `Namespace` is not read by the serializer. A derived type's element is written in the namespace that is in scope.
+- In `System.Xml.Serialization`, the same job is done by `[XmlInclude(typeof(T))]`. In this library `[XmlInclude]` means something else: it opts a non-public member in to serialization.
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute with the derived type name as the discriminator.
 
 #### Syntax
 
@@ -30,6 +77,8 @@ public XmlDerivedTypeAttribute()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -41,11 +90,13 @@ public XmlDerivedTypeAttribute(string typeDiscriminator)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `typeDiscriminator` | `string` | - |
+| `typeDiscriminator` | `string` | The element name or attribute value that selects this type. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
+
+Creates the attribute.
 
 #### Syntax
 
@@ -91,6 +142,8 @@ Type: `System.Type`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
 
+Gets the derived CLR type.
+
 #### Syntax
 
 ```csharp
@@ -105,6 +158,8 @@ Type: `System.Type`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
 
+Gets or sets the namespace URI of the discriminator element.
+
 #### Syntax
 
 ```csharp
@@ -118,6 +173,8 @@ Type: `string?`
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeDiscriminator <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
+
+Gets the discriminator (usually the element local name).
 
 #### Syntax
 
@@ -1010,4 +1067,11 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute
+- CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling
+- CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute
+- CloudNimble.Text.Xml.XmlDiscriminatorPlacement
 

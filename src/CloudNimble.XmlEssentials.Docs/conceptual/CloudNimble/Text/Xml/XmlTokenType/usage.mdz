@@ -1,5 +1,67 @@
-# Usage
+After each call to `Utf8XmlReader.Read` that returns `true`, `Utf8XmlReader.TokenType` says what the reader is on. Switch on it to decide which members to read.
 
-After each successful `Read()`, `Utf8XmlReader.TokenType` is the kind of token under the cursor. Switch on it to decide whether to inspect `LocalNameSpan`, `ValueSpan`, or attributes.
+```csharp
+// Leave out comments and the white space between elements, so that the loop sees data only.
+var options = new XmlReaderOptions
+{
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
+};
 
-`MoveToNextAttribute` sets `TokenType` to `Attribute` until `MoveToElement` restores the start tag.
+var reader = new Utf8XmlReader(xml, options);
+while (reader.Read())
+{
+    switch (reader.TokenType)
+    {
+        case XmlTokenType.StartElement:
+        case XmlTokenType.EndElement:
+            output.WriteLine($"{reader.TokenType} {Encoding.UTF8.GetString(reader.LocalNameSpan)} (depth {reader.CurrentDepth})");
+            break;
+
+        case XmlTokenType.Text:
+        case XmlTokenType.CData:
+            output.WriteLine($"{reader.TokenType} \"{reader.GetString()}\" (depth {reader.CurrentDepth})");
+            break;
+
+        default:
+            output.WriteLine($"{reader.TokenType} (depth {reader.CurrentDepth})");
+            break;
+    }
+}
+```
+
+For the document below, the loop prints the token types in the order shown.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Item>Keyboard</Item>
+  <Gift/>
+  <Note><![CDATA[Leave at <door>]]></Note>
+</Order>
+```
+
+```text
+XmlDeclaration (depth 0)
+StartElement Order (depth 1)
+StartElement Item (depth 2)
+Text "Keyboard" (depth 2)
+EndElement Item (depth 1)
+StartElement Gift (depth 1)
+StartElement Note (depth 2)
+CData "Leave at <door>" (depth 2)
+EndElement Note (depth 1)
+EndElement Order (depth 0)
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/20_ReadTokensAndValues.cs)
+
+| Token type | Members that describe it |
+| --- | --- |
+| `StartElement` | `LocalNameSpan`, `PrefixSpan`, `NamespaceUriSpan`, `IsEmptyElement`, `AttributeCount`, `GetNil` |
+| `EndElement` | `LocalNameSpan`, `PrefixSpan`, `NamespaceUriSpan` |
+| `Attribute` | The name properties, `ValueSpan`, `GetString`, `Get*`, `TryGet*` |
+| `Text`, `CData` | `ValueSpan`, `GetString`, `Get*`, `TryGet*`, `ValueIsEscaped` |
+| `Comment` | `GetComment`, `ValueSpan` |
+| `ProcessingInstruction` | `LocalNameSpan` (the target), `ValueSpan` (the data) |
+| `XmlDeclaration` | `Utf8XmlReader.Version` |

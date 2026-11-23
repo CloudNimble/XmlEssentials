@@ -6,8 +6,14 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// An ordered list of <see cref="XmlAttributeNode"/> instances on an element.
+    /// Represents the ordered list of attributes of an <see cref="XmlElementNode"/>. This class cannot be inherited.
     /// </summary>
+    /// <remarks>
+    /// An attribute can belong to one list at a time. Adding, inserting, or assigning an attribute that
+    /// already has a parent throws an <see cref="XmlException"/>, and <see langword="null"/> throws an
+    /// <see cref="ArgumentNullException"/>. An attribute that is removed or replaced has no parent afterward.
+    /// The list does not check for duplicate names.
+    /// </remarks>
     public sealed class XmlAttributeNodeList : IList<XmlAttributeNode>
     {
 
@@ -40,9 +46,15 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets the first attribute with <paramref name="localName"/>, or <see langword="null"/>.
+        /// Gets the first attribute that has the specified local name, in any namespace.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <value>
+        /// The first attribute that has the specified local name, or <see langword="null"/> if there is none.
+        /// </value>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
         public XmlAttributeNode? this[string localName]
         {
             get
@@ -61,10 +73,17 @@ namespace CloudNimble.Text.Xml.Nodes
         }
 
         /// <summary>
-        /// Gets the first attribute with <paramref name="localName"/> in <paramref name="namespaceUri"/>, or <see langword="null"/>.
+        /// Gets the first attribute that has the specified local name and namespace URI.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or an empty string for an attribute in no namespace.</param>
+        /// <value>
+        /// The first attribute that has the specified local name and namespace URI, or
+        /// <see langword="null"/> if there is none.
+        /// </value>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> or <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
         public XmlAttributeNode? this[string localName, string namespaceUri]
         {
             get

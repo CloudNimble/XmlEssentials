@@ -104,7 +104,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<?xml version=\"1.1\"?>", "\r\n", false, DisplayName = "CR LF")]
         public void Text_OnlyLineEnds_IsWhiteSpaceWhenTheVersionReadsThemAsLineEnds(string declaration, string content, bool reported)
         {
-            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(declaration + "<r>" + content + "<e/></r>"));
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(declaration + "<r>" + content + "<e/></r>"), new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant });
             var tokens = new List<XmlTokenType>();
             while (reader.Read())
             {

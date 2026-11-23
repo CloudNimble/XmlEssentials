@@ -1,3 +1,4 @@
-# Considerations
-
-Comments containing `--` or ending in `-` throw on write. `XmlNode.Parse` discards prolog comments; parse with `XmlDocument` and `CommentHandling.Allow` when they must round-trip, then clone.
+- A comment can't contain `--` or end with `-`. The check happens when the node is written, and it throws an `XmlException` ("Comments must not contain '--' or end with '-'.").
+- `XmlNode.Parse` keeps the comments inside the root element. Comments before and after the root element aren't part of the tree. To keep those through a round trip, use `XmlDocument`, which writes them back in `WriteTo`.
+- A comment doesn't contribute to `XmlElementNode.InnerText`.
+- `ToString` on a comment returns its markup, such as `<!-- reviewed -->`.

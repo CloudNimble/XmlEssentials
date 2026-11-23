@@ -1,5 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Keep `Insignificant` unless you are writing a canonicalizer or mixed-content model that treats inter-element space as data.
+Document best practices for `XmlWhitespaceHandling` here.
 
-Do not use this enum to trim leaf values. Trim with `TrimXmlWhitespace` semantics on `ValueSpan`, or accept the spaces as significant character data.

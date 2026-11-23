@@ -1,8 +1,9 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
+Provide examples of using `XmlEncodedText` here.
+
 ```csharp
-var name = XmlEncodedText.Encode("Person"u8);
-var copy = XmlEncodedText.Encode("Person");
-name.Equals(copy); // true
-name.ToString();   // "Person"
+// Example code here
 ```
+

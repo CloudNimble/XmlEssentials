@@ -372,7 +372,7 @@ namespace CloudNimble.XmlEssentials.Tests
             Text("<e>a&amp;b</e>").Should().Be("a&b");
             Text("<e>café 中</e>").Should().Be("café 中");
             Text("<?xml version=\"1.1\"?><e>a" + (char)0x85 + "b" + (char)0x2028 + "c</e>").Should().Be("a\nb\nc");
-            var reader = new Utf8XmlReader("<r>\r\n<e>plain</e></r>"u8);
+            var reader = new Utf8XmlReader("<r>\r\n<e>plain</e></r>"u8, new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant });
             reader.Read();
             reader.Read();
             reader.Read();

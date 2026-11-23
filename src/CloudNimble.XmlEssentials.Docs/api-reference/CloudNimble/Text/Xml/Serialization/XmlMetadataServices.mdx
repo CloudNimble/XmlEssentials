@@ -1,8 +1,9 @@
 ---
 title: XmlMetadataServices
+description: "Helpers used by source-generated converters and contexts. Analogous to `JsonMetadataServices`."
 icon: bolt
 tag: "STATIC"
-keywords: ['XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization.XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization', 'class']
+keywords: ['XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization.XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo', 'CloudNimble.Text.Xml.Serialization.XmlConverter', 'CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute']
 ---
 
 ## Definition
@@ -17,9 +18,33 @@ keywords: ['XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization.XmlMetadat
 CloudNimble.Text.Xml.Serialization.XmlMetadataServices
 ```
 
+## Summary
+
+Helpers used by source-generated converters and contexts. Analogous to `JsonMetadataServices`.
+
+## Usage
+
+`XmlMetadataServices` is infrastructure for source-generated code. The code that the XmlEssentials generator writes into your `XmlSerializerContext` classes calls these methods to create type info from a generated converter, to read and write members through type info, and to write the start and end tags of simple elements from bytes prepared at compile time.
+
+The class isn't meant to be called from your code. Its methods are public only because generated code lives in your assembly and has to reach them. `WriteLeafStart` and `WriteLeafEnd` are hidden from IntelliSense for that reason: they write a tag as raw bytes and rely on the generator to pass a well-formed one.
+
+To do the same things in application code, use the public entry points instead:
+
+| Instead of | Use |
+| --- | --- |
+| `CreateValueInfo`, `CreateEnumConverter` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
+| `Read`, `ReadAttribute` | `XmlSerializer.Deserialize` with type info, or `Utf8XmlReader` directly. |
+| `Write`, `WriteAttribute` | `XmlSerializer.Serialize` with type info, or `Utf8XmlWriter` directly. |
+| `WriteLeafStart`, `WriteLeafEnd` | `Utf8XmlWriter.WriteStartElement` and `WriteEndElement`. |
+
+The class is the counterpart of `JsonMetadataServices` in System.Text.Json. To see how generated code is produced and used, see [How to use source generation](/guides/source-generation).
+
 ## Methods
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateEnumConverter
+
+Returns the built-in converter for enum *T*. Generated contexts use this instead of
+making a generic converter through reflection, which Native AOT cannot do.
 
 #### Syntax
 
@@ -30,8 +55,15 @@ public static CloudNimble.Text.Xml.Serialization.XmlConverter<T> CreateEnumConve
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlConverter<T>`
+The converter.
+
+#### Type Parameters
+
+- `T` - The enum type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateValueInfo
+
+Creates type info that reads and writes *T* with *converter*.
 
 #### Syntax
 
@@ -43,14 +75,21 @@ public static CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> CreateValueInfo<
 
 | Name | Type | Description |
 |------|------|-------------|
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | - |
-| `converter` | `CloudNimble.Text.Xml.Serialization.XmlConverter<T>` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serializer options. |
+| `converter` | `CloudNimble.Text.Xml.Serialization.XmlConverter<T>` | The converter. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>`
+The type info.
+
+#### Type Parameters
+
+- `T` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Read
+
+Reads the element *reader* is on using *typeInfo*.
 
 #### Syntax
 
@@ -62,14 +101,21 @@ public static T Read<T>(ref CloudNimble.Text.Xml.Utf8XmlReader reader, CloudNimb
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on a start tag. |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | The type info. |
 
 #### Returns
 
 Type: `T?`
+The value.
+
+#### Type Parameters
+
+- `T` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReadAttribute
+
+Reads the current attribute using *typeInfo*.
 
 #### Syntax
 
@@ -81,14 +127,21 @@ public static T ReadAttribute<T>(ref CloudNimble.Text.Xml.Utf8XmlReader reader, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on an attribute. |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | The type info. |
 
 #### Returns
 
 Type: `T?`
+The value.
+
+#### Type Parameters
+
+- `T` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Write
+
+Writes *value* as element or attribute content using *typeInfo*.
 
 #### Syntax
 
@@ -100,11 +153,17 @@ public static void Write<T>(CloudNimble.Text.Xml.Utf8XmlWriter writer, T value, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
-| `value` | `T` | - |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. |
+| `value` | `T` | The value. |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | The type info. |
+
+#### Type Parameters
+
+- `T` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttribute
+
+Writes *value* as an attribute named *name*.
 
 #### Syntax
 
@@ -116,8 +175,53 @@ public static void WriteAttribute<T>(CloudNimble.Text.Xml.Utf8XmlWriter writer, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
-| `name` | `CloudNimble.Text.Xml.XmlName` | - |
-| `value` | `T` | - |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer, on an open start tag. |
+| `name` | `CloudNimble.Text.Xml.XmlName` | The attribute name. |
+| `value` | `T` | The value. |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | The type info. |
+
+#### Type Parameters
+
+- `T` - The CLR type.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteLeafEnd
+
+Ends a leaf element started with [XmlMetadataServices.WriteLeafStart](/api-reference/CloudNimble/Text/Xml/Serialization/XmlMetadataServices#writeleafstart). For source-generated converters only.
+
+#### Syntax
+
+```csharp
+public static void WriteLeafEnd(CloudNimble.Text.Xml.Utf8XmlWriter writer, System.ReadOnlySpan<byte> closeTag)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. |
+| `closeTag` | `System.ReadOnlySpan<byte>` | The whole end tag, `</name>`. |
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteLeafStart
+
+Starts a leaf element from a prebuilt start tag. For source-generated converters only.
+
+#### Syntax
+
+```csharp
+public static void WriteLeafStart(CloudNimble.Text.Xml.Utf8XmlWriter writer, System.ReadOnlySpan<byte> openTag)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer, inside an element. |
+| `openTag` | `System.ReadOnlySpan<byte>` | The whole start tag, `<name>`. |
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlSerializerContext
+- CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+- CloudNimble.Text.Xml.Serialization.XmlConverter
+- CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute
 

@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlArrayItemAttribute` here.
-
+- The attribute has an effect only on a collection that also has `[XmlArray]`. On a collection with no wrapper, the repeated elements keep the member's name. To rename those, use `[XmlElement("Name")]` or `[XmlPropertyName("Name")]` on the member.
+- Without the attribute, each item of a wrapped collection is named after its .NET type, converted by the element naming policy.
+- A name set here isn't converted by a naming policy.
+- The serializer doesn't read the `Namespace` property.
+- For collections whose items are of different derived types, see [Polymorphism](/guides/polymorphism).

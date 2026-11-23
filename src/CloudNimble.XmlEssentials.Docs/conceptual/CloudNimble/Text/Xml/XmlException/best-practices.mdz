@@ -1,7 +1,6 @@
-# Best Practices
-
-Log `LineNumber` and `LinePosition` together. Offset-only diagnostics are hard to map to pretty-printed XML.
-
-Do not catch `System.Xml.XmlException` looking for XmlEssentials failures. Catch `CloudNimble.Text.Xml.XmlException`.
-
-Treat every `XmlException` from the reader as fatal for that document. The reader is not positioned for recovery.
+- **Catch this type by its full name when `System.Xml` is also imported.** `CloudNimble.Text.Xml.XmlException` and `System.Xml.XmlException` are unrelated, and a `catch` for one doesn't catch the other.
+- **Log the line and the position with the message.** The message alone doesn't say where the problem is.
+- **Treat an exception from a reader as the end of that document.** Don't call `Read` again on a reader that threw.
+- **Discard the output when a writer throws.** Bytes that were committed before the error are already in your buffer or stream.
+- **Don't parse the message.** To react to one condition, such as a document that's too deep, set the limit you care about and treat any `XmlException` as "this document isn't acceptable".
+- **Don't show the message of an exception to an untrusted caller without thought.** It describes the structure of the input, and for a declared encoding it repeats a name from the input.

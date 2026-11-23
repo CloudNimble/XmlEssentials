@@ -8,100 +8,281 @@ keywords: ['CloudNimble.Text.Xml', 'namespace', 'Utf8XmlReader', 'Utf8XmlWriter'
 
 ## Summary
 
-# Summary
+`CloudNimble.Text.Xml` is the main namespace of XmlEssentials. It holds the four ways to work with XML, all of them over UTF-8 and all of them shaped like their counterparts in `System.Text.Json`:
 
-`CloudNimble.Text.Xml` is the UTF-8 XML pipeline for XmlEssentials. It is shaped like `System.Text.Json`: a `ref struct` reader, a writer, an immutable `XmlDocument` / `XmlElement` DOM, a mutable `Nodes.XmlNode` tree, and a later static serializer. There is no `System.Xml` dependency.
+| To do this | Use | Like |
+| --- | --- | --- |
+| Convert between your types and XML | [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | `JsonSerializer` |
+| Parse a document and query it | [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument) and [`XmlElement`](/api-reference/CloudNimble/Text/Xml/XmlElement) | `JsonDocument` and `JsonElement` |
+| Read XML one token at a time | [`Utf8XmlReader`](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | `Utf8JsonReader` |
+| Write XML one call at a time | [`Utf8XmlWriter`](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | `Utf8JsonWriter` |
 
-This release ships `Utf8XmlReader`, `Utf8XmlWriter`, and the DOM. `XmlSerializer` is not in this surface yet.
+The tree that you can change, `XmlNode`, is in `CloudNimble.Text.Xml.Nodes`. Attributes, converters, and source generation support are in `CloudNimble.Text.Xml.Serialization`. Nothing in the library depends on `System.Xml`.
 
 ## Usage
 
-# Usage
+Install the `XmlEssentials` package and import the namespace:
 
-Add the `XmlEssentials` package and import `CloudNimble.Text.Xml`. Tokenize with `Utf8XmlReader`, write with `Utf8XmlWriter`, or parse a whole document with `XmlDocument`.
+```bash
+dotnet add package XmlEssentials
+```
 
 ```csharp
 using CloudNimble.Text.Xml;
-
-using var document = XmlDocument.Parse("<Person id=\"1\">Ada</Person>");
-Console.WriteLine(document.RootElement.GetAttribute("id").GetInt32());
 ```
 
-Construct options with `new XmlDocumentOptions()` / `new XmlReaderOptions()`. A max-* of `0` means the documented default, except `MaxDocumentByteCount`, which stays unbounded.
+Then choose the entry point that fits the job. Start at the top of this list and move down only when you need to.
 
-## Examples
+### XmlSerializer: your types to XML and back
 
-# Examples
-
-Walk a document and print element names and text without allocating on the hot path:
+`XmlSerializer.Serialize` and `XmlSerializer.Deserialize` convert between .NET objects and XML. This is the entry point for most applications.
 
 ```csharp
-var xml = "<root id=\"1\"><n>42</n></root>"u8;
-var reader = new Utf8XmlReader(xml);
+var person = new Person { Name = "Ada", Age = 36 };
+
+string xml = XmlSerializer.Serialize(person);
+output.WriteLine(xml);
+
+Person? copy = XmlSerializer.Deserialize<Person>(xml);
+output.WriteLine($"{copy!.Name} is {copy.Age}");
+```
+
+See [How to serialize](/guides/serialize) and [How to deserialize](/guides/deserialize).
+
+### XmlDocument: a read-only tree
+
+`XmlDocument.Parse` reads a whole document into pooled memory. `RootElement` and the `XmlElement` values you get from it let you move through the document in any order.
+
+```csharp
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"Order {order.GetAttribute("id").GetInt32()}");
+```
+
+See [How to use XmlDocument](/guides/use-xmldocument). To change a document, use the tree in `CloudNimble.Text.Xml.Nodes`, described in [How to use XmlNode](/guides/use-xmlnode).
+
+### Utf8XmlReader: one token at a time
+
+`Utf8XmlReader` reads UTF-8 bytes forward, one token per call to `Read`, and gives you names and values as slices of your input.
+
+```csharp
+var options = new XmlReaderOptions { AllowMultipleRoots = true };
+var reader = new Utf8XmlReader("<Item>Keyboard</Item><Item>Mouse</Item>"u8, options);
 while (reader.Read())
 {
-    switch (reader.TokenType)
+    if (reader.TokenType is XmlTokenType.Text)
     {
-        case XmlTokenType.StartElement:
-            // LocalNameSpan is UTF-8 in the source buffer
-            break;
-        case XmlTokenType.Text:
-            if (reader.TryGetInt32(out var n))
-            {
-                Console.WriteLine(n);
-            }
-            break;
+        output.WriteLine(reader.GetString());
     }
 }
 ```
 
+The example reads a fragment with two top-level elements, which is why it sets `AllowMultipleRoots`.
+
+See [How to read XML with Utf8XmlReader](/guides/use-utf8xmlreader).
+
+### Utf8XmlWriter: one call at a time
+
+`Utf8XmlWriter` writes UTF-8 to an `IBufferWriter<byte>` or a `Stream`. It escapes values, declares namespaces, and checks that the output is well formed.
+
+```csharp
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteElementString("Item", "Mouse & pad");
+    writer.WriteElementNumber("Total", 129.90m);
+    writer.WriteEndElement();
+}
+```
+
+See [How to write XML with Utf8XmlWriter](/guides/use-utf8xmlwriter).
+
+## Examples
+
+Each example is a sample in the repository whose output is checked by a test.
+
+### Serialize and deserialize an object
+
+```csharp
+var person = new Person { Name = "Ada", Age = 36 };
+
+string xml = XmlSerializer.Serialize(person);
+output.WriteLine(xml);
+
+Person? copy = XmlSerializer.Deserialize<Person>(xml);
+output.WriteLine($"{copy!.Name} is {copy.Age}");
+```
+
+```text
+<?xml version="1.0" encoding="utf-8"?><Person><Name>Ada</Name><Age>36</Age></Person>
+Ada is 36
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/01_SerializeAndDeserialize.cs)
+
+### Read a document with Utf8XmlReader
+
+```csharp
+ReadOnlySpan<byte> xml = """
+    <Order id="1042">
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+      <Total>129.90</Total>
+    </Order>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType is not XmlTokenType.StartElement)
+    {
+        continue;
+    }
+
+    if (reader.LocalNameEquals("Order"u8))
+    {
+        while (reader.MoveToNextAttribute())
+        {
+            if (reader.LocalNameEquals("id"u8))
+            {
+                output.WriteLine($"Order {reader.GetInt32()}");
+            }
+        }
+
+        reader.MoveToElement();
+    }
+    else if (reader.LocalNameEquals("Item"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Item: {reader.GetString()}");
+    }
+    else if (reader.LocalNameEquals("Total"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Total: {reader.GetDecimal()}");
+    }
+}
+```
+
+```text
+Order 1042
+Item: Keyboard
+Item: Mouse
+Total: 129.90
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/02_ReadWithUtf8XmlReader.cs)
+
+### Write a document with Utf8XmlWriter
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteElementString("Item", "Mouse & pad");
+    writer.WriteElementNumber("Total", 129.90m);
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Item>Keyboard</Item>
+  <Item>Mouse &amp; pad</Item>
+  <Total>129.90</Total>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/03_WriteWithUtf8XmlWriter.cs)
+
+### Query a document with XmlDocument
+
+```csharp
+const string xml = """
+    <Order id="1042">
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+      <Total>129.90</Total>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"Order {order.GetAttribute("id").GetInt32()}");
+
+foreach (XmlElement child in order.EnumerateChildren())
+{
+    if (child.ValueKind is XmlValueKind.Element && child.LocalName == "Item")
+    {
+        output.WriteLine($"Item: {child.GetString()}");
+    }
+}
+
+output.WriteLine($"Total: {order.GetChild("Total").GetDecimal()}");
+```
+
+```text
+Order 1042
+Item: Keyboard
+Item: Mouse
+Total: 129.90
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/04_QueryWithXmlDocument.cs)
+
 ## Best Practices
 
-# Best Practices
-
-- Prefer `ValueSpan` and `TryGet*` over `GetString` when you can stay in UTF-8.
-- Call `new Utf8XmlReader(utf8)` or `new Utf8XmlReader(utf8, new XmlReaderOptions { ... })`. Avoid `default(XmlReaderOptions)` unless you intend `CommentHandling.Disallow`.
-- Check `IsEmptyElement` before expecting `EndElement`.
-- Set DoS limits on untrusted input (`MaxDepth`, `MaxNameByteCount`, `MaxTextByteCount`, `MaxAttributeCount`). `0` selects the table default.
-- Compare names with `LocalNameEquals` (`u8` literals, `ReadOnlySpan<char>`, or `string`) instead of decoding to `string` first.
+- **Start with the highest-level API that does the job.** Use `XmlSerializer` for your own types, `XmlDocument` to look inside a document whose shape you don't control, and the reader and writer when you need to stream or to control every byte.
+- **Keep XML as UTF-8.** Every type in this namespace works on UTF-8 bytes. Read and write `byte[]`, spans, streams, and `u8` literals, and convert to `string` only at the edges of your application.
+- **Know which defaults keep everything.** `Utf8XmlReader` and `XmlDocument` report comments and the white space between elements by default, so that XML that's read and written back is unchanged. `XmlSerializer` skips both. In a hand-written read loop that only wants data, set `CommentHandling` to `Skip` and `WhitespaceHandling` to `Insignificant`.
+- **Dispose what's disposable.** `XmlDocument` returns pooled memory when you dispose it, and `Utf8XmlWriter` flushes when you dispose it.
+- **Leave the limits on for input you don't trust.** A limit of 0 selects a safe default, not "no limit". See [Security](/guides/security).
+- **Catch `CloudNimble.Text.Xml.XmlException`.** It isn't related to `System.Xml.XmlException`.
 
 ## Patterns
 
-# Patterns
+The four entry points are built on each other, and you can move between them:
 
-**Drain.** Loop `Read()` and switch on `TokenType`. This is the STJ `Utf8JsonReader` shape.
-
-**Skip a subtree.** On a start tag, `Skip()` consumes that element and its children. Empty elements are already complete.
-
-**Typed text.** After `Read` lands on `Text` or `CData`, call `TryGetInt32`, `TryGetBoolean`, `TryGetGuid`, and the other getters. They parse UTF-8 in place.
-
-**Attributes.** On `StartElement`, `MoveToNextAttribute` until it returns false, then `MoveToElement` to restore the start tag.
+- **The serializer uses the reader and the writer.** A [custom converter](/guides/custom-converters) receives a `Utf8XmlReader` to read its value and a `Utf8XmlWriter` to write it.
+- **A document writes itself to a writer.** `XmlDocument.WriteTo` and `XmlElement.WriteTo` copy a parsed document, or one element of it, into a `Utf8XmlWriter`. See [How to use XmlDocument](/guides/use-xmldocument).
+- **The serializer reads from and writes to the tree.** You can deserialize from an `XmlDocument`, an `XmlElement`, or an `XmlNode`, and serialize to them. See [How to deserialize](/guides/deserialize).
+- **Reader in, writer out.** To transform a large document without holding it in memory, read tokens with `Utf8XmlReader` and write what you keep with `Utf8XmlWriter`. See [How to read XML with Utf8XmlReader](/guides/use-utf8xmlreader#read-a-stream-in-blocks).
 
 ## Considerations
 
-# Considerations
+- **UTF-8 only.** A document that declares another encoding is rejected with an `XmlException`. Transcode it first.
+- **No DTDs.** A document type declaration is rejected, so a document can't define entities. Only the five predefined entities and character references are decoded. See [Security](/guides/security).
+- **XML 1.0 and XML 1.1.** The reader takes the version from the XML declaration and applies that version's rules. The writer writes the version you set in `XmlWriterOptions.Version`.
+- **Namespaces are always processed.** Names are reported as a local name and a namespace URI. An element without a prefix is in the default namespace. An attribute without a prefix is in no namespace.
+- **Empty elements have no end token.** `Utf8XmlReader` reports `<e/>` as one `StartElement` token with `IsEmptyElement` set.
+- **Typed values use XML Schema forms.** Numbers, dates, durations, and Booleans are read and written in their XML Schema lexical forms with the invariant culture.
+- **The names match `System.Xml` in places, the types don't.** `XmlDocument`, `XmlElement`, `XmlSerializer`, and `XmlException` in this namespace are different types from those in `System.Xml`. Avoid importing both namespaces in one file, or use an alias.
+- **Thread safety differs by type.** See [Thread safety](/guides/thread-safety).
 
-- `Utf8XmlReader` is a `ref struct`. It cannot be stored on the heap, captured by a lambda, or used across `await`.
-- Empty elements (`<e/>`) are a start tag with `IsEmptyElement` true. The reader does not emit a matching end tag.
-- `xmlns` attributes bind before the element's own name is resolved. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`.
-- The XML declaration, when present, must be the first token after an optional BOM.
-- DTDs (`<!DOCTYPE`, `<!ENTITY`, and other `<!` markup that is not a comment or CDATA) throw `XmlException`.
-- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`. The same constructor pitfall applies to `XmlDocumentOptions`.
-- `XmlDocument` is pooled. Dispose it. `XmlElement` cursors are invalid after dispose. Mutate with `CloudNimble.Text.Xml.Nodes`.
+For what the library accepts and rejects, see [XML conformance](/guides/xml-conformance).
 
 ## Related APIs
 
-- # Related APIs
-- - `Utf8XmlReader`
-- - `Utf8XmlWriter`
-- - `XmlDocument`
-- - `XmlElement`
-- - `CloudNimble.Text.Xml.Nodes.XmlNode`
-- - `XmlReaderOptions`
-- - `XmlTokenType`
-- - `XmlException`
-- - `XmlName`
-- - `Utf8JsonReader` / `JsonDocument` (shape analogues in `System.Text.Json`)
+- CloudNimble.Text.Xml.XmlSerializer
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlDocument
+- CloudNimble.Text.Xml.XmlElement
+- CloudNimble.Text.Xml.Utf8XmlReader
+- CloudNimble.Text.Xml.Utf8XmlWriter
+- CloudNimble.Text.Xml.XmlException
+- CloudNimble.Text.Xml.Nodes.XmlNode
 
 ## Types
 
@@ -109,41 +290,41 @@ while (reader.Read())
 
 | Name | Summary |
 | ---- | ------- |
-| [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) |  |
-| [XmlAttributes](/api-reference/CloudNimble/Text/Xml/XmlAttributes) |  |
-| [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) |  |
-| [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) |  |
-| [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) |  |
-| [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) |  |
-| [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) |  |
-| [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) |  |
+| [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | A UTF-8 XML writer analogous to `Utf8JsonWriter`. |
+| [XmlAttributes](/api-reference/CloudNimble/Text/Xml/XmlAttributes) | Well-known XML attribute local names used by XmlEssentials. |
+| [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) | An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`. |
+| [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) | Thrown when XML is not well-formed or a DoS limit is exceeded. |
+| [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) | Well-known XML namespace URIs used by XmlEssentials. |
+| [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) | Converts CLR member and type names to XML local names. |
+| [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | Serializes CLR values to UTF-8 XML and back. Analogous to `JsonSerializer`. |
+| [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) | Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`. |
 
 ### <Icon icon="cubes" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Structs
 
 | Name | Summary |
 | ---- | ------- |
-| [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) |  |
-| [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) |  |
-| [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) |  |
-| [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) |  |
-| [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) |  |
-| [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) |  |
-| [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) |  |
-| [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) |  |
-| [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) |  |
+| [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`. |
+| [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) | Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed. |
+| [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) | Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse). |
+| [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) | A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`. |
+| [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) | Cached escaped UTF-8 for hot element and attribute names. |
+| [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) | A namespace-qualified XML name: local name, namespace URI, and optional prefix. |
+| [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) | Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
+| [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) | Opaque resume state for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
+| [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) | Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter). |
 
 ### <Icon icon="list-ol" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Enums
 
 | Name | Summary |
 | ---- | ------- |
-| [XmlCommentHandling](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) |  |
-| [XmlDiscriminatorPlacement](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement) |  |
-| [XmlEnumHandling](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling) |  |
-| [XmlNilHandling](/api-reference/CloudNimble/Text/Xml/XmlNilHandling) |  |
-| [XmlPropertyMapping](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping) |  |
-| [XmlSerializerDefaults](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults) |  |
-| [XmlTokenType](/api-reference/CloudNimble/Text/Xml/XmlTokenType) |  |
-| [XmlValueKind](/api-reference/CloudNimble/Text/Xml/XmlValueKind) |  |
-| [XmlVersion](/api-reference/CloudNimble/Text/Xml/XmlVersion) |  |
-| [XmlWhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) |  |
+| [XmlCommentHandling](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens. |
+| [XmlDiscriminatorPlacement](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement) | Where a polymorphic type discriminator is written. |
+| [XmlEnumHandling](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling) | How enum values are written. |
+| [XmlNilHandling](/api-reference/CloudNimble/Text/Xml/XmlNilHandling) | How a nillable null value is written. |
+| [XmlPropertyMapping](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping) | How an unannotated property or field is mapped: child element or XML attribute. |
+| [XmlSerializerDefaults](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults) | Named default sets for [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions). |
+| [XmlTokenType](/api-reference/CloudNimble/Text/Xml/XmlTokenType) | Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document. |
+| [XmlValueKind](/api-reference/CloudNimble/Text/Xml/XmlValueKind) | Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree. |
+| [XmlVersion](/api-reference/CloudNimble/Text/Xml/XmlVersion) | XML recommendation version in force for the current document. |
+| [XmlWhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements. |
 

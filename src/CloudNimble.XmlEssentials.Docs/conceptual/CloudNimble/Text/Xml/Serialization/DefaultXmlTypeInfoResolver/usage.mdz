@@ -1,5 +1,29 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`DefaultXmlTypeInfoResolver` is the resolver behind every `XmlSerializer` call that passes only a value, or a value and options. It finds the converter for a type and wraps it in type info. For a class or struct, that converter is built by inspecting the type's members and attributes with reflection.
 
-Describe how to use `DefaultXmlTypeInfoResolver` here.
+You rarely name the class. An `XmlSerializerOptions` instance with no `TypeInfoResolver` uses the shared `DefaultXmlTypeInfoResolver.Instance`:
 
+```csharp
+var receipt = new Receipt { Number = 77, Paid = 129.90m };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(receipt, options);
+output.WriteLine(xml);
+
+Receipt? copy = XmlSerializer.Deserialize<Receipt>(xml, options);
+output.WriteLine($"Receipt {copy!.Number}: {copy.Paid}");
+output.WriteLine(options.TypeInfoResolver!.GetType().Name);
+```
+
+The code produces the following output:
+
+```text
+<Receipt><Number>77</Number><Paid>129.90</Paid></Receipt>
+Receipt 77: 129.90
+DefaultXmlTypeInfoResolver
+```
+
+The resolver looks for a converter in this order: the `Converters` list of the options, then `[XmlConverter]` on the type, then the built-in converters. It returns `null` when none of them handles the type.
+
+The class has no public constructor. Use `Instance`. It's the counterpart of `DefaultJsonTypeInfoResolver` in System.Text.Json.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)

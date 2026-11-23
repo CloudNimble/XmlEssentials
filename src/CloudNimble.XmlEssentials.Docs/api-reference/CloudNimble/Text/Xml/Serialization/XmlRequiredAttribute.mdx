@@ -1,8 +1,9 @@
 ---
 title: XmlRequiredAttribute
+description: "Requires the member to be present when deserializing. Analogous to `JsonRequiredAttribute`."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling']
 ---
 
 ## Definition
@@ -18,6 +19,67 @@ keywords: ['XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRequir
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute
 ```
+
+## Summary
+
+Requires the member to be present when deserializing. Analogous to `JsonRequiredAttribute`.
+
+## Usage
+
+Apply `[XmlRequired]` to a property or field that must be present in the XML when deserializing. It is the counterpart of `[JsonRequired]`, and it has the same effect as the C# `required` modifier without making the compiler demand the member in object initializers.
+
+```csharp
+public sealed class Registration
+{
+    public required string Email { get; set; }
+
+    [XmlRequired]
+    public string? Plan { get; set; }
+
+    public string? Referrer { get; set; }
+}
+```
+
+```csharp
+string[] documents =
+[
+    "<Registration><Email>ada@contoso.example</Email><Plan>pro</Plan></Registration>",
+    "<Registration><Plan>pro</Plan></Registration>",
+    "<Registration><Email>ada@contoso.example</Email></Registration>",
+];
+
+foreach (string xml in documents)
+{
+    try
+    {
+        Registration? registration = XmlSerializer.Deserialize<Registration>(xml);
+        output.WriteLine($"{registration!.Email} chose {registration.Plan}");
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine(ex.Message);
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+ada@contoso.example chose pro
+The required member 'Email' is missing.
+The required member 'Plan' is missing.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)
+
+## Considerations
+
+- A missing required member throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException) whose message names the member by its XML name.
+- A required element that is present but marked `xsi:nil="true"` is also rejected, with the message `The required member 'Email' cannot be nil.`
+- An empty element satisfies the requirement. For a `string` member, the value is the empty string. The attribute checks presence, not content.
+- The attribute affects reading only. A required member whose value is `null` is still written as nil, or left out, by the usual rules.
+- A required collection that is written as repeated elements counts as present when the XML has at least one item.
+- Constructor parameters with no default value are required without the attribute. See [Constructor parameters](/guides/required-properties#constructor-parameters).
 
 ## Constructors
 
@@ -932,4 +994,11 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.XmlException
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute
+- CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
 

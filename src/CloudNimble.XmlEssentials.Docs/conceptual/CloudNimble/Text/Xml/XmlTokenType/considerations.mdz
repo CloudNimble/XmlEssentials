@@ -1,9 +1,8 @@
-# Considerations
-
-`None` means no token yet, or `Read` has already returned false.
-
-`StartElement` covers both `<e>` and `<e/>`. Distinguish them with `IsEmptyElement`. The reader never synthesizes `EndElement` for an empty tag.
-
-`Comment` appears only when `XmlCommentHandling.Allow` is set. Otherwise comments are skipped or rejected.
-
-`XmlDeclaration` is reported as its own token. It is legal only as the first token in the document.
+- **`StartElement` covers `<e>` and `<e/>`.** For an empty element, `Utf8XmlReader.IsEmptyElement` is `true` and no `EndElement` token follows. Check it wherever you count depth or wait for an end tag.
+- **`Attribute` never comes from `Read`.** `TokenType` is `Attribute` only between a call to `MoveToNextAttribute` that returns `true` and the next call to `MoveToElement` or `Read`.
+- **`Comment` is reported by default.** Set `XmlReaderOptions.CommentHandling` to `XmlCommentHandling.Skip` when you don't want comments.
+- **White space between elements is a `Text` token by default.** Set `XmlReaderOptions.WhitespaceHandling` to `XmlWhitespaceHandling.Insignificant` when you don't want it. The example in the usage section does both.
+- **`Text` and `CData` carry the same kind of value.** They differ only in how the document wrote it. Handle them together unless you need to know which form was used.
+- **`XmlDeclaration` can only be the first token.** A document doesn't have to have one.
+- **`None` means there's no current token:** before the first `Read`, and after `Read` returns `false` at the end of the document.
+- **There's no token for a document type declaration.** The reader rejects one with an `XmlException`.

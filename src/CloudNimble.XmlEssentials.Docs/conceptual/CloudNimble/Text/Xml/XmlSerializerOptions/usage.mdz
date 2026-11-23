@@ -1,5 +1,31 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlSerializerOptions` holds the settings that control how [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) writes and reads XML: names, indentation, null handling, limits, converters, and where type metadata comes from. It is the counterpart of `JsonSerializerOptions`.
 
-Describe how to use `XmlSerializerOptions` here.
+Create an instance once, set its properties in the initializer, and pass the same instance to every call:
 
+```csharp
+private static readonly XmlSerializerOptions s_compact = new()
+{
+    OmitXmlDeclaration = true,
+    PropertyNamingPolicy = XmlNamingPolicy.CamelCase,
+};
+```
+
+```csharp
+output.WriteLine(XmlSerializer.Serialize(new InvoiceLine { Sku = "KB-101", Quantity = 2 }, s_compact));
+output.WriteLine(XmlSerializer.Serialize(new InvoiceCustomer { Name = "Contoso", Email = "ap@contoso.example" }, s_compact));
+```
+
+The code produces the following output:
+
+```xml
+<invoiceLine><sku>KB-101</sku><quantity>2</quantity></invoiceLine>
+<invoiceCustomer><name>Contoso</name><email>ap@contoso.example</email></invoiceCustomer>
+```
+
+There are three ways to get an instance:
+
+- `new XmlSerializerOptions()` for the general defaults, or `new XmlSerializerOptions(XmlSerializerDefaults.Web)` and `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` for the other two sets.
+- `new XmlSerializerOptions(existing)` to copy an instance and change the copy.
+- The shared, read-only instances `XmlSerializerOptions.Default`, `XmlSerializerOptions.Web`, and `XmlSerializerOptions.Strict`.
+
+An instance becomes read-only the first time it is used, or when you call `MakeReadOnly`. Every option, with its default, is listed in [Configure XmlSerializerOptions](/guides/configure-options).

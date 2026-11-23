@@ -1,5 +1,15 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlKnownNamingPolicy` names the built-in naming policies as an enumeration, so that you can choose one in an attribute. An attribute argument has to be a compile-time constant, and an [`XmlNamingPolicy`](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) instance isn't one.
 
-Describe how to use `XmlKnownNamingPolicy` here.
+It is the type of the `PropertyNamingPolicy`, `ElementNamingPolicy`, and `AttributeNamingPolicy` properties of [`XmlSourceGenerationOptionsAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute). It is the counterpart of `JsonKnownNamingPolicy`.
 
+| Value | Policy | `StreetAddress` becomes |
+| --- | --- | --- |
+| `Unspecified` | None. Names are unchanged. | `StreetAddress` |
+| `CamelCase` | `XmlNamingPolicy.CamelCase` | `streetAddress` |
+| `SnakeCaseLower` | `XmlNamingPolicy.SnakeCaseLower` | `street_address` |
+| `SnakeCaseUpper` | `XmlNamingPolicy.SnakeCaseUpper` | `STREET_ADDRESS` |
+| `KebabCaseLower` | `XmlNamingPolicy.KebabCaseLower` | `street-address` |
+| `KebabCaseUpper` | `XmlNamingPolicy.KebabCaseUpper` | `STREET-ADDRESS` |
+| `PascalCase` | `XmlNamingPolicy.PascalCase` | `StreetAddress` |
+
+When you set options in code instead, assign an `XmlNamingPolicy` to `XmlSerializerOptions` directly. See [Use source generation](/guides/source-generation) and [Customize names and shape](/guides/customize-names#use-a-naming-policy-for-all-names).

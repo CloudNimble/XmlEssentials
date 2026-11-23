@@ -1,5 +1,5 @@
-# Considerations
-
-This is a readonly struct. Encoding is always `utf-8` for documents this stack accepts. `Standalone` is null when the pseudo-attribute was omitted.
-
-Mutable trees use `Nodes.XmlDeclarationNode` instead. Mutating that type cannot change `XmlDocument.Declaration`.
+- **The values are normalized, not copied from the source.** For a parsed document, `Version` is `1.0` or `1.1`, and `Encoding` is always `utf-8`, however the document spelled it. In the example, the source says `UTF-8`.
+- **`Standalone` has three states:** `true` for `standalone="yes"`, `false` for `standalone="no"`, and `null` when the declaration doesn't say.
+- **A missing declaration isn't an error.** `XmlDocument.Declaration` is `null`, and the document is XML 1.0.
+- **`Utf8XmlReader` doesn't produce this type.** The reader reports the declaration as an `XmlTokenType.XmlDeclaration` token and exposes only the version, as `Utf8XmlReader.Version`.
+- **It's an immutable value.** In the tree that you can change, the declaration is a `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`.

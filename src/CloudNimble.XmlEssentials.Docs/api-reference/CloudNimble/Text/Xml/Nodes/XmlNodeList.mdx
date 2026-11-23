@@ -1,8 +1,9 @@
 ---
 title: XmlNodeList
+description: "An ordered list of child [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) instances."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlNodeList', 'CloudNimble.Text.Xml.Nodes.XmlNodeList', 'CloudNimble.Text.Xml.Nodes', 'class', '# Related APIs', '- `XmlNode`', '- `XmlElementNode`', '- `XmlAttributeNodeList`']
+keywords: ['XmlNodeList', 'CloudNimble.Text.Xml.Nodes.XmlNodeList', 'CloudNimble.Text.Xml.Nodes', 'class', 'CloudNimble.Text.Xml.Nodes.XmlElementNode', 'CloudNimble.Text.Xml.Nodes.XmlNode', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList']
 ---
 
 ## Definition
@@ -17,44 +18,55 @@ keywords: ['XmlNodeList', 'CloudNimble.Text.Xml.Nodes.XmlNodeList', 'CloudNimble
 CloudNimble.Text.Xml.Nodes.XmlNodeList
 ```
 
+## Summary
+
+An ordered list of child [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) instances.
+
 ## Usage
 
-# Usage
-
-`XmlElementNode.Children` is an `IList<XmlNode>` of mixed content.
+`XmlNodeList` is the type of `XmlElementNode.Children`. It's an `IList<XmlNode>` that holds an element's child nodes in document order: elements, text, CDATA sections, comments, and processing instructions. Use it to count, index, insert at a position, remove, and replace.
 
 ```csharp
-root.Children.Add(new XmlTextNode("hi"));
-root.Children.Insert(0, new XmlCommentNode("c"));
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item><Item>Mouse</Item><Item>Monitor</Item><Note>Gift</Note></Order>""")!;
+
+order.Children.RemoveAt(0);
+
+XmlElementNode note = order["Note"]!;
+order.Children.Remove(note);
+output.WriteLine($"The removed node has a parent: {note.Parent is not null}");
+
+var replacement = new XmlElementNode("Item");
+replacement.InnerText = "Trackball";
+order.Children[0] = replacement;
+
+var archive = new XmlElementNode("Archive");
+archive.Add(note);
+
+order["Item"]!.InnerText = "Trackball (wireless)";
+
+output.WriteLine(order.ToString());
+output.WriteLine(archive.ToString());
 ```
 
-## Examples
+The code produces the following output:
 
-# Examples
-
-```csharp
-var child = root.Children[0];
-root.Children.Remove(child);
-child.Parent; // null
+```text
+The removed node has a parent: False
+<Order><Item>Trackball (wireless)</Item><Item>Monitor</Item></Order>
+<Archive><Note>Gift</Note></Archive>
 ```
 
-## Best Practices
+You don't create a list. Every `XmlElementNode` has one.
 
-# Best Practices
-
-Clone a node (`DeepClone`) before attaching it to a second parent.
-
-## Patterns
-
-# Patterns
-
-Walk with `foreach` or `XmlElementNode`’s `IEnumerable<XmlNode>`. Filter with `is XmlElementNode` when you want child elements only.
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
 
 ## Considerations
 
-# Considerations
-
-A node may belong to one list. `Add` / `Insert` / indexer set throw if `Parent` is already set. `Remove` returns false when the node is not in the list.
+- A node belongs to one list at a time. `Add`, `Insert`, and the index setter throw an `XmlException` ("The node already has a parent.") for a node that has a parent. Remove it first to move it, or add a `DeepClone` to copy it.
+- `Remove`, `RemoveAt`, `Clear`, and replacing through the index setter set the `Parent` of the node that leaves the list to `null`. `Remove` returns `false` when the node isn't in the list.
+- In a tree parsed from an indented document, the list holds a text node for each run of white space between elements. Don't assume that an index holds an element.
+- Changing the list while a `foreach` loop enumerates it throws `InvalidOperationException`. Collect the nodes to remove first, or loop by index from the end.
+- The list accepts any `XmlNode`, including kinds that don't belong among an element's children. An `XmlDeclarationNode` added here is written inside the element, which isn't well-formed XML. Keep attributes in `Attributes` and write a declaration separately.
 
 ## Constructors
 
@@ -360,8 +372,7 @@ Type: `string?`
 
 ## Related APIs
 
-- # Related APIs
-- - `XmlNode`
-- - `XmlElementNode`
-- - `XmlAttributeNodeList`
+- CloudNimble.Text.Xml.Nodes.XmlElementNode
+- CloudNimble.Text.Xml.Nodes.XmlNode
+- CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList
 

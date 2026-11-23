@@ -1,0 +1,415 @@
+---
+title: "Supported types in XmlEssentials"
+sidebarTitle: "Supported types"
+description: "The types XmlSerializer handles without a converter, the exact text each one is written as, and the forms it accepts when it reads."
+icon: "table-list"
+---
+
+This page lists every type that `XmlSerializer` reads and writes without a custom converter. For each type it gives the text that is written and the text that is accepted, so you can tell whether a document from another system will deserialize. The rules follow [XML Schema Part 2: Datatypes](https://www.w3.org/TR/xmlschema-2/), and they don't depend on the current culture.
+
+The typed getters on `Utf8XmlReader` and `XmlElement`, such as `GetInt32` and `GetDateTime`, parse values with the same code as the serializer. A value that one of them accepts is accepted by all three.
+
+## Built-in types at a glance
+
+The following sample serializes one value of each built-in scalar type as the document element.
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+Print(output, "bool", true, options);
+Print(output, "byte", (byte)255, options);
+Print(output, "sbyte", (sbyte)-128, options);
+Print(output, "short", (short)-32768, options);
+Print(output, "ushort", (ushort)65535, options);
+Print(output, "int", -42, options);
+Print(output, "uint", 4294967295u, options);
+Print(output, "long", long.MinValue, options);
+Print(output, "ulong", ulong.MaxValue, options);
+Print(output, "float", 3.14f, options);
+Print(output, "double", 1e-7, options);
+Print(output, "double", double.NaN, options);
+Print(output, "double", double.PositiveInfinity, options);
+Print(output, "double", double.NegativeInfinity, options);
+Print(output, "decimal", 19.990m, options);
+Print(output, "string", "Fish & chips", options);
+Print(output, "char", 'A', options);
+Print(output, "Guid", new Guid("0f8fad5b-d9cb-469f-a165-70867728950e"), options);
+Print(output, "DateTime", new DateTime(2026, 11, 23, 14, 30, 0, DateTimeKind.Unspecified), options);
+Print(output, "DateTime", new DateTime(2026, 11, 23, 14, 30, 0, DateTimeKind.Utc), options);
+Print(output, "DateTimeOffset", new DateTimeOffset(2026, 11, 23, 14, 30, 0, TimeSpan.FromHours(2)), options);
+Print(output, "DateOnly", new DateOnly(2026, 11, 23), options);
+Print(output, "TimeOnly", new TimeOnly(14, 30, 0, 250), options);
+Print(output, "TimeSpan", new TimeSpan(1, 2, 3, 4), options);
+Print(output, "byte[]", new byte[] { 1, 2, 3, 4, 5 }, options);
+Print(output, "Uri", new Uri("https://example.com/orders?id=1042&view=full"), options);
+Print(output, "Version", new Version(1, 2, 3), options);
+Print(output, "enum", OrderStatus.Shipped, options);
+Print(output, "[Flags] enum", DeliveryOptions.Gift | DeliveryOptions.Insured, options);
+Print<int?>(output, "int?", 5, options);
+Print<int?>(output, "int?", null, options);
+```
+
+`Print` writes the C# name of the type and the result of `XmlSerializer.Serialize`:
+
+```csharp
+private static void Print<T>(TextWriter output, string type, T value, XmlSerializerOptions options)
+{
+    output.WriteLine($"{type,-15}{XmlSerializer.Serialize(value, options)}");
+}
+```
+
+The code produces the following output:
+
+```text
+bool           <Boolean>true</Boolean>
+byte           <Byte>255</Byte>
+sbyte          <SByte>-128</SByte>
+short          <Int16>-32768</Int16>
+ushort         <UInt16>65535</UInt16>
+int            <Int32>-42</Int32>
+uint           <UInt32>4294967295</UInt32>
+long           <Int64>-9223372036854775808</Int64>
+ulong          <UInt64>18446744073709551615</UInt64>
+float          <Single>3.14</Single>
+double         <Double>1E-07</Double>
+double         <Double>NaN</Double>
+double         <Double>INF</Double>
+double         <Double>-INF</Double>
+decimal        <Decimal>19.990</Decimal>
+string         <String>Fish &amp; chips</String>
+char           <Char>A</Char>
+Guid           <Guid>0f8fad5b-d9cb-469f-a165-70867728950e</Guid>
+DateTime       <DateTime>2026-11-23T14:30:00</DateTime>
+DateTime       <DateTime>2026-11-23T14:30:00Z</DateTime>
+DateTimeOffset <DateTimeOffset>2026-11-23T14:30:00+02:00</DateTimeOffset>
+DateOnly       <DateOnly>2026-11-23</DateOnly>
+TimeOnly       <TimeOnly>14:30:00.25</TimeOnly>
+TimeSpan       <TimeSpan>P1DT2H3M4S</TimeSpan>
+byte[]         <ByteArray>AQIDBAU=</ByteArray>
+Uri            <Uri>https://example.com/orders?id=1042&amp;view=full</Uri>
+Version        <Version>1.2.3</Version>
+enum           <OrderStatus>Shipped</OrderStatus>
+[Flags] enum   <DeliveryOptions>Gift Insured</DeliveryOptions>
+int?           <Int32>5</Int32>
+int?           <Int32 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
+
+The element name of a value that is the document element is the .NET type name, `ByteArray` for `byte[]`, and the name of the underlying type for a nullable value type. A property uses its own name instead. The text inside the element is the same in both cases, and it is the same when the property is written as an XML attribute.
+
+## Numbers and Boolean values
+
+| .NET type | XSD type | Written as | Accepted on read |
+| --- | --- | --- | --- |
+| `bool` | `boolean` | `true` or `false` | `true`, `false`, `1`, `0`. The match is case-sensitive, so `True` is rejected. |
+| `sbyte`, `short`, `int`, `long` | `byte`, `short`, `int`, `long` | Decimal digits, with `-` for a negative value | An optional `+` or `-` followed by digits. Leading zeros are allowed. The value must be in the range of the type. |
+| `byte`, `ushort`, `uint`, `ulong` | `unsignedByte`, `unsignedShort`, `unsignedInt`, `unsignedLong` | Decimal digits | An optional `+` followed by digits. `-0` is zero. Any other negative value is rejected. |
+| `float` | `float` | The shortest text that reads back as the same value, such as `3.14` or `3.4028235E+38`. `NaN`, `INF`, `-INF` for the values that aren't finite. | A decimal number with an optional exponent (`1e3`, `+.5`), or `NaN`, `INF`, `-INF` in any letter case. |
+| `double` | `double` | The same as `float`: `0.1`, `1E-07`, `1E+300`, `NaN`, `INF`, `-INF` | The same as `float`. |
+| `decimal` | `decimal` | Digits with an optional fraction and no exponent. Trailing zeros are kept: `19.990m` is written as `19.990`. | An optional sign, digits, and an optional fraction (`12`, `+12.50`, `.5`, `5.`). An exponent is rejected. |
+
+Things to notice:
+
+- Integers don't accept group separators (`1,000`), hexadecimal (`0x1F`), a fraction (`1.0`), or an exponent.
+- A value outside the range of the type is rejected. It never wraps.
+- `Infinity` and `+INF` are rejected. Only the three XSD names are accepted. Accepting them in any letter case is an extension to XML Schema.
+- A finite-looking number that is too large for the type, such as `1e400` for a `double`, reads as infinity.
+- To reject `NaN`, `INF`, and `-INF` in both directions, set [`XmlSerializerOptions.NumberHandling`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) to `XmlNumberHandling.Strict`. Writing a value that isn't finite then throws an `XmlException` with the message `Named floating-point literals are not allowed when NumberHandling is Strict.`
+
+## Dates, times, and durations
+
+| .NET type | XSD type | Written as | Accepted on read |
+| --- | --- | --- | --- |
+| `DateTime` | `dateTime` | `yyyy-MM-ddTHH:mm:ss` and a fraction when there is one. A `Utc` value ends with `Z`, a `Local` value ends with the local offset (`+02:00`), and an `Unspecified` value has no time zone. | `YYYY-MM-DDThh:mm:ss`, an optional fraction, and an optional `Z` or `+hh:mm` / `-hh:mm`. |
+| `DateTimeOffset` | `dateTime` | The same, always followed by the offset. A zero offset is written as `+00:00`. | The same form as `DateTime`. |
+| `DateOnly` | `date` | `yyyy-MM-dd` | `YYYY-MM-DD` with an optional time zone, which is checked and then dropped. |
+| `TimeOnly` | `time` | `HH:mm:ss` and a fraction when there is one | `hh:mm:ss`, an optional fraction, and an optional time zone, which is checked and then dropped. |
+| `TimeSpan` | `duration` | `PnDTnHnMnS`. Parts that are zero are left out, so 90 minutes is `PT1H30M`. Zero is `PT0S`. A negative value starts with `-`. | `[-]P[nD][T[nH][nM][n[.n]S]]` with at least one part. |
+
+The kind of a `DateTime` that is read depends on the time zone in the text:
+
+| Text | Result |
+| --- | --- |
+| No time zone | `DateTimeKind.Unspecified`, with the clock value as written |
+| `Z` or `+00:00` | `DateTimeKind.Utc` |
+| Any other offset | Converted to local time, `DateTimeKind.Local` |
+
+A `DateTimeOffset` read from text that has no time zone takes the offset of the local time zone at that date and time.
+
+Rules that hold for all date and time types:
+
+- Every field has a fixed width. `2026-1-2T03:04:05` and `14:30` are rejected. The `T` is uppercase, and a space isn't accepted in its place.
+- A fraction of a second is written with up to seven digits and no trailing zeros. On read, digits after the seventh are dropped.
+- `24:00:00` is accepted and means the first instant of the next day. For a `TimeOnly` it reads as `00:00:00`.
+- Seconds are `00` to `59`. A time zone is `Z` or an offset of up to 14 hours.
+- The year has exactly four digits, `0001` to `9999`, because that is the range of the .NET types. XML Schema allows longer and negative years.
+- A duration that names years or months, such as `P1Y` or `P1M`, is rejected. A year and a month have no fixed length, so they can't be stored in a `TimeSpan`. The .NET format `01:02:03` is also rejected.
+
+## Text, binary data, and identifiers
+
+| .NET type | Written as | Accepted on read |
+| --- | --- | --- |
+| `string` | The text, with `&`, `<`, and other characters escaped as [XML requires](/guides/xml-conformance#what-the-writer-escapes). An empty string is written as an element with no content. | The text of the element, with its whitespace kept. `<String> a </String>` is `" a "`. An empty element is an empty string, not `null`. |
+| `char` | The character | Exactly one UTF-16 code unit, after leading and trailing whitespace is removed. A character outside the Basic Multilingual Plane is rejected, because it doesn't fit in one `char`. |
+| `Guid` | The .NET `D` format: 32 lowercase hexadecimal digits in five groups | The `D`, `N`, `B`, and `P` formats, in either letter case |
+| `byte[]` | Base64 (`base64Binary`). An empty array is written as an element with no content. | Base64. Whitespace inside the value is allowed. An empty element is an empty array. |
+| `Uri` | `Uri.OriginalString`, for a relative or an absolute URI | Any text that `Uri.TryCreate` accepts with `UriKind.RelativeOrAbsolute` |
+| `Version` | `major.minor`, `major.minor.build`, or `major.minor.build.revision` | Any text that `Version.TryParse` accepts. A single number, such as `1`, is rejected. |
+
+<Warning>
+Because whitespace around a `char` value is removed before the value is read, a `char` that is itself a space, tab, or line end doesn't read back. Use a `string` for such a value.
+</Warning>
+
+For every type except `string`, leading and trailing spaces, tabs, and line ends are removed before the value is parsed. XML Schema calls this the `collapse` whitespace rule.
+
+## Read forms other than the one that is written
+
+The following sample deserializes values that are legal but aren't written the way the serializer writes them. The last value is rejected.
+
+```csharp
+output.WriteLine(XmlSerializer.Deserialize<bool>("<Boolean>1</Boolean>"));
+output.WriteLine(XmlSerializer.Deserialize<int>("<Int32> +042 </Int32>"));
+output.WriteLine(double.IsPositiveInfinity(XmlSerializer.Deserialize<double>("<Double>inf</Double>")));
+output.WriteLine(XmlSerializer.Deserialize<Guid>("<Guid>{0F8FAD5B-D9CB-469F-A165-70867728950E}</Guid>"));
+output.WriteLine(XmlSerializer.Deserialize<DateTime>("<DateTime>2026-11-23T14:30:00Z</DateTime>").Kind);
+output.WriteLine(XmlSerializer.Deserialize<TimeSpan>("<TimeSpan>PT90M</TimeSpan>"));
+output.WriteLine(Convert.ToHexString(XmlSerializer.Deserialize<byte[]>("<ByteArray>AQID BAU=</ByteArray>")!));
+output.WriteLine(XmlSerializer.Deserialize<OrderStatus>("<OrderStatus>2</OrderStatus>"));
+
+try
+{
+    XmlSerializer.Deserialize<decimal>("<Decimal>1E+2</Decimal>");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+```
+
+The code produces the following output:
+
+```text
+True
+42
+True
+0f8fad5b-d9cb-469f-a165-70867728950e
+Utc
+01:30:00
+0102030405
+Delivered
+The value is not a valid decimal.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
+
+A value that can't be read throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException) with one of these messages:
+
+| Type | Message |
+| --- | --- |
+| `bool` | `The value is not a boolean.` |
+| Every integer type | `The value is not a valid integer.` |
+| `float` | `The value is not a valid float.` |
+| `double` | `The value is not a valid double.` |
+| `decimal` | `The value is not a valid decimal.` |
+| `DateTime`, `DateTimeOffset` | `The value is not a valid dateTime.` |
+| `DateOnly` | `The value is not a valid date.` |
+| `TimeOnly` | `The value is not a valid time.` |
+| `TimeSpan` | `The value is not a valid duration.` |
+| `Guid` | `The value is not a valid GUID.` |
+| `byte[]` | `The value is not valid base64.` |
+| `char` | `The value is not a single character.` |
+| `Uri` | `The value is not a valid URI.` |
+| `Version` | `The value is not a valid version.` |
+| Every enum | `The value is not a valid enum member.` |
+
+An empty element is not a number, a Boolean value, or a date. `<Int32/>` is rejected for both `int` and `int?`.
+
+## Enums
+
+An enum is written as the name of its member. A `[Flags]` enum is written as the names of the members that are set, separated by spaces. Set [`XmlSerializerOptions.EnumHandling`](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling) to `XmlEnumHandling.Integer` to write the number instead.
+
+```csharp
+var names = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var numbers = new XmlSerializerOptions { OmitXmlDeclaration = true, EnumHandling = XmlEnumHandling.Integer };
+var extras = DeliveryOptions.Gift | DeliveryOptions.Insured;
+
+output.WriteLine(XmlSerializer.Serialize(OrderStatus.Shipped, names));
+output.WriteLine(XmlSerializer.Serialize(OrderStatus.Shipped, numbers));
+output.WriteLine(XmlSerializer.Serialize(extras, names));
+output.WriteLine(XmlSerializer.Serialize(extras, numbers));
+
+DeliveryOptions read = XmlSerializer.Deserialize<DeliveryOptions>("<DeliveryOptions>Express Insured</DeliveryOptions>");
+output.WriteLine(read == (DeliveryOptions.Express | DeliveryOptions.Insured));
+```
+
+```csharp Models
+public enum OrderStatus
+{
+    Pending = 0,
+    Shipped = 1,
+    Delivered = 2,
+}
+
+[Flags]
+public enum DeliveryOptions
+{
+    None = 0,
+    Gift = 1,
+    Express = 2,
+    Insured = 4,
+}
+```
+
+The code produces the following output:
+
+```text
+<OrderStatus>Shipped</OrderStatus>
+<OrderStatus>1</OrderStatus>
+<DeliveryOptions>Gift Insured</DeliveryOptions>
+<DeliveryOptions>5</DeliveryOptions>
+True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
+
+| | Written as | Accepted on read |
+| --- | --- | --- |
+| Enum | The member name. A value that has no member is written as its number. | A member name, or the number of a declared member. Reading accepts both whatever `EnumHandling` is. |
+| `[Flags]` enum | Member names separated by one space. A value with a bit that belongs to no member is written as its number. | Member names separated by whitespace, or any number that fits the underlying type. |
+
+Names are case-sensitive: `shipped` is rejected. A comma isn't a separator: `Gift, Insured`, the form `Enum.ToString` produces, is rejected. For an enum without `[Flags]`, a number that isn't a declared member, such as `7` for `OrderStatus`, is rejected.
+
+System.Text.Json writes enums as numbers by default. XmlEssentials writes names by default.
+
+## Nullable value types
+
+`Nullable<T>` is supported for every value type in the tables above and for every enum. A value is written exactly as `T` is. `null` is written as an empty element with `xsi:nil="true"` when it is the document element or an item of a collection, as the last line of the first sample shows. For a property, what is written depends on your options. See [Handle null values and xsi:nil](/guides/null-and-nil).
+
+Reading an element with `xsi:nil="true"` into a type that can't be `null`, such as `int`, throws an `XmlException`: `The element is nil but type 'System.Int32' is not nillable.`
+
+## Collections and dictionaries
+
+A collection is written as one child element for each item. A dictionary is written as one child element for each entry.
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+output.WriteLine(XmlSerializer.Serialize(new List<int> { 1, 2 }, options));
+output.WriteLine(XmlSerializer.Serialize(new[] { "red", "green" }, options));
+output.WriteLine(XmlSerializer.Serialize(new Dictionary<string, int> { ["apples"] = 3, ["ripe pears"] = 5 }, options));
+output.WriteLine(XmlSerializer.Serialize(new Dictionary<int, string> { [1042] = "Keyboard" }, options));
+```
+
+The code produces the following output:
+
+```xml
+<ListOfInt32><Int32>1</Int32><Int32>2</Int32></ListOfInt32>
+<StringArray><String>red</String><String>green</String></StringArray>
+<DictionaryOfStringInt32><apples>3</apples><Key>ripe pears</Key><Value>5</Value></DictionaryOfStringInt32>
+<DictionaryOfInt32String><Key>1042</Key><Value>Keyboard</Value></DictionaryOfInt32String>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
+
+A dictionary entry whose key is a string that is also a valid XML name made of ASCII characters is written as an element with that name. Every other entry, including every entry of a dictionary whose key isn't a string, is written as a `Key` element followed by a `Value` element. The key `Key` itself is written in the pair form.
+
+This page shows the shape only. To name the items, wrap or unwrap a collection property, and populate read-only collection properties, see [Serialize collections](/guides/collections).
+
+The following table shows which collection types are supported in each direction.
+
+| Type | Serialize | Deserialize |
+| --- | --- | --- |
+| `T[]`, including arrays of arrays (`T[][]`) | Yes | Yes |
+| `List<T>` | Yes | Yes |
+| `IEnumerable<T>`, `ICollection<T>`, `IList<T>`, `IReadOnlyCollection<T>`, `IReadOnlyList<T>` | Yes | Yes, as a `List<T>` |
+| `HashSet<T>`, `SortedSet<T>` | Yes | Yes |
+| `Collection<T>`, `ObservableCollection<T>` | Yes | Yes |
+| `Dictionary<TKey, TValue>`, `SortedDictionary<TKey, TValue>` | Yes | Yes |
+| `IDictionary<TKey, TValue>` | Yes | Yes, as a `Dictionary<TKey, TValue>` |
+| `Queue<T>`, `Stack<T>`, `LinkedList<T>` | Yes | No. Throws `NotSupportedException`. |
+| `ISet<T>`, `ReadOnlyCollection<T>` | Yes | No. Throws `MissingMethodException`. |
+| `ImmutableArray<T>`, `ImmutableList<T>`, `ImmutableDictionary<TKey, TValue>` | Yes | No. Throws an exception. |
+| `IReadOnlyDictionary<TKey, TValue>` | As a list of `KeyValuePair` elements, not as a dictionary | No. Throws `MissingMethodException`. |
+| Multidimensional arrays (`T[,]`) | No. Throws `NotSupportedException`. | No |
+
+A type in the "Yes" rows is any type that fits the same pattern: a concrete collection with a public parameterless constructor that implements `IList` or has a public `Add` method that takes one item, or a concrete type that implements `IDictionary<TKey, TValue>` and has a public parameterless constructor.
+
+Items, keys, and values can be any supported type, including other collections and your own classes. A `null` item is written with `xsi:nil="true"`. A `null` dictionary value is written as an empty element.
+
+## Classes, structs, and records
+
+A concrete class or struct that isn't in the tables above is mapped as an object: each public property becomes a child element. See [Serialize .NET objects as XML](/guides/serialize), [Use immutable types and records](/guides/immutable-types), and [Polymorphism](/guides/polymorphism).
+
+## Types that aren't supported
+
+The serializer throws `NotSupportedException` for a type that it has no converter for. The message names the type.
+
+```csharp
+try
+{
+    XmlSerializer.Serialize<object>(42);
+}
+catch (NotSupportedException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+try
+{
+    XmlSerializer.Serialize(new int[2, 2]);
+}
+catch (NotSupportedException ex)
+{
+    output.WriteLine(ex.Message);
+}
+```
+
+The code produces the following output:
+
+```text
+The type 'System.Object' is not supported.
+The type 'System.Int32[,]' is not supported.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
+
+| Type | What happens |
+| --- | --- |
+| `object` | `NotSupportedException`. The serializer doesn't write the runtime type of a value declared as `object`, and it doesn't read one. Declare the real type, or declare the derived types as described in [Polymorphism](/guides/polymorphism). |
+| `nint`, `nuint`, `System.Type` | `NotSupportedException`. |
+| Multidimensional arrays | `NotSupportedException`. Use an array of arrays. |
+| `Memory<byte>`, `ReadOnlyMemory<byte>` | An exception when the type is first used. Use `byte[]`. |
+| `XmlNode` passed to `XmlSerializer.Serialize` | `NotSupportedException`. Write a node with its own `WriteTo` method. See [Use XmlNode](/guides/use-xmlnode). |
+
+<Warning>
+Some framework types have no built-in converter and aren't rejected either, because they are structs or classes and are therefore mapped as objects. `Int128`, `Half`, and `System.Numerics.BigInteger` are examples. Their numeric value isn't one of their public properties, so it isn't written: `XmlSerializer.Serialize((Int128)5)` produces `<Int128/>`. A `ValueTuple` is written as an empty element unless `IncludeFields` is `true`, because its items are fields. `Tuple<T1, T2>` is written but can't be read back, and a `KeyValuePair<TKey, TValue>` is written but reads back as its default value. Write a [custom converter](/guides/custom-converters) for any of these types before you rely on it.
+</Warning>
+
+To support a type that isn't listed here, or to change the text a listed type is written as, write a custom converter. A converter in `XmlSerializerOptions.Converters` is used before the built-in one. See [Write custom converters](/guides/custom-converters).
+
+## Native AOT and trimming
+
+The converters for the scalar types on this page, and for the nullable forms of the value types, are created without reflection. Enums, collections, dictionaries, and objects need metadata that is either found by reflection at run time or generated at compile time. For a trimmed or Native AOT application, list those types on an `XmlSerializerContext`. See [Use source generation](/guides/source-generation) and [Native AOT](/guides/native-aot).
+
+## See also
+
+<Columns cols={2}>
+  <Card title="Serialize collections" icon="list" href="/guides/collections">
+    Name items, wrap and unwrap lists, and map dictionaries.
+  </Card>
+  <Card title="Handle null values and xsi:nil" icon="circle-dashed" href="/guides/null-and-nil">
+    Choose how null is written and read.
+  </Card>
+  <Card title="Write custom converters" icon="wrench" href="/guides/custom-converters">
+    Support a type that isn't built in, or change how one is written.
+  </Card>
+  <Card title="XML conformance" icon="badge-check" href="/guides/xml-conformance">
+    The XML rules the reader and writer apply to every value.
+  </Card>
+</Columns>
+
+- [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer)
+- [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions)
+- [`XmlEnumHandling`](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling)
+- [`XmlNumberHandling`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNumberHandling)

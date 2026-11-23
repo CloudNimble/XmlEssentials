@@ -1,5 +1,48 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlVersion` names the version of XML whose rules apply to a document. You meet it in two places.
 
-Describe how to use `XmlVersion` here.
+**When you read,** you don't set it. `Utf8XmlReader` takes the version from the XML declaration, reports it in `Utf8XmlReader.Version`, and applies that version's rules to the rest of the document. A document with no declaration is XML 1.0.
 
+```csharp
+var reader = new Utf8XmlReader("<?xml version=\"1.1\" encoding=\"utf-8\" standalone=\"yes\"?><Note>one\u0085two</Note>"u8);
+output.WriteLine($"Before the first read: {reader.Version}");
+
+reader.Read();
+output.WriteLine($"{reader.TokenType}: {reader.Version}");
+
+reader.Read();
+reader.Read();
+output.WriteLine($"XML 1.1 text: {Escape(reader.GetString())}");
+
+reader = new Utf8XmlReader("<Note>one\u0085two</Note>"u8);
+reader.Read();
+reader.Read();
+output.WriteLine($"XML 1.0 text: {Escape(reader.GetString())} ({reader.Version})");
+```
+
+```text
+Before the first read: Version10
+XmlDeclaration: Version11
+XML 1.1 text: one\ntwo
+XML 1.0 text: one\u0085two (Version10)
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
+
+**When you write,** you choose it with `XmlWriterOptions.Version`. The writer puts the version in the declaration and applies that version's character rules to what you write.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { Version = XmlVersion.Version11 }))
+{
+    writer.WriteElementString("Note", "bell\u0007 next line\u0085end");
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+```text
+<?xml version="1.1" encoding="utf-8"?><Note>bell&#x7; next line&#x85;end</Note>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)

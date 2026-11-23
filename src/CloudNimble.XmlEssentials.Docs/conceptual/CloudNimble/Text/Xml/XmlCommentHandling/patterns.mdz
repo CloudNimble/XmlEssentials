@@ -1,7 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-**Ignore.** `new Utf8XmlReader(utf8)` — comments vanish from the token stream.
+Document common patterns for `XmlCommentHandling` here.
 
-**Preserve.** `CommentHandling = Allow`, then handle `XmlTokenType.Comment` in the loop.
-
-**Forbid.** `CommentHandling = Disallow` so a comment is `XmlException` instead of silent skip.

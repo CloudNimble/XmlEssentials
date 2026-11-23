@@ -18,12 +18,22 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to an XML string.
+        /// Converts the value of a type specified by a generic type parameter into an XML string, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The XML document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An XML string representation of the value.
+        /// </returns>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static string Serialize<TValue>(TValue value, XmlSerializerOptions? options = null)
         {
@@ -31,12 +41,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to an XML string.
+        /// Converts the provided value into an XML string, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <returns>The XML document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <returns>
+        /// An XML string representation of the value.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static string Serialize<TValue>(TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -44,24 +61,45 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to an XML string.
+        /// Converts the value of a type specified by a generic type parameter into an XML string, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The XML document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An XML string representation of the value.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static string Serialize<TValue>(TValue value, XmlSerializerContext context)
         {
             return WriteString(value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to an XML string.
+        /// Converts the value of a specified type into an XML string, using the specified options.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The XML document.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An XML string representation of the value.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static string Serialize(object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -70,12 +108,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to an XML string.
+        /// Converts the value of a specified type into an XML string, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The XML document.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An XML string representation of the value.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static string Serialize(object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -83,12 +129,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to UTF-8 bytes.
+        /// Converts the value of a type specified by a generic type parameter into an XML string, encoded as UTF-8 bytes, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The UTF-8 document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An XML string representation of the value, encoded as UTF-8 bytes.
+        /// </returns>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, XmlSerializerOptions? options = null)
         {
@@ -96,12 +152,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to UTF-8 bytes.
+        /// Converts the provided value into an XML string, encoded as UTF-8 bytes, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <returns>The UTF-8 document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <returns>
+        /// An XML string representation of the value, encoded as UTF-8 bytes.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -109,24 +172,45 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to UTF-8 bytes.
+        /// Converts the value of a type specified by a generic type parameter into an XML string, encoded as UTF-8 bytes, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The UTF-8 document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An XML string representation of the value, encoded as UTF-8 bytes.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, XmlSerializerContext context)
         {
             return WriteBytes(value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to UTF-8 bytes.
+        /// Converts the value of a specified type into an XML string, encoded as UTF-8 bytes, using the specified options.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The UTF-8 document.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An XML string representation of the value, encoded as UTF-8 bytes.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static byte[] SerializeToUtf8Bytes(object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -135,12 +219,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to UTF-8 bytes.
+        /// Converts the value of a specified type into an XML string, encoded as UTF-8 bytes, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The UTF-8 document.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An XML string representation of the value, encoded as UTF-8 bytes.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static byte[] SerializeToUtf8Bytes(object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -148,12 +240,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <paramref name="value"/> to <paramref name="writer"/> as one element.
+        /// Writes the XML representation of a type specified by a generic type parameter to the provided writer as one element, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="writer">The writer. It is not flushed.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="writer">The XML writer to write to. It is not flushed.</param>
+        /// <param name="value">The value to convert and write.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static void Serialize<TValue>(Utf8XmlWriter writer, TValue value, XmlSerializerOptions? options = null)
         {
@@ -161,12 +264,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <paramref name="value"/> to <paramref name="writer"/> as one element.
+        /// Writes the XML representation of the provided value to the provided writer as one element, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="writer">The writer. It is not flushed.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="writer">The XML writer to write to. It is not flushed.</param>
+        /// <param name="value">The value to convert and write.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static void Serialize<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -174,24 +282,41 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <paramref name="value"/> to <paramref name="writer"/> as one element.
+        /// Writes the XML representation of a type specified by a generic type parameter to the provided writer as one element, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="writer">The writer. It is not flushed.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="writer">The XML writer to write to. It is not flushed.</param>
+        /// <param name="value">The value to convert and write.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static void Serialize<TValue>(Utf8XmlWriter writer, TValue value, XmlSerializerContext context)
         {
             WriteRoot(writer, value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Writes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="writer"/> as one element.
+        /// Writes the XML representation of the specified type to the provided writer as one element, using the specified options.
         /// </summary>
-        /// <param name="writer">The writer. It is not flushed.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="writer">The XML writer to write to. It is not flushed.</param>
+        /// <param name="value">The value to convert and write.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/> or <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static void Serialize(Utf8XmlWriter writer, object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -200,12 +325,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="writer"/> as one element.
+        /// Writes the XML representation of the specified type to the provided writer as one element, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="writer">The writer. It is not flushed.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
+        /// <param name="writer">The XML writer to write to. It is not flushed.</param>
+        /// <param name="value">The value to convert and write.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/>, <paramref name="inputType"/>, or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static void Serialize(Utf8XmlWriter writer, object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -213,12 +344,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/>.
+        /// Converts the value of a type specified by a generic type parameter to UTF-8 encoded XML text and writes it to a stream, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static void Serialize<TValue>(Stream utf8Xml, TValue value, XmlSerializerOptions? options = null)
         {
@@ -226,12 +368,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/>.
+        /// Converts the provided value to UTF-8 encoded XML text and writes it to a stream, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static void Serialize<TValue>(Stream utf8Xml, TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -239,24 +386,41 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/>.
+        /// Converts the value of a type specified by a generic type parameter to UTF-8 encoded XML text and writes it to a stream, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static void Serialize<TValue>(Stream utf8Xml, TValue value, XmlSerializerContext context)
         {
             Write(utf8Xml, value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="utf8Xml"/>.
+        /// Converts the value of a specified type to UTF-8 encoded XML text and writes it to a stream, using the specified options.
         /// </summary>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> or <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static void Serialize(Stream utf8Xml, object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -265,12 +429,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="utf8Xml"/>.
+        /// Converts the value of a specified type to UTF-8 encoded XML text and writes it to a stream, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/>, <paramref name="inputType"/>, or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static void Serialize(Stream utf8Xml, object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -278,12 +448,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="bufferWriter"/>.
+        /// Converts the value of a type specified by a generic type parameter to UTF-8 encoded XML text and writes it to a buffer writer, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="bufferWriter">The destination.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="bufferWriter">The buffer writer to write the UTF-8 encoded XML text to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static void Serialize<TValue>(IBufferWriter<byte> bufferWriter, TValue value, XmlSerializerOptions? options = null)
         {
@@ -291,12 +472,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="bufferWriter"/>.
+        /// Converts the provided value to UTF-8 encoded XML text and writes it to a buffer writer, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="bufferWriter">The destination.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="bufferWriter">The buffer writer to write the UTF-8 encoded XML text to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static void Serialize<TValue>(IBufferWriter<byte> bufferWriter, TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -304,24 +490,41 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="bufferWriter"/>.
+        /// Converts the value of a type specified by a generic type parameter to UTF-8 encoded XML text and writes it to a buffer writer, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="bufferWriter">The destination.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="bufferWriter">The buffer writer to write the UTF-8 encoded XML text to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static void Serialize<TValue>(IBufferWriter<byte> bufferWriter, TValue value, XmlSerializerContext context)
         {
             Write(bufferWriter, value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="bufferWriter"/>.
+        /// Converts the value of a specified type to UTF-8 encoded XML text and writes it to a buffer writer, using the specified options.
         /// </summary>
-        /// <param name="bufferWriter">The destination.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="bufferWriter">The buffer writer to write the UTF-8 encoded XML text to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/> or <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static void Serialize(IBufferWriter<byte> bufferWriter, object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -330,12 +533,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="bufferWriter"/>.
+        /// Converts the value of a specified type to UTF-8 encoded XML text and writes it to a buffer writer, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="bufferWriter">The destination.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
+        /// <param name="bufferWriter">The buffer writer to write the UTF-8 encoded XML text to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/>, <paramref name="inputType"/>, or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static void Serialize(IBufferWriter<byte> bufferWriter, object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -343,14 +552,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/> without blocking on the stream.
+        /// Asynchronously converts a value of a type specified by a generic type parameter to UTF-8 encoded XML text and writes it to a stream, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the document has been written.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static Task SerializeAsync<TValue>(Stream utf8Xml, TValue value, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -358,14 +580,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/> without blocking on the stream.
+        /// Asynchronously converts the provided value to UTF-8 encoded XML text and writes it to a stream, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the document has been written.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// -or-
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
         public static Task SerializeAsync<TValue>(Stream utf8Xml, TValue value, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -373,28 +604,53 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/> without blocking on the stream.
+        /// Asynchronously converts a value of a type specified by a generic type parameter to UTF-8 encoded XML text and writes it to a stream, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the document has been written.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="context"/> is <see langword="null"/>.
+        /// -or-
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static Task SerializeAsync<TValue>(Stream utf8Xml, TValue value, XmlSerializerContext context, CancellationToken cancellationToken = default)
         {
             return WriteAsync(utf8Xml, value, GetTypeInfo(typeof(TValue), context), cancellationToken);
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="utf8Xml"/> without blocking on the stream.
+        /// Asynchronously converts the value of a specified type to UTF-8 encoded XML text and writes it to a stream, using the specified options.
         /// </summary>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the document has been written.</returns>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// -or-
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static Task SerializeAsync(Stream utf8Xml, object? value, Type inputType, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -403,14 +659,24 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to <paramref name="utf8Xml"/> without blocking on the stream.
+        /// Asynchronously converts the value of a specified type to UTF-8 encoded XML text and writes it to a stream, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the document has been written.</returns>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// -or-
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static Task SerializeAsync(Stream utf8Xml, object? value, Type inputType, XmlSerializerContext context, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -418,12 +684,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to a document.
+        /// Converts the value of a type specified by a generic type parameter into an <see cref="XmlDocument"/>, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The document. The caller disposes it.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the value. The caller is responsible for disposing it.
+        /// </returns>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlDocument SerializeToDocument<TValue>(TValue value, XmlSerializerOptions? options = null)
         {
@@ -431,12 +707,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to a document.
+        /// Converts the provided value into an <see cref="XmlDocument"/>, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <returns>The document. The caller disposes it.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the value. The caller is responsible for disposing it.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static XmlDocument SerializeToDocument<TValue>(TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -444,24 +727,45 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to a document.
+        /// Converts the value of a type specified by a generic type parameter into an <see cref="XmlDocument"/>, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The document. The caller disposes it.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the value. The caller is responsible for disposing it.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static XmlDocument SerializeToDocument<TValue>(TValue value, XmlSerializerContext context)
         {
             return WriteDocument(value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to a document.
+        /// Converts the value of a specified type into an <see cref="XmlDocument"/>, using the specified options.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The document. The caller disposes it.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the value. The caller is responsible for disposing it.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlDocument SerializeToDocument(object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -470,12 +774,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to a document.
+        /// Converts the value of a specified type into an <see cref="XmlDocument"/>, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The document. The caller disposes it.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the value. The caller is responsible for disposing it.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static XmlDocument SerializeToDocument(object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -483,12 +795,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to an element.
+        /// Converts the value of a type specified by a generic type parameter into an <see cref="XmlElement"/>, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The root element of a new document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> representation of the value. It is the root element of a new document.
+        /// </returns>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlElement SerializeToElement<TValue>(TValue value, XmlSerializerOptions? options = null)
         {
@@ -496,12 +818,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to an element.
+        /// Converts the provided value into an <see cref="XmlElement"/>, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <returns>The root element of a new document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> representation of the value. It is the root element of a new document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static XmlElement SerializeToElement<TValue>(TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -509,24 +838,45 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to an element.
+        /// Converts the value of a type specified by a generic type parameter into an <see cref="XmlElement"/>, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The root element of a new document.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> representation of the value. It is the root element of a new document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static XmlElement SerializeToElement<TValue>(TValue value, XmlSerializerContext context)
         {
             return WriteDocument(value, GetTypeInfo(typeof(TValue), context)).RootElement;
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to an element.
+        /// Converts the value of a specified type into an <see cref="XmlElement"/>, using the specified options.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The root element of a new document.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> representation of the value. It is the root element of a new document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlElement SerializeToElement(object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -535,12 +885,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to an element.
+        /// Converts the value of a specified type into an <see cref="XmlElement"/>, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The root element of a new document.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> representation of the value. It is the root element of a new document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static XmlElement SerializeToElement(object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -548,12 +906,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to a mutable node.
+        /// Converts the value of a type specified by a generic type parameter into a mutable <see cref="XmlNode"/>, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The root node.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An <see cref="XmlNode"/> representation of the value. It is the root node of a new tree.
+        /// </returns>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlNode? SerializeToNode<TValue>(TValue value, XmlSerializerOptions? options = null)
         {
@@ -561,12 +929,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to a mutable node.
+        /// Converts the provided value into a mutable <see cref="XmlNode"/>, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <returns>The root node.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <returns>
+        /// An <see cref="XmlNode"/> representation of the value. It is the root node of a new tree.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// </exception>
         public static XmlNode? SerializeToNode<TValue>(TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
@@ -574,24 +949,45 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to a mutable node.
+        /// Converts the value of a type specified by a generic type parameter into a mutable <see cref="XmlNode"/>, using type metadata from the specified serializer context.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The root node.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An <see cref="XmlNode"/> representation of the value. It is the root node of a new tree.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
+        /// </exception>
         public static XmlNode? SerializeToNode<TValue>(TValue value, XmlSerializerContext context)
         {
             return WriteNode(value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to a mutable node.
+        /// Converts the value of a specified type into a mutable <see cref="XmlNode"/>, using the specified options.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <returns>The root node.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <returns>
+        /// An <see cref="XmlNode"/> representation of the value. It is the root node of a new tree.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <paramref name="inputType"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlNode? SerializeToNode(object? value, Type inputType, XmlSerializerOptions? options = null)
         {
@@ -600,12 +996,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> as <paramref name="inputType"/> to a mutable node.
+        /// Converts the value of a specified type into a mutable <see cref="XmlNode"/>, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="inputType">The CLR type to serialize <paramref name="value"/> as.</param>
-        /// <param name="context">The serializer context.</param>
-        /// <returns>The root node.</returns>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="inputType">The type to serialize <paramref name="value"/> as.</param>
+        /// <param name="context">A metadata provider for serializable types.</param>
+        /// <returns>
+        /// An <see cref="XmlNode"/> representation of the value. It is the root node of a new tree.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// <paramref name="context"/> has no type metadata for <paramref name="inputType"/>.
+        /// </exception>
         public static XmlNode? SerializeToNode(object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
@@ -613,18 +1017,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="value"/> to <paramref name="utf8Xml"/> and flushes the pipe.
+        /// Asynchronously converts a value of a type specified by a generic type parameter to UTF-8 encoded XML text, writes it to a pipe, and flushes the pipe, using the specified options.
         /// </summary>
+        /// <typeparam name="TValue">
+        /// The type of the value to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 pipe writer to write to.</param>
+        /// <param name="value">The value to convert.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the flush operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation. It completes when the pipe has been flushed.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled. This exception is stored into the returned task.
+        /// </exception>
         /// <remarks>
         /// To write to a pipe without flushing it, pass the <see cref="PipeWriter"/> to the
         /// <see cref="IBufferWriter{T}"/> overload of <c>Serialize</c>.
         /// </remarks>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The pipe writer.</param>
-        /// <param name="value">The value.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the pipe has been flushed.</returns>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static async Task SerializeAsync<TValue>(PipeWriter utf8Xml, TValue value, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -634,14 +1051,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="values"/> as the children of one <c>ArrayOf*</c> document element.
+        /// Asynchronously converts a sequence of values to UTF-8 encoded XML text and writes them to a stream as the children of one <c>ArrayOf*</c> document element, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="values">The values.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the document has been written.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the values to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="values">The values to convert, written as they arrive.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation. It completes when the document has been written.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> or <paramref name="values"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static Task SerializeAsyncEnumerable<TValue>(Stream utf8Xml, IAsyncEnumerable<TValue> values, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -649,15 +1079,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="values"/> as they arrive.
+        /// Asynchronously converts a sequence of values to UTF-8 encoded XML text and writes them to a stream, either as separate documents or as the children of one document element, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="values">The values.</param>
-        /// <param name="topLevelValues">When <see langword="true"/>, each value is its own document; when <see langword="false"/>, values are the children of one <c>ArrayOf*</c> document element.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when every value has been written.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the values to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="values">The values to convert, written as they arrive.</param>
+        /// <param name="topLevelValues"><see langword="true"/> to write each value as its own document; <see langword="false"/> to write the values as the children of one <c>ArrayOf*</c> document element.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation. It completes when every value has been written.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> or <paramref name="values"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static Task SerializeAsyncEnumerable<TValue>(Stream utf8Xml, IAsyncEnumerable<TValue> values, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -665,16 +1108,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="values"/> as they arrive.
+        /// Asynchronously converts a sequence of values to UTF-8 encoded XML text and writes them to a stream, either as separate documents or as the children of one document element, using the specified type metadata.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="values">The values.</param>
-        /// <param name="xmlTypeInfo">The type info.</param>
-        /// <param name="topLevelValues">When <see langword="true"/>, each value is its own document; when <see langword="false"/>, values are the children of one <c>ArrayOf*</c> document element.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when every value has been written.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the values to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 stream to write to.</param>
+        /// <param name="values">The values to convert, written as they arrive.</param>
+        /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
+        /// <param name="topLevelValues"><see langword="true"/> to write each value as its own document; <see langword="false"/> to write the values as the children of one <c>ArrayOf*</c> document element. The default is <see langword="false"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation. It completes when every value has been written.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/>, <paramref name="values"/>, or <paramref name="xmlTypeInfo"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
         /// <remarks>
+        /// The <c>ArrayOf*</c> document element is named <c>ArrayOf</c> followed by the local name of the root
+        /// element of <typeparamref name="TValue"/>.
         /// The stream is written to between values, never while one value is half written, unless a single
         /// value is larger than the writer's buffer. If a value fails to serialize, what was buffered is
         /// dropped; values already written to the stream stay there.
@@ -724,15 +1176,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Serializes <paramref name="values"/> to a pipe as they arrive, then flushes the pipe.
+        /// Asynchronously converts a sequence of values to UTF-8 encoded XML text, writes them to a pipe, either as separate documents or as the children of one document element, and flushes the pipe, using the specified options.
         /// </summary>
-        /// <typeparam name="TValue">The CLR type.</typeparam>
-        /// <param name="utf8Xml">The pipe writer.</param>
-        /// <param name="values">The values.</param>
-        /// <param name="topLevelValues">When <see langword="true"/>, each value is its own document; when <see langword="false"/>, values are the children of one <c>ArrayOf*</c> document element.</param>
-        /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the pipe has been flushed.</returns>
+        /// <typeparam name="TValue">
+        /// The type of the values to serialize.
+        /// </typeparam>
+        /// <param name="utf8Xml">The UTF-8 pipe writer to write to.</param>
+        /// <param name="values">The values to convert, written as they arrive.</param>
+        /// <param name="topLevelValues"><see langword="true"/> to write each value as its own document; <see langword="false"/> to write the values as the children of one <c>ArrayOf*</c> document element.</param>
+        /// <param name="options">The options that control serialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
+        /// <param name="cancellationToken">A token that can be used to cancel the write operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous write operation. It completes when the pipe has been flushed.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> or <paramref name="values"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// No type metadata is available for <typeparamref name="TValue"/>. This exception is stored into the returned task.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled. This exception is stored into the returned task.
+        /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static async Task SerializeAsyncEnumerable<TValue>(PipeWriter utf8Xml, IAsyncEnumerable<TValue> values, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {

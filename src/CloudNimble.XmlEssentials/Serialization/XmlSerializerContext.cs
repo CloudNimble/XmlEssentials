@@ -4,16 +4,25 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Base class for source-generated serialization metadata. Analogous to <c>JsonSerializerContext</c>.
+    /// Provides metadata about a set of types that is relevant to XML serialization, and provides a base for source-generated contexts.
     /// </summary>
+    /// <remarks>
+    /// This class is analogous to <c>JsonSerializerContext</c> in <c>System.Text.Json</c>.
+    /// </remarks>
     public abstract class XmlSerializerContext : IXmlTypeInfoResolver
     {
 
         #region Public Properties
 
         /// <summary>
-        /// Gets the options bound to this context. Their <see cref="XmlSerializerOptions.TypeInfoResolver"/> is this context.
+        /// Gets the run-time specified options of the context.
         /// </summary>
+        /// <value>
+        /// The options bound to the context. If no options were passed when the context was created, a new instance is bound and returned.
+        /// </value>
+        /// <remarks>
+        /// The <see cref="XmlSerializerOptions.TypeInfoResolver"/> of the options is this context.
+        /// </remarks>
         public XmlSerializerOptions Options { get; }
 
         #endregion
@@ -21,10 +30,16 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Constructors
 
         /// <summary>
-        /// Creates a context and makes it the <see cref="XmlSerializerOptions.TypeInfoResolver"/> of its options.
+        /// Called from constructors in derived classes to initialize the <see cref="XmlSerializerContext"/> class and bind it
+        /// to the specified options.
         /// </summary>
-        /// <param name="options">The options to bind, or <see langword="null"/> for new default options.</param>
-        /// <exception cref="InvalidOperationException"><paramref name="options"/> is read-only.</exception>
+        /// <param name="options">The run-time options to bind to the context, or <see langword="null"/> to bind a new instance with default settings.</param>
+        /// <exception cref="InvalidOperationException">
+        /// <paramref name="options"/> is read-only.
+        /// </exception>
+        /// <remarks>
+        /// The context becomes the <see cref="XmlSerializerOptions.TypeInfoResolver"/> of the options.
+        /// </remarks>
         protected XmlSerializerContext(XmlSerializerOptions? options)
         {
             Options = options ?? new XmlSerializerOptions();
@@ -36,10 +51,12 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Methods
 
         /// <summary>
-        /// Returns type info for <paramref name="type"/>.
+        /// When overridden in a derived class, gets metadata for the specified type.
         /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <returns>The type info, or <see langword="null"/> when this context does not know the type.</returns>
+        /// <param name="type">The type to fetch metadata about.</param>
+        /// <returns>
+        /// The metadata for <paramref name="type"/>, or <see langword="null"/> if the context has no metadata for the type.
+        /// </returns>
         public abstract XmlTypeInfo? GetTypeInfo(Type type);
 
         /// <inheritdoc />

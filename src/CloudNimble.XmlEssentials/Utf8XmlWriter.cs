@@ -13,7 +13,7 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// A UTF-8 XML writer analogous to <c>Utf8JsonWriter</c>.
+    /// Provides a forward-only, non-cached writer for UTF-8 encoded XML text. This class cannot be inherited.
     /// </summary>
     /// <example>
     /// <code>
@@ -28,9 +28,18 @@ namespace CloudNimble.Text.Xml
     /// </code>
     /// </example>
     /// <remarks>
-    /// Destinations are <see cref="IBufferWriter{T}"/> or <see cref="Stream"/>. Names and values are UTF-8.
-    /// A max-* of 0 on <see cref="XmlWriterOptions"/> uses the DoS table default. Dispose flushes and throws
-    /// when elements are still open unless <see cref="XmlWriterOptions.SkipValidation"/> is true.
+    /// The API follows the shape of <c>Utf8JsonWriter</c>. The writer writes to an <see cref="IBufferWriter{T}"/>
+    /// or to a <see cref="Stream"/>, and the output is always UTF-8. Names and values can be passed as strings,
+    /// as spans of characters, or as spans of UTF-8 bytes.
+    /// <para>
+    /// A limit on <see cref="XmlWriterOptions"/> that is 0 uses its default: 64 for <see cref="XmlWriterOptions.MaxDepth"/>,
+    /// 1000 for <see cref="XmlWriterOptions.MaxAttributeCount"/>, and 1024 for <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+    /// </para>
+    /// <para>
+    /// <see cref="Dispose"/> and <see cref="DisposeAsync"/> flush the output. If elements are still open and
+    /// <see cref="XmlWriterOptions.SkipValidation"/> is <see langword="false"/>, they throw an <see cref="XmlException"/>
+    /// instead and do not flush.
+    /// </para>
     /// </remarks>
     public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
     {
@@ -83,23 +92,38 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the number of bytes flushed to the output.
+        /// Gets the total number of bytes committed to the output by the current instance so far.
         /// </summary>
+        /// <value>
+        /// The number of bytes committed to the output. <see cref="Reset()"/> sets the value back to 0.
+        /// </value>
         public long BytesCommitted => _committed;
 
         /// <summary>
-        /// Gets the number of bytes buffered and not yet flushed.
+        /// Gets the number of bytes written by the <see cref="Utf8XmlWriter"/> so far that have not yet been
+        /// flushed to the output and committed.
         /// </summary>
+        /// <value>
+        /// The number of bytes written so far that have not yet been flushed to the output and committed.
+        /// </value>
         public int BytesPending => _buffered;
 
         /// <summary>
-        /// Gets the current element depth. The root is 1 while its start tag is open or it has content.
+        /// Gets the depth of the current element.
         /// </summary>
+        /// <value>
+        /// The number of elements that are open. The value is 0 at the document level, and 1 from the start tag
+        /// of the root element to its end tag.
+        /// </value>
         public int CurrentDepth => _depth;
 
         /// <summary>
-        /// Gets the options used to create the writer.
+        /// Gets the custom behavior when writing XML using this instance, which indicates whether to format the
+        /// output while writing, whether to skip validation, and which limits apply.
         /// </summary>
+        /// <value>
+        /// The options that were passed to the constructor of this instance.
+        /// </value>
         public XmlWriterOptions Options => _options;
 
         #endregion
@@ -107,10 +131,17 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Creates a writer that appends UTF-8 XML to <paramref name="bufferWriter"/>.
+        /// Initializes a new instance of the <see cref="Utf8XmlWriter"/> class using the specified
+        /// <see cref="IBufferWriter{T}"/> to write the output to and customization options.
         /// </summary>
-        /// <param name="bufferWriter">The destination.</param>
-        /// <param name="options">Writer options.</param>
+        /// <param name="bufferWriter">The destination for writing XML text.</param>
+        /// <param name="options">
+        /// The options that define the customized behavior of the writer. The default value writes XML that is
+        /// not indented, with an XML declaration, and with validation.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/> is <see langword="null"/>.
+        /// </exception>
         public Utf8XmlWriter(IBufferWriter<byte> bufferWriter, XmlWriterOptions options = default)
         {
             ArgumentNullException.ThrowIfNull(bufferWriter);
@@ -121,10 +152,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Creates a writer that writes UTF-8 XML to <paramref name="utf8Xml"/>.
+        /// Initializes a new instance of the <see cref="Utf8XmlWriter"/> class using the specified stream to
+        /// write the output to and customization options.
         /// </summary>
-        /// <param name="utf8Xml">The destination stream.</param>
-        /// <param name="options">Writer options.</param>
+        /// <param name="utf8Xml">The destination for writing XML text.</param>
+        /// <param name="options">
+        /// The options that define the customized behavior of the writer. The default value writes XML that is
+        /// not indented, with an XML declaration, and with validation.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// </exception>
         public Utf8XmlWriter(Stream utf8Xml, XmlWriterOptions options = default)
         {
             ArgumentNullException.ThrowIfNull(utf8Xml);
@@ -188,8 +226,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Flushes buffered bytes to the destination.
+        /// Commits the XML text written so far, which makes it visible to the output destination.
         /// </summary>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// In the case of <see cref="IBufferWriter{T}"/>, this advances the underlying <see cref="IBufferWriter{T}"/>
+        /// based on what has been written so far. In the case of <see cref="Stream"/>, this writes the data to the
+        /// stream and flushes it.
+        /// </remarks>
         public void Flush()
         {
             ThrowIfDisposed();
@@ -198,10 +244,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Flushes buffered bytes to the destination asynchronously.
+        /// Asynchronously commits the XML text written so far, which makes it visible to the output destination.
         /// </summary>
-        /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that completes when the flush finishes.</returns>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <returns>
+        /// A task representing the asynchronous flush operation.
+        /// </returns>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed. This exception is stored into the returned task.
+        /// </exception>
+        /// <remarks>
+        /// In the case of <see cref="IBufferWriter{T}"/>, this advances the underlying <see cref="IBufferWriter{T}"/>
+        /// based on what has been written so far. In the case of <see cref="Stream"/>, this writes the data to the
+        /// stream and flushes it asynchronously, while monitoring cancellation requests.
+        /// </remarks>
         public async Task FlushAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
@@ -228,8 +284,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Resets the writer to start a new document on the same destination.
+        /// Resets the internal state of this instance so that it can be reused to write a new document.
         /// </summary>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The writer continues to use the original writer options and the original output
+        /// (either <see cref="IBufferWriter{T}"/> or <see cref="Stream"/>). Bytes that are still pending are
+        /// committed to that output first, and <see cref="BytesCommitted"/> is then set to 0.
+        /// </remarks>
         public void Reset()
         {
             ThrowIfDisposed();
@@ -248,9 +312,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Resets the writer onto a new <see cref="IBufferWriter{T}"/> destination.
+        /// Resets the internal state of this instance so that it can be reused with a new instance of
+        /// <see cref="IBufferWriter{T}"/>.
         /// </summary>
-        /// <param name="bufferWriter">The new destination.</param>
+        /// <param name="bufferWriter">The destination for writing XML text.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="bufferWriter"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The writer continues to use the original writer options but now writes to <paramref name="bufferWriter"/>
+        /// as the new output. Bytes that are still pending are committed to the previous output first.
+        /// </remarks>
         public void Reset(IBufferWriter<byte> bufferWriter)
         {
             ArgumentNullException.ThrowIfNull(bufferWriter);
@@ -261,9 +336,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Resets the writer onto a new <see cref="Stream"/> destination.
+        /// Resets the internal state of this instance so that it can be reused with a new instance of
+        /// <see cref="Stream"/>.
         /// </summary>
-        /// <param name="utf8Xml">The new destination.</param>
+        /// <param name="utf8Xml">The destination for writing XML text.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The writer continues to use the original writer options but now writes to <paramref name="utf8Xml"/>
+        /// as the new output. Bytes that are still pending are committed to the previous output first.
+        /// </remarks>
         public void Reset(Stream utf8Xml)
         {
             ArgumentNullException.ThrowIfNull(utf8Xml);
@@ -279,8 +365,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <c>xsi:nil="true"</c> on the current start tag.
+        /// Writes the attribute <c>xsi:nil="true"</c> on the start tag of the current element.
         /// </summary>
+        /// <exception cref="XmlException">
+        /// No start tag is open.
+        /// -or-
+        /// The element already has an <c>xsi:nil</c> attribute, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer first
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
         public void WriteNilValue()
         {
             ThrowIfDisposed();
@@ -295,9 +393,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty nillable element.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a string.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
         public void WriteNilElement(string localName)
         {
             WriteStartElement(localName);
@@ -306,10 +421,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty nillable element in <paramref name="namespaceUri"/>.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name and the
+        /// namespace URI specified as strings.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>. If the XML Schema
+        /// instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer declares it on the
+        /// element with the prefix <c>xsi</c>.
+        /// </remarks>
         public void WriteNilElement(string localName, string? namespaceUri)
         {
             WriteStartElement(localName, namespaceUri);
@@ -318,9 +452,24 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty nillable element.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
+        /// read-only span of characters.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
         public void WriteNilElement(ReadOnlySpan<char> localName)
         {
             WriteStartElement(localName);
@@ -329,9 +478,24 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty nillable element.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
+        /// read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
         public void WriteNilElement(ReadOnlySpan<byte> utf8LocalName)
         {
             WriteStartElement(utf8LocalName);
@@ -340,9 +504,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty element <c>&lt;localName/&gt;</c>.
+        /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a string.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteEmptyElement(string localName)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -350,10 +527,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty element in <paramref name="namespaceUri"/>.
+        /// Writes an empty element with the local name and the namespace URI specified as strings.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
         public void WriteEmptyElement(string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -361,11 +554,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty element with an explicit prefix.
+        /// Writes an empty element with the prefix, the local name, and the namespace URI specified as strings.
         /// </summary>
-        /// <param name="prefix">The prefix, or null.</param>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
+        /// </remarks>
         public void WriteEmptyElement(string? prefix, string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -373,66 +584,152 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an empty element <c>&lt;localName/&gt;</c>.
+        /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a read-only span of characters.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteEmptyElement(ReadOnlySpan<char> localName)
         {
             WriteEmptyElementChars(localName, default, default);
         }
 
         /// <summary>
-        /// Writes an empty element in <paramref name="namespaceUri"/>.
+        /// Writes an empty element with the local name and the namespace URI specified as read-only spans of characters.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or an empty span for none.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
         public void WriteEmptyElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
         {
             WriteEmptyElementChars(localName, default, namespaceUri);
         }
 
         /// <summary>
-        /// Writes an empty UTF-8 element.
+        /// Writes an empty element with the local name specified as a read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName)
         {
             WriteStartElementUtf8(utf8LocalName, [], [], empty: true);
         }
 
         /// <summary>
-        /// Writes an empty UTF-8 element in <paramref name="utf8NamespaceUri"/>.
+        /// Writes an empty element with the local name and the namespace URI specified as read-only spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
         public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
             WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: true);
         }
 
         /// <summary>
-        /// Writes an empty UTF-8 element with an explicit prefix.
+        /// Writes an empty element with the prefix, the local name, and the namespace URI specified as read-only
+        /// spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Prefix">The UTF-8 prefix.</param>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
+        /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="utf8NamespaceUri"/> is empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
+        /// </remarks>
         public void WriteEmptyElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
             WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: true);
         }
 
         /// <summary>
-        /// Writes an empty element from cached <paramref name="localName"/>.
+        /// Writes an empty element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/>.
         /// </summary>
-        /// <param name="localName">The encoded local name.</param>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteEmptyElement(XmlEncodedText localName)
         {
             WriteStartElementUtf8(localName.EncodedUtf8Bytes, [], [], empty: true);
         }
 
         /// <summary>
-        /// Writes the XML declaration.
+        /// Writes the XML declaration (<c>&lt;?xml version="1.0" encoding="utf-8"?&gt;</c>).
         /// </summary>
+        /// <exception cref="XmlException">
+        /// The writer has already written output for this document.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The declaration carries the version from <see cref="XmlWriterOptions.Version"/>, the encoding <c>utf-8</c>,
+        /// and the <c>standalone</c> pseudo-attribute when <see cref="XmlWriterOptions.Standalone"/> is set. A byte
+        /// order mark comes first when <see cref="XmlWriterOptions.EmitByteOrderMark"/> is <see langword="true"/>.
+        /// The writer writes the declaration by itself before the first element, comment, or processing
+        /// instruction unless <see cref="XmlWriterOptions.OmitXmlDeclaration"/> is <see langword="true"/>.
+        /// Call this method to write the declaration even when that option is <see langword="true"/>.
+        /// </remarks>
         public void WriteXmlDeclaration()
         {
             ThrowIfDisposed();
@@ -445,9 +742,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a start tag with <paramref name="localName"/>.
+        /// Writes the start tag of an element with the local name specified as a string.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The start tag stays open for attributes and namespace declarations until content or an end tag is written.
+        /// </remarks>
         public void WriteStartElement(string localName)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -455,10 +768,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a start tag in <paramref name="namespaceUri"/>.
+        /// Writes the start tag of an element with the local name and the namespace URI specified as strings.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If <paramref name="namespaceUri"/> is bound to a prefix that is in scope, the element is written with
+        /// that prefix. If it is the default namespace in scope, the element is written without a prefix. Otherwise,
+        /// the writer declares it as the default namespace on the element.
+        /// </remarks>
         public void WriteStartElement(string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -466,11 +797,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a start tag with an explicit prefix.
+        /// Writes the start tag of an element with the prefix, the local name, and the namespace URI specified as strings.
         /// </summary>
-        /// <param name="prefix">The prefix, or null.</param>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The element is written with <paramref name="prefix"/>. If <paramref name="namespaceUri"/> is not bound
+        /// in scope, the writer declares <paramref name="prefix"/> for it on the element. Without a prefix, this
+        /// overload behaves as <see cref="WriteStartElement(string, string)"/> does.
+        /// </remarks>
         public void WriteStartElement(string? prefix, string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -478,66 +829,150 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a start tag with <paramref name="localName"/>.
+        /// Writes the start tag of an element with the local name specified as a read-only span of characters.
         /// </summary>
-        /// <param name="localName">The local name.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStartElement(ReadOnlySpan<char> localName)
         {
             WriteStartElementChars(localName, default, default);
         }
 
         /// <summary>
-        /// Writes a start tag with UTF-8 <paramref name="utf8LocalName"/>.
+        /// Writes the start tag of an element with the local name specified as a read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName)
         {
             WriteStartElementUtf8(utf8LocalName, [], []);
         }
 
         /// <summary>
-        /// Writes a start tag from cached <paramref name="localName"/>.
+        /// Writes the start tag of an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/>.
         /// </summary>
-        /// <param name="localName">The encoded local name.</param>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStartElement(XmlEncodedText localName)
         {
             WriteStartElementUtf8(localName.EncodedUtf8Bytes, [], []);
         }
 
         /// <summary>
-        /// Writes a start tag in <paramref name="namespaceUri"/>.
+        /// Writes the start tag of an element with the local name and the namespace URI specified as read-only
+        /// spans of characters.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or an empty span for none.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
         public void WriteStartElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
         {
             WriteStartElementChars(localName, default, namespaceUri);
         }
 
         /// <summary>
-        /// Writes a start tag in UTF-8 <paramref name="utf8NamespaceUri"/>.
+        /// Writes the start tag of an element with the local name and the namespace URI specified as read-only
+        /// spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
         public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
             WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri);
         }
 
         /// <summary>
-        /// Writes a start tag with UTF-8 prefix, local name, and namespace.
+        /// Writes the start tag of an element with the prefix, the local name, and the namespace URI specified as
+        /// read-only spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Prefix">The UTF-8 prefix.</param>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
+        /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element, or an empty span for none.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="utf8NamespaceUri"/> is empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
+        /// </remarks>
         public void WriteStartElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
         {
             WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri);
         }
 
         /// <summary>
-        /// Writes an end tag, using an empty-element closer when the start tag has no content.
+        /// Writes the end of the current element.
         /// </summary>
+        /// <exception cref="XmlException">
+        /// No element is open.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// An element that has no content is closed as an empty element (<c>/&gt;</c>). Any other element gets an
+        /// end tag (<c>&lt;/name&gt;</c>). An attribute that is still open is ended first.
+        /// </remarks>
         public void WriteEndElement()
         {
             ThrowIfDisposed();
@@ -572,8 +1007,17 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a full end tag <c>&lt;/name&gt;</c> even when the element is empty.
+        /// Writes the end of the current element as a full end tag (<c>&lt;/name&gt;</c>), even when the element has no content.
         /// </summary>
+        /// <exception cref="XmlException">
+        /// No element is open.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// An attribute that is still open is ended first.
+        /// </remarks>
         public void WriteFullEndElement()
         {
             ThrowIfDisposed();
@@ -602,10 +1046,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a string value.
+        /// Writes an element with the local name specified as a string and a string value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value, or null for an empty element.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed, or <see langword="null"/> to write an empty element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementString(string localName, string? value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -613,11 +1072,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element in <paramref name="namespaceUri"/> with a string value.
+        /// Writes an element with the local name and the namespace URI specified as strings and a string value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed, or <see langword="null"/> to write an empty element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
         public void WriteElementString(string localName, string? namespaceUri, string? value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -637,10 +1114,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with an XSD dateTime value.
+        /// Writes an element with the local name specified as a string and a <see cref="DateTime"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The value is formatted as it is by <see cref="WriteStringValue(DateTime)"/>.
+        /// </remarks>
         public void WriteElementString(string localName, DateTime value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -650,10 +1143,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with an XSD dateTime value.
+        /// Writes an element with the local name specified as a string and a <see cref="DateTimeOffset"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c> with its offset.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementString(string localName, DateTimeOffset value)
         {
             WriteStartElement(localName);
@@ -662,10 +1168,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a GUID value.
+        /// Writes an element with the local name specified as a string and a <see cref="Guid"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementString(string localName, Guid value)
         {
             WriteStartElement(localName);
@@ -674,10 +1193,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a string value.
+        /// Writes an element with the local name and the text content specified as read-only spans of characters.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementString(ReadOnlySpan<char> localName, ReadOnlySpan<char> value)
         {
             WriteStartElement(localName);
@@ -686,20 +1217,45 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a UTF-8 string value.
+        /// Writes an element with the local name and the text content specified as read-only spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="utf8Value">The UTF-8 value.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8Value)
         {
             WriteCompleteElementUtf8(utf8LocalName, [], LookupUri([]), utf8Value);
         }
 
         /// <summary>
-        /// Writes an element with an integer value.
+        /// Writes an element with the local name specified as a string and an <see cref="int"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementNumber(string localName, int value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -709,10 +1265,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a 64-bit integer value.
+        /// Writes an element with the local name specified as a string and a <see cref="long"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementNumber(string localName, long value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -722,10 +1291,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a double value.
+        /// Writes an element with the local name specified as a string and a <see cref="double"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
         public void WriteElementNumber(string localName, double value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -753,10 +1338,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a single value.
+        /// Writes an element with the local name specified as a string and a <see cref="float"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
         public void WriteElementNumber(string localName, float value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -784,10 +1385,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a decimal value.
+        /// Writes an element with the local name specified as a string and a <see cref="decimal"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementNumber(string localName, decimal value)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -797,10 +1411,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with an unsigned integer value.
+        /// Writes an element with the local name specified as a string and a <see cref="uint"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         [CLSCompliant(false)]
         public void WriteElementNumber(string localName, uint value)
         {
@@ -811,10 +1438,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with an unsigned 64-bit integer value.
+        /// Writes an element with the local name specified as a string and a <see cref="ulong"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         [CLSCompliant(false)]
         public void WriteElementNumber(string localName, ulong value)
         {
@@ -825,10 +1465,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a boolean value.
+        /// Writes an element with the local name specified as a string and a <see cref="bool"/> value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementBoolean(string localName, bool value)
         {
             WriteStartElement(localName);
@@ -837,10 +1490,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a boolean value.
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="bool"/>
+        /// value as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementBoolean(ReadOnlySpan<char> localName, bool value)
         {
             WriteStartElement(localName);
@@ -849,10 +1513,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a boolean value.
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="bool"/>
+        /// value as its content.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementBoolean(ReadOnlySpan<byte> utf8LocalName, bool value)
         {
             WriteStartElement(utf8LocalName);
@@ -861,10 +1536,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a base64 value.
+        /// Writes an element with the local name specified as a string and binary data, encoded as base64 text, as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="bytes">The bytes to encode.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementBase64String(string localName, ReadOnlySpan<byte> bytes)
         {
             WriteStartElement(localName);
@@ -873,10 +1561,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a base64 value.
+        /// Writes an element with the local name specified as a read-only span of characters and binary data,
+        /// encoded as base64 text, as its content.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="bytes">The bytes to encode.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementBase64String(ReadOnlySpan<char> localName, ReadOnlySpan<byte> bytes)
         {
             WriteStartElement(localName);
@@ -885,10 +1584,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with a base64 value.
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and binary data,
+        /// encoded as base64 text, as its content.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <param name="bytes">The bytes to encode.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteElementBase64String(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> bytes)
         {
             WriteStartElement(utf8LocalName);
@@ -897,10 +1607,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute.
+        /// Writes an attribute with the name and the value specified as strings.
         /// </summary>
-        /// <param name="name">The attribute name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
         public void WriteAttributeString(string name, string? value)
         {
             WriteStartAttribute(name);
@@ -913,10 +1635,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute with an integer value.
+        /// Writes an attribute with the name specified as a string and an <see cref="int"/> value.
         /// </summary>
-        /// <param name="name">The attribute name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The number to write as the value of the attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
         public void WriteAttributeNumber(string name, int value)
         {
             ArgumentNullException.ThrowIfNull(name);
@@ -924,10 +1656,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute with a 64-bit integer value.
+        /// Writes an attribute with the name specified as a string and a <see cref="long"/> value.
         /// </summary>
-        /// <param name="name">The attribute name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The number to write as the value of the attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
         public void WriteAttributeNumber(string name, long value)
         {
             ArgumentNullException.ThrowIfNull(name);
@@ -937,10 +1679,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute with a double value.
+        /// Writes an attribute with the name specified as a string and a <see cref="double"/> value.
         /// </summary>
-        /// <param name="name">The attribute name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The number to write as the value of the attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
         public void WriteAttributeNumber(string name, double value)
         {
             ArgumentNullException.ThrowIfNull(name);
@@ -950,11 +1705,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute in <paramref name="namespaceUri"/>.
+        /// Writes an attribute with the local name, the namespace URI, and the value specified as strings.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="localName">The local name of the attribute.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartAttribute(string, string, string)"/>.
+        /// </remarks>
         public void WriteAttributeString(string localName, string? namespaceUri, string? value)
         {
             WriteStartAttribute(null, localName, namespaceUri);
@@ -967,12 +1740,32 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute with an explicit prefix.
+        /// Writes an attribute with the prefix, the local name, the namespace URI, and the value specified as strings.
         /// </summary>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="prefix">The prefix of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the attribute.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="prefix"/> is a prefix other than <c>xml</c> and <c>xmlns</c>, and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// -or-
+        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartAttribute(string, string, string)"/>.
+        /// </remarks>
         public void WriteAttributeString(string? prefix, string localName, string? namespaceUri, string? value)
         {
             WriteStartAttribute(prefix, localName, namespaceUri);
@@ -985,10 +1778,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete UTF-8 attribute.
+        /// Writes an attribute with the name and the value specified as read-only spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Name">The UTF-8 name.</param>
-        /// <param name="utf8Value">The UTF-8 value.</param>
+        /// <param name="utf8Name">The UTF-8 encoded name of the attribute, without a prefix.</param>
+        /// <param name="utf8Value">The UTF-8 encoded value of the attribute, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="utf8Name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteAttributeString(ReadOnlySpan<byte> utf8Name, ReadOnlySpan<byte> utf8Value)
         {
             WriteStartAttributeUtf8(utf8Name, [], []);
@@ -997,10 +1802,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a complete attribute.
+        /// Writes an attribute with the name and the value specified as read-only spans of characters.
         /// </summary>
-        /// <param name="name">The name.</param>
-        /// <param name="value">The value.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The value of the attribute, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteAttributeString(ReadOnlySpan<char> name, ReadOnlySpan<char> value)
         {
             WriteStartAttribute(name);
@@ -1009,9 +1826,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Begins an attribute.
+        /// Writes the beginning of an attribute with the name specified as a string.
         /// </summary>
-        /// <param name="name">The attribute name.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <remarks>
+        /// Write the value with one or more calls to the value methods, such as <see cref="WriteStringValue(string)"/>,
+        /// and then call <see cref="WriteEndAttribute"/>.
+        /// </remarks>
         public void WriteStartAttribute(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
@@ -1019,20 +1850,56 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Begins an attribute.
+        /// Writes the beginning of an attribute with the name specified as a read-only span of characters.
         /// </summary>
-        /// <param name="name">The attribute name.</param>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Write the value with one or more calls to the value methods, such as <see cref="WriteStringValue(string)"/>,
+        /// and then call <see cref="WriteEndAttribute"/>.
+        /// </remarks>
         public void WriteStartAttribute(ReadOnlySpan<char> name)
         {
             WriteStartAttributeChars(name, default, default);
         }
 
         /// <summary>
-        /// Begins an attribute with an explicit prefix.
+        /// Writes the beginning of an attribute with the prefix, the local name, and the namespace URI specified as strings.
         /// </summary>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="localName">The local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="prefix">The prefix of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the attribute.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="prefix"/> is a prefix other than <c>xml</c> and <c>xmlns</c>, and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// -or-
+        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// With a prefix, the writer declares <paramref name="prefix"/> on the element unless it is already bound to
+        /// <paramref name="namespaceUri"/>. With a namespace URI and no prefix, the writer uses a prefix that is
+        /// already bound to <paramref name="namespaceUri"/>, or declares a generated prefix (<c>ns1</c>, <c>ns2</c>,
+        /// and so on) on the element. Write the value with one or more calls to the value methods, such as
+        /// <see cref="WriteStringValue(string)"/>, and then call <see cref="WriteEndAttribute"/>.
+        /// </remarks>
         public void WriteStartAttribute(string? prefix, string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
@@ -1040,8 +1907,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Ends the current attribute.
+        /// Writes the end of the current attribute.
         /// </summary>
+        /// <exception cref="XmlException">
+        /// No attribute is open.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteEndAttribute()
         {
             ThrowIfDisposed();
@@ -1055,10 +1928,30 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an xmlns declaration for <paramref name="prefix"/>.
+        /// Writes a namespace declaration (<c>xmlns:prefix="namespaceUri"</c>) on the start tag of the current
+        /// element, with the prefix and the namespace URI specified as strings.
         /// </summary>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="prefix">The prefix to declare, or an empty string to declare the default namespace.</param>
+        /// <param name="namespaceUri">The namespace URI to bind to <paramref name="prefix"/>. An empty string removes the binding, which XML 1.0 allows only for the default namespace.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="prefix"/> or <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or an attribute is still open.
+        /// -or-
+        /// <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The declaration is not allowed by Namespaces in XML: it binds the <c>xml</c> prefix to another namespace, declares the <c>xmlns</c> prefix, binds the <c>xml</c> or <c>xmlns</c> namespace to another prefix or as the default namespace, or removes the binding of a prefix in an XML 1.0 document.
+        /// -or-
+        /// The element already declares <paramref name="prefix"/>, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
+        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// </remarks>
         public void WriteNamespaceDeclaration(string prefix, string namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(prefix);
@@ -1069,10 +1962,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an xmlns declaration for UTF-8 <paramref name="utf8Prefix"/>.
+        /// Writes a namespace declaration (<c>xmlns:prefix="namespaceUri"</c>) on the start tag of the current
+        /// element, with the prefix and the namespace URI specified as read-only spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Prefix">The UTF-8 prefix.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
+        /// <param name="utf8Prefix">The UTF-8 encoded prefix to declare, or an empty span to declare the default namespace.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI to bind to <paramref name="utf8Prefix"/>. An empty span removes the binding, which XML 1.0 allows only for the default namespace.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or an attribute is still open.
+        /// -or-
+        /// <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The declaration is not allowed by Namespaces in XML: it binds the <c>xml</c> prefix to another namespace, declares the <c>xmlns</c> prefix, binds the <c>xml</c> or <c>xmlns</c> namespace to another prefix or as the default namespace, or removes the binding of a prefix in an XML 1.0 document.
+        /// -or-
+        /// The element already declares <paramref name="utf8Prefix"/>, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
+        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// </remarks>
         public void WriteNamespaceDeclaration(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8NamespaceUri)
         {
             RegisterNamespace(utf8Prefix, utf8NamespaceUri);
@@ -1166,9 +2076,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a default xmlns declaration.
+        /// Writes a default namespace declaration (<c>xmlns="namespaceUri"</c>) on the start tag of the current
+        /// element, with the namespace URI specified as a string.
         /// </summary>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="namespaceUri">The namespace URI to declare as the default namespace. An empty string removes the default namespace.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or an attribute is still open.
+        /// -or-
+        /// <paramref name="namespaceUri"/> is the <c>xml</c> or the <c>xmlns</c> namespace.
+        /// -or-
+        /// The element already declares a default namespace, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
+        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// </remarks>
         public void WriteDefaultNamespace(string namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(namespaceUri);
@@ -1176,9 +2104,24 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a default xmlns declaration.
+        /// Writes a default namespace declaration (<c>xmlns="namespaceUri"</c>) on the start tag of the current
+        /// element, with the namespace URI specified as a read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI to declare as the default namespace. An empty span removes the default namespace.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or an attribute is still open.
+        /// -or-
+        /// <paramref name="utf8NamespaceUri"/> is the <c>xml</c> or the <c>xmlns</c> namespace.
+        /// -or-
+        /// The element already declares a default namespace, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
+        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// </remarks>
         public void WriteDefaultNamespace(ReadOnlySpan<byte> utf8NamespaceUri)
         {
             RegisterNamespace([], utf8NamespaceUri);
@@ -1186,9 +2129,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes character data or attribute text.
+        /// Writes text specified as a string to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The text to write, or <see langword="null"/> to write nothing.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <remarks>
+        /// The text is escaped as needed: <c>&amp;</c> and <c>&lt;</c> become entity references, and a character
+        /// that would not survive a round trip (such as a carriage return, or a tab or line feed in an attribute
+        /// value) becomes a character reference.
+        /// </remarks>
         public void WriteStringValue(string? value)
         {
             if (value is null)
@@ -1200,9 +2153,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes character data or attribute text.
+        /// Writes text specified as a read-only span of characters to the content of the current element or to the
+        /// value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The text to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <remarks>
+        /// The text is escaped as it is by <see cref="WriteStringValue(string)"/>.
+        /// </remarks>
         public void WriteStringValue(ReadOnlySpan<char> value)
         {
             if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : XmlChars.PlainTextChars) < 0)
@@ -1230,9 +2192,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes UTF-8 character data or attribute text.
+        /// Writes text specified as a read-only span of UTF-8 bytes to the content of the current element or to the
+        /// value of the current attribute.
         /// </summary>
-        /// <param name="utf8Value">The UTF-8 value.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The text is escaped as it is by <see cref="WriteStringValue(string)"/>.
+        /// </remarks>
         public void WriteStringValue(ReadOnlySpan<byte> utf8Value)
         {
             ThrowIfDisposed();
@@ -1253,9 +2227,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an XSD dateTime value.
+        /// Writes a <see cref="DateTime"/> value as an XML Schema <c>dateTime</c> to the content of the current
+        /// element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A value whose <see cref="DateTime.Kind"/> is <see cref="DateTimeKind.Utc"/> ends with <c>Z</c>. A
+        /// <see cref="DateTimeKind.Local"/> value ends with the offset of the local time zone. A
+        /// <see cref="DateTimeKind.Unspecified"/> value has no time zone.
+        /// </remarks>
         public void WriteStringValue(DateTime value)
         {
             var destination = BeginPlainValue(40);
@@ -1273,9 +2259,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an XSD dateTime value.
+        /// Writes a <see cref="DateTimeOffset"/> value as an XML Schema <c>dateTime</c> with its offset to the
+        /// content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStringValue(DateTimeOffset value)
         {
             var destination = BeginPlainValue(40);
@@ -1284,9 +2277,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an XSD date value.
+        /// Writes a <see cref="DateOnly"/> value as an XML Schema <c>date</c> to the content of the current element
+        /// or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStringValue(DateOnly value)
         {
             var written = XmlLexical.FormatDate(value.Year, value.Month, value.Day, BeginPlainValue(10));
@@ -1294,9 +2294,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an XSD time value.
+        /// Writes a <see cref="TimeOnly"/> value as an XML Schema <c>time</c> to the content of the current element
+        /// or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStringValue(TimeOnly value)
         {
             var written = XmlLexical.FormatTime(value.Ticks, BeginPlainValue(16));
@@ -1304,9 +2311,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an XSD duration value.
+        /// Writes a <see cref="TimeSpan"/> value as an XML Schema <c>duration</c> to the content of the current
+        /// element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStringValue(TimeSpan value)
         {
             var written = XmlLexical.FormatDuration(value, BeginPlainValue(32));
@@ -1314,36 +2328,63 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a GUID value.
+        /// Writes a <see cref="Guid"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteStringValue(Guid value)
         {
             WriteFormatted(value, "D");
         }
 
         /// <summary>
-        /// Writes an integer value.
+        /// Writes an <see cref="int"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteNumberValue(int value)
         {
             WriteNumberUtf8(value, 16);
         }
 
         /// <summary>
-        /// Writes a 64-bit integer value.
+        /// Writes a <see cref="long"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteNumberValue(long value)
         {
             WriteNumberUtf8(value, 24);
         }
 
         /// <summary>
-        /// Writes a double value.
+        /// Writes a <see cref="double"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
         public void WriteNumberValue(double value)
         {
             if (double.IsNaN(value))
@@ -1368,9 +2409,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a single value.
+        /// Writes a <see cref="float"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
         public void WriteNumberValue(float value)
         {
             if (float.IsNaN(value))
@@ -1395,18 +2445,30 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a decimal value.
+        /// Writes a <see cref="decimal"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteNumberValue(decimal value)
         {
             WriteNumberUtf8(value, 32);
         }
 
         /// <summary>
-        /// Writes an unsigned integer value.
+        /// Writes a <see cref="uint"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         [CLSCompliant(false)]
         public void WriteNumberValue(uint value)
         {
@@ -1414,9 +2476,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an unsigned 64-bit integer value.
+        /// Writes a <see cref="ulong"/> value to the content of the current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value">The number to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         [CLSCompliant(false)]
         public void WriteNumberValue(ulong value)
         {
@@ -1424,18 +2492,32 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <c>true</c> or <c>false</c>.
+        /// Writes a <see cref="bool"/> value (as the XML literal <c>true</c> or <c>false</c>) to the content of the
+        /// current element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The value.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c>; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteBooleanValue(bool value)
         {
             WriteStringValue(value ? "true"u8 : "false"u8);
         }
 
         /// <summary>
-        /// Writes base64 text.
+        /// Writes binary data as base64 encoded text to the content of the current element or to the value of the
+        /// current attribute.
         /// </summary>
-        /// <param name="bytes">The bytes to encode.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteBase64StringValue(ReadOnlySpan<byte> bytes)
         {
             ThrowIfDisposed();
@@ -1457,10 +2539,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a UTF-8 text segment, possibly incomplete.
+        /// Writes a segment of text specified as a read-only span of UTF-8 bytes to the content of the current
+        /// element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The UTF-8 segment.</param>
-        /// <param name="isFinalSegment">True when this is the last segment of the value.</param>
+        /// <param name="value">The UTF-8 encoded segment of the text to write.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the text; otherwise, <see langword="false"/>. The writer does not use this value.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Each segment is written as it is by <see cref="WriteStringValue(ReadOnlySpan{byte})"/>, so a segment must
+        /// not end in the middle of a multi-byte character.
+        /// </remarks>
         public void WriteStringValueSegment(ReadOnlySpan<byte> value, bool isFinalSegment)
         {
             _ = isFinalSegment;
@@ -1468,10 +2563,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a text segment, possibly incomplete.
+        /// Writes a segment of text specified as a read-only span of characters to the content of the current
+        /// element or to the value of the current attribute.
         /// </summary>
-        /// <param name="value">The segment.</param>
-        /// <param name="isFinalSegment">True when this is the last segment of the value.</param>
+        /// <param name="value">The segment of the text to write.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the text; otherwise, <see langword="false"/>. The writer does not use this value.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <remarks>
+        /// Each segment is written as it is by <see cref="WriteStringValue(ReadOnlySpan{char})"/>, so a segment must
+        /// not end between the two halves of a surrogate pair.
+        /// </remarks>
         public void WriteStringValueSegment(ReadOnlySpan<char> value, bool isFinalSegment)
         {
             _ = isFinalSegment;
@@ -1479,10 +2584,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a base64 segment, possibly incomplete.
+        /// Writes a segment of binary data as base64 encoded text to the content of the current element or to the
+        /// value of the current attribute.
         /// </summary>
-        /// <param name="value">The bytes.</param>
-        /// <param name="isFinalSegment">True when this is the last segment.</param>
+        /// <param name="value">The segment of the binary data to write as base64 encoded text.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the binary data; otherwise, <see langword="false"/>. The writer does not use this value.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Each segment is encoded on its own, as it is by <see cref="WriteBase64StringValue(ReadOnlySpan{byte})"/>.
+        /// For the segments to form one base64 value, the length of every segment except the last must be a
+        /// multiple of 3.
+        /// </remarks>
         public void WriteBase64StringSegment(ReadOnlySpan<byte> value, bool isFinalSegment)
         {
             _ = isFinalSegment;
@@ -1490,9 +2607,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a CDATA section.
+        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a string.
         /// </summary>
-        /// <param name="text">The CDATA payload.</param>
+        /// <param name="text">The text of the CDATA section. It is written as it is, without escaping.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="text"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element.
+        /// -or-
+        /// <paramref name="text"/> contains <c>]]&gt;</c>.
+        /// -or-
+        /// <paramref name="text"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteCData(string text)
         {
             ArgumentNullException.ThrowIfNull(text);
@@ -1500,18 +2630,38 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a CDATA section.
+        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a read-only span of characters.
         /// </summary>
-        /// <param name="text">The CDATA payload.</param>
+        /// <param name="text">The text of the CDATA section. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element.
+        /// -or-
+        /// <paramref name="text"/> contains <c>]]&gt;</c>.
+        /// -or-
+        /// <paramref name="text"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteCData(ReadOnlySpan<char> text)
         {
             WriteCData(EncodeUtf8(text, stackalloc byte[256], out _));
         }
 
         /// <summary>
-        /// Writes a CDATA section.
+        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Value">The UTF-8 CDATA payload.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text of the CDATA section. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element.
+        /// -or-
+        /// <paramref name="utf8Value"/> contains <c>]]&gt;</c>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
         public void WriteCData(ReadOnlySpan<byte> utf8Value)
         {
             ThrowIfDisposed();
@@ -1535,9 +2685,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a comment.
+        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a string.
         /// </summary>
-        /// <param name="value">The comment payload.</param>
+        /// <param name="value">The text of the comment. It is written as it is, without escaping.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="value"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="value"/> contains <c>--</c> or ends with <c>-</c>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A comment can be written inside an element, and before or after the root element.
+        /// </remarks>
         public void WriteComment(string value)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -1545,18 +2709,40 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a comment.
+        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a read-only span of characters.
         /// </summary>
-        /// <param name="value">The comment payload.</param>
+        /// <param name="value">The text of the comment. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="value"/> contains <c>--</c> or ends with <c>-</c>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A comment can be written inside an element, and before or after the root element.
+        /// </remarks>
         public void WriteComment(ReadOnlySpan<char> value)
         {
             WriteComment(EncodeUtf8(value, stackalloc byte[256], out _));
         }
 
         /// <summary>
-        /// Writes a comment.
+        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Value">The UTF-8 comment payload.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text of the comment. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Value"/> contains <c>--</c> or ends with <c>-</c>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A comment can be written inside an element, and before or after the root element.
+        /// </remarks>
         public void WriteComment(ReadOnlySpan<byte> utf8Value)
         {
             ThrowIfDisposed();
@@ -1583,10 +2769,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a processing instruction.
+        /// Writes a processing instruction (<c>&lt;?target data?&gt;</c>) with the target and the data specified as strings.
         /// </summary>
-        /// <param name="target">The PI target.</param>
-        /// <param name="data">The PI data.</param>
+        /// <param name="target">The target of the processing instruction.</param>
+        /// <param name="data">The data of the processing instruction, or <see langword="null"/> or an empty string for none. It is written as it is, without escaping.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="target"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="target"/> is not a valid XML name without a colon, is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or is <c>xml</c> in any letter case.
+        /// -or-
+        /// <paramref name="data"/> contains <c>?&gt;</c>.
+        /// -or-
+        /// <paramref name="data"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A processing instruction can be written inside an element, and before or after the root element.
+        /// </remarks>
         public void WriteProcessingInstruction(string target, string? data)
         {
             ArgumentNullException.ThrowIfNull(target);
@@ -1596,10 +2798,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes raw UTF-8 XML.
+        /// Writes the input as XML content, with the input specified as a read-only span of UTF-8 bytes. The
+        /// input is copied to the output without escaping and without validation.
         /// </summary>
-        /// <param name="utf8Xml">The raw bytes.</param>
-        /// <param name="skipInputValidation">When true, the bytes are copied without checks.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to write.</param>
+        /// <param name="skipInputValidation">This parameter is not used. The input is never validated, whether the value is <see langword="true"/> or <see langword="false"/>. The default is <see langword="false"/>.</param>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The caller is responsible for the input being well formed in the place where it is written. Inside an
+        /// element, the input counts as text of that element, so the element's end tag is not indented. At the
+        /// document level, the writer does not write the XML declaration before the input.
+        /// </remarks>
         public void WriteRawValue(ReadOnlySpan<byte> utf8Xml, bool skipInputValidation = false)
         {
             _ = skipInputValidation;
@@ -1614,20 +2825,41 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes raw XML characters.
+        /// Writes the input as XML content, with the input specified as a read-only span of characters. The
+        /// input is copied to the output without escaping and without validation.
         /// </summary>
-        /// <param name="xml">The raw XML.</param>
-        /// <param name="skipInputValidation">When true, the text is copied without checks.</param>
+        /// <param name="xml">The XML text to write.</param>
+        /// <param name="skipInputValidation">This parameter is not used. The input is never validated, whether the value is <see langword="true"/> or <see langword="false"/>. The default is <see langword="false"/>.</param>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The caller is responsible for the input being well formed in the place where it is written. Inside an
+        /// element, the input counts as text of that element, so the element's end tag is not indented. At the
+        /// document level, the writer does not write the XML declaration before the input.
+        /// </remarks>
         public void WriteRawValue(ReadOnlySpan<char> xml, bool skipInputValidation = false)
         {
             WriteRawValue(EncodeUtf8(xml, stackalloc byte[256], out _), skipInputValidation);
         }
 
         /// <summary>
-        /// Writes raw XML.
+        /// Writes the input as XML content, with the input specified as a string. The input is copied to the
+        /// output without escaping and without validation.
         /// </summary>
-        /// <param name="xml">The raw XML.</param>
-        /// <param name="skipInputValidation">When true, the text is copied without checks.</param>
+        /// <param name="xml">The XML text to write.</param>
+        /// <param name="skipInputValidation">This parameter is not used. The input is never validated, whether the value is <see langword="true"/> or <see langword="false"/>. The default is <see langword="false"/>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The caller is responsible for the input being well formed in the place where it is written. Inside an
+        /// element, the input counts as text of that element, so the element's end tag is not indented. At the
+        /// document level, the writer does not write the XML declaration before the input.
+        /// </remarks>
         public void WriteRawValue(string xml, bool skipInputValidation = false)
         {
             ArgumentNullException.ThrowIfNull(xml);

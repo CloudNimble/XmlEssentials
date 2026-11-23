@@ -1,7 +1,50 @@
-# Patterns
+### Parse, change, write
 
-**Island.** A serializer property of type `XmlNode` / `XmlElementNode` is an XML island (later PRs).
+Parse with `XmlNode.Parse`, change the tree, and write it with `ToString` or `WriteTo`. Comments and indentation inside the root element survive.
 
-**Replace text.** Setting `InnerText` clears children and, when non-empty, adds one `XmlTextNode`.
+### Read with the document, edit a copy
 
-**Deep copy.** `DeepClone` returns an unattached copy. Lists keep parent pointers consistent.
+Parse with `XmlDocument`, find the element to change with `GetChild`, and call `CloneNode`. The copy outlives the document.
+
+```csharp
+XmlElementNode product;
+
+using (XmlDocument document = XmlDocument.Parse("""<Catalog><Product sku="KB-1"><Name>Keyboard</Name></Product></Catalog>"""))
+{
+    product = (XmlElementNode)document.RootElement.GetChild("Product").CloneNode();
+}
+
+product.SetAttribute("sku", "KB-2");
+product.AddElement("Price").InnerText = "49.90";
+
+output.WriteLine(product.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Product sku="KB-2"><Name>Keyboard</Name><Price>49.90</Price></Product>
+```
+
+### Adjust what the serializer produced
+
+`XmlSerializer.SerializeToNode` gives you an object's XML as a tree, and `XmlSerializer.Deserialize` accepts a node.
+
+```csharp
+var product = new Product { Name = "Keyboard", Price = 49.90m };
+
+var node = (XmlElementNode)XmlSerializer.SerializeToNode(product)!;
+output.WriteLine(node.ToString());
+
+node["Price"]!.InnerText = "44.90";
+
+Product? discounted = XmlSerializer.Deserialize<Product>(node);
+output.WriteLine($"{discounted!.Name}: {discounted.Price.ToString(CultureInfo.InvariantCulture)}");
+```
+
+The code produces the following output:
+
+```text
+<Product><Name>Keyboard</Name><Price>49.90</Price></Product>
+Keyboard: 44.90
+```

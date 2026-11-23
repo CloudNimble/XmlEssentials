@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlPropertyOrderAttribute` here.
-
+- A negative order means "not set". This differs from `[JsonPropertyOrder]`, where a negative number places a property before the unordered ones. To put a member first, give it `0` and give the others higher numbers, or leave the others without an order.
+- The order covers the whole type, base classes included. A member of a derived class can be placed between two members of its base class, which `System.Xml.Serialization.XmlSerializer` can't do.
+- XML attributes are always written before element text, and element text before child elements. The order sorts members within each of those groups.
+- Members with the same order keep their declaration order.
+- The order affects writing only. When reading, elements are accepted in any order.
+- `[XmlPropertyOrder]` takes precedence over the `Order` property of `[XmlElement]` and `[XmlArray]`.

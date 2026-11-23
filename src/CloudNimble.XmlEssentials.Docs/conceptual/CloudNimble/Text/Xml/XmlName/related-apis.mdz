@@ -1,6 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Related APIs
-
-- API 1
-- API 2
-
+CloudNimble.Text.Xml.XmlNamespaces
+CloudNimble.Text.Xml.Serialization.XmlExtensionData
+CloudNimble.Text.Xml.Serialization.XmlPropertyInfo
+CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+CloudNimble.Text.Xml.Nodes.XmlElementNode

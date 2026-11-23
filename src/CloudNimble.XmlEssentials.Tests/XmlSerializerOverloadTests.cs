@@ -197,6 +197,16 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Deserialize_FromAReaderWithDefaultOptions_ReadsPastCommentsAndIndentation()
+        {
+            // A reader created without options reports comments and the white space between elements.
+            var reader = new Utf8XmlReader("<!--head-->\n<Person>\n  <!--who-->\n  <Name>Ada</Name>\n  <Age>36</Age>\n</Person>\n"u8);
+            var person = XmlSerializer.Deserialize<Person>(ref reader)!;
+            person.Name.Should().Be("Ada");
+            person.Age.Should().Be(36);
+        }
+
+        [TestMethod]
         public void Deserialize_FromReader()
         {
             var reader = new Utf8XmlReader(Utf8);

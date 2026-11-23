@@ -2,12 +2,16 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Options for <see cref="Utf8XmlReader"/>.
+    /// Provides options that control how a <see cref="Utf8XmlReader"/> reads XML.
     /// </summary>
     /// <remarks>
-    /// A max-* of 0 means the default from the DoS table, except <see cref="MaxDocumentByteCount"/>
-    /// which stays unbounded. Construct with <c>new XmlReaderOptions()</c> so
-    /// <see cref="CommentHandling"/> defaults to <see cref="XmlCommentHandling.Skip"/>.
+    /// A limit property set to 0 uses the default limit stated on that property, except
+    /// <see cref="MaxDocumentByteCount"/>, where 0 means no limit.
+    /// <see langword="default"/> and <c>new XmlReaderOptions()</c> are the same options. By default, the reader
+    /// reports comments and whitespace-only text between elements, so that XML that is read and written back
+    /// keeps its comments and its layout. For a read loop that wants data only, set
+    /// <see cref="CommentHandling"/> to <see cref="XmlCommentHandling.Skip"/> and
+    /// <see cref="WhitespaceHandling"/> to <see cref="XmlWhitespaceHandling.Insignificant"/>.
     /// </remarks>
     public struct XmlReaderOptions
     {
@@ -15,57 +19,92 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets whether multiple top-level elements are allowed (document fragments).
-        /// Default is <see langword="false"/>.
+        /// Gets or sets a value that indicates whether the reader accepts a document fragment, which can
+        /// have more than one top-level element or none.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if more than one top-level element, or none, is allowed; otherwise,
+        /// <see langword="false"/>. The default is <see langword="false"/>.
+        /// </value>
         public bool AllowMultipleRoots { get; set; }
 
         /// <summary>
-        /// Gets or sets how comments are handled.
-        /// Default is <see cref="XmlCommentHandling.Skip"/> when constructed with <see cref="XmlReaderOptions()"/>.
+        /// Gets or sets a value that defines how the reader handles comments.
         /// </summary>
-        public XmlCommentHandling CommentHandling { get; set; } = XmlCommentHandling.Skip;
+        /// <value>
+        /// One of the enumeration values that indicates how comments are handled. The default is
+        /// <see cref="XmlCommentHandling.Allow"/>.
+        /// </value>
+        /// <remarks>
+        /// Comments are reported by default so that XML that is read and written back does not lose them.
+        /// Set this property to <see cref="XmlCommentHandling.Skip"/> when your code does not want to
+        /// see <see cref="XmlTokenType.Comment"/> tokens.
+        /// </remarks>
+        public XmlCommentHandling CommentHandling { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum attributes on one element, including xmlns*.
-        /// 0 means 1000.
+        /// Gets or sets the maximum number of attributes allowed on one element, including namespace
+        /// declarations.
         /// </summary>
+        /// <value>
+        /// The maximum number of attributes on one element. The default is 0, which means a maximum of 1000.
+        /// </value>
         public int MaxAttributeCount { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum comment payload in UTF-8 bytes.
-        /// 0 means 1,048,576.
+        /// Gets or sets the maximum size of the content of a comment.
         /// </summary>
+        /// <value>
+        /// The maximum size of a comment's content, in UTF-8 bytes. The default is 0, which means a maximum
+        /// of 1,048,576.
+        /// </value>
         public int MaxCommentByteCount { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum element depth.
-        /// 0 means 64.
+        /// Gets or sets the maximum depth of nested elements allowed when reading XML.
         /// </summary>
+        /// <value>
+        /// The maximum element depth. The default is 0, which means a maximum depth of 64.
+        /// </value>
         public int MaxDepth { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum document size in bytes.
-        /// 0 means unbounded.
+        /// Gets or sets the maximum size of the document.
         /// </summary>
+        /// <value>
+        /// The maximum size of the document, in bytes. The default is 0, which means no limit.
+        /// </value>
         public int MaxDocumentByteCount { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum UTF-8 byte length of an element or attribute name.
-        /// 0 means 1024.
+        /// Gets or sets the maximum length of an element or attribute name.
         /// </summary>
+        /// <value>
+        /// The maximum length of a name, in UTF-8 bytes. The default is 0, which means a maximum of 1024.
+        /// </value>
         public int MaxNameByteCount { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum UTF-8 byte length of a text or CDATA node.
-        /// 0 means 16,777,216.
+        /// Gets or sets the maximum length of a text or CDATA node.
         /// </summary>
+        /// <value>
+        /// The maximum length of a text or CDATA node, in UTF-8 bytes. The default is 0, which means a
+        /// maximum of 16,777,216.
+        /// </value>
         public int MaxTextByteCount { get; set; }
 
         /// <summary>
-        /// Gets or sets how whitespace-only text between elements is handled.
-        /// Default is <see cref="XmlWhitespaceHandling.Insignificant"/>.
+        /// Gets or sets a value that defines how the reader handles whitespace-only text between elements.
         /// </summary>
+        /// <value>
+        /// One of the enumeration values that indicates how whitespace-only text is handled. The default is
+        /// <see cref="XmlWhitespaceHandling.Significant"/>.
+        /// </value>
+        /// <remarks>
+        /// Whitespace-only text between elements is reported by default so that XML that is read and written
+        /// back does not change its layout. Set this property to <see cref="XmlWhitespaceHandling.Insignificant"/>
+        /// when your code does not want to see those <see cref="XmlTokenType.Text"/> tokens.
+        /// </remarks>
         public XmlWhitespaceHandling WhitespaceHandling { get; set; }
 
         #endregion
@@ -73,9 +112,14 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Creates options with <see cref="CommentHandling"/> set to <see cref="XmlCommentHandling.Skip"/>
-        /// and every max-* at 0 (table defaults).
+        /// Initializes a new instance of the <see cref="XmlReaderOptions"/> struct.
         /// </summary>
+        /// <remarks>
+        /// The result is the same as <see langword="default"/>: <see cref="CommentHandling"/> is
+        /// <see cref="XmlCommentHandling.Allow"/>, <see cref="WhitespaceHandling"/> is
+        /// <see cref="XmlWhitespaceHandling.Significant"/>, and every limit property is 0, which selects
+        /// its default limit.
+        /// </remarks>
         public XmlReaderOptions()
         {
         }

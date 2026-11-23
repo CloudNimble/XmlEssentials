@@ -1,8 +1,9 @@
 ---
 title: XmlIncludeAttribute
+description: "Includes a non-public property or field in serialization. Analogous to `JsonIncludeAttribute`. This is not BCL `XmlIncludeAttribute` (known types); use `XmlD..."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.XmlSerializerOptions']
 ---
 
 ## Definition
@@ -18,6 +19,46 @@ keywords: ['XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlInclude
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute
 ```
+
+## Summary
+
+Includes a non-public property or field in serialization. Analogous to `JsonIncludeAttribute`.
+This is not BCL `XmlIncludeAttribute` (known types); use `XmlDerivedTypeAttribute` for those.
+
+## Usage
+
+By default, the serializer maps public properties, and public fields when `XmlSerializerOptions.IncludeFields` is `true`. Put `[XmlInclude]` on a property or field that isn't public to serialize it as well. It is the counterpart of `[JsonInclude]`.
+
+```csharp
+public sealed class Account
+{
+    public string? Name { get; set; }
+
+    [XmlInclude]
+    internal string? LedgerCode { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var account = new Account { Name = "Operations", LedgerCode = "OPS-17" };
+
+output.WriteLine(XmlSerializer.Serialize(account, options));
+```
+
+The code produces the following output:
+
+```xml
+<Account><Name>Operations</Name><LedgerCode>OPS-17</LedgerCode></Account>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## Considerations
+
+- This attribute is not the `XmlIncludeAttribute` of `System.Xml.Serialization`, which declares a known derived type. To declare derived types, use `[XmlDerivedType<T>]`.
+- The attribute can be applied to properties and fields only.
+- An included member is named, ordered, and mapped like a public one, and the other mapping attributes can be combined with it.
 
 ## Constructors
 
@@ -932,4 +973,10 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
+- CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute
+- CloudNimble.Text.Xml.XmlSerializerOptions
 

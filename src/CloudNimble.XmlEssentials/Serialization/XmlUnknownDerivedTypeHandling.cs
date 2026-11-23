@@ -2,23 +2,25 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// How an unknown derived type is handled when reading or writing a polymorphic type.
+    /// Specifies how a derived type that has not been explicitly declared for polymorphic serialization is handled when a
+    /// polymorphic type is read or written.
     /// </summary>
     public enum XmlUnknownDerivedTypeHandling
     {
 
         /// <summary>
-        /// Throw when the type is not in the declared derived-type map.
+        /// Failure of the operation. An object of an undeclared runtime type, or an unknown type discriminator, causes an exception.
         /// </summary>
         FailSerialization = 0,
 
         /// <summary>
-        /// Read and write the value as the declared base type.
+        /// Fallback to the serialization contract of the declared base type, on both reading and writing.
         /// </summary>
         FallBackToBaseType = 1,
 
         /// <summary>
-        /// Read and write the value as the nearest declared ancestor.
+        /// Fallback to the serialization contract of the nearest declared ancestor type on writing, or of the declared base type
+        /// when no ancestor is declared. On reading, an unknown type discriminator falls back to the declared base type.
         /// </summary>
         FallBackToNearestAncestor = 2,
 

@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Prefer `XmlElementNode.SetAttribute` to add or replace by name. Use this type when you need a prefix or to move an attribute via clone.
+Document common patterns for `XmlAttributeNode` here.
+

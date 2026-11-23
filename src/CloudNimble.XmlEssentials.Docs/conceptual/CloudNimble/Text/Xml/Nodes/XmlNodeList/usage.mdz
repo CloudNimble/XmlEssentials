@@ -1,8 +1,35 @@
-# Usage
-
-`XmlElementNode.Children` is an `IList<XmlNode>` of mixed content.
+`XmlNodeList` is the type of `XmlElementNode.Children`. It's an `IList<XmlNode>` that holds an element's child nodes in document order: elements, text, CDATA sections, comments, and processing instructions. Use it to count, index, insert at a position, remove, and replace.
 
 ```csharp
-root.Children.Add(new XmlTextNode("hi"));
-root.Children.Insert(0, new XmlCommentNode("c"));
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item><Item>Mouse</Item><Item>Monitor</Item><Note>Gift</Note></Order>""")!;
+
+order.Children.RemoveAt(0);
+
+XmlElementNode note = order["Note"]!;
+order.Children.Remove(note);
+output.WriteLine($"The removed node has a parent: {note.Parent is not null}");
+
+var replacement = new XmlElementNode("Item");
+replacement.InnerText = "Trackball";
+order.Children[0] = replacement;
+
+var archive = new XmlElementNode("Archive");
+archive.Add(note);
+
+order["Item"]!.InnerText = "Trackball (wireless)";
+
+output.WriteLine(order.ToString());
+output.WriteLine(archive.ToString());
 ```
+
+The code produces the following output:
+
+```text
+The removed node has a parent: False
+<Order><Item>Trackball (wireless)</Item><Item>Monitor</Item></Order>
+<Archive><Note>Gift</Note></Archive>
+```
+
+You don't create a list. Every `XmlElementNode` has one.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)

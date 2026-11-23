@@ -6,7 +6,8 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Unmapped attributes and elements captured by <see cref="XmlExtensionDataAttribute"/>.
+    /// Represents the XML attributes and child elements that have no matching member and are captured by a member marked with
+    /// <see cref="XmlExtensionDataAttribute"/>. This class cannot be inherited.
     /// </summary>
     public sealed class XmlExtensionData
     {
@@ -14,13 +15,19 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets unmapped attributes keyed by XML name.
+        /// Gets the XML attributes that have no matching member.
         /// </summary>
+        /// <value>
+        /// A dictionary that maps the name of each unmapped attribute to its value.
+        /// </value>
         public Dictionary<XmlName, string> Attributes { get; } = [];
 
         /// <summary>
-        /// Gets unmapped child elements.
+        /// Gets the child elements that have no matching member.
         /// </summary>
+        /// <value>
+        /// A list of the unmapped child elements, in document order.
+        /// </value>
         public List<XmlElementNode> Elements { get; } = [];
 
         #endregion

@@ -1,0 +1,238 @@
+---
+title: "How to deserialize XML to immutable types"
+sidebarTitle: "Immutable types"
+description: "Learn how XmlSerializer creates records, classes with parameterized constructors, types with init-only properties, and structs when it reads XML."
+icon: "lock"
+---
+
+An immutable type can't be changed after it's created, so a serializer can't create it empty and then set its properties. [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles this the way System.Text.Json does: it reads the XML first, then calls a constructor with the values it found. This article covers records, classes with a constructor that takes parameters, [`[XmlConstructor]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConstructorAttribute), `init`-only properties, and structs.
+
+Serializing an immutable type needs nothing special. Everything here is about deserializing.
+
+## Records
+
+A positional record works with no attributes and no options. The serializer matches each constructor parameter to the property of the same name.
+
+```csharp Temperature.cs
+public sealed record Temperature(double Degrees, string Unit);
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(new Temperature(21.5, "C"), options);
+output.WriteLine(xml);
+
+Temperature? copy = XmlSerializer.Deserialize<Temperature>(xml, options);
+output.WriteLine(copy == new Temperature(21.5, "C"));
+```
+
+The code produces the following output:
+
+```text
+<Temperature><Degrees>21.5</Degrees><Unit>C</Unit></Temperature>
+True
+```
+
+Elements may appear in any order. The serializer holds the values until it reaches the end tag, then calls the constructor. A record can also have ordinary properties besides its positional ones. Those are set after the constructor runs.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/11_ImmutableTypes.cs)
+
+## Classes with a parameterized constructor
+
+A class with read-only properties and a constructor works the same way, with one difference from records: C# constructor parameters are usually camelCase, and the serializer matches parameter names to member names **with case** by default.
+
+```csharp Measurement.cs
+public sealed class Measurement
+{
+    public string Name { get; }
+
+    public double Value { get; }
+
+    public Measurement(string name, double value)
+    {
+        Name = name;
+        Value = value;
+    }
+}
+```
+
+Set `PropertyNameCaseInsensitive` to `true` so that the parameter `name` matches the property `Name`:
+
+```csharp Program.cs
+const string xml = "<Measurement><Name>Voltage</Name><Value>230</Value></Measurement>";
+var options = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
+
+Measurement? measurement = XmlSerializer.Deserialize<Measurement>(xml, options);
+
+output.WriteLine($"{measurement!.Name} = {measurement.Value}");
+```
+
+The code produces the following output:
+
+```text
+Voltage = 230
+```
+
+<Warning>
+This is a difference from System.Text.Json, which always matches constructor parameters to properties without regard to case. With the default options, the constructor above isn't recognized. Because `Measurement` has no parameterless constructor either, deserializing fails with a `MissingMethodException`.
+</Warning>
+
+```csharp Program.cs
+const string xml = "<Measurement><Name>Voltage</Name><Value>230</Value></Measurement>";
+
+try
+{
+    XmlSerializer.Deserialize<Measurement>(xml);
+}
+catch (MissingMethodException ex)
+{
+    output.WriteLine(ex.GetType().Name);
+}
+```
+
+The code produces the following output:
+
+```text
+MissingMethodException
+```
+
+`PropertyNameCaseInsensitive` also makes element and attribute names match without regard to case when reading. If you don't want that, the alternatives are to name the parameters exactly like the properties, or to use a record or `init`-only properties.
+
+## Choose a constructor with XmlConstructor
+
+When a type has more than one constructor, mark the one the serializer should use with [`[XmlConstructor]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConstructorAttribute). The constructor doesn't have to be public.
+
+```csharp DateRange.cs
+public sealed class DateRange
+{
+    public DateOnly Start { get; }
+
+    public DateOnly End { get; }
+
+    public DateRange(DateOnly start, int days)
+        : this(start, start.AddDays(days - 1))
+    {
+    }
+
+    [XmlConstructor]
+    public DateRange(DateOnly start, DateOnly end)
+    {
+        Start = start;
+        End = end;
+    }
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNameCaseInsensitive = true };
+var week = new DateRange(new DateOnly(2026, 3, 9), days: 7);
+
+string xml = XmlSerializer.Serialize(week, options);
+output.WriteLine(xml);
+
+DateRange? copy = XmlSerializer.Deserialize<DateRange>(xml, options);
+output.WriteLine($"{copy!.Start:yyyy-MM-dd} to {copy.End:yyyy-MM-dd}");
+```
+
+The code produces the following output:
+
+```text
+<DateRange><Start>2026-03-09</Start><End>2026-03-15</End></DateRange>
+2026-03-09 to 2026-03-15
+```
+
+Each parameter of the marked constructor must match a serialized member, by the member's C# name or by its XML name, unless the parameter has a default value. If one doesn't, the serializer throws a `NotSupportedException` the first time it uses the type, for serializing as well as deserializing. That is why this example also sets `PropertyNameCaseInsensitive`: without it, `start` doesn't match `Start`.
+
+### How the constructor is chosen
+
+1. The constructor marked `[XmlConstructor]`. Marking more than one throws a `NotSupportedException`.
+2. Otherwise, the public constructor with the most parameters among those whose parameters all have the name of a serialized member. A parameterless constructor counts, with zero parameters. If two candidates have the same number of parameters, the serializer throws a `NotSupportedException` that asks you to mark one.
+3. If no constructor qualifies, the serializer creates the object through its parameterless constructor, public or not.
+
+Parameters with no default value are required: XML that lacks one is rejected with an `XmlException`. See [Constructor parameters](/guides/required-properties#constructor-parameters).
+
+<Note>
+Rule 2 means that a public constructor whose parameters all match wins over a public parameterless constructor. System.Text.Json prefers the parameterless one. If a type has both and you want the parameterless constructor, put `[XmlConstructor]` on it.
+</Note>
+
+## Init-only properties
+
+A type whose properties have `init` accessors needs no constructor parameters. The serializer creates the object and sets each `init` property as it reads the element, as it does for a `set` accessor.
+
+```csharp ConnectionSettings.cs
+public sealed class ConnectionSettings
+{
+    public string? Host { get; init; }
+
+    public int Port { get; init; } = 5432;
+}
+```
+
+```csharp Program.cs
+ConnectionSettings? full = XmlSerializer.Deserialize<ConnectionSettings>(
+    "<ConnectionSettings><Host>db.contoso.example</Host><Port>6432</Port></ConnectionSettings>");
+output.WriteLine($"{full!.Host}:{full.Port}");
+
+ConnectionSettings? partial = XmlSerializer.Deserialize<ConnectionSettings>(
+    "<ConnectionSettings><Host>db.contoso.example</Host></ConnectionSettings>");
+output.WriteLine($"{partial!.Host}:{partial.Port}");
+```
+
+The code produces the following output:
+
+```text
+db.contoso.example:6432
+db.contoso.example:5432
+```
+
+A property that isn't in the XML keeps its initializer, so `Port` is `5432` in the second object. To make a member mandatory instead, add the `required` modifier. See [Require properties](/guides/required-properties).
+
+## Structs
+
+Structs and record structs are supported. A mutable struct is created with its default value and its properties are set. A read-only struct is created through its constructor, by the rules above.
+
+```csharp GeoPoint.cs
+public readonly record struct GeoPoint(double Latitude, double Longitude);
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(new GeoPoint(47.5, -122.25), options);
+output.WriteLine(xml);
+
+GeoPoint copy = XmlSerializer.Deserialize<GeoPoint>(xml, options);
+output.WriteLine(copy == new GeoPoint(47.5, -122.25));
+```
+
+The code produces the following output:
+
+```text
+<GeoPoint><Latitude>47.5</Latitude><Longitude>-122.25</Longitude></GeoPoint>
+True
+```
+
+## What to watch for
+
+- **Every constructor parameter needs a member.** If you exclude a positional record property with `[property: XmlIgnore]`, its parameter no longer has a serialized member, and the record can't be deserialized.
+- **Don't set `IgnoreReadOnlyProperties` for these types.** The option removes get-only properties from the mapping, including the ones a constructor sets. Record properties are unaffected, because they have `init` accessors.
+- **A read-only collection property isn't filled.** A property such as `public List<string> Tags { get; } = [];` is written but not read. Pass the collection through the constructor, or give the property an `init` accessor. Immutable collection types such as `ImmutableArray<T>` can be written but not read. See [Serialize collections](/guides/collections#collection-types).
+- **Trimming and Native AOT.** The examples here find and call constructors through reflection. For a trimmed or Native AOT application, see [Use source generation](/guides/source-generation).
+
+## See also
+
+<Columns cols={2}>
+  <Card title="Require properties" icon="asterisk" href="/guides/required-properties">
+    Make members and constructor parameters mandatory.
+  </Card>
+  <Card title="Deserialize" icon="arrow-right-to-bracket" href="/guides/deserialize">
+    Read XML into objects from each kind of source.
+  </Card>
+  <Card title="Configure options" icon="sliders" href="/guides/configure-options">
+    Set `PropertyNameCaseInsensitive` and the other options once.
+  </Card>
+  <Card title="XmlConstructorAttribute" icon="code" href="/api-reference/CloudNimble/Text/Xml/Serialization/XmlConstructorAttribute">
+    API reference for the attribute.
+  </Card>
+</Columns>

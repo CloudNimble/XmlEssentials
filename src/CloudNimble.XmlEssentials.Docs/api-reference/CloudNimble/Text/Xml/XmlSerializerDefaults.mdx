@@ -1,8 +1,9 @@
 ---
 title: XmlSerializerDefaults
+description: "Named default sets for [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions)."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlSerializerDefaults', 'CloudNimble.Text.Xml.XmlSerializerDefaults', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlSerializerDefaults', 'CloudNimble.Text.Xml.XmlSerializerDefaults', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling']
 ---
 
 ## Definition
@@ -19,18 +20,95 @@ keywords: ['XmlSerializerDefaults', 'CloudNimble.Text.Xml.XmlSerializerDefaults'
 CloudNimble.Text.Xml.XmlSerializerDefaults
 ```
 
+## Summary
+
+Named default sets for [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions).
+
+## Usage
+
+`XmlSerializerDefaults` names a starting set of option values. Pass a value to the [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) constructor, then set whatever else you need. It is the counterpart of `JsonSerializerDefaults`.
+
+| Value | Differences from `General` | Ready-made instance |
+| --- | --- | --- |
+| `General` | None. Names are unchanged, the XML declaration is written, and `null` is written as `xsi:nil="true"`. | `XmlSerializerOptions.Default` |
+| `Web` | `PropertyNamingPolicy` is `XmlNamingPolicy.CamelCase` and `OmitXmlDeclaration` is `true`. | `XmlSerializerOptions.Web` |
+| `Strict` | `AllowDuplicateProperties` is `false`, `ReadCommentHandling` is `XmlCommentHandling.Disallow`, and `UnmappedMemberHandling` is `XmlUnmappedMemberHandling.Disallow`. | `XmlSerializerOptions.Strict` |
+
+```csharp
+var web = new XmlSerializerOptions(XmlSerializerDefaults.Web)
+{
+    WriteIndented = true,
+    NewLine = "\n",
+};
+```
+
+When you need a set of defaults exactly as it is, use the ready-made instance instead of creating your own. It is shared and already read-only.
+
+## Examples
+
+The following example shows what the strict defaults add to the general ones.
+
+### Compare the general and the strict defaults when reading
+
+The strict defaults change reading only. The following example reads a document with a repeated element, one with a comment, and one with an unknown element, first with the general defaults and then with the strict ones.
+
+```csharp
+string[] documents =
+[
+    "<InvoiceLine><Sku>KB-101</Sku><Sku>MS-220</Sku></InvoiceLine>",
+    "<InvoiceLine><!-- checked --><Sku>KB-101</Sku></InvoiceLine>",
+    "<InvoiceLine><Sku>KB-101</Sku><Colour>black</Colour></InvoiceLine>",
+];
+
+foreach (string xml in documents)
+{
+    InvoiceLine? line = XmlSerializer.Deserialize<InvoiceLine>(xml);
+    output.WriteLine($"General: {line!.Sku}");
+
+    try
+    {
+        XmlSerializer.Deserialize<InvoiceLine>(xml, XmlSerializerOptions.Strict);
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine($"Strict: {ex.Message}");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+General: MS-220
+Strict: Duplicate property 'Sku'.
+General: KB-101
+Strict: Comments are not allowed.
+General: KB-101
+Strict: Unknown element 'Colour'.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/13_ConfigureOptions.cs)
+
+## Considerations
+
+- `Web` is smaller than `JsonSerializerDefaults.Web`. It doesn't make name matching case-insensitive, and it doesn't change how numbers are read. Set `PropertyNameCaseInsensitive` yourself if you need it.
+- With `Web`, the camelCase policy also applies to the document element, so a type named `InvoiceLine` is written as `<invoiceLine>`.
+- `Strict` doesn't change what is written, and it doesn't set any of the size limits. For XML from an untrusted source, also set `MaxDocumentByteCount`. See [Security](/guides/security).
+- The value is only a starting point. It isn't stored on the options, so there's no way to ask an instance which set it was created from.
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `General` | 0 |  |
-| `Web` | 1 |  |
-| `Strict` | 2 |  |
+| `General` | 0 | Identity names, write a declaration, `xsi:nil` for null. |
+| `Web` | 1 | CamelCase names and [XmlSerializerOptions.OmitXmlDeclaration](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#omitxmldeclaration) true. |
+| `Strict` | 2 | Unknown members are errors, duplicates are errors, comments are disallowed. |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlSerializer
+- CloudNimble.Text.Xml.XmlNamingPolicy
+- CloudNimble.Text.Xml.XmlCommentHandling
+- CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
 

@@ -1,9 +1,87 @@
-# Patterns
+### Read, then copy out
 
-**Pooled parse.** `using var document = XmlDocument.Parse(utf8);` then read through `RootElement`. Do not cache the document instance.
+Parse in a `using` statement, read what you need through `RootElement`, and let the document go. Only the values you copied (strings, numbers, a cloned node) leave the block.
 
-**Cursor.** `XmlElement` is a struct cursor. Enumerate children and attributes; do not store cursors after `Dispose`.
+```csharp
+XmlElement item;
+string? name;
 
-**Fragment.** `ParseValue(ref reader)` builds a document whose root is the current start tag. Empty elements stop without consuming the next sibling.
+using (XmlDocument document = XmlDocument.Parse("<Order><Item>Keyboard</Item></Order>"))
+{
+    item = document.RootElement.GetChild("Item");
+    name = item.GetString();
+}
 
-**Mutation.** Call `CloneNode` (or `XmlNode.Parse`) when you need to edit. The immutable document does not change.
+output.WriteLine($"The copied string is still valid: {name}");
+
+try
+{
+    item.GetString();
+}
+catch (ObjectDisposedException)
+{
+    output.WriteLine("The element is not: ObjectDisposedException");
+}
+
+XmlElement empty = default;
+output.WriteLine($"A default element is {empty.ValueKind}");
+```
+
+The code produces the following output:
+
+```text
+The copied string is still valid: Keyboard
+The element is not: ObjectDisposedException
+A default element is Undefined
+```
+
+### Stream with a reader, query with a document
+
+Read a large input forward with `Utf8XmlReader` and call `ParseValue` on each record. Each record gets random access, and only one is in memory. The examples section shows the loop.
+
+### Inspect, then deserialize
+
+Parse the document, check what it is (a root name, a version attribute), and pass the document or one of its elements to `XmlSerializer.Deserialize`.
+
+```csharp
+using (XmlDocument single = XmlDocument.Parse("<Product><Name>Keyboard</Name><Price>49.90</Price></Product>"))
+{
+    Product? product = XmlSerializer.Deserialize<Product>(single);
+    output.WriteLine($"{product!.Name}: {product.Price.ToString(CultureInfo.InvariantCulture)}");
+}
+
+const string xml = """
+    <Catalog>
+      <Product><Name>Mouse</Name><Price>19.90</Price></Product>
+      <Product><Name>Monitor</Name><Price>249.00</Price></Product>
+    </Catalog>
+    """;
+
+using XmlDocument catalog = XmlDocument.Parse(xml);
+foreach (XmlElement element in catalog.RootElement.EnumerateChildren())
+{
+    if (element.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil))
+    {
+        continue;
+    }
+
+    Product? product = XmlSerializer.Deserialize<Product>(element);
+    output.WriteLine($"{product!.Name}: {product.Price.ToString(CultureInfo.InvariantCulture)}");
+}
+```
+
+The code produces the following output:
+
+```text
+Keyboard: 49.90
+Mouse: 19.90
+Monitor: 249.00
+```
+
+### Read here, edit there
+
+The document can't be changed. Call `XmlElement.CloneNode` on the element you need to edit, change the copy in the mutable tree, and write the copy. See [How to build and change XML with XmlNode](/guides/use-xmlnode).
+
+### Copy part of a document into new output
+
+Open a `Utf8XmlWriter`, write your own elements, and call `XmlElement.WriteTo` for the parts you take from the document. The writer declares any namespace the copied element needs.

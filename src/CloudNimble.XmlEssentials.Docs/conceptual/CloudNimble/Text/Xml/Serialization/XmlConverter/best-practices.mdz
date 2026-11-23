@@ -1,5 +1,9 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Best Practices
-
-Document best practices for `XmlConverter` here.
-
+- **Check `IsEmptyElement` first in `Read`.** An empty-element tag has no end-tag token. A loop that reads until `EndElement` without the check runs into the elements that follow.
+- **Leave the reader on the element's last token.** Don't read past the end tag, and don't stop before it. The serializer continues from where you stop.
+- **Pass the reader by `ref` to helper methods.** `Utf8XmlReader` is a struct. A helper that takes it by value advances a copy.
+- **Skip what you don't recognize.** Call `reader.Skip()` on an unknown child element so that a newer document doesn't break an older converter.
+- **Close every element you open in `Write`,** and don't write the value's own start or end tag.
+- **Throw `XmlException` for content that isn't valid,** as the built-in converters do.
+- **Format and parse with `CultureInfo.InvariantCulture`.** XML is exchanged between machines, and the current culture changes decimal separators and date order.
+- **Keep converters stateless.** One instance serves every thread that uses the options.
+- **Don't widen `CanConvert` on an `XmlConverter<T>`.** A converter can serve only `T`. Use an `XmlConverterFactory` for a family of types.

@@ -2,10 +2,10 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Immutable XML declaration captured when an <see cref="XmlDocument"/> is parsed.
+    /// Represents the XML declaration captured when an <see cref="XmlDocument"/> is parsed.
     /// </summary>
     /// <remarks>
-    /// Mutable trees use <c>CloudNimble.Text.Xml.Nodes.XmlDeclarationNode</c> instead.
+    /// The value is immutable. Mutable trees use <c>CloudNimble.Text.Xml.Nodes.XmlDeclarationNode</c> instead.
     /// </remarks>
     public readonly struct XmlDeclarationInfo
     {
@@ -13,18 +13,30 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the declared encoding. Always <c>utf-8</c> for documents this stack accepts.
+        /// Gets the encoding named in the declaration.
         /// </summary>
+        /// <value>
+        /// The name of the encoding. This is always <c>utf-8</c> for a document that
+        /// <see cref="XmlDocument"/> parsed, because no other encoding is accepted.
+        /// </value>
         public string Encoding { get; }
 
         /// <summary>
-        /// Gets the standalone pseudo-attribute, or <see langword="null"/> when omitted.
+        /// Gets the value of the <c>standalone</c> pseudo-attribute of the declaration.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the declaration says <c>standalone="yes"</c>; <see langword="false"/> if
+        /// it says <c>standalone="no"</c>; <see langword="null"/> if the pseudo-attribute is omitted.
+        /// </value>
         public bool? Standalone { get; }
 
         /// <summary>
-        /// Gets the declared version, <c>1.0</c> or <c>1.1</c>.
+        /// Gets the XML version named in the declaration.
         /// </summary>
+        /// <value>
+        /// The version string, which is <c>1.0</c> or <c>1.1</c> for a document that
+        /// <see cref="XmlDocument"/> parsed.
+        /// </value>
         public string Version { get; }
 
         #endregion
@@ -32,11 +44,11 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Creates declaration info.
+        /// Initializes a new instance of the <see cref="XmlDeclarationInfo"/> struct.
         /// </summary>
-        /// <param name="version">The version string.</param>
-        /// <param name="encoding">The encoding string.</param>
-        /// <param name="standalone">The standalone flag, or <see langword="null"/>.</param>
+        /// <param name="version">The XML version named in the declaration, such as <c>1.0</c>.</param>
+        /// <param name="encoding">The name of the encoding named in the declaration, such as <c>utf-8</c>.</param>
+        /// <param name="standalone">The value of the <c>standalone</c> pseudo-attribute, or <see langword="null"/> if it is omitted.</param>
         public XmlDeclarationInfo(string version, string encoding, bool? standalone)
         {
             Version = version;

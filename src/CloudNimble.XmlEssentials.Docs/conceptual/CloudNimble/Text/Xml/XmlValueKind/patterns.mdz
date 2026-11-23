@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Switch on `ValueKind` before calling typed getters. Mixed content can be text, CDATA, comments, PIs, and child elements in one list.
+Document common patterns for `XmlValueKind` here.
+

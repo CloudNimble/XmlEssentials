@@ -1,5 +1,35 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlPropertyMapping` says what a member becomes in XML when it has no `[XmlElement]`, `[XmlAttribute]`, or `[XmlText]` attribute. Set it through `XmlSerializerOptions.DefaultPropertyMapping`.
 
-Describe how to use `XmlPropertyMapping` here.
+| Value | A member with no mapping attribute is written as |
+| --- | --- |
+| `Element` (default) | A child element. |
+| `Attribute` | An XML attribute when its type is a simple value. Objects and collections are still child elements. |
 
+Use `Attribute` for formats that put most values in attributes, so you don't have to annotate every property:
+
+```csharp
+var order = new PurchaseOrder
+{
+    Id = 1042,
+    Customer = "Contoso",
+    Placed = new DateOnly(2026, 3, 14),
+    Total = 129.90m,
+};
+
+var options = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    DefaultPropertyMapping = XmlPropertyMapping.Attribute,
+};
+
+string xml = XmlSerializer.Serialize(order, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<PurchaseOrder Id="1042" Customer="Contoso" Placed="2026-03-14" Total="129.90"/>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)

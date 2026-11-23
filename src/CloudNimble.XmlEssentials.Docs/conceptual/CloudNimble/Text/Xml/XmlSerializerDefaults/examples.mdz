@@ -1,9 +1,42 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Examples
+The following example shows what the strict defaults add to the general ones.
 
-Provide examples of using `XmlSerializerDefaults` here.
+### Compare the general and the strict defaults when reading
+
+The strict defaults change reading only. The following example reads a document with a repeated element, one with a comment, and one with an unknown element, first with the general defaults and then with the strict ones.
 
 ```csharp
-// Example code here
+string[] documents =
+[
+    "<InvoiceLine><Sku>KB-101</Sku><Sku>MS-220</Sku></InvoiceLine>",
+    "<InvoiceLine><!-- checked --><Sku>KB-101</Sku></InvoiceLine>",
+    "<InvoiceLine><Sku>KB-101</Sku><Colour>black</Colour></InvoiceLine>",
+];
+
+foreach (string xml in documents)
+{
+    InvoiceLine? line = XmlSerializer.Deserialize<InvoiceLine>(xml);
+    output.WriteLine($"General: {line!.Sku}");
+
+    try
+    {
+        XmlSerializer.Deserialize<InvoiceLine>(xml, XmlSerializerOptions.Strict);
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine($"Strict: {ex.Message}");
+    }
+}
 ```
 
+The code produces the following output:
+
+```text
+General: MS-220
+Strict: Duplicate property 'Sku'.
+General: KB-101
+Strict: Comments are not allowed.
+General: KB-101
+Strict: Unknown element 'Colour'.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/13_ConfigureOptions.cs)

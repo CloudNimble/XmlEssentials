@@ -1,8 +1,9 @@
 ---
 title: XmlIgnoreCondition
+description: "When a member is skipped during serialize or deserialize."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNilHandling']
 ---
 
 ## Definition
@@ -19,19 +20,75 @@ keywords: ['XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCo
 CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition
 ```
 
+## Summary
+
+When a member is skipped during serialize or deserialize.
+
+## Usage
+
+`XmlIgnoreCondition` says when a member is left out. Use it in two places: the `Condition` property of [`[XmlIgnore]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute), for one member, and `XmlSerializerOptions.DefaultIgnoreCondition`, for every member. It is the counterpart of `JsonIgnoreCondition`.
+
+| Value | The member is |
+| --- | --- |
+| `Never` | Always written and read. This is the default for `DefaultIgnoreCondition`. |
+| `Always` | Never written and never read. This is the default for `[XmlIgnore]`. |
+| `WhenWritingDefault` | Left out when its value is `null` or the default value of its type. |
+| `WhenWritingNull` | Left out when its value is `null`. |
+
+The following example serializes one object with each of the three values that make sense as a default:
+
+```csharp
+var order = new PurchaseOrder { Id = 1042 };
+
+var never = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(order, never));
+
+var whenNull = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
+};
+output.WriteLine(XmlSerializer.Serialize(order, whenNull));
+
+var whenDefault = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingDefault,
+};
+output.WriteLine(XmlSerializer.Serialize(order, whenDefault));
+```
+
+The code produces the following output:
+
+```xml
+<PurchaseOrder><Id>1042</Id><Customer xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/><Placed>0001-01-01</Placed><Total>0</Total></PurchaseOrder>
+<PurchaseOrder><Id>1042</Id><Placed>0001-01-01</Placed><Total>0</Total></PurchaseOrder>
+<PurchaseOrder><Id>1042</Id></PurchaseOrder>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/09_IgnoreProperties.cs)
+
+## Considerations
+
+- `Always` has an effect only on `[XmlIgnore]`. Setting `DefaultIgnoreCondition` to `Always` changes nothing: every member is still written.
+- `WhenWritingDefault` includes `null`. For a value type it compares with the default value, so `0`, `false`, and `0001-01-01` are left out. Be careful with it when a default value is meaningful to the reader of the XML.
+- A `null` collection wrapped with `[XmlArray]` is left out only by `WhenWritingNull`. With `WhenWritingDefault`, it is still written as a wrapper element marked `xsi:nil="true"`.
+- The two `WhenWriting` values don't affect reading. There are no conditions that apply to reading only.
+- A member that is left out can't be told apart from a member that was never set. If the reader needs to see an explicit `null`, keep `Never` and let the serializer write `xsi:nil="true"`. See [Handle null values](/guides/null-and-nil).
+- Collections follow their own rules for empty and `null`. See [Serialize collections](/guides/collections#empty-and-null-collections).
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Never` | 0 |  |
-| `Always` | 1 |  |
-| `WhenWritingDefault` | 2 |  |
-| `WhenWritingNull` | 3 |  |
+| `Never` | 0 | The member is always written and read. |
+| `Always` | 1 | The member is always ignored. |
+| `WhenWritingDefault` | 2 | Skip when the value equals the default for its type. |
+| `WhenWritingNull` | 3 | Skip when the value is null. |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlNilHandling
 

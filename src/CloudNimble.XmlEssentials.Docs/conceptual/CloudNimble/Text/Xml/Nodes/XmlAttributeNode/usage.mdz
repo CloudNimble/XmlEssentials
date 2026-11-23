@@ -1,9 +1,24 @@
-# Usage
+`XmlAttributeNode` is an attribute in the mutable tree: a `LocalName`, a `Value`, and, for an attribute in a namespace, a `NamespaceUri` and a `Prefix`. Attributes live in the `Attributes` list of an `XmlElementNode`.
+
+Most code doesn't create one directly. `XmlElementNode.SetAttribute` creates or updates an attribute, and `Attributes["name"]` returns the node so that you can read or change its `Value`. Construct an `XmlAttributeNode` yourself when you need to choose the prefix.
 
 ```csharp
-var attribute = new XmlAttributeNode("id", "1");
-element.Attributes.Add(attribute);
-attribute.Value = "2";
+var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""")!;
+
+order.SetAttribute("status", "shipped");
+order.SetAttribute("carrier", "Contoso Freight");
+order.Attributes["id"]!.Value = "1043";
+
+XmlAttributeNode draft = order.Attributes["draft"]!;
+order.Attributes.Remove(draft);
+
+output.WriteLine(order.ToString());
 ```
 
-Prefixed attributes take `namespaceUri` and `prefix`. `WriteTo` must run while a start tag is open.
+The code produces the following output:
+
+```xml
+<Order id="1043" status="shipped" carrier="Contoso Freight"/>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)

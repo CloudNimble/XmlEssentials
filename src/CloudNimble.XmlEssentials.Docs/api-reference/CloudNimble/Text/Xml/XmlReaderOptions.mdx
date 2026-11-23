@@ -1,8 +1,9 @@
 ---
 title: XmlReaderOptions
+description: "Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader)."
 icon: cubes
 tag: "SEALED"
-keywords: ['XmlReaderOptions', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `Utf8XmlReader`', '- `XmlCommentHandling`', '- `XmlWhitespaceHandling`', '- `XmlReaderState.Options`']
+keywords: ['XmlReaderOptions', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlReaderState', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlDocumentOptions']
 ---
 
 ## Definition
@@ -19,85 +20,143 @@ keywords: ['XmlReaderOptions', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNi
 CloudNimble.Text.Xml.XmlReaderOptions
 ```
 
+## Summary
+
+Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader).
+
 ## Usage
 
-# Usage
+Create the options, set the properties you need, and pass the value to a `Utf8XmlReader` constructor. The reader copies the options, so later changes to your variable don't affect it.
 
-Pass a constructed options struct into `Utf8XmlReader`:
+The most common use is a reader that reports data only, without comments and without the white space between elements:
 
 ```csharp
-var options = new XmlReaderOptions
+var dataOnly = new XmlReaderOptions
 {
-    MaxDepth = 32,
-    CommentHandling = XmlCommentHandling.Allow,
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
 };
-var reader = new Utf8XmlReader(utf8, options);
 ```
 
-Omit the argument for defaults: comments skipped, insignificant whitespace between elements skipped, a single root required, every max-* at `0` (table defaults).
+```csharp
+var reader = new Utf8XmlReader(utf8Xml, options);
+```
+
+The properties fall into three groups:
+
+| Group | Properties |
+| --- | --- |
+| What the reader reports | `CommentHandling`, `WhitespaceHandling` |
+| What counts as a document | `AllowMultipleRoots` |
+| Limits | `MaxDepth`, `MaxAttributeCount`, `MaxNameByteCount`, `MaxTextByteCount`, `MaxCommentByteCount`, `MaxDocumentByteCount` |
+
+When you read in blocks, the options travel in the [`XmlReaderState`](/api-reference/CloudNimble/Text/Xml/XmlReaderState): `new XmlReaderState(options)`.
+
+## Remarks
+
+A max-* of 0 means the default from the DoS table, except [XmlReaderOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#maxdocumentbytecount)
+which stays unbounded. Construct with `new XmlReaderOptions()` so
+[XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) defaults to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
 
 ## Examples
 
-# Examples
+Each example is a sample in the repository whose output is checked by a test.
 
-Strict comments and no insignificant whitespace:
+### Set limits
+
+Each call reads the same document with one limit lowered. The last call uses the defaults.
 
 ```csharp
-var options = new XmlReaderOptions
-{
-    CommentHandling = XmlCommentHandling.Disallow,
-    WhitespaceHandling = XmlWhitespaceHandling.None,
-};
+var xml = "<Order note=\"gift\" rush=\"true\"><Customer><Name>Ada Lovelace</Name></Customer></Order>"u8;
+
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxDepth = 2 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxAttributeCount = 1 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxNameByteCount = 4 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxTextByteCount = 8 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxDocumentByteCount = 64 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions()));
 ```
 
-A document fragment with two roots:
+```text
+XmlException: MaxDepth exceeded (2).
+XmlException: MaxAttributeCount exceeded (1).
+XmlException: MaxNameByteCount exceeded (4).
+XmlException: MaxTextByteCount exceeded (8).
+XmlException: MaxDocumentByteCount exceeded (64).
+Read 7 tokens.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
+
+### Read a fragment
 
 ```csharp
 var options = new XmlReaderOptions { AllowMultipleRoots = true };
-var reader = new Utf8XmlReader("<a/><b/>"u8, options);
+var reader = new Utf8XmlReader("<Item>Keyboard</Item><Item>Mouse</Item>"u8, options);
+while (reader.Read())
+{
+    if (reader.TokenType is XmlTokenType.Text)
+    {
+        output.WriteLine(reader.GetString());
+    }
+}
 ```
+
+```text
+Keyboard
+Mouse
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
 
 ## Best Practices
 
-# Best Practices
+- **Set `CommentHandling` to `Skip` and `WhitespaceHandling` to `Insignificant` when your code only wants data.** The defaults report comments and the white space between elements, which is what code that copies or edits a document needs.
+- **Leave the limits at their defaults unless you have a reason.** The defaults already protect against documents that nest too deep, carry too many attributes, or hold a name or a value that's too large.
+- **Set `MaxDocumentByteCount` for input you don't trust.** It's the one limit that's off by default.
+- **Lower `MaxDepth` when you know the shape of your documents.** A document format that nests five levels has no need for 64.
+- **Use `XmlCommentHandling.Disallow` and `XmlWhitespaceHandling.None` only for a strict contract** between programs, where a comment or indentation means that the producer is wrong.
 
-- Always write `new XmlReaderOptions()` when you need defaults, including when you set only `MaxDepth`.
-- Cap `MaxDepth` and `MaxNameByteCount` on untrusted input. Billion-laughs-style DTDs are already rejected; deep trees and huge names are not.
-- Leave `MaxDocumentByteCount` at 0 unless an upper layer (document parse, deserialize) will apply it.
-- Match comment and whitespace policy to the producer. SOAP and XHTML often need `CommentHandling.Skip` (the constructor default).
-
-## Patterns
-
-# Patterns
-
-**Trusted payload.** `new Utf8XmlReader(utf8)` with no options object.
-
-**Untrusted payload.** `new XmlReaderOptions { MaxDepth = 32, MaxTextByteCount = 1_048_576 }` and the other caps you care about.
-
-**Fragments.** `AllowMultipleRoots = true` for SOAP-style concatenations or test snippets without a wrapper element.
+See [Security](/guides/security) for how the limits fit together.
 
 ## Considerations
 
-# Considerations
+Know the following about the defaults and the limits.
 
-`XmlReaderOptions` is a struct. `new XmlReaderOptions()` runs the constructor and sets `CommentHandling` to `Skip`. `default(XmlReaderOptions)` leaves `CommentHandling` at `Disallow` (enum zero). Prefer `new`.
+### The defaults keep everything
 
-A max-* of `0` means “use the table default”:
+`new XmlReaderOptions()` and `default(XmlReaderOptions)` are the same value. `CommentHandling` is `Allow` and `WhitespaceHandling` is `Significant`, so the reader reports comments as `Comment` tokens and white-space-only text between elements as `Text` tokens. The XML specification asks a processor to pass all of a document's characters to the application, and XML that's read and written back then keeps its comments and layout. `XmlSerializerOptions` has the opposite defaults, because neither belongs in an object.
 
-| Property | When 0 |
+### A limit of 0 means the default
+
+| Property | When it's 0 |
 | --- | --- |
 | `MaxDepth` | 64 |
-| `MaxAttributeCount` | 1000 |
-| `MaxNameByteCount` | 1024 |
-| `MaxCommentByteCount` | 1,048,576 |
-| `MaxTextByteCount` | 16,777,216 |
-| `MaxDocumentByteCount` | unbounded (stays 0) |
+| `MaxAttributeCount` | 1,000 |
+| `MaxNameByteCount` | 1,024 bytes |
+| `MaxTextByteCount` | 16,777,216 bytes |
+| `MaxCommentByteCount` | 1,048,576 bytes |
+| `MaxDocumentByteCount` | No limit |
 
-`MaxDocumentByteCount` is stored on the options but is not enforced by `Utf8XmlReader` in this release.
+`MaxDocumentByteCount` is the exception: 0 means no limit. The reader checks it in its constructor, against the bytes read in earlier blocks plus the length of the block it's given.
+
+### What the limits count
+
+- `MaxAttributeCount` includes namespace declarations.
+- `MaxNameByteCount`, `MaxTextByteCount`, and `MaxCommentByteCount` are in UTF-8 bytes, not characters.
+- `MaxCommentByteCount` applies to comments that are skipped as well as to comments that are reported.
+- Exceeding a limit throws an `XmlException` whose message names the property and the limit, such as `MaxDepth exceeded (64).`
+
+### Where else the options apply
+
+These options are for `Utf8XmlReader`. `XmlDocument` and `XmlSerializer` have their own options types, `XmlDocumentOptions` and `XmlSerializerOptions`.
 
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options with [XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) set to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling)
+and every max-* at 0 (table defaults).
 
 #### Syntax
 
@@ -129,6 +188,9 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AllowMultipleRoots
 
+Gets or sets whether multiple top-level elements are allowed (document fragments).
+Default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
 #### Syntax
 
 ```csharp
@@ -140,6 +202,9 @@ public bool AllowMultipleRoots { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CommentHandling
+
+Gets or sets how comments are handled.
+Default is [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) when constructed with [XmlReaderOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#.ctor).
 
 #### Syntax
 
@@ -153,6 +218,9 @@ Type: `CloudNimble.Text.Xml.XmlCommentHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
 
+Gets or sets the maximum attributes on one element, including xmlns*.
+0 means 1000.
+
 #### Syntax
 
 ```csharp
@@ -164,6 +232,9 @@ public int MaxAttributeCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxCommentByteCount
+
+Gets or sets the maximum comment payload in UTF-8 bytes.
+0 means 1,048,576.
 
 #### Syntax
 
@@ -177,6 +248,9 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
 
+Gets or sets the maximum element depth.
+0 means 64.
+
 #### Syntax
 
 ```csharp
@@ -188,6 +262,9 @@ public int MaxDepth { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDocumentByteCount
+
+Gets or sets the maximum document size in bytes.
+0 means unbounded.
 
 #### Syntax
 
@@ -201,6 +278,9 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
 
+Gets or sets the maximum UTF-8 byte length of an element or attribute name.
+0 means 1024.
+
 #### Syntax
 
 ```csharp
@@ -213,6 +293,9 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
 
+Gets or sets the maximum UTF-8 byte length of a text or CDATA node.
+0 means 16,777,216.
+
 #### Syntax
 
 ```csharp
@@ -224,6 +307,9 @@ public int MaxTextByteCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
+
+Gets or sets how whitespace-only text between elements is handled.
+Default is [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
 
 #### Syntax
 
@@ -405,9 +491,11 @@ Type: `string?`
 
 ## Related APIs
 
-- # Related APIs
-- - `Utf8XmlReader`
-- - `XmlCommentHandling`
-- - `XmlWhitespaceHandling`
-- - `XmlReaderState.Options`
+- CloudNimble.Text.Xml.Utf8XmlReader
+- CloudNimble.Text.Xml.XmlReaderState
+- CloudNimble.Text.Xml.XmlCommentHandling
+- CloudNimble.Text.Xml.XmlWhitespaceHandling
+- CloudNimble.Text.Xml.XmlDocumentOptions
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlException
 

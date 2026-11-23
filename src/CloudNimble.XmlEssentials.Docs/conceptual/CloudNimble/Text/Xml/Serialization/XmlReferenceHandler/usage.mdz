@@ -1,5 +1,18 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Set `XmlSerializerOptions.ReferenceHandler` to tell the serializer what to do when an object graph holds the same object more than once. The property is `null` by default, which means every object is written each time it is met. The class corresponds to `ReferenceHandler` in System.Text.Json.
 
-Describe how to use `XmlReferenceHandler` here.
+| Handler | A repeated object is written as | Round trip restores the graph |
+| --- | --- | --- |
+| `null` (default) | A full copy. A cycle fails with `XmlException` when the writer reaches `MaxDepth`. | No |
+| `XmlReferenceHandler.Preserve` | An empty element with a `ref` attribute that points to the `id` of the first appearance. | Yes |
+| `XmlReferenceHandler.IgnoreCycles` | An empty element marked `xsi:nil="true"`. | No |
 
+```csharp
+var options = new XmlSerializerOptions
+{
+    ReferenceHandler = XmlReferenceHandler.Preserve,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+```
+
+The `id` and `ref` attributes are in the namespace `urn:CloudNimble.Text.Xml:refs`, which is available as `XmlNamespaces.Refs`. See [Preserve references](/guides/preserve-references) for the full article.

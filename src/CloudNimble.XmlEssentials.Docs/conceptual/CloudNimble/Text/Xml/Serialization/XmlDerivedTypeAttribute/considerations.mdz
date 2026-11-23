@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlDerivedTypeAttribute` here.
-
+- The type argument is checked by the compiler, which is why the attribute is generic. The serializer doesn't verify that `T` derives from the type the attribute is on, so keep the two in the same hierarchy.
+- The discriminator is always a string. `TypeDiscriminator` is typed as `object` to match the shape of `JsonDerivedTypeAttribute`, but there is no integer form.
+- When the discriminator is an element name, the element naming policy of the options is applied to it. When it is an attribute value, it is written as declared.
+- `Namespace` is not read by the serializer. A derived type's element is written in the namespace that is in scope.
+- In `System.Xml.Serialization`, the same job is done by `[XmlInclude(typeof(T))]`. In this library `[XmlInclude]` means something else: it opts a non-public member in to serialization.

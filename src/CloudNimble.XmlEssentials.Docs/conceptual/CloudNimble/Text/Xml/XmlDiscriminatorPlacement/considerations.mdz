@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlDiscriminatorPlacement` here.
-
+- `ElementName` changes the name of the element, so it suits a list or a member whose element name isn't fixed by a schema. An object of the base type itself keeps the member's own element name.
+- `Attribute` requires `XmlPolymorphicAttribute.TypeDiscriminatorPropertyName`. Without it, the serializer throws `NotSupportedException` when it builds the type's metadata. The attribute is in no namespace.
+- `XsiType` writes the discriminator string as the value of `xsi:type`, with no namespace prefix inside the value. It matches the attribute that `System.Xml.Serialization` writes, but the serializer doesn't resolve the value as a schema type name.
+- With `Attribute` and `XsiType`, the discriminator can be anywhere in the start tag. With `ElementName`, an element whose name isn't declared is treated as content that no member maps.
+- The placement is set for each base type, on its `[XmlPolymorphic]` attribute. `XmlSerializerOptions` has no property for it.

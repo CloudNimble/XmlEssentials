@@ -1,9 +1,79 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Examples
+### Preserve a cycle
 
-Provide examples of using `XmlReferenceHandler` here.
+An employee refers to a manager, and the manager lists the employee as a direct report. With `Preserve`, the cycle is written once and restored when the document is read.
 
 ```csharp
-// Example code here
+var tyler = new Employee { Name = "Tyler Stein" };
+var adrian = new Employee { Name = "Adrian King", Manager = tyler };
+tyler.DirectReports.Add(adrian);
+
+var options = new XmlSerializerOptions
+{
+    ReferenceHandler = XmlReferenceHandler.Preserve,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+string xml = XmlSerializer.Serialize(tyler, options);
+output.WriteLine(xml);
+
+Employee? copy = XmlSerializer.Deserialize<Employee>(xml, options);
+output.WriteLine(ReferenceEquals(copy, copy!.DirectReports[0].Manager));
 ```
 
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Employee xmlns:ns1="urn:CloudNimble.Text.Xml:refs" ns1:id="1">
+  <Name>Tyler Stein</Name>
+  <Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <DirectReports>
+    <Employee ns1:id="2">
+      <Name>Adrian King</Name>
+      <Manager ns1:ref="1"/>
+      <DirectReports/>
+    </Employee>
+  </DirectReports>
+</Employee>
+True
+```
+
+### Ignore a cycle
+
+With `IgnoreCycles`, the same graph is written without identifiers, and the member that would close the cycle is nil.
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    ReferenceHandler = XmlReferenceHandler.IgnoreCycles,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+string xml = XmlSerializer.Serialize(tyler, options);
+output.WriteLine(xml);
+
+Employee? copy = XmlSerializer.Deserialize<Employee>(xml, options);
+output.WriteLine(copy!.DirectReports[0].Manager is null);
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Employee>
+  <Name>Tyler Stein</Name>
+  <Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <DirectReports>
+    <Employee>
+      <Name>Adrian King</Name>
+      <Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+      <DirectReports/>
+    </Employee>
+  </DirectReports>
+</Employee>
+True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/17_PreserveReferences.cs)

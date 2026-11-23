@@ -1,9 +1,30 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Examples
+### Write null members as xsi:nil
 
-Provide examples of using `XmlNilHandling` here.
+With the default value, each `null` member is an empty element marked `xsi:nil="true"`, and the document reads back with the members `null`.
 
 ```csharp
-// Example code here
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var contact = new Contact { Name = "Ada", Nickname = null, Age = null };
+
+string xml = XmlSerializer.Serialize(contact, options);
+output.WriteLine(xml);
+
+Contact? copy = XmlSerializer.Deserialize<Contact>(xml, options);
+output.WriteLine($"Nickname is null: {copy!.Nickname is null}");
+output.WriteLine($"Age is null: {copy.Age is null}");
 ```
 
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Contact>
+  <Name>Ada</Name>
+  <Nickname xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <Age xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+</Contact>
+Nickname is null: True
+Age is null: True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/15_NullAndNil.cs)

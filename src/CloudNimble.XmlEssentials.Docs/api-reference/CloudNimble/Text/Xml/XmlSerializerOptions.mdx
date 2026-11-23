@@ -1,8 +1,9 @@
 ---
 title: XmlSerializerOptions
+description: "Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml', 'class']
+keywords: ['XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml', 'class', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializerDefaults', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.XmlPropertyMapping', 'CloudNimble.Text.Xml.XmlNilHandling']
 ---
 
 ## Definition
@@ -17,9 +18,180 @@ keywords: ['XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializerOptions', 
 CloudNimble.Text.Xml.XmlSerializerOptions
 ```
 
+## Summary
+
+Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`.
+
+## Usage
+
+`XmlSerializerOptions` holds the settings that control how [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) writes and reads XML: names, indentation, null handling, limits, converters, and where type metadata comes from. It is the counterpart of `JsonSerializerOptions`.
+
+Create an instance once, set its properties in the initializer, and pass the same instance to every call:
+
+```csharp
+private static readonly XmlSerializerOptions s_compact = new()
+{
+    OmitXmlDeclaration = true,
+    PropertyNamingPolicy = XmlNamingPolicy.CamelCase,
+};
+```
+
+```csharp
+output.WriteLine(XmlSerializer.Serialize(new InvoiceLine { Sku = "KB-101", Quantity = 2 }, s_compact));
+output.WriteLine(XmlSerializer.Serialize(new InvoiceCustomer { Name = "Contoso", Email = "ap@contoso.example" }, s_compact));
+```
+
+The code produces the following output:
+
+```xml
+<invoiceLine><sku>KB-101</sku><quantity>2</quantity></invoiceLine>
+<invoiceCustomer><name>Contoso</name><email>ap@contoso.example</email></invoiceCustomer>
+```
+
+There are three ways to get an instance:
+
+- `new XmlSerializerOptions()` for the general defaults, or `new XmlSerializerOptions(XmlSerializerDefaults.Web)` and `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` for the other two sets.
+- `new XmlSerializerOptions(existing)` to copy an instance and change the copy.
+- The shared, read-only instances `XmlSerializerOptions.Default`, `XmlSerializerOptions.Web`, and `XmlSerializerOptions.Strict`.
+
+An instance becomes read-only the first time it is used, or when you call `MakeReadOnly`. Every option, with its default, is listed in [Configure XmlSerializerOptions](/guides/configure-options).
+
+## Remarks
+
+An instance becomes read-only the first time it is used to serialize or deserialize, or when
+[XmlSerializerOptions.MakeReadOnly](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#makereadonly) is called. Create one instance and reuse it: the converters and type info it
+resolves are cached on the instance.
+
+## Examples
+
+The following examples show the three ways to get an options instance and what happens once an instance is in use.
+
+### Use the built-in instances
+
+```csharp
+var line = new InvoiceLine { Sku = "KB-101", Quantity = 2 };
+
+output.WriteLine(XmlSerializer.Serialize(line, XmlSerializerOptions.Default));
+output.WriteLine(XmlSerializer.Serialize(line, XmlSerializerOptions.Web));
+output.WriteLine(XmlSerializer.Serialize(line, XmlSerializerOptions.Strict));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine>
+<invoiceLine><sku>KB-101</sku><quantity>2</quantity></invoiceLine>
+<?xml version="1.0" encoding="utf-8"?><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine>
+```
+
+### Start from a set of defaults and copy an instance
+
+```csharp
+var web = new XmlSerializerOptions(XmlSerializerDefaults.Web)
+{
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+var line = new InvoiceLine { Sku = "KB-101", Quantity = 2 };
+output.WriteLine(XmlSerializer.Serialize(line, web));
+
+var flat = new XmlSerializerOptions(web) { WriteIndented = false };
+output.WriteLine($"Source is read-only: {web.IsReadOnly}. Copy is read-only: {flat.IsReadOnly}.");
+output.WriteLine(XmlSerializer.Serialize(line, flat));
+```
+
+The code produces the following output:
+
+```text
+<invoiceLine>
+  <sku>KB-101</sku>
+  <quantity>2</quantity>
+</invoiceLine>
+Source is read-only: True. Copy is read-only: False.
+<invoiceLine><sku>KB-101</sku><quantity>2</quantity></invoiceLine>
+```
+
+### See when an instance becomes read-only
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine($"Before first use: {options.IsReadOnly}");
+
+XmlSerializer.Serialize(new InvoiceLine { Sku = "KB-101", Quantity = 2 }, options);
+output.WriteLine($"After first use: {options.IsReadOnly}");
+
+try
+{
+    options.WriteIndented = true;
+}
+catch (InvalidOperationException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+var frozen = new XmlSerializerOptions();
+frozen.MakeReadOnly();
+output.WriteLine($"After MakeReadOnly: {frozen.IsReadOnly}");
+```
+
+The code produces the following output:
+
+```text
+Before first use: False
+After first use: True
+This XmlSerializerOptions instance is read-only.
+After MakeReadOnly: True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/13_ConfigureOptions.cs)
+
+## Best Practices
+
+- **Create options once.** Keep each instance in a `static readonly` field or a singleton. Never create one per call: the type metadata is cached on the instance, and a new instance starts with none.
+- **Set everything in the initializer.** An instance can't be changed after its first use, so finish configuring it where you create it.
+- **Use the same instance to read and to write.** Naming policies, the default property mapping, and the default namespace change the names the serializer looks for when it reads.
+- **Call `MakeReadOnly` before you share an instance** with code that might otherwise change it before its first use.
+- **Copy at startup, not per call.** A copy shares none of the source's cached metadata.
+- **Set `NewLine` when the output must be identical on every operating system.** Its default is `Environment.NewLine`, and it is used only when `WriteIndented` is `true`.
+- **Start from `XmlSerializerOptions.Strict` for XML you don't control,** and set `MaxDocumentByteCount`. See [Security](/guides/security).
+
+## Considerations
+
+An options instance carries a cache as well as settings, which explains most of what follows.
+
+### Read-only after first use
+
+Serializing, deserializing, or calling `GetTypeInfo` or `TryGetTypeInfo` makes the instance read-only. From then on every setter throws an `InvalidOperationException` with the message `This XmlSerializerOptions instance is read-only.`, and so do changes to `Converters` and `TypeInfoResolverChain`. The three static instances are read-only from the start. To change a read-only instance, copy it with `new XmlSerializerOptions(existing)`.
+
+### The cache lives on the instance
+
+Each instance caches the converter and the type metadata for every type it has been used with. In the library's benchmark of a customer object with two addresses and 20 line items, a write with a new instance takes 612,933 ns and allocates 75,440 bytes, against 1,710 ns and no allocation with a cached instance. See [Benchmarks](/benchmarks). The cache is never trimmed, so an application that keeps creating instances also keeps their metadata alive for as long as it holds them.
+
+### Zero means the built-in default
+
+`IndentSize`, `DefaultBufferSize`, and the `Max*` limits are `0` on a new instance. For each of them, `0` selects the built-in value: an indent of 2, a 16,384-byte buffer, a depth of 64, 1,000 attributes, 1,024 bytes for a name, 16,777,216 bytes for a text value, and 1,048,576 bytes for a comment. `MaxDocumentByteCount` is the exception: `0` means no limit.
+
+### Options that have no effect
+
+The serializer doesn't read `AllowOutOfOrderMetadataProperties`, `InferClosedTypePolymorphism`, `PreferredObjectCreationHandling`, `RespectNullableAnnotations`, or `UnknownTypeHandling` in version 1.0. They can be set and copied, but they change nothing.
+
+### Differences from JsonSerializerOptions
+
+- `XmlSerializerDefaults.Web` sets only `PropertyNamingPolicy` to camelCase and `OmitXmlDeclaration` to `true`. It doesn't turn on case-insensitive matching.
+- `RespectRequiredConstructorParameters` defaults to `true`.
+- There are three naming policies for members instead of one: `PropertyNamingPolicy`, and `ElementNamingPolicy` and `AttributeNamingPolicy`, which override it for their kind of name.
+- XML has options that JSON has no use for, such as `DefaultPropertyMapping`, `NilHandling`, `DefaultNamespace`, `OmitXmlDeclaration`, and `XmlVersion`.
+
+### Thread safety
+
+A read-only instance is meant to be shared between threads. See [Thread safety](/guides/thread-safety).
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options with the general defaults.
 
 #### Syntax
 
@@ -28,6 +200,8 @@ public XmlSerializerOptions()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates options from a named default set.
 
 #### Syntax
 
@@ -39,9 +213,11 @@ public XmlSerializerOptions(CloudNimble.Text.Xml.XmlSerializerDefaults defaults)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `defaults` | `CloudNimble.Text.Xml.XmlSerializerDefaults` | - |
+| `defaults` | `CloudNimble.Text.Xml.XmlSerializerDefaults` | The default set. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Copies *options*. The copy is not read-only and shares no cached state with the source.
 
 #### Syntax
 
@@ -53,7 +229,7 @@ public XmlSerializerOptions(CloudNimble.Text.Xml.XmlSerializerOptions options)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The source. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -69,6 +245,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AllowDuplicateProperties
 
+Gets or sets whether duplicate properties are allowed on deserialize.
+
 #### Syntax
 
 ```csharp
@@ -80,6 +258,8 @@ public bool AllowDuplicateProperties { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AllowOutOfOrderMetadataProperties
+
+Gets or sets whether metadata properties may arrive out of order.
 
 #### Syntax
 
@@ -93,6 +273,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeNamingPolicy
 
+Gets or sets the naming policy for attributes, falling back to [XmlSerializerOptions.PropertyNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#propertynamingpolicy).
+
 #### Syntax
 
 ```csharp
@@ -104,6 +286,8 @@ public CloudNimble.Text.Xml.XmlNamingPolicy AttributeNamingPolicy { get; set; }
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Converters
+
+Gets the converter list. Looked up before [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) on the type and before the built-in converters.
 
 #### Syntax
 
@@ -117,6 +301,8 @@ Type: `System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.XmlCo
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Default
 
+Gets a read-only instance with the general defaults.
+
 #### Syntax
 
 ```csharp
@@ -128,6 +314,8 @@ public static CloudNimble.Text.Xml.XmlSerializerOptions Default { get; }
 Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultBufferSize
+
+Gets or sets the size of the first buffer rented when serializing. 0 means 16384.
 
 #### Syntax
 
@@ -141,6 +329,8 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultIgnoreCondition
 
+Gets or sets when members are ignored.
+
 #### Syntax
 
 ```csharp
@@ -152,6 +342,8 @@ public CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition DefaultIgnoreCondit
 Type: `CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultNamespace
+
+Gets or sets the default namespace of the document element.
 
 #### Syntax
 
@@ -165,6 +357,8 @@ Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultPropertyMapping
 
+Gets or sets how unannotated properties are mapped.
+
 #### Syntax
 
 ```csharp
@@ -175,7 +369,17 @@ public CloudNimble.Text.Xml.XmlPropertyMapping DefaultPropertyMapping { get; set
 
 Type: `CloudNimble.Text.Xml.XmlPropertyMapping`
 
+#### Remarks
+
+The default is [XmlPropertyMapping.Element](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping): public properties become child elements,
+matching JSON properties in System.Text.Json. Set [XmlPropertyMapping.Attribute](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping) to write
+unannotated simple members as XML attributes without annotating each one. Nested objects and
+collections stay elements. `[XmlElement]`, `[XmlAttribute]`, and `[XmlText]` override
+this per member.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DictionaryKeyPolicy
+
+Gets or sets the naming policy for dictionary keys.
 
 #### Syntax
 
@@ -189,6 +393,8 @@ Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementNamingPolicy
 
+Gets or sets the naming policy for elements, falling back to [XmlSerializerOptions.PropertyNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#propertynamingpolicy).
+
 #### Syntax
 
 ```csharp
@@ -200,6 +406,8 @@ public CloudNimble.Text.Xml.XmlNamingPolicy ElementNamingPolicy { get; set; }
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmitByteOrderMark
+
+Gets or sets whether to emit a UTF-8 BOM.
 
 #### Syntax
 
@@ -213,6 +421,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumHandling
 
+Gets or sets how enums are written.
+
 #### Syntax
 
 ```csharp
@@ -224,6 +434,8 @@ public CloudNimble.Text.Xml.XmlEnumHandling EnumHandling { get; set; }
 Type: `CloudNimble.Text.Xml.XmlEnumHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyFields
+
+Gets or sets whether read-only fields are ignored.
 
 #### Syntax
 
@@ -237,6 +449,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyProperties
 
+Gets or sets whether read-only properties are ignored.
+
 #### Syntax
 
 ```csharp
@@ -248,6 +462,8 @@ public bool IgnoreReadOnlyProperties { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IncludeFields
+
+Gets or sets whether public fields are included.
 
 #### Syntax
 
@@ -261,6 +477,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentCharacter
 
+Gets or sets the indent character.
+
 #### Syntax
 
 ```csharp
@@ -272,6 +490,8 @@ public char IndentCharacter { get; set; }
 Type: `char`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentSize
+
+Gets or sets the indent size. 0 means 2.
 
 #### Syntax
 
@@ -285,6 +505,8 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InferClosedTypePolymorphism
 
+Gets or sets whether closed generic polymorphism is inferred.
+
 #### Syntax
 
 ```csharp
@@ -296,6 +518,8 @@ public bool InferClosedTypePolymorphism { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsReadOnly
+
+Gets whether this instance can no longer be changed.
 
 #### Syntax
 
@@ -309,6 +533,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
 
+Gets or sets the maximum attributes on one element. 0 means 1000.
+
 #### Syntax
 
 ```csharp
@@ -320,6 +546,8 @@ public int MaxAttributeCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxCommentByteCount
+
+Gets or sets the maximum comment payload. 0 means 1,048,576.
 
 #### Syntax
 
@@ -333,6 +561,8 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
 
+Gets or sets the maximum element depth. 0 means 64.
+
 #### Syntax
 
 ```csharp
@@ -344,6 +574,8 @@ public int MaxDepth { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDocumentByteCount
+
+Gets or sets the maximum document size. 0 stays unbounded.
 
 #### Syntax
 
@@ -357,6 +589,8 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
 
+Gets or sets the maximum name length. 0 means 1024.
+
 #### Syntax
 
 ```csharp
@@ -368,6 +602,8 @@ public int MaxNameByteCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
+
+Gets or sets the maximum text node. 0 means 16,777,216.
 
 #### Syntax
 
@@ -381,6 +617,8 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
 
+Gets or sets the newline used when indented.
+
 #### Syntax
 
 ```csharp
@@ -392,6 +630,8 @@ public string NewLine { get; set; }
 Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NilHandling
+
+Gets or sets how null values are written.
 
 #### Syntax
 
@@ -405,6 +645,8 @@ Type: `CloudNimble.Text.Xml.XmlNilHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NumberHandling
 
+Gets or sets whether `INF`, `-INF` and `NaN` are read and written.
+
 #### Syntax
 
 ```csharp
@@ -416,6 +658,8 @@ public CloudNimble.Text.Xml.Serialization.XmlNumberHandling NumberHandling { get
 Type: `CloudNimble.Text.Xml.Serialization.XmlNumberHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
+
+Gets or sets whether the XML declaration is omitted.
 
 #### Syntax
 
@@ -429,6 +673,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PreferredObjectCreationHandling
 
+Gets or sets how objects are created when populating an existing instance.
+
 #### Syntax
 
 ```csharp
@@ -440,6 +686,8 @@ public CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling PreferredObj
 Type: `CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyNameCaseInsensitive
+
+Gets or sets whether property names are compared case-insensitively.
 
 #### Syntax
 
@@ -453,6 +701,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyNamingPolicy
 
+Gets or sets the fallback naming policy for properties, elements, and attributes.
+
 #### Syntax
 
 ```csharp
@@ -464,6 +714,8 @@ public CloudNimble.Text.Xml.XmlNamingPolicy PropertyNamingPolicy { get; set; }
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReadCommentHandling
+
+Gets or sets how comments are handled when deserializing.
 
 #### Syntax
 
@@ -477,6 +729,8 @@ Type: `CloudNimble.Text.Xml.XmlCommentHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceHandler
 
+Gets or sets the reference handler.
+
 #### Syntax
 
 ```csharp
@@ -488,6 +742,8 @@ public CloudNimble.Text.Xml.Serialization.XmlReferenceHandler ReferenceHandler {
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RespectNullableAnnotations
+
+Gets or sets whether nullable annotations are respected.
 
 #### Syntax
 
@@ -501,6 +757,9 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RespectRequiredConstructorParameters
 
+Gets or sets whether missing required constructor parameters throw.
+Default is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
 #### Syntax
 
 ```csharp
@@ -512,6 +771,8 @@ public bool RespectRequiredConstructorParameters { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Strict
+
+Gets a read-only instance with the strict defaults.
 
 #### Syntax
 
@@ -525,6 +786,8 @@ Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeInfoResolver
 
+Gets or sets the resolver that supplies [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo).
+
 #### Syntax
 
 ```csharp
@@ -535,7 +798,15 @@ public CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver TypeInfoResolver 
 
 Type: `CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver?`
 
+#### Remarks
+
+When none has been set, this is [DefaultXmlTypeInfoResolver.Instance](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver#instance) if
+[XmlSerializer.IsReflectionEnabledByDefault](/api-reference/CloudNimble/Text/Xml/XmlSerializer#isreflectionenabledbydefault) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) and
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) otherwise. [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) is a view of this resolver.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeInfoResolverChain
+
+Gets the resolvers that make up [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver), in the order they are asked.
 
 #### Syntax
 
@@ -547,7 +818,14 @@ public System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.IXmlT
 
 Type: `System.Collections.Generic.IList<CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver>`
 
+#### Remarks
+
+The list is empty until a resolver has been set. Changing the list makes it the
+[XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver); setting [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) replaces the list's content.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnknownTypeHandling
+
+Gets or sets how [Object](https://learn.microsoft.com/dotnet/api/system.object) members without a converter are materialized.
 
 #### Syntax
 
@@ -561,6 +839,8 @@ Type: `CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnmappedMemberHandling
 
+Gets or sets how unmapped members are treated.
+
 #### Syntax
 
 ```csharp
@@ -572,6 +852,8 @@ public CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling UnmappedMemb
 Type: `CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Web
+
+Gets a read-only instance with the web defaults (camelCase, no declaration).
 
 #### Syntax
 
@@ -585,6 +867,8 @@ Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
 
+Gets or sets whitespace handling forwarded to the reader on deserialize.
+
 #### Syntax
 
 ```csharp
@@ -597,6 +881,8 @@ Type: `CloudNimble.Text.Xml.XmlWhitespaceHandling`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteIndented
 
+Gets or sets whether output is indented.
+
 #### Syntax
 
 ```csharp
@@ -608,6 +894,8 @@ public bool WriteIndented { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> XmlVersion
+
+Gets or sets the XML version written in the declaration.
 
 #### Syntax
 
@@ -664,6 +952,8 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetConverter
 
+Returns the converter for *typeToConvert*.
+
 #### Syntax
 
 ```csharp
@@ -674,11 +964,24 @@ public CloudNimble.Text.Xml.Serialization.XmlConverter GetConverter(System.Type 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `typeToConvert` | `System.Type` | - |
+| `typeToConvert` | `System.Type` | The CLR type. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlConverter`
+The converter.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | No converter handles *typeToConvert*. |
+| `InvalidOperationException` | An [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) or converter factory is misconfigured. |
+
+#### Remarks
+
+The first match wins: [XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters) in list order, then [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute)
+on the type, then the built-in converters.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -710,6 +1013,8 @@ Type: `System.Type`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo
 
+Returns the type info for *type* and makes this instance read-only.
+
 #### Syntax
 
 ```csharp
@@ -720,13 +1025,23 @@ public CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(System.Type ty
 
 | Name | Type | Description |
 |------|------|-------------|
-| `type` | `System.Type` | - |
+| `type` | `System.Type` | The CLR type. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`
+The type info.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *type*. |
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo
+
+Returns the type info for *T* and makes this instance read-only.
 
 #### Syntax
 
@@ -737,8 +1052,22 @@ public CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> GetTypeInfo<T>()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>`
+The type info.
+
+#### Type Parameters
+
+- `T` - The CLR type.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *T*. |
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MakeReadOnly
+
+Makes this instance read-only. Every setter and both lists throw [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception) afterwards.
 
 #### Syntax
 
@@ -797,6 +1126,8 @@ Type: `string?`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetTypeInfo
 
+Tries to get the type info for *type*, and makes this instance read-only.
+
 #### Syntax
 
 ```csharp
@@ -807,14 +1138,23 @@ public bool TryGetTypeInfo(System.Type type, out CloudNimble.Text.Xml.Serializat
 
 | Name | Type | Description |
 |------|------|-------------|
-| `type` | `System.Type` | - |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?` | - |
+| `type` | `System.Type` | The CLR type. |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?` | When this method returns [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the type info. |
 
 #### Returns
 
 Type: `bool`
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) when [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *type*.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetTypeInfo
+
+Tries to get the type info for *T*, and makes this instance read-only.
 
 #### Syntax
 
@@ -826,9 +1166,38 @@ public bool TryGetTypeInfo<T>(out CloudNimble.Text.Xml.Serialization.XmlTypeInfo
 
 | Name | Type | Description |
 |------|------|-------------|
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>?` | - |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>?` | When this method returns [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the type info. |
 
 #### Returns
 
 Type: `bool`
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) when [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) has no type info for *T*.
+
+#### Type Parameters
+
+- `T` - The CLR type.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | No resolver is set and reflection is disabled. |
+
+## Related APIs
+
+- CloudNimble.Text.Xml.XmlSerializer
+- CloudNimble.Text.Xml.XmlSerializerDefaults
+- CloudNimble.Text.Xml.XmlNamingPolicy
+- CloudNimble.Text.Xml.XmlPropertyMapping
+- CloudNimble.Text.Xml.XmlNilHandling
+- CloudNimble.Text.Xml.XmlEnumHandling
+- CloudNimble.Text.Xml.XmlCommentHandling
+- CloudNimble.Text.Xml.XmlWhitespaceHandling
+- CloudNimble.Text.Xml.XmlVersion
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition
+- CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
+- CloudNimble.Text.Xml.Serialization.XmlNumberHandling
+- CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
+- CloudNimble.Text.Xml.Serialization.XmlConverter
+- CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver
 

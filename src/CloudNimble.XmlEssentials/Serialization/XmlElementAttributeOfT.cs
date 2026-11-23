@@ -4,9 +4,11 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Maps a member to a child element of type <typeparamref name="T"/>.
+    /// Specifies that a member is serialized as a child element of type <typeparamref name="T"/>. This class cannot be inherited.
     /// </summary>
-    /// <typeparam name="T">The CLR type written with this element name.</typeparam>
+    /// <typeparam name="T">
+    /// The type that is serialized with the element name.
+    /// </typeparam>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public sealed class XmlElementAttribute<T> : XmlElementAttribute
     {
@@ -21,26 +23,38 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Constructors
 
         /// <summary>
-        /// Creates the attribute with the member name as the element name.
+        /// Initializes a new instance of the <see cref="XmlElementAttribute{T}"/> class that uses the member name as the element name.
         /// </summary>
         public XmlElementAttribute()
         {
         }
 
         /// <summary>
-        /// Creates the attribute.
+        /// Initializes a new instance of the <see cref="XmlElementAttribute{T}"/> class with the specified element name.
         /// </summary>
-        /// <param name="elementName">The element local name.</param>
+        /// <param name="elementName">The local name of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="elementName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="elementName"/> is empty or consists only of white-space characters.
+        /// </exception>
         public XmlElementAttribute(string elementName)
             : base(elementName)
         {
         }
 
         /// <summary>
-        /// Creates the attribute.
+        /// Initializes a new instance of the <see cref="XmlElementAttribute{T}"/> class with the specified element name and namespace.
         /// </summary>
-        /// <param name="elementName">The element local name.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="elementName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element, or <see langword="null"/> to write the element with an unqualified name.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="elementName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="elementName"/> is empty or consists only of white-space characters.
+        /// </exception>
         public XmlElementAttribute(string elementName, string? namespaceUri)
             : base(elementName, namespaceUri)
         {

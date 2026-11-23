@@ -1,15 +1,9 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
+Provide examples of using `XmlCommentHandling` here.
+
 ```csharp
-var xml = "<!-- note --><e/>"u8;
-
-var skip = new Utf8XmlReader(xml); // constructor default: Skip
-skip.Read(); // StartElement e
-
-var allow = new Utf8XmlReader(xml, new XmlReaderOptions
-{
-    CommentHandling = XmlCommentHandling.Allow,
-});
-allow.Read(); // Comment
-Console.WriteLine(allow.GetComment()); // " note "
+// Example code here
 ```
+

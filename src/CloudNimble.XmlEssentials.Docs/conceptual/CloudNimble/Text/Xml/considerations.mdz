@@ -1,9 +1,10 @@
-# Considerations
+- **UTF-8 only.** A document that declares another encoding is rejected with an `XmlException`. Transcode it first.
+- **No DTDs.** A document type declaration is rejected, so a document can't define entities. Only the five predefined entities and character references are decoded. See [Security](/guides/security).
+- **XML 1.0 and XML 1.1.** The reader takes the version from the XML declaration and applies that version's rules. The writer writes the version you set in `XmlWriterOptions.Version`.
+- **Namespaces are always processed.** Names are reported as a local name and a namespace URI. An element without a prefix is in the default namespace. An attribute without a prefix is in no namespace.
+- **Empty elements have no end token.** `Utf8XmlReader` reports `<e/>` as one `StartElement` token with `IsEmptyElement` set.
+- **Typed values use XML Schema forms.** Numbers, dates, durations, and Booleans are read and written in their XML Schema lexical forms with the invariant culture.
+- **The names match `System.Xml` in places, the types don't.** `XmlDocument`, `XmlElement`, `XmlSerializer`, and `XmlException` in this namespace are different types from those in `System.Xml`. Avoid importing both namespaces in one file, or use an alias.
+- **Thread safety differs by type.** See [Thread safety](/guides/thread-safety).
 
-- `Utf8XmlReader` is a `ref struct`. It cannot be stored on the heap, captured by a lambda, or used across `await`.
-- Empty elements (`<e/>`) are a start tag with `IsEmptyElement` true. The reader does not emit a matching end tag.
-- `xmlns` attributes bind before the element's own name is resolved. Unprefixed attributes are in no namespace; unprefixed elements use the default xmlns. Duplicate attributes are `{local name, namespace URI}`.
-- The XML declaration, when present, must be the first token after an optional BOM.
-- DTDs (`<!DOCTYPE`, `<!ENTITY`, and other `<!` markup that is not a comment or CDATA) throw `XmlException`.
-- `default(XmlReaderOptions)` is not the same as `new XmlReaderOptions()`: the struct zero-value for comments is `Disallow`; the constructor default is `Skip`. The same constructor pitfall applies to `XmlDocumentOptions`.
-- `XmlDocument` is pooled. Dispose it. `XmlElement` cursors are invalid after dispose. Mutate with `CloudNimble.Text.Xml.Nodes`.
+For what the library accepts and rejects, see [XML conformance](/guides/xml-conformance).

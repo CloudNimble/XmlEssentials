@@ -1,5 +1,41 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
+Keep the following in mind when you choose overloads and when you compare `XmlSerializer` with the serializers you already know.
 
-Document considerations for `XmlSerializer` here.
+### Reflection and trimming
 
+The overloads that take `XmlSerializerOptions` find members and constructors through reflection. They are annotated with `RequiresUnreferencedCode` and `RequiresDynamicCode`, so the compiler warns when a trimmed or Native AOT application calls them. The overloads that take an `XmlTypeInfo<TValue>` or an `XmlSerializerContext` aren't annotated. `XmlSerializer.IsReflectionEnabledByDefault` reports whether options with no resolver fall back to reflection. When it is `false` and no resolver is set, the reflection overloads throw an `InvalidOperationException`.
+
+### Cost of the first call
+
+The first call for a type with a given options instance builds the type's XML mapping. In the library's benchmark of a customer object with two addresses and 20 line items, that first write takes 612,933 ns and allocates 75,440 bytes. Later writes with the same options take 1,710 ns and allocate nothing. The cached `System.Xml.Serialization.XmlSerializer` takes 4,089 ns and allocates 8,648 bytes for the same object, and `System.Text.Json` takes 1,502 ns for the equivalent JSON. See [Benchmarks](/benchmarks).
+
+### Buffering
+
+- `Serialize` to a `string` or a `byte[]`, and `SerializeAsync` to a `Stream`, build the whole document in a pooled buffer first. `SerializeAsync` then writes it to the stream in one asynchronous write.
+- `Deserialize` and `DeserializeAsync` from a `Stream` or a `PipeReader` read to the end into a pooled buffer before parsing. `MaxDocumentByteCount` limits how much is read.
+- `Deserialize` from an `XmlElement` or an `XmlNode` writes that element to a pooled buffer and reads it back.
+- To process a large document without holding it all in memory, use `SerializeAsyncEnumerable` and `DeserializeAsyncEnumerable`. See [Streaming](/guides/streaming).
+
+### Differences from System.Text.Json
+
+- `Serialize<object>(value)` doesn't serialize the run-time type. It throws a `NotSupportedException`. Use the overload that takes a `Type`.
+- Constructor parameters are matched to members with case unless `PropertyNameCaseInsensitive` is `true`. See [Immutable types](/guides/immutable-types).
+- `RespectRequiredConstructorParameters` defaults to `true`.
+- A `null` member is written as an element marked `xsi:nil="true"` by default, because XML has no `null` literal.
+- A collection is written as repeated elements, and a document has exactly one root element.
+
+### Differences from System.Xml.Serialization.XmlSerializer
+
+- There is no instance to construct and cache per type.
+- Only the attributes in `CloudNimble.Text.Xml.Serialization` are read. Attributes from `System.Xml.Serialization`, `IXmlSerializable`, and data contract attributes are ignored.
+- Collections have no wrapper element unless you add `[XmlArray]`.
+- Input and output are UTF-8. The library doesn't reference `System.Xml`.
+
+See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer).
+
+### Exceptions
+
+`Deserialize` throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException) for XML that isn't well formed and for XML that doesn't satisfy the type. A type whose mapping is not valid, such as one with `[XmlAttribute]` on an object member or with two members that share an element name, throws a `NotSupportedException` or an `InvalidOperationException` the first time the type is used, for serializing as well as deserializing.
+
+### Thread safety
+
+The methods are static and keep no state between calls. See [Thread safety](/guides/thread-safety).

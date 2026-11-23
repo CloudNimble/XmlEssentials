@@ -1,13 +1,87 @@
-# Examples
+### Limit untrusted input
 
-Cap an untrusted payload:
+A limit that is exceeded throws an `XmlException` whose message names the limit.
 
 ```csharp
-using var document = XmlDocument.Parse(stream, new XmlDocumentOptions
+var options = new XmlDocumentOptions
 {
-    MaxDocumentByteCount = 64 * 1024,
-    MaxDepth = 16,
-});
+    MaxDepth = 2,
+    MaxDocumentByteCount = 64,
+};
+
+try
+{
+    using XmlDocument tooDeep = XmlDocument.Parse("<a><b><c/></b></a>", options);
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+try
+{
+    using XmlDocument tooLarge = XmlDocument.Parse($"<a>{new string('x', 100)}</a>", options);
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
 ```
 
-Keep insignificant whitespace as text nodes with `WhitespaceHandling = XmlWhitespaceHandling.All`.
+The code produces the following output:
+
+```text
+MaxDepth exceeded (2).
+MaxDocumentByteCount exceeded (64).
+```
+
+### Leave out white space between elements
+
+By default the indentation of a document is kept as `Text` nodes. `Insignificant` leaves it out.
+
+```csharp
+const string xml = """
+    <Order>
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+    </Order>
+    """;
+
+using (XmlDocument document = XmlDocument.Parse(xml))
+{
+    XmlElement order = document.RootElement;
+    output.WriteLine($"Significant (the default): {CountChildren(order)} children");
+    foreach (XmlElement child in order.EnumerateChildren())
+    {
+        output.WriteLine($"  {child.ValueKind}");
+    }
+
+    output.WriteLine($"  Text of the root: '{order.GetString()!.Replace("\n", "\\n")}'");
+    output.WriteLine($"  Text of the first Item: '{order.GetChild("Item").GetString()}'");
+}
+
+var options = new XmlDocumentOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant };
+using (XmlDocument document = XmlDocument.Parse(xml, options))
+{
+    XmlElement order = document.RootElement;
+    output.WriteLine($"Insignificant: {CountChildren(order)} children");
+    output.WriteLine($"  Text of the root: '{order.GetString()}'");
+}
+```
+
+The code produces the following output:
+
+```text
+Significant (the default): 5 children
+  Text
+  Element
+  Text
+  Element
+  Text
+  Text of the root: '\n  Keyboard\n  Mouse\n'
+  Text of the first Item: 'Keyboard'
+Insignificant: 2 children
+  Text of the root: 'KeyboardMouse'
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)

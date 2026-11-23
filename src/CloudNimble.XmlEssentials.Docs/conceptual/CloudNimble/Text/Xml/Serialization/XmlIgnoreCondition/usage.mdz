@@ -1,5 +1,41 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlIgnoreCondition` says when a member is left out. Use it in two places: the `Condition` property of [`[XmlIgnore]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute), for one member, and `XmlSerializerOptions.DefaultIgnoreCondition`, for every member. It is the counterpart of `JsonIgnoreCondition`.
 
-Describe how to use `XmlIgnoreCondition` here.
+| Value | The member is |
+| --- | --- |
+| `Never` | Always written and read. This is the default for `DefaultIgnoreCondition`. |
+| `Always` | Never written and never read. This is the default for `[XmlIgnore]`. |
+| `WhenWritingDefault` | Left out when its value is `null` or the default value of its type. |
+| `WhenWritingNull` | Left out when its value is `null`. |
 
+The following example serializes one object with each of the three values that make sense as a default:
+
+```csharp
+var order = new PurchaseOrder { Id = 1042 };
+
+var never = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(order, never));
+
+var whenNull = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
+};
+output.WriteLine(XmlSerializer.Serialize(order, whenNull));
+
+var whenDefault = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingDefault,
+};
+output.WriteLine(XmlSerializer.Serialize(order, whenDefault));
+```
+
+The code produces the following output:
+
+```xml
+<PurchaseOrder><Id>1042</Id><Customer xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/><Placed>0001-01-01</Placed><Total>0</Total></PurchaseOrder>
+<PurchaseOrder><Id>1042</Id><Placed>0001-01-01</Placed><Total>0</Total></PurchaseOrder>
+<PurchaseOrder><Id>1042</Id></PurchaseOrder>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/09_IgnoreProperties.cs)

@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `IXmlTypeInfoResolver` here.
-
+- **A resolver is asked once for each type.** The options cache the answer, and the first request makes the options read-only. Changing what a resolver returns later has no effect on options that already asked.
+- **The type info must be for the requested type.** If a resolver returns type info for another type, the options throw `InvalidOperationException`.
+- **`XmlTypeInfo` has no public constructor.** A resolver you write returns type info it gets from another resolver or from a context. That makes a custom resolver a way to choose between existing contracts, not a way to build new ones. Unlike System.Text.Json, there's no modifier API for changing a contract.
+- **Generated contexts ignore the `options` argument.** A context returns type info bound to its own `Options`. It also answers for types it doesn't list, by using the reflection resolver, so in a `TypeInfoResolverChain` the first generated context answers every request.
+- **With the reflection switch off, there's no default.** When `XmlSerializer.IsReflectionEnabledByDefault` is `false`, `TypeInfoResolver` is `null` until you set it, and a serializer call that needs it throws `InvalidOperationException`.

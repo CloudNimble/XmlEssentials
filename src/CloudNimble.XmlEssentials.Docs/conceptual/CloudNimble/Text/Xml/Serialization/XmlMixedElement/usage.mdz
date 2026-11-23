@@ -1,5 +1,21 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+An `XmlMixedElement` is a child element inside mixed content. Its `Element` property holds the element as an `XmlElementNode`, with its attributes and everything inside it.
 
-Describe how to use `XmlMixedElement` here.
+When you read, get the name, attributes, and content from the node. When you write, build a node and wrap it:
 
+```csharp
+var note = new XmlElementNode("Note");
+note.Add(new XmlTextNode("Changes are saved to disk."));
+paragraph.Content.Add(new XmlMixedText(" "));
+paragraph.Content.Add(new XmlMixedElement(note));
+
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(paragraph, options));
+```
+
+Added to the paragraph `Press <Key>Ctrl</Key> and <Key>S</Key> to save.`, the code produces the following output:
+
+```xml
+<Paragraph>Press <Key>Ctrl</Key> and <Key>S</Key> to save. <Note>Changes are saved to disk.</Note></Paragraph>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)

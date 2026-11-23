@@ -4,7 +4,7 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// A mutable comment node.
+    /// Represents a mutable XML comment. This class cannot be inherited.
     /// </summary>
     public sealed class XmlCommentNode : XmlNode
     {
@@ -12,8 +12,11 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the comment text.
+        /// Gets or sets the text of this comment.
         /// </summary>
+        /// <value>
+        /// The text between <c>&lt;!--</c> and <c>--&gt;</c>.
+        /// </value>
         public string Value { get; set; }
 
         /// <inheritdoc />
@@ -24,9 +27,9 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Constructors
 
         /// <summary>
-        /// Creates a comment node.
+        /// Initializes a new instance of the <see cref="XmlCommentNode"/> class with the specified text.
         /// </summary>
-        /// <param name="value">The comment text.</param>
+        /// <param name="value">The text of the comment. The default is <see langword="null"/>, which is stored as an empty string.</param>
         public XmlCommentNode(string? value = null)
         {
             Value = value ?? string.Empty;

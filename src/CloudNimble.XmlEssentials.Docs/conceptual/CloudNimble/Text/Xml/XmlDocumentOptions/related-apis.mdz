@@ -1,7 +1,5 @@
-# Related APIs
-
-- `XmlDocument`
-- `XmlReaderOptions`
-- `XmlCommentHandling`
-- `XmlWhitespaceHandling`
-- `XmlException`
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.XmlCommentHandling
+CloudNimble.Text.Xml.XmlWhitespaceHandling
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlException

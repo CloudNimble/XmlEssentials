@@ -1,0 +1,229 @@
+---
+title: "Reflection versus source generation in XmlEssentials"
+sidebarTitle: "Reflection vs. source generation"
+description: "Compare the two ways XmlSerializer learns how to map a type, see what each one costs, and choose the one that fits your application."
+icon: "scale-balanced"
+---
+
+Before `XmlSerializer` can read or write a type, it needs a *contract* for it: which members become elements, which become attributes, and how each value is converted. It gets that contract in one of two ways. With *reflection*, it inspects the type the first time you use it. With *source generation*, a Roslyn generator writes the mapping code while your project compiles. This article shows both, compares them, and helps you choose.
+
+The split mirrors System.Text.Json: `XmlSerializerContext`, `[XmlSerializable]`, and `XmlTypeInfo<T>` play the roles of `JsonSerializerContext`, `[JsonSerializable]`, and `JsonTypeInfo<T>`.
+
+## Reflection
+
+Reflection is the default. Call an overload that takes a value, and optionally an `XmlSerializerOptions` instance, and the serializer builds the contract at run time.
+
+```csharp Program.cs
+var receipt = new Receipt { Number = 77, Paid = 129.90m };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(receipt, options);
+output.WriteLine(xml);
+
+Receipt? copy = XmlSerializer.Deserialize<Receipt>(xml, options);
+output.WriteLine($"Receipt {copy!.Number}: {copy.Paid}");
+output.WriteLine(options.TypeInfoResolver!.GetType().Name);
+```
+
+```csharp Receipt.cs
+public sealed class Receipt
+{
+    public int Number { get; set; }
+
+    public decimal Paid { get; set; }
+}
+```
+
+The code produces the following output:
+
+```text
+<Receipt><Number>77</Number><Paid>129.90</Paid></Receipt>
+Receipt 77: 129.90
+DefaultXmlTypeInfoResolver
+```
+
+The last line names the resolver that built the contract. When you don't set [`XmlSerializerOptions.TypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), the options use [`DefaultXmlTypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver), the reflection resolver.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)
+
+Reflection needs nothing but the type. It has two costs:
+
+- **The first call for each type is slow.** The serializer binds the type's members before it can read or write. See [What each approach costs](#what-each-approach-costs).
+- **It doesn't survive trimming or Native AOT.** The reflection overloads are marked `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`, so the compiler warns when you call them from a trimmed or AOT-published application. See [Publish with Native AOT](/guides/native-aot).
+
+## Source generation
+
+With source generation, you declare a partial class that derives from [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) and list your types on it. The generator, which ships inside the `XmlEssentials` package, fills in the class with a converter for each type.
+
+```csharp OrderXmlContext.cs
+[XmlSerializable(typeof(Order))]
+public partial class OrderXmlContext : XmlSerializerContext
+{
+}
+```
+
+You then pass the generated type info to the serializer:
+
+```csharp Program.cs
+var order = new Order
+{
+    Id = 1042,
+    Customer = "Ada",
+    Lines =
+    [
+        new OrderLine { Sku = "KB-01", Quantity = 1 },
+        new OrderLine { Sku = "MS-02", Quantity = 2 },
+    ],
+};
+
+string xml = XmlSerializer.Serialize(order, OrderXmlContext.Default.Order);
+output.WriteLine(xml);
+
+Order? copy = XmlSerializer.Deserialize(xml, OrderXmlContext.Default.Order);
+output.WriteLine($"Order {copy!.Id} for {copy.Customer}: {copy.Lines.Count} lines");
+```
+
+```csharp Order.cs
+public sealed class Order
+{
+    public string? Customer { get; set; }
+
+    [XmlAttribute]
+    public int Id { get; set; }
+
+    [XmlElement("Line")]
+    public List<OrderLine> Lines { get; set; } = [];
+}
+
+public sealed class OrderLine
+{
+    public int Quantity { get; set; }
+
+    public string? Sku { get; set; }
+}
+```
+
+The code produces the following output:
+
+```text
+<?xml version="1.0" encoding="utf-8"?><Order Id="1042"><Customer>Ada</Customer><Line><Quantity>1</Quantity><Sku>KB-01</Sku></Line><Line><Quantity>2</Quantity><Sku>MS-02</Sku></Line></Order>
+Order 1042 for Ada: 2 lines
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)
+
+For the full procedure, see [How to use source generation](/guides/source-generation).
+
+## Compare the two
+
+| | Reflection | Source generation |
+| --- | --- | --- |
+| Setup | None. | A partial context class with one `[XmlSerializable]` attribute for each root type. |
+| When the contract is built | At run time, on the first call for each type and options instance. | At compile time. |
+| Overloads you call | Those that take a value and optional `XmlSerializerOptions`. | Those that take an `XmlTypeInfo<T>` or an `XmlSerializerContext`. |
+| Trimming and Native AOT | Not safe. The overloads carry `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. | Safe. The overloads carry no trimming or AOT annotations. |
+| Mapping errors | Found at run time, when the type is first used. | Many are compiler errors, `XMLXE001` and up. |
+| `XmlSerializerOptions` settings | All apply. | Generated converters apply only some of them. See [Set options](/guides/source-generation#set-options). |
+| Custom converters | Supported. | Applied to enumerations. For other member types, use metadata mode. See [Custom converters](/guides/custom-converters#use-a-converter-with-source-generation). |
+| `[XmlDerivedType]` polymorphism | Supported. | Not supported. The generator reports `XMLXE008`. |
+| `ReferenceHandler` | Supported. | Not supported. A generated converter throws `NotSupportedException`. |
+
+The last four rows describe the generator's default mode, in which it writes a converter for each type. In [metadata mode](/guides/source-generation-modes), a context hands the type to the run-time resolver, so every option and converter applies, but the context is no longer safe for Native AOT.
+
+## What each approach costs
+
+The numbers below come from the graph benchmark in the repository: a `Customer` object with two addresses, 20 line items, and four tags, on .NET 11. `System.Xml.Serialization.XmlSerializer` and `System.Text.Json` read and write the same object graph, the second one as JSON.
+
+| Operation | Reflection, first call | Reflection, later calls | Source generation | `System.Xml` serializer | System.Text.Json |
+| --- | --- | --- | --- | --- | --- |
+| Read | 594,483 ns, 78,608 B | 3,358 ns, 3,168 B | 3,092 ns, 3,104 B | 8,648 ns, 16,496 B | 2,946 ns, 3,576 B |
+| Write | 612,933 ns, 75,440 B | 1,710 ns, 0 B | 1,257 ns, 0 B | 4,089 ns, 8,648 B | 1,502 ns, 312 B |
+
+What to notice:
+
+- **The first reflection call costs about 0.6 ms and 75 KB** for this graph. That's the time the serializer spends binding the type's members. It's paid once for each type and each `XmlSerializerOptions` instance, which is why you create one options instance and reuse it.
+- **After the first call, the two approaches are close.** A generated converter reads this graph in 3,092 ns against 3,358 ns for reflection, and writes it in 1,257 ns against 1,710 ns. Neither allocates when writing.
+- **The benchmark doesn't measure a first call through a generated context.** A generated converter is compiled code, so it has no members to bind before it runs.
+
+For the full tables, see [Benchmarks](/benchmarks).
+
+## Interceptors
+
+The package also turns on *interceptors*. When a context in your project lists a type, the generator redirects calls that pass no type info for that type to the generated context. You don't change the call.
+
+```csharp Program.cs
+var shipment = new Shipment { OrderId = 1042, Carrier = "Contoso Freight" };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(shipment, options);
+output.WriteLine(xml);
+output.WriteLine(options.TypeInfoResolver!.GetType().Name);
+```
+
+```csharp ShippingXmlContext.cs
+[XmlSerializable(typeof(Shipment))]
+public partial class ShippingXmlContext : XmlSerializerContext
+{
+}
+```
+
+The code produces the following output:
+
+```text
+<Shipment><Carrier>Contoso Freight</Carrier><OrderId>1042</OrderId></Shipment>
+ShippingXmlContext
+```
+
+The call looks like a reflection call, but the second line shows what happened: the generator rewrote it to create a `ShippingXmlContext` from your options, and that context made itself the options' resolver.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)
+
+The generator intercepts two shapes of call: `XmlSerializer.Serialize<T>(value)` and `XmlSerializer.Deserialize<T>(xml)`, each with or without an `XmlSerializerOptions` argument, where `T` is a type that a context in the same project lists or reaches through the members of a listed type. Interceptors are on when the `InterceptorsNamespaces` build property contains `CloudNimble.Text.Xml.Generated`, which the package's build file adds for you.
+
+<Warning>
+Interception changes what a call does, so know its limits:
+
+- A call that passes options creates a new context for every call and sets `options.TypeInfoResolver` to it. A read-only instance, such as `XmlSerializerOptions.Default` or `XmlSerializerOptions.Web`, makes the call throw `InvalidOperationException`.
+- The interceptor for `Deserialize<T>` accepts a `string`. A call that passes UTF-8 bytes or a stream for a listed type fails to compile with error `CS9144`. Pass the type info instead: `XmlSerializer.Deserialize(utf8Xml, MyContext.Default.Order)`.
+- An intercepted call runs the generated converter, with the limits in the comparison table. When two contexts list the same type, the call goes to one of them.
+
+To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those calls are never intercepted.
+</Warning>
+
+## How to choose
+
+Use **reflection** when:
+
+- You're writing an application that isn't trimmed or published with Native AOT, and the first-call cost doesn't matter.
+- You rely on custom converters, `[XmlDerivedType]`, `ReferenceHandler`, or options such as `NilHandling` and `DefaultIgnoreCondition`.
+
+Use **source generation** when:
+
+- You publish with trimming or Native AOT. It's the only approach that works there.
+- Startup time matters, for example in a command-line tool or a serverless function, and you don't want the serializer to bind members at run time.
+- You want mapping mistakes reported by the compiler.
+
+You can mix the two: use a generated context for the types on your hot path and reflection for the rest.
+
+## See also
+
+<Columns cols={2}>
+  <Card title="Use source generation" icon="wand-magic-sparkles" href="/guides/source-generation">
+    Declare a context and call the serializer with it, step by step.
+  </Card>
+  <Card title="Source-generation modes" icon="sliders" href="/guides/source-generation-modes">
+    What the generator writes in each `XmlSourceGenerationMode`.
+  </Card>
+  <Card title="Publish with Native AOT" icon="rocket" href="/guides/native-aot">
+    Set up a project so that it trims and compiles ahead of time.
+  </Card>
+  <Card title="Benchmarks" icon="gauge-high" href="/benchmarks">
+    Every measured row, with the method behind it.
+  </Card>
+</Columns>
+
+- [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext)
+- [`XmlSerializableAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializableAttribute)
+- [`DefaultXmlTypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver)
+- [How to serialize objects to XML](/guides/serialize)
+- [How to deserialize XML into objects](/guides/deserialize)

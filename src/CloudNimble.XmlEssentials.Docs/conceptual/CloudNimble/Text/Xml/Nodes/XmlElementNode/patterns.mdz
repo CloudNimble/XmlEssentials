@@ -1,5 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-**SetAttribute.** Replaces the value when the name (and namespace) already exists; otherwise appends.
+Document common patterns for `XmlElementNode` here.
 
-**AddElement.** Creates a child and returns it for chaining `InnerText` or further children.

@@ -4,11 +4,11 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Converts CLR member and type names to XML local names.
+    /// Defines the core behavior of policies that convert CLR type and member names to XML local names and provides a base for derived classes.
     /// </summary>
     /// <remarks>
-    /// Identity is <see langword="null"/> on <see cref="XmlSerializerOptions"/>, matching
-    /// <c>System.Text.Json.JsonNamingPolicy</c>.
+    /// There is no identity policy. A <see langword="null"/> policy on <see cref="XmlSerializerOptions"/> leaves
+    /// names unchanged, matching <c>System.Text.Json.JsonNamingPolicy</c>.
     /// </remarks>
     public abstract class XmlNamingPolicy
     {
@@ -16,33 +16,51 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets a policy that lowercases the first character.
+        /// Gets the naming policy for camel-casing.
         /// </summary>
+        /// <value>
+        /// A naming policy that converts the first character of a name to lowercase.
+        /// </value>
         public static XmlNamingPolicy CamelCase { get; } = new XmlCamelCaseNamingPolicy();
 
         /// <summary>
-        /// Gets a policy that joins words with <c>-</c> in lowercase.
+        /// Gets the naming policy for lowercase kebab-casing.
         /// </summary>
+        /// <value>
+        /// A naming policy that separates the words of a name with <c>-</c> and converts every character to lowercase.
+        /// </value>
         public static XmlNamingPolicy KebabCaseLower { get; } = new XmlKebabCaseLowerNamingPolicy();
 
         /// <summary>
-        /// Gets a policy that joins words with <c>-</c> in uppercase.
+        /// Gets the naming policy for uppercase kebab-casing.
         /// </summary>
+        /// <value>
+        /// A naming policy that separates the words of a name with <c>-</c> and converts every character to uppercase.
+        /// </value>
         public static XmlNamingPolicy KebabCaseUpper { get; } = new XmlKebabCaseUpperNamingPolicy();
 
         /// <summary>
-        /// Gets a policy that uppercases the first character.
+        /// Gets the naming policy for Pascal-casing.
         /// </summary>
+        /// <value>
+        /// A naming policy that converts the first character of a name to uppercase.
+        /// </value>
         public static XmlNamingPolicy PascalCase { get; } = new XmlPascalCaseNamingPolicy();
 
         /// <summary>
-        /// Gets a policy that joins words with <c>_</c> in lowercase.
+        /// Gets the naming policy for lowercase snake-casing.
         /// </summary>
+        /// <value>
+        /// A naming policy that separates the words of a name with <c>_</c> and converts every character to lowercase.
+        /// </value>
         public static XmlNamingPolicy SnakeCaseLower { get; } = new XmlSnakeCaseLowerNamingPolicy();
 
         /// <summary>
-        /// Gets a policy that joins words with <c>_</c> in uppercase.
+        /// Gets the naming policy for uppercase snake-casing.
         /// </summary>
+        /// <value>
+        /// A naming policy that separates the words of a name with <c>_</c> and converts every character to uppercase.
+        /// </value>
         public static XmlNamingPolicy SnakeCaseUpper { get; } = new XmlSnakeCaseUpperNamingPolicy();
 
         #endregion
@@ -50,7 +68,7 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Initializes a naming policy.
+        /// Called from constructors in derived classes to initialize the <see cref="XmlNamingPolicy"/> class.
         /// </summary>
         protected XmlNamingPolicy()
         {
@@ -61,10 +79,12 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
-        /// Converts <paramref name="name"/> to an XML local name.
+        /// When overridden in a derived class, converts the specified CLR name to an XML local name according to the policy.
         /// </summary>
-        /// <param name="name">The CLR name.</param>
-        /// <returns>The XML local name.</returns>
+        /// <param name="name">The CLR name to convert.</param>
+        /// <returns>
+        /// The converted XML local name.
+        /// </returns>
         public abstract string ConvertName(string name);
 
         #endregion

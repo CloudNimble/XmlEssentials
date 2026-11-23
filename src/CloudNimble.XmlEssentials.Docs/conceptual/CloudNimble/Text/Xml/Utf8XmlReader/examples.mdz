@@ -1,35 +1,157 @@
-# Examples
+Each example is a sample in the repository whose output is checked by a test.
 
-Empty vs start/end:
+### Read typed values
 
-```csharp
-var empty = new Utf8XmlReader("<e/>"u8);
-empty.Read();
-// TokenType == StartElement, IsEmptyElement == true
-empty.Read(); // false
-
-var pair = new Utf8XmlReader("<e></e>"u8);
-pair.Read();  // StartElement, IsEmptyElement == false
-pair.Read();  // EndElement
-```
-
-Attributes:
+The `Get*` methods parse a value in place and throw an `XmlException` when it isn't valid for the type. The `TryGet*` methods return `false` instead.
 
 ```csharp
-var reader = new Utf8XmlReader("<e a=\"1\" b=\"two\"/>"u8);
-reader.Read();
-while (reader.MoveToNextAttribute())
+ReadOnlySpan<byte> xml = """
+    <Order id="1042" rush="true">
+      <Placed>2026-03-14T09:30:00+01:00</Placed>
+      <Total>129.90</Total>
+      <Quantity>three</Quantity>
+    </Order>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
 {
-    // LocalNameSpan / ValueSpan for this attribute
+    if (reader.TokenType is not XmlTokenType.StartElement)
+    {
+        continue;
+    }
+
+    if (reader.LocalNameEquals("Order"u8))
+    {
+        while (reader.MoveToNextAttribute())
+        {
+            if (reader.LocalNameEquals("id"u8))
+            {
+                output.WriteLine($"id: {reader.GetInt32()}");
+            }
+            else if (reader.LocalNameEquals("rush"u8))
+            {
+                output.WriteLine($"rush: {reader.GetBoolean()}");
+            }
+        }
+    }
+    else if (reader.LocalNameEquals("Placed"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Placed: {reader.GetDateTimeOffset():O}");
+    }
+    else if (reader.LocalNameEquals("Total"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Total: {reader.GetDecimal().ToString(CultureInfo.InvariantCulture)}");
+    }
+    else if (reader.LocalNameEquals("Quantity"u8))
+    {
+        reader.Read();
+        if (reader.TryGetInt32(out var quantity))
+        {
+            output.WriteLine($"Quantity: {quantity}");
+        }
+        else
+        {
+            output.WriteLine($"Quantity is not a number: {reader.GetString()}");
+        }
+    }
 }
-reader.MoveToElement();
 ```
 
-Skip a child:
+```text
+id: 1042
+rush: True
+Placed: 2026-03-14T09:30:00.0000000+01:00
+Total: 129.90
+Quantity is not a number: three
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/20_ReadTokensAndValues.cs)
+
+### Read names with their namespaces
 
 ```csharp
-var reader = new Utf8XmlReader("<a><b>ignored</b><c/></a>"u8);
-reader.Read(); // a
-reader.Read(); // b
-reader.Skip(); // consumes b and its text; next token is c or a's end
+ReadOnlySpan<byte> xml = """
+    <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <title lang="en">Orders</title>
+      <dc:creator>Ada</dc:creator>
+    </feed>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType is not XmlTokenType.StartElement)
+    {
+        continue;
+    }
+
+    output.WriteLine($"Element prefix='{Encoding.UTF8.GetString(reader.PrefixSpan)}' local='{Encoding.UTF8.GetString(reader.LocalNameSpan)}' namespace='{Encoding.UTF8.GetString(reader.NamespaceUriSpan)}'");
+    if (reader.LocalNameEquals("creator"u8) && reader.NamespaceUriEquals("http://purl.org/dc/elements/1.1/"u8))
+    {
+        output.WriteLine("  This is the Dublin Core creator element.");
+    }
+
+    while (reader.MoveToNextAttribute())
+    {
+        output.WriteLine($"  Attribute prefix='{Encoding.UTF8.GetString(reader.PrefixSpan)}' local='{Encoding.UTF8.GetString(reader.LocalNameSpan)}' namespace='{Encoding.UTF8.GetString(reader.NamespaceUriSpan)}'");
+    }
+}
 ```
+
+```text
+Element prefix='' local='feed' namespace='http://www.w3.org/2005/Atom'
+  Attribute prefix='' local='xmlns' namespace='http://www.w3.org/2000/xmlns/'
+  Attribute prefix='xmlns' local='dc' namespace='http://www.w3.org/2000/xmlns/'
+Element prefix='' local='title' namespace='http://www.w3.org/2005/Atom'
+  Attribute prefix='' local='lang' namespace=''
+Element prefix='dc' local='creator' namespace='http://purl.org/dc/elements/1.1/'
+  This is the Dublin Core creator element.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/20_ReadTokensAndValues.cs)
+
+### Skip an element
+
+```csharp
+ReadOnlySpan<byte> xml = """
+    <Order>
+      <Customer>
+        <Name>Ada</Name>
+        <Address><City>London</City></Address>
+      </Customer>
+      <Total>129.90</Total>
+    </Order>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType is not XmlTokenType.StartElement)
+    {
+        continue;
+    }
+
+    if (reader.LocalNameEquals("Customer"u8))
+    {
+        reader.Skip();
+        output.WriteLine($"Skipped Customer. Now on {reader.TokenType} {Encoding.UTF8.GetString(reader.LocalNameSpan)} at depth {reader.CurrentDepth}.");
+    }
+    else
+    {
+        output.WriteLine($"Read {Encoding.UTF8.GetString(reader.LocalNameSpan)}");
+    }
+}
+```
+
+```text
+Read Order
+Skipped Customer. Now on EndElement Customer at depth 1.
+Read Total
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
+
+For a loop that reads a stream in blocks, see the example for [`XmlReaderState`](/api-reference/CloudNimble/Text/Xml/XmlReaderState).

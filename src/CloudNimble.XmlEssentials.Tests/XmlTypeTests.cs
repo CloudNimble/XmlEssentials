@@ -231,8 +231,8 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlAttributes.Type.Should().Be("type");
 
             var options = new XmlReaderOptions();
-            options.CommentHandling.Should().Be(XmlCommentHandling.Skip);
-            options.WhitespaceHandling.Should().Be(XmlWhitespaceHandling.Insignificant);
+            options.CommentHandling.Should().Be(XmlCommentHandling.Allow);
+            options.WhitespaceHandling.Should().Be(XmlWhitespaceHandling.Significant);
             options.AllowMultipleRoots = true;
             options.MaxAttributeCount = 1;
             options.MaxCommentByteCount = 2;

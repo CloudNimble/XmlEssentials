@@ -4,8 +4,11 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Converts a CLR type to and from XML.
+    /// Converts an object or value to or from XML.
     /// </summary>
+    /// <remarks>
+    /// Derive from <see cref="XmlConverter{T}"/> or <see cref="XmlConverterFactory"/>. This class cannot be derived from directly.
+    /// </remarks>
     public abstract class XmlConverter
     {
 
@@ -23,10 +26,12 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Methods
 
         /// <summary>
-        /// Returns whether this converter handles <paramref name="typeToConvert"/>.
+        /// When overridden in a derived class, determines whether the converter instance can convert the specified type.
         /// </summary>
-        /// <param name="typeToConvert">The CLR type.</param>
-        /// <returns><see langword="true"/> if this converter can convert the type.</returns>
+        /// <param name="typeToConvert">The type to check.</param>
+        /// <returns>
+        /// <see langword="true"/> if the instance can convert <paramref name="typeToConvert"/>; otherwise, <see langword="false"/>.
+        /// </returns>
         public abstract bool CanConvert(Type typeToConvert);
 
         #endregion

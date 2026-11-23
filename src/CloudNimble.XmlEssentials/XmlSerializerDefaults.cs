@@ -2,23 +2,25 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Named default sets for <see cref="XmlSerializerOptions"/>.
+    /// Specifies the predefined sets of options that an <see cref="XmlSerializerOptions"/> instance can be created with.
     /// </summary>
     public enum XmlSerializerDefaults
     {
 
         /// <summary>
-        /// Identity names, write a declaration, <c>xsi:nil</c> for null.
+        /// General-purpose option values: names are left unchanged, an XML declaration is written, and a
+        /// <see langword="null"/> value is written with <c>xsi:nil</c>.
         /// </summary>
         General = 0,
 
         /// <summary>
-        /// CamelCase names and <see cref="XmlSerializerOptions.OmitXmlDeclaration"/> true.
+        /// Option values for web-based scenarios: names are camel-cased and
+        /// <see cref="XmlSerializerOptions.OmitXmlDeclaration"/> is <see langword="true"/>.
         /// </summary>
         Web = 1,
 
         /// <summary>
-        /// Unknown members are errors, duplicates are errors, comments are disallowed.
+        /// Option values for strict deserialization: an unmapped member, a duplicate property, or a comment is an error.
         /// </summary>
         Strict = 2,
 

@@ -26,15 +26,15 @@ public enum XmlTokenType : byte
 
 public enum XmlCommentHandling : byte
 {
-    Disallow = 0,
+    Allow = 0,    // default (the zero value): comments are reported, so XML that is read and written back keeps them
     Skip = 1,
-    Allow = 2,
+    Disallow = 2,
 }
 
 public enum XmlWhitespaceHandling : byte
 {
-    Insignificant = 0, // default: skip whitespace-only text between elements
-    Significant = 1,
+    Significant = 0,   // default (the zero value): whitespace-only text between elements is reported (XML 1.0 section 2.10)
+    Insignificant = 1, // skip whitespace-only text between elements
     None = 2,
 }
 
@@ -120,8 +120,8 @@ namespace CloudNimble.Text.Xml;
 
 public struct XmlReaderOptions
 {
-    public XmlCommentHandling CommentHandling { get; set; }         // default Skip
-    public XmlWhitespaceHandling WhitespaceHandling { get; set; }   // default Insignificant
+    public XmlCommentHandling CommentHandling { get; set; }         // default Allow (the zero value); default and new() are the same
+    public XmlWhitespaceHandling WhitespaceHandling { get; set; }   // default Significant (the zero value)
     public int MaxDepth { get; set; }                               // 0 → 64
     public int MaxAttributeCount { get; set; }                      // 0 → 1000; includes xmlns*
     public int MaxNameByteCount { get; set; }                       // 0 → 1024

@@ -8,7 +8,7 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// A <see langword="ref struct"/> UTF-8 XML tokenizer analogous to <c>Utf8JsonReader</c>.
+    /// Provides a high-performance API for forward-only, read-only access to UTF-8 encoded XML text.
     /// </summary>
     /// <example>
     /// <code>
@@ -24,13 +24,21 @@ namespace CloudNimble.Text.Xml
     /// </code>
     /// </example>
     /// <remarks>
+    /// <para>
+    /// The reader is a <see langword="ref"/> struct that reads the text one token at a time, in the manner
+    /// of <c>Utf8JsonReader</c>.
+    /// </para>
+    /// <para>
     /// Empty elements are reported as <see cref="XmlTokenType.StartElement"/> with
-    /// <see cref="IsEmptyElement"/> true. The reader does not synthesize an
+    /// <see cref="IsEmptyElement"/> set to <see langword="true"/>. The reader does not synthesize an
     /// <see cref="XmlTokenType.EndElement"/> token. Callers must check
     /// <see cref="IsEmptyElement"/> before expecting a matching end tag.
-    /// xmlns attributes bind before the element name is resolved. Unprefixed attributes
-    /// are in no namespace; unprefixed elements use the default xmlns.
+    /// </para>
+    /// <para>
+    /// The <c>xmlns</c> attributes of a start tag bind before the element name is resolved. Unprefixed
+    /// attributes are in no namespace. Unprefixed elements use the default namespace.
     /// The XML declaration, when present, must be the first token in the document (after an optional BOM).
+    /// </para>
     /// </remarks>
     public ref partial struct Utf8XmlReader
     {
@@ -174,42 +182,71 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Gets the number of attributes on the current start tag.
         /// </summary>
+        /// <value>
+        /// The number of attributes on the current start tag, including namespace declarations.
+        /// </value>
         public readonly int AttributeCount => _attributeCount;
 
         /// <summary>
-        /// Gets the number of bytes consumed from the current buffer.
+        /// Gets the total number of bytes consumed so far by this instance of the <see cref="Utf8XmlReader"/>.
         /// </summary>
+        /// <value>
+        /// The number of bytes consumed from the current buffer.
+        /// </value>
         public readonly long BytesConsumed => _pos;
 
         /// <summary>
-        /// Gets the current element depth. The root element is depth 1.
-        /// Empty elements do not increment depth.
+        /// Gets the depth of the current token.
         /// </summary>
+        /// <value>
+        /// The number of elements that are open after the current token.
+        /// </value>
+        /// <remarks>
+        /// A start tag adds one to the depth and an end tag subtracts one, each before the token is reported.
+        /// The start tag and the content of the root element are at depth 1, and its end tag is at depth 0.
+        /// Empty elements do not change the depth.
+        /// </remarks>
         public readonly int CurrentDepth => _depth;
 
         /// <summary>
-        /// Gets an opaque resume snapshot.
+        /// Gets the current <see cref="Utf8XmlReader"/> state to pass to a <see cref="Utf8XmlReader"/>
+        /// constructor with more data.
         /// </summary>
+        /// <value>
+        /// The state to resume reading from.
+        /// </value>
         /// <remarks>
-        /// The public surface of <see cref="XmlReaderState"/> is <see cref="XmlReaderState.Options"/> only.
-        /// The implementation snapshot is copied so two readers never share mutable stacks.
+        /// The state is opaque. The public surface of <see cref="XmlReaderState"/> is
+        /// <see cref="XmlReaderState.Options"/> only. The reader's progress is copied into the state, so two
+        /// readers never share mutable stacks.
         /// </remarks>
         public readonly XmlReaderState CurrentState => new(_options, CaptureSnapshot());
 
         /// <summary>
-        /// Gets a value indicating whether the current start tag has attributes.
+        /// Gets a value that indicates whether the current start tag has attributes.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the current start tag has at least one attribute; otherwise,
+        /// <see langword="false"/>.
+        /// </value>
         public readonly bool HasAttributes => _attributeCount > 0;
 
         /// <summary>
-        /// Gets a value indicating whether the current value is a multi-segment sequence.
-        /// Always <see langword="false"/>; use <see cref="ValueSpan"/>.
+        /// Gets a value that indicates which <c>Value</c> property to use to get the token value.
         /// </summary>
+        /// <value>
+        /// <see langword="false"/> in all cases. The value is never a multi-segment sequence, so use
+        /// <see cref="ValueSpan"/> to get it.
+        /// </value>
         public readonly bool HasValueSequence => false;
 
         /// <summary>
-        /// Gets a value indicating whether the current start tag was an empty element (<c>&lt;e/&gt;</c>).
+        /// Gets a value that indicates whether the current start tag is an empty element (<c>&lt;e/&gt;</c>).
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the current start tag is an empty element; otherwise,
+        /// <see langword="false"/>.
+        /// </value>
         public readonly bool IsEmptyElement => _isEmptyElement;
 
         /// <summary>
@@ -228,13 +265,21 @@ namespace CloudNimble.Text.Xml
         internal readonly int ScratchBytesUsed => _scratchUsed;
 
         /// <summary>
-        /// Gets a value indicating whether this buffer is the last in a resume series.
+        /// Gets a value that indicates whether all the XML data was provided or there is more data to come.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the reader was constructed with the input span or sequence containing
+        /// the entire XML data to process; <see langword="false"/> if the reader was constructed with an
+        /// input span or sequence that may contain partial XML data with more data to follow.
+        /// </value>
         public readonly bool IsFinalBlock => _isFinalBlock;
 
         /// <summary>
-        /// Gets the UTF-8 local name of the current element or attribute.
+        /// Gets the local name of the current element or attribute.
         /// </summary>
+        /// <value>
+        /// The local name, without a prefix, as UTF-8 bytes.
+        /// </value>
         public readonly ReadOnlySpan<byte> LocalNameSpan
         {
             get
@@ -252,9 +297,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the UTF-8 namespace URI of the current name.
-        /// Unprefixed attributes are in no namespace. Unprefixed elements use the default xmlns.
+        /// Gets the namespace URI of the current element or attribute.
         /// </summary>
+        /// <value>
+        /// The namespace URI as UTF-8 bytes, or an empty span if the name is in no namespace or the current
+        /// token is not a start tag, an end tag, or an attribute.
+        /// </value>
+        /// <remarks>
+        /// Unprefixed attributes are in no namespace. Unprefixed elements use the default namespace.
+        /// </remarks>
         public readonly ReadOnlySpan<byte> NamespaceUriSpan
         {
             get
@@ -274,13 +325,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the position in a sequence payload, if any.
+        /// Gets the current <see cref="SequencePosition"/> within the provided UTF-8 encoded input
+        /// <see cref="ReadOnlySequence{T}"/>, or a default <see cref="SequencePosition"/> if the
+        /// <see cref="Utf8XmlReader"/> struct was constructed with a <see cref="ReadOnlySpan{T}"/>.
         /// </summary>
+        /// <value>
+        /// The position in the input sequence that the reader has consumed up to, or a default
+        /// <see cref="SequencePosition"/> if the input is a span.
+        /// </value>
         public readonly SequencePosition Position => _hasSequence ? _sequence.GetPosition(_pos) : default;
 
         /// <summary>
-        /// Gets the UTF-8 prefix of the current element or attribute.
+        /// Gets the namespace prefix of the current element or attribute.
         /// </summary>
+        /// <value>
+        /// The prefix as UTF-8 bytes, or an empty span if the name has no prefix.
+        /// </value>
         public readonly ReadOnlySpan<byte> PrefixSpan
         {
             get
@@ -306,30 +366,49 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the byte offset of the current token in the document.
+        /// Gets the index that the last processed XML token starts at in the document.
         /// </summary>
+        /// <value>
+        /// The zero-based byte offset of the token from the start of the document. When the document is read
+        /// in several blocks, the offset counts the bytes of the earlier blocks.
+        /// </value>
         public readonly long TokenStartIndex => _tokenStartIndex;
 
         /// <summary>
-        /// Gets the current token type.
-        /// After <see cref="MoveToNextAttribute"/> this is <see cref="XmlTokenType.Attribute"/>.
+        /// Gets the type of the last processed XML token in the UTF-8 encoded XML text.
         /// </summary>
+        /// <value>
+        /// One of the enumeration values that indicates the type of the current token. After
+        /// <see cref="MoveToNextAttribute"/> returns <see langword="true"/>, this is
+        /// <see cref="XmlTokenType.Attribute"/>.
+        /// </value>
         public readonly XmlTokenType TokenType => _inAttribute ? XmlTokenType.Attribute : _tokenType;
 
         /// <summary>
-        /// Gets a value indicating whether the current value differs from its bytes in the input: it held
-        /// character or entity references, or line ends that were normalized.
+        /// Gets a value that indicates whether the current value differs from its bytes in the input.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the value held character or entity references, or line ends that were
+        /// normalized; otherwise, <see langword="false"/>.
+        /// </value>
         public readonly bool ValueIsEscaped => _inAttribute ? CurrentAttribute().ValueIsEscaped : _valueIsEscaped;
 
         /// <summary>
-        /// Gets a multi-segment value. Always empty; use <see cref="ValueSpan"/>.
+        /// Gets the value of the last processed token as a <see cref="ReadOnlySequence{T}"/>.
         /// </summary>
+        /// <value>
+        /// An empty sequence in all cases. Use <see cref="ValueSpan"/> to get the value.
+        /// </value>
         public readonly ReadOnlySequence<byte> ValueSequence => ReadOnlySequence<byte>.Empty;
 
         /// <summary>
-        /// Gets the UTF-8 bytes of the current token value, decoded if entities were present.
+        /// Gets the value of the last processed token as a read-only span of UTF-8 bytes.
         /// </summary>
+        /// <value>
+        /// The UTF-8 bytes of the current token value. If the value held character or entity references, or
+        /// line ends that had to be normalized, the span holds the decoded value. Otherwise, it is a slice of
+        /// the input.
+        /// </value>
         public readonly ReadOnlySpan<byte> ValueSpan
         {
             get
@@ -352,8 +431,13 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the XML version in force after the declaration, or <see cref="XmlVersion.Version10"/> if omitted.
+        /// Gets the XML version that is in force for the document.
         /// </summary>
+        /// <value>
+        /// One of the enumeration values that indicates the version named in the XML declaration. The default
+        /// is <see cref="XmlVersion.Version10"/>, which applies until a declaration is read and when the
+        /// document has none.
+        /// </value>
         public readonly XmlVersion Version => _version;
 
         #endregion
@@ -361,45 +445,76 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Reads a complete UTF-8 XML payload with default options
-        /// (<see cref="XmlCommentHandling.Skip"/>, insignificant whitespace).
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// span of UTF-8 encoded text that holds a complete document, using the default options.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes. An optional BOM is consumed.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM is consumed.</param>
+        /// <remarks>
+        /// The default options report comments (<see cref="XmlCommentHandling.Allow"/>) and whitespace-only text
+        /// between elements (<see cref="XmlWhitespaceHandling.Significant"/>) as tokens.
+        /// </remarks>
         public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml)
             : this(utf8Xml, new XmlReaderOptions())
         {
         }
 
         /// <summary>
-        /// Reads a complete UTF-8 XML payload.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// span of UTF-8 encoded text that holds a complete document, using the specified options.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes. An optional BOM is consumed.</param>
-        /// <param name="options">Reader options. Pass <c>new XmlReaderOptions()</c> for documented defaults.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM is consumed.</param>
+        /// <param name="options">The options that define the behavior of the reader.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> is longer than <see cref="XmlReaderOptions.MaxDocumentByteCount"/>.
+        /// </exception>
         public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, XmlReaderOptions options)
             : this(utf8Xml, isFinalBlock: true, new XmlReaderState(options))
         {
         }
 
         /// <summary>
-        /// Reads a UTF-8 XML payload, optionally resuming from <paramref name="state"/>.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// span of UTF-8 encoded text and indicates whether the input contains all the text to process.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes.</param>
-        /// <param name="isFinalBlock">Whether this buffer is the last. Incomplete tokens throw when true.</param>
-        /// <param name="state">Resume state from <see cref="CurrentState"/>, or default to start fresh.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM at the start of the document is consumed.</param>
+        /// <param name="isFinalBlock">
+        /// <see langword="true"/> to indicate that the input span contains the entire data to process;
+        /// <see langword="false"/> to indicate that the input span contains partial data with more data to follow.
+        /// When <see langword="true"/>, the reader throws an <see cref="XmlException"/> if the input ends inside a token.
+        /// </param>
+        /// <param name="state">
+        /// The reader state. If this is the first call to the constructor, pass a new
+        /// <see cref="XmlReaderState"/> that holds the options to use. Otherwise, pass the value of the
+        /// <see cref="CurrentState"/> property from the previous instance of the <see cref="Utf8XmlReader"/>.
+        /// </param>
+        /// <exception cref="XmlException">
+        /// The bytes read so far and the length of <paramref name="utf8Xml"/> together exceed
+        /// <see cref="XmlReaderOptions.MaxDocumentByteCount"/>.
+        /// </exception>
+        /// <remarks>
+        /// A <see langword="default"/> <see cref="XmlReaderState"/> holds the default options, which report
+        /// comments and whitespace-only text between elements as tokens.
+        /// </remarks>
         public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlReaderState state)
             : this(utf8Xml, scratch: default, sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock, state)
         {
         }
 
         /// <summary>
-        /// Reads a complete UTF-8 XML payload, using <paramref name="scratch"/> as working memory before allocating any.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// span of UTF-8 encoded text that holds a complete document, using the specified options and a
+        /// caller-supplied buffer as working memory.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes. An optional BOM is consumed.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM is consumed.</param>
         /// <param name="scratch">
-        /// Memory the reader may overwrite for as long as it is in use. Its contents on entry do not matter.
+        /// The memory the reader uses before it allocates any. The reader may overwrite it for as long as the
+        /// reader is in use. Its contents on entry do not matter.
         /// It may come from <see langword="stackalloc"/>, a pooled array, or a field reused from one reader to the next.
         /// </param>
-        /// <param name="options">Reader options. Pass <c>new XmlReaderOptions()</c> for documented defaults.</param>
+        /// <param name="options">The options that define the behavior of the reader.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> is longer than <see cref="XmlReaderOptions.MaxDocumentByteCount"/>.
+        /// </exception>
         /// <example>
         /// <code>
         /// Span&lt;byte&gt; scratch = stackalloc byte[1024];
@@ -431,18 +546,34 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads a UTF-8 XML payload, optionally resuming from <paramref name="state"/>, using
-        /// <paramref name="scratch"/> as working memory before allocating any.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// span of UTF-8 encoded text, indicates whether the input contains all the text to process, and
+        /// uses a caller-supplied buffer as working memory.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM at the start of the document is consumed.</param>
         /// <param name="scratch">
-        /// Memory the reader may overwrite for as long as it is in use. Its contents on entry do not matter, so
+        /// The memory the reader uses before it allocates any. The reader may overwrite it for as long as the
+        /// reader is in use. Its contents on entry do not matter, so
         /// the same buffer can be passed to the reader for each block of a document.
         /// </param>
-        /// <param name="isFinalBlock">Whether this buffer is the last. Incomplete tokens throw when true.</param>
-        /// <param name="state">Resume state from <see cref="CurrentState"/>, or default to start fresh.</param>
+        /// <param name="isFinalBlock">
+        /// <see langword="true"/> to indicate that the input span contains the entire data to process;
+        /// <see langword="false"/> to indicate that the input span contains partial data with more data to follow.
+        /// When <see langword="true"/>, the reader throws an <see cref="XmlException"/> if the input ends inside a token.
+        /// </param>
+        /// <param name="state">
+        /// The reader state. If this is the first call to the constructor, pass a new
+        /// <see cref="XmlReaderState"/> that holds the options to use. Otherwise, pass the value of the
+        /// <see cref="CurrentState"/> property from the previous instance of the <see cref="Utf8XmlReader"/>.
+        /// </param>
+        /// <exception cref="XmlException">
+        /// The bytes read so far and the length of <paramref name="utf8Xml"/> together exceed
+        /// <see cref="XmlReaderOptions.MaxDocumentByteCount"/>.
+        /// </exception>
         /// <remarks>
         /// See <see cref="Utf8XmlReader(ReadOnlySpan{byte}, Span{byte}, XmlReaderOptions)"/> for what the buffer is used for.
+        /// A <see langword="default"/> <see cref="XmlReaderState"/> holds the default options, which report
+        /// comments and whitespace-only text between elements as tokens.
         /// </remarks>
         public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, bool isFinalBlock, XmlReaderState state)
             : this(utf8Xml, scratch, sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock, state)
@@ -450,30 +581,55 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads a complete UTF-8 XML sequence with default options.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// sequence of UTF-8 encoded text that holds a complete document, using the default options.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes. Multi-segment sequences are copied into a contiguous buffer.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM is consumed. A multi-segment sequence is copied into a contiguous buffer.</param>
+        /// <remarks>
+        /// The default options report comments and whitespace-only text between elements as tokens.
+        /// </remarks>
         public Utf8XmlReader(ReadOnlySequence<byte> utf8Xml)
             : this(utf8Xml, new XmlReaderOptions())
         {
         }
 
         /// <summary>
-        /// Reads a complete UTF-8 XML sequence.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// sequence of UTF-8 encoded text that holds a complete document, using the specified options.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes. Multi-segment sequences are copied into a contiguous buffer.</param>
-        /// <param name="options">Reader options.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM is consumed. A multi-segment sequence is copied into a contiguous buffer.</param>
+        /// <param name="options">The options that define the behavior of the reader.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> is longer than <see cref="XmlReaderOptions.MaxDocumentByteCount"/>.
+        /// </exception>
         public Utf8XmlReader(ReadOnlySequence<byte> utf8Xml, XmlReaderOptions options)
             : this(utf8Xml, isFinalBlock: true, new XmlReaderState(options))
         {
         }
 
         /// <summary>
-        /// Reads a UTF-8 XML sequence, optionally resuming from <paramref name="state"/>.
+        /// Initializes a new instance of the <see cref="Utf8XmlReader"/> struct that processes a read-only
+        /// sequence of UTF-8 encoded text and indicates whether the input contains all the text to process.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML bytes.</param>
-        /// <param name="isFinalBlock">Whether this buffer is the last.</param>
-        /// <param name="state">Resume state from <see cref="CurrentState"/>, or default to start fresh.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to process. An optional BOM at the start of the document is consumed. A multi-segment sequence is copied into a contiguous buffer.</param>
+        /// <param name="isFinalBlock">
+        /// <see langword="true"/> to indicate that the input sequence contains the entire data to process;
+        /// <see langword="false"/> to indicate that the input sequence contains partial data with more data to follow.
+        /// When <see langword="true"/>, the reader throws an <see cref="XmlException"/> if the input ends inside a token.
+        /// </param>
+        /// <param name="state">
+        /// The reader state. If this is the first call to the constructor, pass a new
+        /// <see cref="XmlReaderState"/> that holds the options to use. Otherwise, pass the value of the
+        /// <see cref="CurrentState"/> property from the previous instance of the <see cref="Utf8XmlReader"/>.
+        /// </param>
+        /// <exception cref="XmlException">
+        /// The bytes read so far and the length of <paramref name="utf8Xml"/> together exceed
+        /// <see cref="XmlReaderOptions.MaxDocumentByteCount"/>.
+        /// </exception>
+        /// <remarks>
+        /// A <see langword="default"/> <see cref="XmlReaderState"/> holds the default options, which report
+        /// comments and whitespace-only text between elements as tokens.
+        /// </remarks>
         public Utf8XmlReader(ReadOnlySequence<byte> utf8Xml, bool isFinalBlock, XmlReaderState state)
         {
             if (utf8Xml.IsSingleSegment)
@@ -597,10 +753,16 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
-        /// Copies the current value as UTF-8 into <paramref name="utf8Destination"/>.
+        /// Copies the current token value from the source, with references decoded, as UTF-8 text to a
+        /// destination buffer.
         /// </summary>
-        /// <param name="utf8Destination">The destination buffer.</param>
-        /// <returns>The number of bytes written.</returns>
+        /// <param name="utf8Destination">A buffer to write the UTF-8 encoded value into.</param>
+        /// <returns>
+        /// The number of bytes written to <paramref name="utf8Destination"/>.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="utf8Destination"/> is too small to hold the value.
+        /// </exception>
         public readonly int CopyString(Span<byte> utf8Destination)
         {
             var value = ValueSpan;
@@ -609,20 +771,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Copies the current value as UTF-16 into <paramref name="destination"/>.
+        /// Copies the current token value from the source, with references decoded, as UTF-16 text to a
+        /// destination buffer.
         /// </summary>
-        /// <param name="destination">The destination buffer.</param>
-        /// <returns>The number of characters written.</returns>
+        /// <param name="destination">A buffer to write the transcoded UTF-16 characters into.</param>
+        /// <returns>
+        /// The number of characters written to <paramref name="destination"/>.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="destination"/> is too small to hold the value.
+        /// </exception>
         public readonly int CopyString(Span<char> destination)
         {
             return Encoding.UTF8.GetChars(ValueSpan, destination);
         }
 
         /// <summary>
-        /// Reads the current text, CDATA, or attribute value as an XSD boolean.
+        /// Parses the current text, CDATA, or attribute value from the source as an XSD <c>boolean</c>.
         /// </summary>
-        /// <returns>The Boolean value.</returns>
-        /// <exception cref="XmlException">The value is not <c>true</c>, <c>false</c>, <c>1</c>, or <c>0</c>.</exception>
+        /// <returns>
+        /// <see langword="true"/> if the value is <c>true</c> or <c>1</c>; <see langword="false"/> if the
+        /// value is <c>false</c> or <c>0</c>.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not <c>true</c>, <c>false</c>, <c>1</c>, or <c>0</c>.
+        /// </exception>
         public readonly bool GetBoolean()
         {
             if (!XmlLexical.TryParseBoolean(ValueSpan, out var value))
@@ -634,10 +807,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as an unsigned 8-bit integer.
+        /// Parses the current token value from the source as a <see cref="byte"/> (<c>xs:unsignedByte</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as an 8-bit unsigned integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="byte"/>.
+        /// </exception>
         public readonly byte GetByte()
         {
             if (!TryGetByte(out var value))
@@ -649,10 +828,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>base64Binary</c>.
+        /// Parses the current token value from the source as XSD <c>base64Binary</c> and decodes it into a
+        /// byte array.
         /// </summary>
-        /// <returns>The decoded bytes.</returns>
-        /// <exception cref="XmlException">The value is not valid Base64.</exception>
+        /// <returns>
+        /// The byte array that the Base64 encoded value represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not valid Base64.
+        /// </exception>
         public readonly byte[] GetBytesFromBase64()
         {
             if (!TryGetBytesFromBase64(out var value))
@@ -664,10 +848,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the payload of the current <see cref="XmlTokenType.Comment"/> token.
+        /// Reads the content of the current <see cref="XmlTokenType.Comment"/> token from the source,
+        /// transcoded as a <see cref="string"/>.
         /// </summary>
-        /// <returns>The comment text, without the surrounding <c>&lt;!-- --&gt;</c> delimiters.</returns>
-        /// <exception cref="XmlException">The current token is not a comment.</exception>
+        /// <returns>
+        /// The comment text, without the surrounding <c>&lt;!-- --&gt;</c> delimiters.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The current token is not a comment.
+        /// </exception>
         public readonly string GetComment()
         {
             if (TokenType != XmlTokenType.Comment)
@@ -679,10 +868,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>date</c>.
+        /// Parses the current token value from the source as a <see cref="DateOnly"/> (<c>xs:date</c>).
         /// </summary>
-        /// <returns>The parsed date.</returns>
-        /// <exception cref="XmlException">The value is not a valid <c>xs:date</c>.</exception>
+        /// <returns>
+        /// The date that the value of the current token represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:date</c>.
+        /// </exception>
         public readonly DateOnly GetDateOnly()
         {
             if (!TryGetDateOnly(out var value))
@@ -694,10 +887,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>dateTime</c>.
+        /// Parses the current token value from the source as a <see cref="DateTime"/> (<c>xs:dateTime</c>).
         /// </summary>
-        /// <returns>The parsed date and time.</returns>
-        /// <exception cref="XmlException">The value is not a valid <c>xs:dateTime</c>.</exception>
+        /// <returns>
+        /// The date and time that the value of the current token represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:dateTime</c>.
+        /// </exception>
         public readonly DateTime GetDateTime()
         {
             if (!TryGetDateTime(out var value))
@@ -709,10 +906,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>dateTime</c> with an offset.
+        /// Parses the current token value from the source as a <see cref="DateTimeOffset"/>
+        /// (<c>xs:dateTime</c> with an offset).
         /// </summary>
-        /// <returns>The parsed date, time, and offset.</returns>
-        /// <exception cref="XmlException">The value is not a valid <c>xs:dateTime</c>.</exception>
+        /// <returns>
+        /// The date, time, and offset that the value of the current token represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:dateTime</c>.
+        /// </exception>
         public readonly DateTimeOffset GetDateTimeOffset()
         {
             if (!TryGetDateTimeOffset(out var value))
@@ -724,10 +926,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>decimal</c>. Exponent notation is rejected.
+        /// Parses the current token value from the source as a <see cref="decimal"/> (<c>xs:decimal</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The value is not a valid XSD decimal.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a decimal number.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:decimal</c>. Exponent notation is rejected.
+        /// </exception>
         public readonly decimal GetDecimal()
         {
             if (!TryGetDecimal(out var value))
@@ -739,10 +945,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>double</c>, including <c>INF</c>, <c>-INF</c>, and <c>NaN</c>.
+        /// Parses the current token value from the source as a <see cref="double"/> (<c>xs:double</c>),
+        /// including <c>INF</c>, <c>-INF</c>, and <c>NaN</c>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The value is not a valid double.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a double-precision floating-point number.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:double</c>.
+        /// </exception>
         public readonly double GetDouble()
         {
             if (!TryGetDouble(out var value))
@@ -754,10 +965,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as a GUID.
+        /// Parses the current token value from the source as a <see cref="Guid"/>.
         /// </summary>
-        /// <returns>The parsed GUID.</returns>
-        /// <exception cref="XmlException">The value is not a GUID in a supported format.</exception>
+        /// <returns>
+        /// The GUID that the value of the current token represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a GUID in a supported format.
+        /// </exception>
         public readonly Guid GetGuid()
         {
             if (!TryGetGuid(out var value))
@@ -769,10 +984,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as a 16-bit integer.
+        /// Parses the current token value from the source as a <see cref="short"/> (<c>xs:short</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a 16-bit signed integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="short"/>.
+        /// </exception>
         public readonly short GetInt16()
         {
             if (!TryGetInt16(out var value))
@@ -784,10 +1005,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as a 32-bit integer.
+        /// Parses the current token value from the source as an <see cref="int"/> (<c>xs:int</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a 32-bit signed integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="int"/>.
+        /// </exception>
         public readonly int GetInt32()
         {
             if (!TryGetInt32(out var value))
@@ -799,10 +1026,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as a 64-bit integer.
+        /// Parses the current token value from the source as a <see cref="long"/> (<c>xs:long</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a 64-bit signed integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="long"/>.
+        /// </exception>
         public readonly long GetInt64()
         {
             if (!TryGetInt64(out var value))
@@ -814,10 +1047,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns true when the current start element has <c>xsi:nil="true"</c> or <c>xsi:nil="1"</c>.
+        /// Determines whether the current start element is marked nil with <c>xsi:nil="true"</c> or
+        /// <c>xsi:nil="1"</c>.
         /// </summary>
-        /// <returns><see langword="true"/> if the element is nil.</returns>
-        /// <exception cref="XmlException">The current token is not a start element.</exception>
+        /// <returns>
+        /// <see langword="true"/> if the element has an <c>xsi:nil</c> attribute whose value is <c>true</c> or
+        /// <c>1</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The reader is not on a start element or on one of its attributes.
+        /// </exception>
         /// <remarks>
         /// The local name <c>nil</c> must be in the XML Schema instance namespace.
         /// An unprefixed <c>nil</c> attribute is in no namespace and does not count.
@@ -844,10 +1083,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as a signed 8-bit integer.
+        /// Parses the current token value from the source as an <see cref="sbyte"/> (<c>xs:byte</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as an 8-bit signed integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="sbyte"/>.
+        /// </exception>
         [CLSCompliant(false)]
         public readonly sbyte GetSByte()
         {
@@ -860,10 +1105,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>float</c>, including <c>INF</c>, <c>-INF</c>, and <c>NaN</c>.
+        /// Parses the current token value from the source as a <see cref="float"/> (<c>xs:float</c>),
+        /// including <c>INF</c>, <c>-INF</c>, and <c>NaN</c>.
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The value is not a valid float.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a single-precision floating-point number.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:float</c>.
+        /// </exception>
         public readonly float GetSingle()
         {
             if (!TryGetSingle(out var value))
@@ -875,19 +1125,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current token value as a UTF-16 string, after entity expansion.
+        /// Reads the current token value from the source, with references decoded, and transcodes it as a
+        /// <see cref="string"/>.
         /// </summary>
-        /// <returns>The decoded string. Never null; empty when the value is empty.</returns>
+        /// <returns>
+        /// The token value transcoded to a string. The result is never <see langword="null"/>. It is an empty
+        /// string when the value is empty.
+        /// </returns>
         public readonly string? GetString()
         {
             return CurrentValueText();
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>time</c>.
+        /// Parses the current token value from the source as a <see cref="TimeOnly"/> (<c>xs:time</c>).
         /// </summary>
-        /// <returns>The parsed time of day.</returns>
-        /// <exception cref="XmlException">The value is not a valid <c>xs:time</c>.</exception>
+        /// <returns>
+        /// The time of day that the value of the current token represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a valid <c>xs:time</c>.
+        /// </exception>
         public readonly TimeOnly GetTimeOnly()
         {
             if (!TryGetTimeOnly(out var value))
@@ -899,10 +1157,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as XSD <c>duration</c>. Year and month components are rejected.
+        /// Parses the current token value from the source as a <see cref="TimeSpan"/> (<c>xs:duration</c>).
         /// </summary>
-        /// <returns>The parsed duration.</returns>
-        /// <exception cref="XmlException">The value is not a duration that can be represented as <see cref="TimeSpan"/>.</exception>
+        /// <returns>
+        /// The duration that the value of the current token represents.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not a duration that can be represented as a <see cref="TimeSpan"/>. A duration with
+        /// year or month components is rejected.
+        /// </exception>
         public readonly TimeSpan GetTimeSpan()
         {
             if (!TryGetTimeSpan(out var value))
@@ -914,10 +1177,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as an unsigned 16-bit integer.
+        /// Parses the current token value from the source as a <see cref="ushort"/> (<c>xs:unsignedShort</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a 16-bit unsigned integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="ushort"/>.
+        /// </exception>
         [CLSCompliant(false)]
         public readonly ushort GetUInt16()
         {
@@ -930,10 +1199,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as an unsigned 32-bit integer.
+        /// Parses the current token value from the source as a <see cref="uint"/> (<c>xs:unsignedInt</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a 32-bit unsigned integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="uint"/>.
+        /// </exception>
         [CLSCompliant(false)]
         public readonly uint GetUInt32()
         {
@@ -946,10 +1221,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads the current value as an unsigned 64-bit integer.
+        /// Parses the current token value from the source as a <see cref="ulong"/> (<c>xs:unsignedLong</c>).
         /// </summary>
-        /// <returns>The parsed value.</returns>
-        /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
+        /// <returns>
+        /// The value of the current token, parsed as a 64-bit unsigned integer.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// The value is not in the lexical form of an XSD integer.
+        /// -or-
+        /// The value is outside the range of <see cref="ulong"/>.
+        /// </exception>
         [CLSCompliant(false)]
         public readonly ulong GetUInt64()
         {
@@ -962,20 +1243,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares the current local name to UTF-8 <paramref name="utf8LocalName"/>.
+        /// Compares the UTF-8 encoded text in a read-only byte span to the local name of the current
+        /// element or attribute and returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 local name.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="utf8LocalName">The UTF-8 encoded text to compare against.</param>
+        /// <returns>
+        /// <see langword="true"/> if the local name matches <paramref name="utf8LocalName"/> byte for byte;
+        /// otherwise, <see langword="false"/>.
+        /// </returns>
         public readonly bool LocalNameEquals(ReadOnlySpan<byte> utf8LocalName)
         {
             return LocalNameSpan.SequenceEqual(utf8LocalName);
         }
 
         /// <summary>
-        /// Compares the current local name to <paramref name="localName"/>.
+        /// Compares the text in a read-only character span to the local name of the current element or
+        /// attribute and returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="localName">The text to compare against.</param>
+        /// <returns>
+        /// <see langword="true"/> if the local name matches <paramref name="localName"/>; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool LocalNameEquals(ReadOnlySpan<char> localName)
         {
             Span<byte> utf8 = stackalloc byte[Encoding.UTF8.GetMaxByteCount(localName.Length)];
@@ -984,18 +1273,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares the current local name to <paramref name="localName"/>.
+        /// Compares the text in a string to the local name of the current element or attribute and returns
+        /// a value that indicates whether they match.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="localName">The text to compare against. A <see langword="null"/> value matches no name.</param>
+        /// <returns>
+        /// <see langword="true"/> if the local name matches <paramref name="localName"/>; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool LocalNameEquals(string? localName)
         {
             return localName is not null && LocalNameEquals(localName.AsSpan());
         }
 
         /// <summary>
-        /// Moves back to the start element from the current attribute.
+        /// Moves the reader from the current attribute back to the start element that holds it.
         /// </summary>
+        /// <remarks>
+        /// After this call, <see cref="MoveToNextAttribute"/> starts again at the first attribute.
+        /// </remarks>
         public void MoveToElement()
         {
             _inAttribute = false;
@@ -1003,9 +1299,12 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Moves to the next attribute on the current start tag.
+        /// Moves the reader to the next attribute on the current start tag.
         /// </summary>
-        /// <returns><see langword="true"/> if an attribute was selected; otherwise <see langword="false"/>.</returns>
+        /// <returns>
+        /// <see langword="true"/> if the reader moved to an attribute; <see langword="false"/> if the current
+        /// token is not a start tag or the start tag has no more attributes.
+        /// </returns>
         public bool MoveToNextAttribute()
         {
             if (_tokenType != XmlTokenType.StartElement && !_inAttribute)
@@ -1024,20 +1323,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares the current namespace URI to UTF-8 <paramref name="utf8NamespaceUri"/>.
+        /// Compares the UTF-8 encoded text in a read-only byte span to the namespace URI of the current
+        /// element or attribute and returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI to compare against. An empty span stands for no namespace.</param>
+        /// <returns>
+        /// <see langword="true"/> if the namespace URI matches <paramref name="utf8NamespaceUri"/> byte for
+        /// byte; otherwise, <see langword="false"/>.
+        /// </returns>
         public readonly bool NamespaceUriEquals(ReadOnlySpan<byte> utf8NamespaceUri)
         {
             return NamespaceUriSpan.SequenceEqual(utf8NamespaceUri);
         }
 
         /// <summary>
-        /// Compares the current namespace URI to <paramref name="namespaceUri"/>.
+        /// Compares the text in a read-only character span to the namespace URI of the current element or
+        /// attribute and returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="namespaceUri">The namespace URI to compare against. An empty span stands for no namespace.</param>
+        /// <returns>
+        /// <see langword="true"/> if the namespace URI matches <paramref name="namespaceUri"/>; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool NamespaceUriEquals(ReadOnlySpan<char> namespaceUri)
         {
             if (namespaceUri.IsEmpty)
@@ -1051,23 +1358,34 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares the current namespace URI to <paramref name="namespaceUri"/>.
+        /// Compares the text in a string to the namespace URI of the current element or attribute and
+        /// returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="namespaceUri">The namespace URI to compare against. A <see langword="null"/> or empty string stands for no namespace.</param>
+        /// <returns>
+        /// <see langword="true"/> if the namespace URI matches <paramref name="namespaceUri"/>; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool NamespaceUriEquals(string? namespaceUri)
         {
             return NamespaceUriEquals((namespaceUri ?? "").AsSpan());
         }
 
         /// <summary>
-        /// Advances to the next token.
+        /// Reads the next XML token from the input source.
         /// </summary>
         /// <returns>
-        /// <see langword="false"/> at the end of a complete document, or when more data is required
-        /// and <see cref="IsFinalBlock"/> is <see langword="false"/>.
+        /// <see langword="true"/> if the token was read successfully; otherwise, <see langword="false"/>.
+        /// The result is <see langword="false"/> at the end of a complete document, and when more data is
+        /// required and <see cref="IsFinalBlock"/> is <see langword="false"/>.
         /// </returns>
-        /// <exception cref="XmlException">The document is not well-formed, a DoS limit was exceeded, or the buffer ended inside a token.</exception>
+        /// <exception cref="XmlException">
+        /// The document is not well formed.
+        /// -or-
+        /// A limit set in <see cref="XmlReaderOptions"/> is exceeded.
+        /// -or-
+        /// The input ends inside a token and <see cref="IsFinalBlock"/> is <see langword="true"/>.
+        /// </exception>
         public bool Read()
         {
             _inAttribute = false;
@@ -1193,10 +1511,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Skips the current element and its children.
-        /// On an empty element this is a no-op; the next <see cref="Read"/> moves to the following sibling.
+        /// Skips the children of the current XML element.
         /// </summary>
-        /// <exception cref="XmlException">The remaining buffer is incomplete and <see cref="IsFinalBlock"/> is <see langword="false"/>.</exception>
+        /// <exception cref="XmlException">
+        /// The element is not all in the current input and <see cref="IsFinalBlock"/> is <see langword="false"/>.
+        /// -or-
+        /// The current token is not a start element and there is no next token to read.
+        /// -or-
+        /// The skipped XML is not well formed, exceeds a limit set in <see cref="XmlReaderOptions"/>, or ends
+        /// inside a token when <see cref="IsFinalBlock"/> is <see langword="true"/>.
+        /// </exception>
+        /// <remarks>
+        /// When the current token is a start element, the reader moves to its end tag. On an empty element
+        /// this method does nothing, and the next <see cref="Read"/> moves to the following sibling. When the
+        /// current token is not a start element, the reader moves to the next token, as <see cref="Read"/> does.
+        /// </remarks>
         public void Skip()
         {
             if (!TrySkip())
@@ -1208,8 +1537,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as an unsigned 8-bit integer (<c>xs:unsignedByte</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetByte(out byte value)
         {
             return XmlLexical.TryParseByte(ValueSpan, out value);
@@ -1218,8 +1550,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>base64Binary</c>.
         /// </summary>
-        /// <param name="value">When this method returns, the decoded bytes.</param>
-        /// <returns><see langword="true"/> if decoding succeeded.</returns>
+        /// <param name="value">When this method returns, contains the decoded bytes, or <see langword="null"/> if the value is not valid Base64. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value is valid Base64 and was decoded; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetBytesFromBase64([NotNullWhen(true)] out byte[]? value)
         {
             return XmlLexical.TryDecodeBase64(ValueSpan, out value);
@@ -1228,8 +1563,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>date</c>.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetDateOnly(out DateOnly value)
         {
             return XmlLexical.TryParseDateOnly(ValueSpan, out value);
@@ -1238,8 +1576,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>dateTime</c>.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetDateTime(out DateTime value)
         {
             return XmlLexical.TryParseDateTime(ValueSpan, out value);
@@ -1248,8 +1589,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>dateTime</c> with an offset.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetDateTimeOffset(out DateTimeOffset value)
         {
             return XmlLexical.TryParseDateTimeOffset(ValueSpan, out value);
@@ -1258,8 +1602,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>decimal</c>. Exponent notation is rejected.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetDecimal(out decimal value)
         {
             return XmlLexical.TryParseDecimal(ValueSpan, out value);
@@ -1268,8 +1615,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>double</c>, including <c>INF</c>, <c>-INF</c>, and <c>NaN</c>.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetDouble(out double value)
         {
             return XmlLexical.TryParseDouble(ValueSpan, out value);
@@ -1278,8 +1628,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as a GUID.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetGuid(out Guid value)
         {
             return XmlLexical.TryParseGuid(ValueSpan, out value);
@@ -1288,8 +1641,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as a 16-bit integer (<c>xs:short</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetInt16(out short value)
         {
             return XmlLexical.TryParseInt16(ValueSpan, out value);
@@ -1298,8 +1654,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as a 32-bit integer (<c>xs:int</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetInt32(out int value)
         {
             return XmlLexical.TryParseInt32(ValueSpan, out value);
@@ -1308,8 +1667,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as a 64-bit integer (<c>xs:long</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetInt64(out long value)
         {
             return XmlLexical.TryParseInt64(ValueSpan, out value);
@@ -1318,8 +1680,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as a signed 8-bit integer (<c>xs:byte</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         [CLSCompliant(false)]
         public readonly bool TryGetSByte(out sbyte value)
         {
@@ -1329,8 +1694,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>float</c>.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetSingle(out float value)
         {
             return XmlLexical.TryParseSingle(ValueSpan, out value);
@@ -1339,8 +1707,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>time</c>.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetTimeOnly(out TimeOnly value)
         {
             return XmlLexical.TryParseTimeOnly(ValueSpan, out value);
@@ -1349,8 +1720,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as XSD <c>duration</c>. Year and month components are rejected.
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool TryGetTimeSpan(out TimeSpan value)
         {
             return XmlLexical.TryParseDuration(ValueSpan, out value);
@@ -1359,8 +1733,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as an unsigned 16-bit integer (<c>xs:unsignedShort</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         [CLSCompliant(false)]
         public readonly bool TryGetUInt16(out ushort value)
         {
@@ -1370,8 +1747,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as an unsigned 32-bit integer (<c>xs:unsignedInt</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         [CLSCompliant(false)]
         public readonly bool TryGetUInt32(out uint value)
         {
@@ -1381,8 +1761,11 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to read the current value as an unsigned 64-bit integer (<c>xs:unsignedLong</c>).
         /// </summary>
-        /// <param name="value">When this method returns, the parsed value.</param>
-        /// <returns><see langword="true"/> if parsing succeeded.</returns>
+        /// <param name="value">When this method returns, contains the parsed value, if parsing succeeded. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the entire token value can be parsed as the requested type; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         [CLSCompliant(false)]
         public readonly bool TryGetUInt64(out ulong value)
         {
@@ -1390,15 +1773,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Attempts to skip the current element and its children.
+        /// Tries to skip the children of the current XML element.
         /// </summary>
         /// <returns>
-        /// <see langword="true"/> if the element was skipped;
-        /// <see langword="false"/> if more data is required.
+        /// <see langword="true"/> if there was enough data for the children to be skipped successfully;
+        /// otherwise, <see langword="false"/>.
         /// </returns>
+        /// <exception cref="XmlException">
+        /// The skipped XML is not well formed.
+        /// -or-
+        /// A limit set in <see cref="XmlReaderOptions"/> is exceeded.
+        /// -or-
+        /// The input ends inside a token and <see cref="IsFinalBlock"/> is <see langword="true"/>.
+        /// </exception>
         /// <remarks>
+        /// <para>
+        /// When the current token is a start element, the reader moves to its end tag. On an empty element
+        /// this method does nothing and returns <see langword="true"/>.
         /// When the element is not all in the current block, the reader is put back on its start tag, as
         /// <c>Utf8JsonReader.TrySkip</c> does, so the caller can supply more data and skip or read it again.
+        /// </para>
+        /// <para>
+        /// When the current token is not a start element, this method calls <see cref="Read"/> and returns
+        /// its result. The reader moves to the next token, and the result is <see langword="false"/> at the
+        /// end of the document as well as when more data is required.
+        /// </para>
         /// </remarks>
         public bool TrySkip()
         {
@@ -1422,20 +1821,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares the current value to UTF-8 <paramref name="utf8Text"/>.
+        /// Compares the UTF-8 encoded text in a read-only byte span to the decoded XML token value in the
+        /// source and returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="utf8Text">The UTF-8 text.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="utf8Text">The UTF-8 encoded text to compare against.</param>
+        /// <returns>
+        /// <see langword="true"/> if the XML token value in the source matches the UTF-8 encoded lookup text;
+        /// otherwise, <see langword="false"/>.
+        /// </returns>
         public readonly bool ValueTextEquals(ReadOnlySpan<byte> utf8Text)
         {
             return ValueSpan.SequenceEqual(utf8Text);
         }
 
         /// <summary>
-        /// Compares the current value to <paramref name="text"/>.
+        /// Compares the text in a read-only character span to the decoded XML token value in the source and
+        /// returns a value that indicates whether they match.
         /// </summary>
-        /// <param name="text">The text.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="text">The text to compare against.</param>
+        /// <returns>
+        /// <see langword="true"/> if the XML token value in the source matches the lookup text; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool ValueTextEquals(ReadOnlySpan<char> text)
         {
             var max = Encoding.UTF8.GetMaxByteCount(text.Length);
@@ -1445,10 +1852,14 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Compares the current value to <paramref name="text"/>.
+        /// Compares the text in a string to the decoded XML token value in the source and returns a value
+        /// that indicates whether they match.
         /// </summary>
-        /// <param name="text">The text.</param>
-        /// <returns><see langword="true"/> if they are equal.</returns>
+        /// <param name="text">The text to compare against. A <see langword="null"/> value matches no token value.</param>
+        /// <returns>
+        /// <see langword="true"/> if the XML token value in the source matches the lookup text; otherwise,
+        /// <see langword="false"/>.
+        /// </returns>
         public readonly bool ValueTextEquals(string? text)
         {
             return text is not null && ValueTextEquals(text.AsSpan());

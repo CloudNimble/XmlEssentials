@@ -1,7 +1,10 @@
-# Best Practices
-
-- Construct options with `new XmlWriterOptions()`. `default(XmlWriterOptions)` leaves `IndentCharacter` as NUL and `NewLine` as null; the writer substitutes space and `Environment.NewLine`.
-- Keep payloads in UTF-8 (`u8` literals, `byte[]`). Cache repeated names with `XmlEncodedText.Encode`.
-- Set `MaxDepth`, `MaxAttributeCount`, and `MaxNameByteCount` on untrusted object graphs.
-- Call `WriteEndElement` for every start tag. Do not rely on `Dispose` to close elements; it throws instead.
-- Use `OmitXmlDeclaration = true` for fragments. Write the declaration explicitly only when it must be the first output.
+- **Dispose the writer, or call `Flush`, before you read the output.** Until then, bytes are pending and the buffer or stream doesn't have them.
+- **End every element yourself.** `Dispose` throws an `XmlException` when an element is still open. It doesn't close elements for you.
+- **Use the `WriteElement*` methods for elements that hold one value.** One call replaces three.
+- **Pass `u8` literals for names that are fixed.** `writer.WriteStartElement("Order"u8)` skips the conversion from UTF-16. For a name computed once at run time, keep an `XmlEncodedText`.
+- **Declare the prefixes you use often on the root element** with `WriteNamespaceDeclaration`. Otherwise the writer declares a prefix again on every element that needs it and isn't inside one that has it.
+- **Reuse a writer with `Reset` on a hot path.** A reused writer allocates nothing per document.
+- **Set `NewLine` when the bytes matter.** The default depends on the operating system.
+- **Write binary data with one `WriteBase64StringValue` call,** not in segments.
+- **Use `WriteRawValue` only for XML that your own code produced.** The input isn't checked or escaped.
+- **Discard the output when the writer throws.** Part of the document may already be committed.

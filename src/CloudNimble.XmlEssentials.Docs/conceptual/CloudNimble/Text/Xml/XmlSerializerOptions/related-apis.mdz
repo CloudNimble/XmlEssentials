@@ -1,6 +1,15 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Related APIs
-
-- API 1
-- API 2
-
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlSerializerDefaults
+CloudNimble.Text.Xml.XmlNamingPolicy
+CloudNimble.Text.Xml.XmlPropertyMapping
+CloudNimble.Text.Xml.XmlNilHandling
+CloudNimble.Text.Xml.XmlEnumHandling
+CloudNimble.Text.Xml.XmlCommentHandling
+CloudNimble.Text.Xml.XmlWhitespaceHandling
+CloudNimble.Text.Xml.XmlVersion
+CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition
+CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
+CloudNimble.Text.Xml.Serialization.XmlNumberHandling
+CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
+CloudNimble.Text.Xml.Serialization.XmlConverter
+CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver

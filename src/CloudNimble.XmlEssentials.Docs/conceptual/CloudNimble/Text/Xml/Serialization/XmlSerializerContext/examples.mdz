@@ -1,9 +1,51 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Examples
-
-Provide examples of using `XmlSerializerContext` here.
+### Serialize and deserialize with generated type info
 
 ```csharp
-// Example code here
+Order order = CreateOrder();
+
+string xml = XmlSerializer.Serialize(order, OrderXmlContext.Default.Order);
+output.WriteLine(xml);
+
+Order? copy = XmlSerializer.Deserialize(xml, OrderXmlContext.Default.Order);
+output.WriteLine($"Order {copy!.Id} for {copy.Customer}: {copy.Lines.Count} lines");
 ```
 
+The code produces the following output:
+
+```text
+<?xml version="1.0" encoding="utf-8"?><Order Id="1042"><Customer>Ada</Customer><Line><Quantity>1</Quantity><Sku>KB-01</Sku></Line><Line><Quantity>2</Quantity><Sku>MS-02</Sku></Line></Order>
+Order 1042 for Ada: 2 lines
+```
+
+### Create a context from your own options
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+    WriteIndented = true,
+};
+var context = new OrderXmlContext(options);
+
+string xml = XmlSerializer.Serialize(CreateOrder(), context.Order);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Order Id="1042">
+  <Customer>Ada</Customer>
+  <Line>
+    <Quantity>1</Quantity>
+    <Sku>KB-01</Sku>
+  </Line>
+  <Line>
+    <Quantity>2</Quantity>
+    <Sku>MS-02</Sku>
+  </Line>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/32_UseSourceGeneration.cs)

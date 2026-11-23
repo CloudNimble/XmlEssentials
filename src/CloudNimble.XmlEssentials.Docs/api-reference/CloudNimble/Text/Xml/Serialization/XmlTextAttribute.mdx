@@ -1,8 +1,9 @@
 ---
 title: XmlTextAttribute
+description: "Maps a member to the simple content of the current element."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute']
 ---
 
 ## Definition
@@ -18,6 +19,55 @@ keywords: ['XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttrib
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlTextAttribute
 ```
+
+## Summary
+
+Maps a member to the simple content of the current element.
+
+## Usage
+
+Apply `[XmlText]` to the one property or field whose value is the text of the element that represents the object. Use it for XML such as `<Price Currency="USD">49.95</Price>`, where an element has attributes and a value but no child elements.
+
+```csharp
+public sealed class Price
+{
+    [XmlAttribute]
+    public string? Currency { get; set; }
+
+    [XmlText]
+    public decimal Amount { get; set; }
+}
+```
+
+```csharp
+var listing = new Listing
+{
+    Name = "Keyboard",
+    Price = new Price { Currency = "USD", Amount = 49.95m },
+};
+
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(listing, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Listing><Name>Keyboard</Name><Price Currency="USD">49.95</Price></Listing>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+## Considerations
+
+- A type can have one text member. A second `[XmlText]` or `[XmlCData]` member throws a `NotSupportedException` the first time the type is used.
+- A type with a text member can have XML attributes but no child elements. For text interleaved with elements, see [Mixed content](/guides/mixed-content).
+- The member must be a simple value, such as a string, a number, or a date.
+- A `null` value writes no text, so the element is empty. When reading, an element with no text leaves the member at its default value.
+- The member has no XML name of its own, so naming policies and `[XmlPropertyName]` have nothing to rename.
+- To write the text as a CDATA section, use `[XmlCData]` instead.
 
 ## Constructors
 
@@ -932,4 +982,11 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlCDataAttribute
+- CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
+- CloudNimble.Text.Xml.Serialization.XmlElementAttribute
+- CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
 

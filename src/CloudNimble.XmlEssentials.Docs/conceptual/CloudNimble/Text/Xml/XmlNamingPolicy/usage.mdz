@@ -1,5 +1,32 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlNamingPolicy` converts .NET type and member names to XML names, so you can follow a naming convention without annotating every member. It is the counterpart of `JsonNamingPolicy`. Assign a policy to one of three properties of [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions):
 
-Describe how to use `XmlNamingPolicy` here.
+| Property | Names it converts |
+| --- | --- |
+| `PropertyNamingPolicy` | Elements, XML attributes, and the document element, unless one of the next two is set. Also string dictionary keys, unless `DictionaryKeyPolicy` is set. |
+| `ElementNamingPolicy` | Elements and the document element. |
+| `AttributeNamingPolicy` | XML attributes. |
 
+```csharp
+var warehouse = new Warehouse { WarehouseCode = "SEA-2", StreetAddress = "400 Dock Rd", LoadingDocks = 12 };
+
+var options = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    PropertyNamingPolicy = XmlNamingPolicy.CamelCase,
+};
+
+string xml = XmlSerializer.Serialize(warehouse, options);
+output.WriteLine(xml);
+
+Warehouse? copy = XmlSerializer.Deserialize<Warehouse>(xml, options);
+output.WriteLine($"{copy!.WarehouseCode}: {copy.LoadingDocks} docks");
+```
+
+The code produces the following output:
+
+```text
+<warehouse warehouseCode="SEA-2"><streetAddress>400 Dock Rd</streetAddress><loadingDocks>12</loadingDocks></warehouse>
+SEA-2: 12 docks
+```
+
+A policy of `null`, the default, leaves names unchanged. The built-in policies are static properties: `CamelCase`, `PascalCase`, `SnakeCaseLower`, `SnakeCaseUpper`, `KebabCaseLower`, and `KebabCaseUpper`. To define your own, derive from `XmlNamingPolicy` and override `ConvertName`.

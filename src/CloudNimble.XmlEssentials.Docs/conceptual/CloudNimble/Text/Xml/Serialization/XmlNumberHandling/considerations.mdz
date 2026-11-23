@@ -1,5 +1,3 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlNumberHandling` here.
-
+- The default is the reverse of System.Text.Json, where named floating-point literals must be turned on. `INF`, `-INF`, and `NaN` are part of the XML Schema definition of `float` and `double`, so XML consumers that follow XML Schema accept them.
+- The setting doesn't affect integers or `decimal`, which have no such values.
+- Unlike `JsonNumberHandling`, there are no values for reading numbers from quoted strings. Every XML value is text already.

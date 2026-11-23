@@ -1,6 +1,7 @@
-# Best Practices
+- **Set `CommentHandling` to `Skip` and `WhitespaceHandling` to `Insignificant` when your code only wants data.** The defaults report comments and the white space between elements, which is what code that copies or edits a document needs.
+- **Leave the limits at their defaults unless you have a reason.** The defaults already protect against documents that nest too deep, carry too many attributes, or hold a name or a value that's too large.
+- **Set `MaxDocumentByteCount` for input you don't trust.** It's the one limit that's off by default.
+- **Lower `MaxDepth` when you know the shape of your documents.** A document format that nests five levels has no need for 64.
+- **Use `XmlCommentHandling.Disallow` and `XmlWhitespaceHandling.None` only for a strict contract** between programs, where a comment or indentation means that the producer is wrong.
 
-- Always write `new XmlReaderOptions()` when you need defaults, including when you set only `MaxDepth`.
-- Cap `MaxDepth` and `MaxNameByteCount` on untrusted input. Billion-laughs-style DTDs are already rejected; deep trees and huge names are not.
-- Leave `MaxDocumentByteCount` at 0 unless an upper layer (document parse, deserialize) will apply it.
-- Match comment and whitespace policy to the producer. SOAP and XHTML often need `CommentHandling.Skip` (the constructor default).
+See [Security](/guides/security) for how the limits fit together.

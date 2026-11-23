@@ -1,5 +1,4 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlUnknownDerivedTypeHandling` here.
-
+- A fallback loses data. The members that only the undeclared type has are not written, and the document reads back as the type it was written as.
+- When reading, the discriminator applies to `XmlDiscriminatorPlacement.Attribute` and `XmlDiscriminatorPlacement.XsiType`. With `ElementName`, an element whose name isn't declared never reaches this setting: inside an object it is content that no member maps, and at the document root it fails the root name check.
+- An element with no discriminator at all is read as the declared base type in every mode.
+- The values have the same names as `JsonUnknownDerivedTypeHandling` in System.Text.Json.

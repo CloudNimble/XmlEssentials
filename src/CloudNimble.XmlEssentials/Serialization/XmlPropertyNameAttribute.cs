@@ -4,8 +4,13 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Sets the XML local name of a property or field, analogous to <c>JsonPropertyNameAttribute</c>.
+    /// Specifies the local name of the XML element or attribute that a property or field is serialized as. This class cannot be inherited.
     /// </summary>
+    /// <remarks>
+    /// The name overrides any naming policy, and takes precedence over the name set by <see cref="XmlElementAttribute"/>,
+    /// <see cref="XmlAttributeAttribute"/>, or <see cref="XmlArrayAttribute"/> on the same member. This attribute is
+    /// analogous to <c>JsonPropertyNameAttribute</c> in <c>System.Text.Json</c>.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
     public sealed class XmlPropertyNameAttribute : Attribute
     {
@@ -13,8 +18,11 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets the XML local name.
+        /// Gets the local name of the XML element or attribute.
         /// </summary>
+        /// <value>
+        /// The local name of the XML element or attribute.
+        /// </value>
         public string Name { get; }
 
         #endregion
@@ -22,9 +30,15 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Constructors
 
         /// <summary>
-        /// Creates the attribute.
+        /// Initializes a new instance of the <see cref="XmlPropertyNameAttribute"/> class with the specified name.
         /// </summary>
-        /// <param name="name">The XML local name.</param>
+        /// <param name="name">The local name of the XML element or attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="name"/> is empty or consists only of white-space characters.
+        /// </exception>
         public XmlPropertyNameAttribute(string name)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name);

@@ -1,9 +1,33 @@
-# Considerations
+### Lifetime
 
-The default cursor (`default(XmlElement)`) has `ValueKind` `Undefined`. Any other member throws `InvalidOperationException`.
+- An `XmlElement` holds a reference to its document and a position in it. It holds no data of its own.
+- After the document is disposed, every member that reads from it throws `ObjectDisposedException`.
+- `default(XmlElement)` refers to no node. `ValueKind` returns `Undefined`, and every other member that reads a node throws `InvalidOperationException`.
+- Two values are equal when they point at the same node of the same document.
 
-Empty elements are `XmlValueKind.EmptyElement` with `IsEmptyElement` true. `xsi:nil="true"` is `XmlValueKind.Nil` and `GetString` returns null.
+### Values
 
-Enumerators are nested types (`XmlElement.Enumerator`, `XmlElement.AttributeEnumerator`) to match `JsonElement`. `GetEnumerator` returns the same struct so `foreach` works.
+- The value of an attribute, a text node, a CDATA section, a comment, or a processing instruction is its content. The value of an element is the text of every text node and CDATA section inside it, at any depth, in document order.
+- The text of an element that has child elements includes the white space between them when the document keeps it, which is the default. For `<r>`, a line break, two spaces, `<c>x</c>`, a line break, and `</r>`, the value of `r` is `"\n  x\n"` and the value of `c` is `"x"`.
+- `GetString` returns the value unchanged, white space included, and `null` for a nil element. `GetInnerText` returns an empty string for a nil element, a comment, or a processing instruction.
+- The typed getters ignore white space around the value and follow the XML Schema lexical forms. `GetBoolean` accepts `true`, `false`, `1`, and `0`. `GetDecimal` doesn't accept an exponent. `GetDouble` accepts `INF`, `-INF`, and `NaN`.
+- A value that can't be converted throws `XmlException`. There are no `TryGet` methods for values.
+- There are getters only for `bool`, `int`, `long`, `decimal`, `double`, `DateTime`, `DateTimeOffset`, `Guid`, and Base64 bytes. For another type, convert the result of `GetString`.
+- `GetDateTime` returns `DateTimeKind.Utc` for a value that ends in `Z`, `Unspecified` for a value without a time zone, and local time for any other offset. `GetDateTimeOffset` gives a value without a time zone the local offset.
 
-`GetInnerText` concatenates descendant text and CDATA. Comments and PIs are omitted from inner text.
+### Navigation
+
+- `GetChild` and `TryGetChild` search direct children and return the first match in document order. There is no descendant search, no parent, no sibling access, and no access by index.
+- `TryGetAttribute` has no overload that takes a namespace URI. `GetAttribute` does.
+- `EnumerateChildren` returns every child node. With the default options that includes a `Text` node for each run of white space between elements and a `Comment` node for each comment.
+- `AttributeCount` and `EnumerateAttributes` include namespace declarations (`xmlns` and `xmlns:prefix`).
+- The enumerators are structs that work with `foreach`. They don't implement `IEnumerable<T>`, so LINQ doesn't apply.
+- On a node that isn't an element, the lookups find nothing, the enumerators are empty, and `LocalName` is an empty string (or the target, for a processing instruction).
+
+### Allocation
+
+Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `WriteTo` don't allocate. `LocalName`, `Prefix`, `NamespaceUri`, `GetString`, `GetInnerText`, and `GetRawXml` allocate the string they return, `GetBytesFromBase64` allocates the array, and `CloneNode` allocates the copy.
+
+### Markup
+
+`GetRawXml` writes the node with a `Utf8XmlWriter`; it isn't a slice of the original input. It returns an empty string for an attribute. `IsEmptyElement` is `true` for `<e/>` and `false` for `<e></e>`, and `WriteTo` keeps the difference.

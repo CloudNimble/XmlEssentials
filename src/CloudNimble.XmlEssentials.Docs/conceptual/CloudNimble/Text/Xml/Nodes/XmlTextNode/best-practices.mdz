@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Write text nodes as children of an element. Document-level character data is rejected by the writer.
+Document best practices for `XmlTextNode` here.
+

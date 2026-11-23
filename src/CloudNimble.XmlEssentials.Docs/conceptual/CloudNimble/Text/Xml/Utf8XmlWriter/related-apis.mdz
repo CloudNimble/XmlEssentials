@@ -1,8 +1,8 @@
-# Related APIs
-
-- `XmlWriterOptions`
-- `XmlEncodedText`
-- `XmlVersion`
-- `XmlException`
-- `Utf8XmlReader`
-- `System.Text.Json.Utf8JsonWriter`
+CloudNimble.Text.Xml.XmlWriterOptions
+CloudNimble.Text.Xml.XmlEncodedText
+CloudNimble.Text.Xml.XmlVersion
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.XmlNamespaces
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.Serialization.XmlConverter

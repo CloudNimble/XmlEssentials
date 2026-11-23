@@ -1,16 +1,17 @@
-# Usage
-
-Pass a constructed options struct into `Utf8XmlWriter`:
+Create the options, set the properties you need, and pass the value to a `Utf8XmlWriter` constructor, as in `new Utf8XmlWriter(buffer, options)`. A writer keeps its options for its whole life, including across `Reset`.
 
 ```csharp
-var options = new XmlWriterOptions
-{
-    Indented = true,
-    NewLine = "\n",
-    OmitXmlDeclaration = true,
-    MaxDepth = 32,
-};
-using var writer = new Utf8XmlWriter(buffer, options);
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
 ```
 
-Use the parameterless constructor so `IndentCharacter` is space and `NewLine` is `Environment.NewLine`.
+The properties fall into four groups:
+
+| Group | Properties |
+| --- | --- |
+| Formatting | `Indented`, `IndentSize`, `IndentCharacter`, `NewLine` |
+| The start of the document | `OmitXmlDeclaration`, `Standalone`, `Version`, `EmitByteOrderMark` |
+| Checks | `SkipValidation` |
+| Limits | `MaxDepth`, `MaxAttributeCount`, `MaxNameByteCount` |
+
+With no options at all, the writer produces one line of XML that starts with an XML 1.0 declaration, with validation on.

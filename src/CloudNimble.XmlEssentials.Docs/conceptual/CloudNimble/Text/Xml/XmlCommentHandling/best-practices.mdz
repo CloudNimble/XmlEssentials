@@ -1,5 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Leave the constructor default (`Skip`) unless you are round-tripping comments or validating that none exist.
+Document best practices for `XmlCommentHandling` here.
 
-Use `Disallow` on untrusted input when comments are out of contract (for example a machine-to-machine schema with no annotations).

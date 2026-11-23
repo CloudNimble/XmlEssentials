@@ -1,5 +1,7 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Best Practices
-
-Document best practices for `XmlSerializerOptions` here.
-
+- **Create options once.** Keep each instance in a `static readonly` field or a singleton. Never create one per call: the type metadata is cached on the instance, and a new instance starts with none.
+- **Set everything in the initializer.** An instance can't be changed after its first use, so finish configuring it where you create it.
+- **Use the same instance to read and to write.** Naming policies, the default property mapping, and the default namespace change the names the serializer looks for when it reads.
+- **Call `MakeReadOnly` before you share an instance** with code that might otherwise change it before its first use.
+- **Copy at startup, not per call.** A copy shares none of the source's cached metadata.
+- **Set `NewLine` when the output must be identical on every operating system.** Its default is `Environment.NewLine`, and it is used only when `WriteIndented` is `true`.
+- **Start from `XmlSerializerOptions.Strict` for XML you don't control,** and set `MaxDocumentByteCount`. See [Security](/guides/security).

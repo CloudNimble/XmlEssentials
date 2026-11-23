@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Document-level PIs belong on `XmlDocument` (prolog/epilog). Child PIs belong in `XmlElementNode.Children`.
+Document common patterns for `XmlProcessingInstructionNode` here.
+

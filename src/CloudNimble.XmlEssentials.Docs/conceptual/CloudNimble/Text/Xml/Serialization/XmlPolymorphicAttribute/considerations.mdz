@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlPolymorphicAttribute` here.
-
+- The declared base type must be a concrete class. The attribute can be applied to an interface or an abstract class, but the built-in object mapping doesn't support those as a declared type, and using one throws `NotSupportedException`.
+- Derived types inherit the attribute and the list of derived types. Serializing a derived type directly also writes its discriminator.
+- `InferClosedTypePolymorphism` is not read in this release, here or on `XmlSerializerOptions`. Derived types must be listed.
+- Generated converters don't read or write derived types. The source generator reports error XMLXE008 for a type that declares them, so use the reflection resolver for the hierarchy.
+- The mapping is built once for each `XmlSerializerOptions` instance and cached. There is no API to add derived types at run time.

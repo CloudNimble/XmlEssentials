@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlSerializableAttribute` here.
-
+- **The class must be `partial` and derive from `XmlSerializerContext`.** Otherwise the generator reports `XMLXE001`.
+- **The `GenerationMode` property has no effect.** The generator reads the mode from `[XmlSourceGenerationOptions]` on the context, and it applies to every type in that context. To generate one type in metadata mode and another in the default mode, declare two contexts.
+- **A converter is generated only for object types.** For an enumeration you list, the property returns the built-in enumeration converter. For a collection or a simple value you list, such as `List<Order>` or `int`, the property returns type info from the run-time resolver.
+- **A listed type is checked at compile time.** See [Understand the diagnostics](/guides/source-generation#understand-the-diagnostics) for the errors the generator reports.
+- **The attribute does nothing at run time.** The reflection resolver doesn't read it.

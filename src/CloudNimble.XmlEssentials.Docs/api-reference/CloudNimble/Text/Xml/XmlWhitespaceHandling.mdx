@@ -1,8 +1,9 @@
 ---
 title: XmlWhitespaceHandling
+description: "How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `XmlReaderOptions.WhitespaceHandling`', '- `XmlTokenType.Text`', '- `Utf8XmlReader.ValueSpan`']
+keywords: ['XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlCommentHandling']
 ---
 
 ## Definition
@@ -19,77 +20,89 @@ keywords: ['XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling'
 CloudNimble.Text.Xml.XmlWhitespaceHandling
 ```
 
+## Summary
+
+How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements.
+
 ## Usage
 
-# Usage
+Set `XmlReaderOptions.WhitespaceHandling` to choose what a `Utf8XmlReader` does with text that is only white space and sits between elements. That's the indentation of a formatted document.
 
-`XmlReaderOptions.WhitespaceHandling` applies to **whitespace-only text between elements**:
+| Value | The reader |
+| --- | --- |
+| `Significant` | Reports the text as an `XmlTokenType.Text` token. This is the default. |
+| `Insignificant` | Skips the text. |
+| `None` | Throws an `XmlException` with the message `Whitespace-only text is not allowed.` |
 
-- `Insignificant` (default) — skip those nodes.
-- `Significant` — report them as `XmlTokenType.Text`.
-- `None` — throw `XmlException`.
-
-Whitespace inside a leaf element's value is always part of the value. `<n> a </n>` is `" a "` under every setting.
-
-## Examples
-
-# Examples
+With the default, the document below produces three `Text` tokens for the indentation inside `Order`. With `Insignificant`, they're gone:
 
 ```csharp
-var xml = "<a>\n<b/>\n</a>"u8;
+var xml = "<?xml-stylesheet href=\"order.xsl\"?>\n<Order>\n  <!-- rush -->\n  <Note><![CDATA[a < b]]></Note>\n</Order>"u8;
 
-var skip = new Utf8XmlReader(xml);
-skip.Read(); // a
-skip.Read(); // b (the newline was skipped)
+output.WriteLine("Default options:");
+PrintTokens(xml, new XmlReaderOptions(), output);
 
-var keep = new Utf8XmlReader(xml, new XmlReaderOptions
+var dataOnly = new XmlReaderOptions
 {
-    WhitespaceHandling = XmlWhitespaceHandling.Significant,
-});
-keep.Read(); // a
-keep.Read(); // Text "\n"
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
+};
+
+output.WriteLine("Comments skipped and white space insignificant:");
+PrintTokens(xml, dataOnly, output);
 ```
 
-## Best Practices
+```text
+Default options:
+  ProcessingInstruction target=xml-stylesheet data="href="order.xsl""
+  StartElement Order
+  Text "\n  "
+  Comment " rush "
+  Text "\n  "
+  StartElement Note
+  CData "a < b"
+  EndElement Note
+  Text "\n"
+  EndElement Order
+Comments skipped and white space insignificant:
+  ProcessingInstruction target=xml-stylesheet data="href="order.xsl""
+  StartElement Order
+  StartElement Note
+  CData "a < b"
+  EndElement Note
+  EndElement Order
+```
 
-# Best Practices
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
 
-Keep `Insignificant` unless you are writing a canonicalizer or mixed-content model that treats inter-element space as data.
+## Remarks
 
-Do not use this enum to trim leaf values. Trim with `TrimXmlWhitespace` semantics on `ValueSpan`, or accept the spaces as significant character data.
-
-## Patterns
-
-# Patterns
-
-**Documents.** Default `Insignificant` — ignore pretty-print newlines.
-
-**Mixed content.** `Significant` so a mapper can see text nodes between child elements.
-
-**Machine XML.** `None` when the contract forbids inter-element whitespace and you want a hard error.
+Whitespace inside a leaf element's value is always significant.
+`<n> a </n>` is the value `" a "` regardless of this setting.
 
 ## Considerations
 
-# Considerations
-
-Indentation between child elements is insignificant by default, matching typical document and SOAP payloads.
-
-`None` is a strict policy for producers that never emit inter-element whitespace. Pretty-printed XML will throw.
-
-Prolog and epilog whitespace (before the root, after the root) is skipped at depth 0 and is not governed by this enum.
+- **`Significant` is the zero value, and the default.** `new XmlReaderOptions()`, `default(XmlReaderOptions)`, and a reader created without options all report white space between elements. It's kept by default so that XML that's read and written back doesn't change its layout.
+- **Set `Insignificant` in a loop that only wants data.** Otherwise the token after a start tag that has child elements is usually a `Text` token that holds indentation.
+- **The serializer's default is different.** `XmlSerializerOptions.WhitespaceHandling` defaults to `Insignificant`, because indentation has no place in an object.
+- **The setting never changes a value.** White space inside an element's text is part of the value under every setting: `<Name> Ada </Name>` is `" Ada "`. The reader doesn't trim. Line ends are read as a line feed under every setting, as XML requires.
+- **White space outside the root element is never reported.** The line break after the XML declaration and anything after the root's end tag are skipped under every setting.
+- **`None` rejects formatted documents.** Use it only when the producer is known to write no white space between elements and anything else is an error.
+- **`XmlDocument` uses the same enumeration.** `XmlDocumentOptions.WhitespaceHandling` also defaults to `Significant`.
 
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Insignificant` | 0 |  |
-| `Significant` | 1 |  |
-| `None` | 2 |  |
+| `Insignificant` | 0 | Skip whitespace-only text between elements. This is the default. |
+| `Significant` | 1 | Report whitespace-only text nodes as [XmlTokenType.Text](/api-reference/CloudNimble/Text/Xml/XmlTokenType). |
+| `None` | 2 | Reject whitespace-only text between elements with [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException). |
 
 ## Related APIs
 
-- # Related APIs
-- - `XmlReaderOptions.WhitespaceHandling`
-- - `XmlTokenType.Text`
-- - `Utf8XmlReader.ValueSpan`
+- CloudNimble.Text.Xml.XmlReaderOptions
+- CloudNimble.Text.Xml.XmlDocumentOptions
+- CloudNimble.Text.Xml.XmlTokenType
+- CloudNimble.Text.Xml.Utf8XmlReader
+- CloudNimble.Text.Xml.XmlCommentHandling
 

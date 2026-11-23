@@ -279,6 +279,39 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Parse_WithoutOptions_KeepsCommentsSoTheDocumentRoundTrips()
+        {
+            const string xml = "<!--top--><e a=\"1\"><!--in-->x<b/><!--last--></e><!--tail-->";
+            using var document = XmlDocument.Parse(xml);
+            var buffer = new ArrayBufferWriter<byte>();
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            document.WriteTo(writer);
+            writer.Flush();
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be(xml);
+        }
+
+        [TestMethod]
+        public void Options_DefaultAndNew_BothKeepComments()
+        {
+            default(XmlDocumentOptions).CommentHandling.Should().Be(XmlCommentHandling.Allow);
+            new XmlDocumentOptions().CommentHandling.Should().Be(XmlCommentHandling.Allow);
+            new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Disallow }.CommentHandling.Should().Be(XmlCommentHandling.Disallow);
+        }
+
+        [TestMethod]
+        public void Parse_CommentHandlingSkip_LeavesCommentsOutOfTheDocument()
+        {
+            using var document = XmlDocument.Parse(
+                "<!--top--><e a=\"1\"><!--in-->x<b/><!--last--></e><!--tail-->",
+                new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Skip });
+            var buffer = new ArrayBufferWriter<byte>();
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            document.WriteTo(writer);
+            writer.Flush();
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<e a=\"1\">x<b/></e>");
+        }
+
+        [TestMethod]
         public void GetDateTime_Guid_Decimal_Int64()
         {
             using var dt = XmlDocument.Parse("<e>2020-01-02T03:04:05Z</e>");

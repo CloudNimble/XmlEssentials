@@ -1,16 +1,29 @@
-# Considerations
+Know the following about the defaults and the limits.
 
-`XmlReaderOptions` is a struct. `new XmlReaderOptions()` runs the constructor and sets `CommentHandling` to `Skip`. `default(XmlReaderOptions)` leaves `CommentHandling` at `Disallow` (enum zero). Prefer `new`.
+### The defaults keep everything
 
-A max-* of `0` means “use the table default”:
+`new XmlReaderOptions()` and `default(XmlReaderOptions)` are the same value. `CommentHandling` is `Allow` and `WhitespaceHandling` is `Significant`, so the reader reports comments as `Comment` tokens and white-space-only text between elements as `Text` tokens. The XML specification asks a processor to pass all of a document's characters to the application, and XML that's read and written back then keeps its comments and layout. `XmlSerializerOptions` has the opposite defaults, because neither belongs in an object.
 
-| Property | When 0 |
+### A limit of 0 means the default
+
+| Property | When it's 0 |
 | --- | --- |
 | `MaxDepth` | 64 |
-| `MaxAttributeCount` | 1000 |
-| `MaxNameByteCount` | 1024 |
-| `MaxCommentByteCount` | 1,048,576 |
-| `MaxTextByteCount` | 16,777,216 |
-| `MaxDocumentByteCount` | unbounded (stays 0) |
+| `MaxAttributeCount` | 1,000 |
+| `MaxNameByteCount` | 1,024 bytes |
+| `MaxTextByteCount` | 16,777,216 bytes |
+| `MaxCommentByteCount` | 1,048,576 bytes |
+| `MaxDocumentByteCount` | No limit |
 
-`MaxDocumentByteCount` is stored on the options but is not enforced by `Utf8XmlReader` in this release.
+`MaxDocumentByteCount` is the exception: 0 means no limit. The reader checks it in its constructor, against the bytes read in earlier blocks plus the length of the block it's given.
+
+### What the limits count
+
+- `MaxAttributeCount` includes namespace declarations.
+- `MaxNameByteCount`, `MaxTextByteCount`, and `MaxCommentByteCount` are in UTF-8 bytes, not characters.
+- `MaxCommentByteCount` applies to comments that are skipped as well as to comments that are reported.
+- Exceeding a limit throws an `XmlException` whose message names the property and the limit, such as `MaxDepth exceeded (64).`
+
+### Where else the options apply
+
+These options are for `Utf8XmlReader`. `XmlDocument` and `XmlSerializer` have their own options types, `XmlDocumentOptions` and `XmlSerializerOptions`.

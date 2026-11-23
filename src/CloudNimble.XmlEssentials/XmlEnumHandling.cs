@@ -2,18 +2,18 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// How enum values are written.
+    /// Specifies how enumeration values are written.
     /// </summary>
     public enum XmlEnumHandling : byte
     {
 
         /// <summary>
-        /// Write the enum member name. Flags are space-separated names.
+        /// The name of the enumeration member. A combination of flags is written as the member names separated by spaces.
         /// </summary>
         Name = 0,
 
         /// <summary>
-        /// Write the underlying integer.
+        /// The underlying integer value.
         /// </summary>
         Integer = 1,
 

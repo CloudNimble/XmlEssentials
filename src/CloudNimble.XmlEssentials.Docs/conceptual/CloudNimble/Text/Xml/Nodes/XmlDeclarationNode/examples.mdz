@@ -1,6 +1,9 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
+Provide examples of using `XmlDeclarationNode` here.
+
 ```csharp
-new XmlDeclarationNode { Standalone = true }.ToString();
-// <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+// Example code here
 ```
+

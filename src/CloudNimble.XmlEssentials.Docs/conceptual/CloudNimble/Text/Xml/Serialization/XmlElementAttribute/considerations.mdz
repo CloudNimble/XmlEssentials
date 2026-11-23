@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlElementAttribute` here.
-
+- `[XmlPropertyName]` on the same member takes precedence over `ElementName`, and `[XmlPropertyOrder]` takes precedence over `Order`.
+- A name set here isn't converted by a naming policy.
+- `Order` follows the rules of `[XmlPropertyOrder]`: values of zero or more are written first in ascending order, and a negative value, the default, means the order isn't set.
+- A member can't be both an element and something else. `[XmlElement]` together with `[XmlAttribute]`, `[XmlText]`, or `[XmlCData]` throws a `NotSupportedException` the first time the type is used.
+- More than one `[XmlElement]` on a member is for choosing an element name by run-time type. See [Polymorphism](/guides/polymorphism).

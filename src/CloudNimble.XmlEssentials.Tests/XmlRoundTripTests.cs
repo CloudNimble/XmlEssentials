@@ -124,7 +124,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<p>a <b>b</b> <i>c</i></p>", "a b c", DisplayName = "whitespace between inline elements in mixed content")]
         [DataRow("<p> a </p>", " a ", DisplayName = "whitespace around text in a leaf")]
         [DataRow("<r><c> </c></r>", " ", DisplayName = "whitespace-only leaf")]
-        [DataRow("<r>\n  <c>x</c>\n</r>", "x", DisplayName = "indentation between elements")]
+        [DataRow("<r>\n  <c>x</c>\n</r>", "\n  x\n", DisplayName = "indentation between elements")]
         public void Document_DefaultOptions_WhitespaceHandling(string xml, string text)
         {
             using var document = XmlDocument.Parse(xml);
@@ -132,9 +132,33 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Reader_DefaultOptions_ReportsOnlySignificantWhitespace()
+        public void Reader_DefaultOptions_ReportCommentsAndWhitespaceBetweenElements()
         {
-            var options = new XmlReaderOptions();
+            const string xml = "<r>\n  <!--c-->\n  <c> </c>\n</r>";
+            string[] expected =
+            [
+                "StartElement :r{} open",
+                "Text :{} [\n  ]",
+                "Comment :{} [c]",
+                "Text :{} [\n  ]",
+                "StartElement :c{} open",
+                "Text :{} [ ]",
+                "EndElement :c{}",
+                "Text :{} [\n]",
+                "EndElement :r{}",
+            ];
+            XmlReaderHarness.Tokens(Encoding.UTF8.GetBytes(xml), new XmlReaderOptions()).Should().Equal(expected);
+            XmlReaderHarness.Tokens(Encoding.UTF8.GetBytes(xml), default).Should().Equal(expected);
+            default(XmlReaderOptions).CommentHandling.Should().Be(XmlCommentHandling.Allow);
+            default(XmlReaderOptions).WhitespaceHandling.Should().Be(XmlWhitespaceHandling.Significant);
+            default(XmlReaderState).Options.CommentHandling.Should().Be(XmlCommentHandling.Allow);
+            default(XmlReaderState).Options.WhitespaceHandling.Should().Be(XmlWhitespaceHandling.Significant);
+        }
+
+        [TestMethod]
+        public void Reader_WhitespaceHandlingInsignificant_ReportsOnlySignificantWhitespace()
+        {
+            var options = new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant };
             XmlReaderHarness.Tokens("<r>\n  <c> </c>\n  <p>a <b>b</b> <i>c</i> </p>\n  <d><e/> </d>\n</r>"u8, options).Should().Equal(
                 "StartElement :r{} open",
                 "StartElement :c{} open",
@@ -181,14 +205,29 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Document_DefaultOptions_DropOnlyWhitespaceBetweenElements()
+        public void Document_DefaultOptions_KeepWhitespaceBetweenElements()
         {
             using var mixed = XmlDocument.Parse("<p>a <b>b</b> <i>c</i></p>");
             mixed.RootElement.GetRawXml().Should().Be("<p>a <b>b</b> <i>c</i></p>");
             using var leaf = XmlDocument.Parse("<r><c> </c></r>");
             leaf.RootElement.GetRawXml().Should().Be("<r><c> </c></r>");
             using var indented = XmlDocument.Parse("<r>\n  <c>x</c>\n</r>");
+            indented.RootElement.GetRawXml().Should().Be("<r>\n  <c>x</c>\n</r>");
+            default(XmlDocumentOptions).WhitespaceHandling.Should().Be(XmlWhitespaceHandling.Significant);
+            new XmlDocumentOptions().WhitespaceHandling.Should().Be(XmlWhitespaceHandling.Significant);
+        }
+
+        [TestMethod]
+        public void Document_WhitespaceHandlingInsignificant_DropsOnlyWhitespaceBetweenElements()
+        {
+            var options = new XmlDocumentOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant };
+            using var mixed = XmlDocument.Parse("<p>a <b>b</b> <i>c</i></p>", options);
+            mixed.RootElement.GetRawXml().Should().Be("<p>a <b>b</b> <i>c</i></p>");
+            using var leaf = XmlDocument.Parse("<r><c> </c></r>", options);
+            leaf.RootElement.GetRawXml().Should().Be("<r><c> </c></r>");
+            using var indented = XmlDocument.Parse("<r>\n  <c>x</c>\n</r>", options);
             indented.RootElement.GetRawXml().Should().Be("<r><c>x</c></r>");
+            indented.RootElement.GetString().Should().Be("x");
         }
 
         [TestMethod]

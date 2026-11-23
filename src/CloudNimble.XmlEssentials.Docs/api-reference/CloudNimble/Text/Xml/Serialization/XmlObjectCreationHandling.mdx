@@ -1,8 +1,9 @@
 ---
 title: XmlObjectCreationHandling
+description: "How objects are created when deserializing into an existing instance."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute']
 ---
 
 ## Definition
@@ -19,17 +20,27 @@ keywords: ['XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization.XmlO
 CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling
 ```
 
+## Summary
+
+How objects are created when deserializing into an existing instance.
+
+## Usage
+
+`XmlObjectCreationHandling` is the type of `XmlSerializerOptions.PreferredObjectCreationHandling`. Its two values, `Replace` and `Populate`, mirror `JsonObjectCreationHandling`.
+
+In version 1.0 the serializer doesn't read the option. Whatever its value, deserializing a member replaces the member's value with a new object or collection. A collection property with no setter isn't filled, and an existing object isn't updated in place.
+
+If you need to read into a collection property, give it a setter or an `init` accessor, or make it a constructor parameter. See [Immutable types](/guides/immutable-types).
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Replace` | 0 |  |
-| `Populate` | 1 |  |
+| `Replace` | 0 | Replace the existing value. |
+| `Populate` | 1 | Populate the existing value. |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute
 

@@ -1,5 +1,30 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlNilHandling` is the type of `XmlSerializerOptions.NilHandling`. It decides what the serializer writes for a member whose value is `null`.
 
-Describe how to use `XmlNilHandling` here.
+| Value | A `null` member is written as | Reads back as `null` |
+| --- | --- | --- |
+| `WriteXsiNil` (default) | `<Name xsi:nil="true"/>` | Yes |
+| `WriteEmptyElement` | `<Name/>` | No. An empty element is an empty string. |
+| `Omit` | Nothing | Yes, when the member starts as `null` |
 
+```csharp
+var options = new XmlSerializerOptions
+{
+    NilHandling = XmlNilHandling.Omit,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+var contact = new Contact { Name = "Ada", Nickname = null, Age = null };
+output.WriteLine(XmlSerializer.Serialize(contact, options));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Contact>
+  <Name>Ada</Name>
+</Contact>
+```
+
+The setting affects writing only. When the serializer reads, it treats a missing element, an empty element, and an `xsi:nil` element the same way whatever the option is. See [Handle null values](/guides/null-and-nil).

@@ -1,3 +1,5 @@
-# Considerations
-
-`WriteTo` calls `WriteStringValue` (escaped). Text nodes have no namespace. Null constructor argument becomes empty.
+- A tree parsed from an indented document has a text node for each run of white space between elements, because the parser keeps the layout. Those nodes are ordinary `XmlTextNode` instances whose `Value` is white space.
+- Entity and character references in parsed text are already expanded in `Value`, and CRLF line ends are already LF.
+- A `null` value is stored as an empty string.
+- `ToString` on a text node throws an `XmlException` ("Text is not allowed at the document level."), because text can't stand alone as a document. Read `Value`.
+- Two text nodes next to each other are written one after the other and read back as one text node.

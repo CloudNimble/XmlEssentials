@@ -1,8 +1,9 @@
 ---
 title: XmlMixedText
+description: "A text run in mixed content."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlMixedText', 'CloudNimble.Text.Xml.Serialization.XmlMixedText', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlMixedContentItem']
+keywords: ['XmlMixedText', 'CloudNimble.Text.Xml.Serialization.XmlMixedText', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization.XmlMixedElement', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute', 'CloudNimble.Text.Xml.XmlWhitespaceHandling']
 ---
 
 ## Definition
@@ -19,9 +20,33 @@ keywords: ['XmlMixedText', 'CloudNimble.Text.Xml.Serialization.XmlMixedText', 'C
 CloudNimble.Text.Xml.Serialization.XmlMixedText
 ```
 
+## Summary
+
+A text run in mixed content.
+
+## Usage
+
+An `XmlMixedText` is a run of text inside mixed content. Its `Text` property holds the characters after entity and character references have been resolved, so `&lt;` in the document is `<` in the property.
+
+The serializer creates one item for each run of text between child elements. To add text yourself, create an item and add it to the list:
+
+```csharp
+paragraph.Content.Add(new XmlMixedText(" "));
+```
+
+When the list is written, the text is escaped as needed. See `XmlMixedContentItem` for an example that reads text runs.
+
+## Considerations
+
+- White space inside a run is kept exactly, including the spaces next to a child element. A run that is only white space is dropped when reading unless `XmlSerializerOptions.WhitespaceHandling` is `XmlWhitespaceHandling.Significant`.
+- A CDATA section is read as an `XmlMixedText`. It is written back as escaped text, not as CDATA.
+- `Text` is never `null` on an item the serializer creates, and its default is the empty string.
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates an empty text run.
 
 #### Syntax
 
@@ -30,6 +55,8 @@ public XmlMixedText()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates a text run.
 
 #### Syntax
 
@@ -41,7 +68,7 @@ public XmlMixedText(string text)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `text` | `string` | - |
+| `text` | `string` | The text. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -66,6 +93,8 @@ public Object()
 ## Properties
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Text
+
+Gets or sets the text.
 
 #### Syntax
 
@@ -196,4 +225,11 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlMixedContentItem
+- CloudNimble.Text.Xml.Serialization.XmlMixedElement
+- CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
+- CloudNimble.Text.Xml.XmlWhitespaceHandling
 

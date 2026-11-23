@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Do not use target `xml` (case-insensitive); that is the XML declaration, not a PI.
+Document best practices for `XmlProcessingInstructionNode` here.
+

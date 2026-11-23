@@ -1,3 +1,4 @@
-# Considerations
-
-The XML declaration is not a PI. Immutable documents store it as `XmlDeclarationInfo`. Prolog PIs on `XmlDocument` round-trip via `WriteTo` and are not children of `RootElement`. `XmlNode.Parse` discards them.
+- The target can't be `xml` in any letter case; that name is reserved for the XML declaration. Writing such a node throws an `XmlException` ("Processing instruction target cannot be 'xml'."). For the declaration, use `XmlDeclarationNode` or let the writer add it.
+- The constructor rejects a `null`, empty, or white-space target.
+- `XmlNode.Parse` keeps processing instructions inside the root element. Those before and after the root element, such as `<?xml-stylesheet ...?>`, aren't part of the tree; `XmlDocument` keeps them and writes them back.
+- A processing instruction doesn't contribute to `XmlElementNode.InnerText`.

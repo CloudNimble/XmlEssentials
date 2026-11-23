@@ -1,5 +1,33 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Apply `[XmlText]` to the one property or field whose value is the text of the element that represents the object. Use it for XML such as `<Price Currency="USD">49.95</Price>`, where an element has attributes and a value but no child elements.
 
-Describe how to use `XmlTextAttribute` here.
+```csharp
+public sealed class Price
+{
+    [XmlAttribute]
+    public string? Currency { get; set; }
 
+    [XmlText]
+    public decimal Amount { get; set; }
+}
+```
+
+```csharp
+var listing = new Listing
+{
+    Name = "Keyboard",
+    Price = new Price { Currency = "USD", Amount = 49.95m },
+};
+
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(listing, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Listing><Name>Keyboard</Name><Price Currency="USD">49.95</Price></Listing>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)

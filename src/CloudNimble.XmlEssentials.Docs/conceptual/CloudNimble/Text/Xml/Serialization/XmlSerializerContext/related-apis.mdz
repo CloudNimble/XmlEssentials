@@ -1,6 +1,8 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Related APIs
-
-- API 1
-- API 2
-
+CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute
+CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute
+CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode
+CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver
+CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlSerializerOptions

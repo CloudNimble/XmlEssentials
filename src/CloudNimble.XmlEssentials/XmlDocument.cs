@@ -11,7 +11,8 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// An immutable pooled parse of a UTF-8 XML document, analogous to <c>JsonDocument</c>.
+    /// Provides a mechanism for examining the structural content of an XML document without automatically
+    /// instantiating data values. This class cannot be inherited.
     /// </summary>
     /// <example>
     /// <code>
@@ -21,11 +22,18 @@ namespace CloudNimble.Text.Xml
     /// </code>
     /// </example>
     /// <remarks>
-    /// Dispose returns rented buffers. Use after dispose throws <see cref="ObjectDisposedException"/>.
-    /// Prolog and epilog comments or processing instructions are preserved for <see cref="WriteTo"/>
-    /// and are not children of <see cref="RootElement"/>.
-    /// The document owns a pooled copy of the UTF-8 payload. Names and unescaped values are offsets
-    /// into that copy; only entity-decoded values and interned namespace URIs are copied a second time.
+    /// This class is the XML counterpart of <c>JsonDocument</c> in System.Text.Json. The document is read-only.
+    /// It uses buffers from the shared array pool, and <see cref="Dispose"/> returns them. A document that
+    /// is not disposed does not return its buffers to the pool. Using the document or an
+    /// <see cref="XmlElement"/> that was obtained from it after it is disposed throws
+    /// <see cref="ObjectDisposedException"/>.
+    /// Comments and processing instructions before and after the document element are kept for
+    /// <see cref="WriteTo"/>. They are not children of <see cref="RootElement"/>. Comments are kept by default, so that
+    /// a document that is parsed and written back does not lose them. To leave them out, set
+    /// <see cref="XmlDocumentOptions.CommentHandling"/> to <see cref="XmlCommentHandling.Skip"/>.
+    /// The document owns a pooled copy of the UTF-8 input. Names and values that contain no entity or
+    /// character references are stored as offsets into that copy. Only values that had references
+    /// expanded and namespace URIs are copied a second time.
     /// </remarks>
     public sealed class XmlDocument : IDisposable
     {
@@ -49,8 +57,16 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the XML declaration captured at parse time, or <see langword="null"/> when omitted.
+        /// Gets the XML declaration of this document.
         /// </summary>
+        /// <value>
+        /// The XML declaration that was read when the document was parsed, or <see langword="null"/> if the
+        /// document has no XML declaration. The version is reported as <c>1.0</c> or <c>1.1</c>, and the
+        /// encoding is always reported as <c>utf-8</c>.
+        /// </value>
+        /// <exception cref="ObjectDisposedException">
+        /// The document has been disposed.
+        /// </exception>
         public XmlDeclarationInfo? Declaration
         {
             get
@@ -61,8 +77,18 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets the document element.
+        /// Gets the root element of this XML document.
         /// </summary>
+        /// <value>
+        /// An <see cref="XmlElement"/> that represents the document element.
+        /// </value>
+        /// <exception cref="ObjectDisposedException">
+        /// The document has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The document has no root element. This can happen only for a document that
+        /// <see cref="ParseValue(ref Utf8XmlReader)"/> returned.
+        /// </exception>
         public XmlElement RootElement
         {
             get
@@ -131,11 +157,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Parses <paramref name="xml"/> as UTF-16 converted to UTF-8.
+        /// Parses a string that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="xml">The XML text.</param>
-        /// <param name="options">Parse options.</param>
-        /// <returns>A disposable document.</returns>
+        /// <param name="xml">The XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the XML document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="xml"/> is not a well-formed XML document.
+        /// -or-
+        /// <paramref name="xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// </exception>
+        /// <remarks>
+        /// The text is converted to UTF-8 in a pooled buffer that the document owns.
+        /// <see cref="XmlDocumentOptions.MaxDocumentByteCount"/> applies to the UTF-8 size.
+        /// </remarks>
         public static XmlDocument Parse(string xml, XmlDocumentOptions options = default)
         {
             ArgumentNullException.ThrowIfNull(xml);
@@ -143,11 +187,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Parses UTF-16 XML.
+        /// Parses a span of characters that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="xml">The XML text.</param>
-        /// <param name="options">Parse options.</param>
-        /// <returns>A disposable document.</returns>
+        /// <param name="xml">The XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the XML document.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// <paramref name="xml"/> is not a well-formed XML document.
+        /// -or-
+        /// <paramref name="xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// </exception>
+        /// <remarks>
+        /// The text is converted to UTF-8 in a pooled buffer that the document owns.
+        /// <see cref="XmlDocumentOptions.MaxDocumentByteCount"/> applies to the UTF-8 size.
+        /// </remarks>
         public static XmlDocument Parse(ReadOnlySpan<char> xml, XmlDocumentOptions options = default)
         {
             var byteCount = Encoding.UTF8.GetByteCount(xml);
@@ -158,11 +217,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Parses UTF-8 XML.
+        /// Parses a span of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML.</param>
-        /// <param name="options">Parse options.</param>
-        /// <returns>A disposable document.</returns>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the XML document.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// -or-
+        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// </exception>
+        /// <remarks>
+        /// The bytes are copied into a pooled buffer that the document owns, so the document does not
+        /// depend on <paramref name="utf8Xml"/> after this method returns.
+        /// </remarks>
         public static XmlDocument Parse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default)
         {
             ThrowIfDocumentTooLarge(utf8Xml.Length, options.MaxDocumentByteCount);
@@ -172,11 +246,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Parses a UTF-8 sequence.
+        /// Parses a sequence of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="utf8Xml">The sequence.</param>
-        /// <param name="options">Parse options.</param>
-        /// <returns>A disposable document.</returns>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the XML document.
+        /// </returns>
+        /// <exception cref="OverflowException">
+        /// <paramref name="utf8Xml"/> is longer than <see cref="int.MaxValue"/> bytes.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// -or-
+        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// </exception>
+        /// <remarks>
+        /// The bytes are copied into one pooled buffer that the document owns, so the document does not
+        /// depend on <paramref name="utf8Xml"/> after this method returns.
+        /// </remarks>
         public static XmlDocument Parse(ReadOnlySequence<byte> utf8Xml, XmlDocumentOptions options = default)
         {
             var length = checked((int)utf8Xml.Length);
@@ -187,11 +279,30 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads a UTF-8 stream to its end and parses it.
+        /// Parses a stream of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
+        /// The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream.</param>
-        /// <param name="options">Parse options.</param>
-        /// <returns>A disposable document.</returns>
+        /// <param name="utf8Xml">The stream that holds the UTF-8 encoded XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the XML document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> does not hold a well-formed XML document.
+        /// -or-
+        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// </exception>
+        /// <remarks>
+        /// When <see cref="XmlDocumentOptions.MaxDocumentByteCount"/> is set, reading stops as soon as the
+        /// stream is found to be longer than that limit. The stream is not closed.
+        /// </remarks>
         public static XmlDocument Parse(Stream utf8Xml, XmlDocumentOptions options = default)
         {
             ArgumentNullException.ThrowIfNull(utf8Xml);
@@ -200,10 +311,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Parses the current element (and its descendants) from <paramref name="reader"/> as a document.
+        /// Parses one XML element (including its attributes and descendants) from the provided reader.
         /// </summary>
-        /// <param name="reader">A reader positioned at or before a start tag.</param>
-        /// <returns>A disposable document whose root is that element.</returns>
+        /// <param name="reader">The reader to read. It is positioned on or before the start tag of the element.</param>
+        /// <returns>
+        /// An <see cref="XmlDocument"/> representation of the element (and nested nodes) read from the reader.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// <paramref name="reader"/> reaches an end tag before it reaches a start tag.
+        /// -or-
+        /// The XML that <paramref name="reader"/> reads is not well formed.
+        /// </exception>
+        /// <remarks>
+        /// If the reader is positioned on an attribute, it is moved back to the element that owns the attribute.
+        /// When this method returns, the reader is positioned on the end tag of the element, or on the
+        /// element itself if it is an empty-element tag.
+        /// The document copies the names and values it keeps, so it does not depend on the reader's input
+        /// after this method returns.
+        /// If the reader reaches the end of its input without reading an element, the returned document has no root element, and
+        /// <see cref="RootElement"/> throws an <see cref="XmlException"/>.
+        /// The reader is not restored to its original position when this method throws.
+        /// </remarks>
         public static XmlDocument ParseValue(ref Utf8XmlReader reader)
         {
             var document = new XmlDocument();
@@ -220,12 +348,26 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Attempts to parse UTF-8 XML.
+        /// Attempts to parse a span of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 XML.</param>
-        /// <param name="options">Parse options.</param>
-        /// <param name="document">When this method returns true, the parsed document.</param>
-        /// <returns><see langword="true"/> if the payload was well-formed.</returns>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <param name="document">
+        /// When this method returns, contains the parsed document if parsing succeeded, or
+        /// <see langword="null"/> if it failed. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="utf8Xml"/> is a well-formed XML document that is within
+        /// the limits set in <paramref name="options"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <remarks>
+        /// This method returns <see langword="false"/> in every case where
+        /// <see cref="Parse(ReadOnlySpan{byte}, XmlDocumentOptions)"/> throws an <see cref="XmlException"/>.
+        /// </remarks>
         public static bool TryParse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options, out XmlDocument? document)
         {
             try
@@ -241,9 +383,21 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes the declaration (when present), prolog, root, and epilog to <paramref name="writer"/>.
+        /// Writes the document to the provided writer as XML.
         /// </summary>
-        /// <param name="writer">The destination writer.</param>
+        /// <param name="writer">The writer to which to write the document.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="writer"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The document has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The XML declaration (when the document has one) is written first, then the comments and processing
+        /// instructions before the root element, the root element, and the comments and processing
+        /// instructions after it. The declaration is written with the version of the parsed document and
+        /// <c>encoding="utf-8"</c>.
+        /// </remarks>
         public void WriteTo(Utf8XmlWriter writer)
         {
             ArgumentNullException.ThrowIfNull(writer);

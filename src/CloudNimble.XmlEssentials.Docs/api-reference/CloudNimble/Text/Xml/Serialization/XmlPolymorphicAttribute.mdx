@@ -1,8 +1,9 @@
 ---
 title: XmlPolymorphicAttribute
+description: "Declares that a type is serialized with a derived-type discriminator."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling', 'CloudNimble.Text.Xml.XmlDiscriminatorPlacement', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializerOptions']
 ---
 
 ## Definition
@@ -18,6 +19,137 @@ keywords: ['XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPol
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute
 ```
+
+## Summary
+
+Declares that a type is serialized with a derived-type discriminator.
+
+## Usage
+
+Put `[XmlPolymorphic]` on a base class to say how its derived types are told apart in a document, and add one `[XmlDerivedType<T>]` for each derived type that is allowed. The pair corresponds to `[JsonPolymorphic]` and `[JsonDerivedType]` in System.Text.Json.
+
+```csharp
+[XmlPolymorphic]
+[XmlDerivedType<Book>]
+[XmlDerivedType<Dvd>("Disc")]
+public class Product
+{
+    public string? Title { get; set; }
+}
+```
+
+| Property | Purpose | Default |
+| --- | --- | --- |
+| `DiscriminatorPlacement` | Where the type discriminator is written: the element name, a named attribute, or `xsi:type`. | `ElementName` |
+| `TypeDiscriminatorPropertyName` | The name of the discriminator attribute. Required with `XmlDiscriminatorPlacement.Attribute`, and not used otherwise. | `null` |
+| `UnknownDerivedTypeHandling` | What happens to a runtime type, or a discriminator in a document, that isn't declared. | `FailSerialization` |
+| `InferClosedTypePolymorphism` | Not read by the serializer in this release. | `false` |
+
+With the default placement, `[XmlPolymorphic]` itself is optional: `[XmlDerivedType<T>]` attributes alone give the same result. Add `[XmlPolymorphic]` to choose another placement or another way to handle undeclared types.
+
+See [Serialize derived classes](/guides/polymorphism) for a walkthrough.
+
+## Examples
+
+### Serialize a list of a base type
+
+Each derived type is written under its own element name, and is read back as the same type. An object of the base type keeps the member's element name.
+
+```csharp
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var catalog = new Catalog
+{
+    Products =
+    [
+        new Book { Title = "Clean Code", Author = "Robert C. Martin" },
+        new Dvd { Title = "The Matrix", Runtime = 136 },
+        new Product { Title = "Gift card" },
+    ],
+};
+
+string xml = XmlSerializer.Serialize(catalog, options);
+output.WriteLine(xml);
+
+Catalog? copy = XmlSerializer.Deserialize<Catalog>(xml, options);
+foreach (Product product in copy!.Products)
+{
+    output.WriteLine($"{product.GetType().Name}: {product.Title}");
+}
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Catalog>
+  <Book>
+    <Title>Clean Code</Title>
+    <Author>Robert C. Martin</Author>
+  </Book>
+  <Disc>
+    <Title>The Matrix</Title>
+    <Runtime>136</Runtime>
+  </Disc>
+  <Products>
+    <Title>Gift card</Title>
+  </Products>
+</Catalog>
+Book: Clean Code
+Dvd: The Matrix
+Product: Gift card
+```
+
+### Use xsi:type and fall back to an ancestor
+
+```csharp
+[XmlPolymorphic(DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType, UnknownDerivedTypeHandling = XmlUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
+[XmlDerivedType<Car>]
+[XmlDerivedType<Truck>]
+public class Vehicle
+{
+    public string? Make { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+Vehicle truck = new Truck { Make = "Northwind", Payload = 12000 };
+output.WriteLine(XmlSerializer.Serialize(truck, options));
+
+Vehicle sportsCar = new SportsCar { Make = "Contoso", Doors = 2, TopSpeed = 310 };
+string xml = XmlSerializer.Serialize(sportsCar, options);
+output.WriteLine(xml);
+
+Vehicle? copy = XmlSerializer.Deserialize<Vehicle>(xml, options);
+output.WriteLine(copy!.GetType().Name);
+```
+
+`SportsCar` derives from `Car` and isn't declared, so it is written as a `Car`. The code produces the following output:
+
+```text
+<Vehicle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Truck"><Make>Northwind</Make><Payload>12000</Payload></Vehicle>
+<Vehicle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Car"><Make>Contoso</Make><Doors>2</Doors></Vehicle>
+Car
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## Best Practices
+
+- Declare every derived type that can appear. The default, `FailSerialization`, then reports a type you forgot instead of writing part of it.
+- Prefer `ElementName` when you control the format. It needs no extra attribute, and the document says what each element is.
+- Use `Attribute` or `XsiType` when a schema fixes the element name.
+- Choose a fallback value of `UnknownDerivedTypeHandling` only when losing the members of the undeclared type is acceptable.
+- Give each derived type a discriminator that is not the element name of another member of the containing type.
+
+## Considerations
+
+- The declared base type must be a concrete class. The attribute can be applied to an interface or an abstract class, but the built-in object mapping doesn't support those as a declared type, and using one throws `NotSupportedException`.
+- Derived types inherit the attribute and the list of derived types. Serializing a derived type directly also writes its discriminator.
+- `InferClosedTypePolymorphism` is not read in this release, here or on `XmlSerializerOptions`. Derived types must be listed.
+- Generated converters don't read or write derived types. The source generator reports error XMLXE008 for a type that declares them, so use the reflection resolver for the hierarchy.
+- The mapping is built once for each `XmlSerializerOptions` instance and cached. There is no API to add derived types at run time.
 
 ## Constructors
 
@@ -53,6 +185,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DiscriminatorPlacement
 
+Gets or sets where the discriminator is written.
+
 #### Syntax
 
 ```csharp
@@ -65,6 +199,8 @@ Type: `CloudNimble.Text.Xml.XmlDiscriminatorPlacement`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InferClosedTypePolymorphism
 
+Gets or sets whether closed derived types are inferred when no [XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) is present.
+
 #### Syntax
 
 ```csharp
@@ -76,6 +212,8 @@ public bool InferClosedTypePolymorphism { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeDiscriminatorPropertyName
+
+Gets or sets the discriminator attribute or element name when placement is not the element name itself.
 
 #### Syntax
 
@@ -102,6 +240,8 @@ public virtual object TypeId { get; }
 Type: `object`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnknownDerivedTypeHandling
+
+Gets or sets how unknown derived types are handled.
 
 #### Syntax
 
@@ -980,4 +1120,12 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute
+- CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling
+- CloudNimble.Text.Xml.XmlDiscriminatorPlacement
+- CloudNimble.Text.Xml.XmlSerializer
+- CloudNimble.Text.Xml.XmlSerializerOptions
 

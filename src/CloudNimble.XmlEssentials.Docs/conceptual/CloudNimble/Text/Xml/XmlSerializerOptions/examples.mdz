@@ -1,9 +1,81 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Examples
+The following examples show the three ways to get an options instance and what happens once an instance is in use.
 
-Provide examples of using `XmlSerializerOptions` here.
+### Use the built-in instances
 
 ```csharp
-// Example code here
+var line = new InvoiceLine { Sku = "KB-101", Quantity = 2 };
+
+output.WriteLine(XmlSerializer.Serialize(line, XmlSerializerOptions.Default));
+output.WriteLine(XmlSerializer.Serialize(line, XmlSerializerOptions.Web));
+output.WriteLine(XmlSerializer.Serialize(line, XmlSerializerOptions.Strict));
 ```
 
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine>
+<invoiceLine><sku>KB-101</sku><quantity>2</quantity></invoiceLine>
+<?xml version="1.0" encoding="utf-8"?><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine>
+```
+
+### Start from a set of defaults and copy an instance
+
+```csharp
+var web = new XmlSerializerOptions(XmlSerializerDefaults.Web)
+{
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+var line = new InvoiceLine { Sku = "KB-101", Quantity = 2 };
+output.WriteLine(XmlSerializer.Serialize(line, web));
+
+var flat = new XmlSerializerOptions(web) { WriteIndented = false };
+output.WriteLine($"Source is read-only: {web.IsReadOnly}. Copy is read-only: {flat.IsReadOnly}.");
+output.WriteLine(XmlSerializer.Serialize(line, flat));
+```
+
+The code produces the following output:
+
+```text
+<invoiceLine>
+  <sku>KB-101</sku>
+  <quantity>2</quantity>
+</invoiceLine>
+Source is read-only: True. Copy is read-only: False.
+<invoiceLine><sku>KB-101</sku><quantity>2</quantity></invoiceLine>
+```
+
+### See when an instance becomes read-only
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine($"Before first use: {options.IsReadOnly}");
+
+XmlSerializer.Serialize(new InvoiceLine { Sku = "KB-101", Quantity = 2 }, options);
+output.WriteLine($"After first use: {options.IsReadOnly}");
+
+try
+{
+    options.WriteIndented = true;
+}
+catch (InvalidOperationException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+var frozen = new XmlSerializerOptions();
+frozen.MakeReadOnly();
+output.WriteLine($"After MakeReadOnly: {frozen.IsReadOnly}");
+```
+
+The code produces the following output:
+
+```text
+Before first use: False
+After first use: True
+This XmlSerializerOptions instance is read-only.
+After MakeReadOnly: True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/13_ConfigureOptions.cs)

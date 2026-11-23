@@ -1,5 +1,7 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlExtensionData` here.
-
+- **Position.** When writing, unmapped attributes follow the mapped attributes and unmapped elements follow the mapped elements. Where an unmapped element stood among the mapped ones is not recorded.
+- **Namespace declarations.** `xmlns` attributes are not captured and are not written from `Attributes`. The writer declares the namespaces that the captured names need.
+- **Prefixes.** A captured attribute keeps the prefix it was read with, in the `Prefix` of its `XmlName`. An attribute that you add with a namespace and no prefix gets a generated prefix.
+- **Serializer attributes.** `xsi:nil`, `xsi:type`, and the `id` and `ref` attributes of reference handling are consumed by the serializer and are not captured.
+- **Keys.** `XmlName` equality ignores the prefix, so two attributes with the same local name and namespace are one entry.
+- **Allocation.** Each captured element is a mutable `XmlElementNode` tree. Capturing large unmapped subtrees costs one node for every element, attribute, and text run in them. If you don't need the content, leave the member out and let the serializer skip it.
+- **Thread safety.** The object is an ordinary mutable class with a dictionary and a list. Don't change it from several threads at once.

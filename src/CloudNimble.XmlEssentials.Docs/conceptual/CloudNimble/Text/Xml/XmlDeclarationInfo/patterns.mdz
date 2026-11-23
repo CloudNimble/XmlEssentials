@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-**Round-trip.** `XmlDocument.WriteTo` writes the captured declaration (version and standalone) before the root. The writer is marked so it does not emit a second declaration.
+Document common patterns for `XmlDeclarationInfo` here.
+

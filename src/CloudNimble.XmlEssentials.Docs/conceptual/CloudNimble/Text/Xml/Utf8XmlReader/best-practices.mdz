@@ -1,8 +1,10 @@
-# Best Practices
-
-- Keep the payload in UTF-8 (`u8` literals, `byte[]`, `ReadOnlySequence<byte>`). Do not round-trip through `string` to parse.
-- Use `LocalNameEquals("Person"u8)` and `ValueTextEquals` instead of `GetString` plus `==`.
-- Parse scalars with `TryGetInt32`, `TryGetBoolean`, `TryGetGuid`, and friends. They read `ValueSpan` with `Utf8Parser`.
-- Construct options with `new XmlReaderOptions()`. The parameterless constructor sets `CommentHandling` to `Skip`.
-- On untrusted input, set `MaxDepth`, `MaxNameByteCount`, `MaxTextByteCount`, and `MaxAttributeCount`. Zero means the table default.
-- After `Read` returns false on a non-final buffer, take `CurrentState` and construct a new reader with the next span. Split-token resume is not complete in this release; incomplete tokens currently return false or throw on a final buffer.
+- **Compare names and values as UTF-8.** `reader.LocalNameEquals("Item"u8)` and `reader.ValueTextEquals("yes"u8)` compare bytes with bytes. `GetString()` followed by `==` creates a string for every comparison.
+- **Match on the namespace URI and the local name, not on the prefix.** The producer of a document is free to choose any prefix.
+- **Check `IsEmptyElement` on every start tag.** An empty element has no `EndElement` token, so code that counts depth or waits for an end tag has to know.
+- **Read a value only on a token that has one.** Use the value members on `Text`, `CData`, `Attribute`, `Comment`, and `ProcessingInstruction` tokens.
+- **Use `TryGet*` when a bad value is something you expect.** A `Get*` method throws an `XmlException` when a value isn't valid, which fits values that must be right.
+- **Copy what you keep.** A span from the reader is valid until the reader moves.
+- **Set `CommentHandling` to `Skip` and `WhitespaceHandling` to `Insignificant` in a loop that only wants data.** By default the reader reports comments and the white space between elements, so that a document can be written back unchanged.
+- **Pass the reader with `ref`** to a helper method that advances it.
+- **Give the reader a scratch buffer on a hot path.** With one that's large enough for the document, reading allocates nothing.
+- **Take `CurrentState` once per block.** It copies the open element names and namespace bindings, so it allocates.

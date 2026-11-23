@@ -1,11 +1,43 @@
-# Considerations
+Know the following before you build on the writer.
 
-`Utf8XmlWriter` is a class, not a `ref struct`. Dispose flushes. If `SkipValidation` is false and elements are still open, `Dispose` throws `XmlException`.
+### Output and buffering
 
-Empty elements use `/>` from `WriteEndElement` when the start tag has no content. `WriteFullEndElement` always writes `</name>`.
+The output is always UTF-8. With an `IBufferWriter<byte>`, the writer writes into memory it gets from the buffer writer and commits it on `Flush`, on `Dispose`, and when it needs more room. With a `Stream`, it fills a buffer rented from the array pool, which starts at 16 KB, and writes to the stream on `Flush`, on `Dispose`, and when the buffer fills. Disposing the writer doesn't close the stream.
 
-Unprefixed elements in a namespace auto-declare `xmlns`. Prefixed names auto-declare `xmlns:prefix` when that URI is not in scope. Unprefixed attributes are in no namespace; a namespaced attribute without a prefix gets `ns1`, `ns2`, ….
+### Dispose and open elements
 
-Text escaping: `&` and `<` always, and `>` only as part of `]]>`. Attributes are double-quoted; `"` is escaped. CDATA containing `]]>` throws. Comments containing `--` or ending in `-` throw.
+`Dispose` and `DisposeAsync` flush. If an element is still open and `SkipValidation` is `false`, they throw an `XmlException` and don't flush. In a `using` statement, that exception replaces an exception that was already on its way out, so the message you catch can be `The document has unclosed elements.` when the real cause came earlier.
 
-In XML 1.1, RestrictedChar in values is written as a hexadecimal numeric character reference. `EmitByteOrderMark` is false by default and emits `EF BB BF` once per writer lifetime.
+### Thread safety
+
+A writer isn't thread safe. Use each instance from one thread at a time. See [Thread safety](/guides/thread-safety).
+
+### Allocation
+
+A writer that's reused with `Reset` allocates nothing per document. In the library's benchmarks, a small document takes 55 ns and 0 B with a reused writer, against 325 ns and 7,328 B for `System.Xml.XmlWriter`. See [Benchmarks](/benchmarks).
+
+### Namespaces
+
+The writer tracks the namespaces in scope and declares what's missing: a default namespace for an element written with a namespace and no prefix, your prefix for an element written with one, and a generated prefix (`ns1`, `ns2`, and so on) for an attribute in a namespace that has no prefix in scope. An element written with no namespace argument gets no declaration, so under a default namespace a reader puts it in that namespace.
+
+### Indentation
+
+With `Indented` set, only elements get a line break and indentation. An element that holds text is written on one line. Comments and processing instructions are written where the writer is, with no line break before them.
+
+### What isn't checked
+
+- `WriteRawValue` copies its input without checking or escaping it. The `skipInputValidation` parameter has no effect.
+- `WriteStringValueSegment` and `WriteBase64StringSegment` ignore `isFinalSegment`. Each call writes its input at once, and `WriteBase64StringSegment` pads each segment by itself, so use `WriteBase64StringValue` for binary data.
+
+### Differences from Utf8JsonWriter
+
+- There's no property-name step. Structure comes from `WriteStartElement` and `WriteEndElement`, and attributes are written on the open start tag.
+- Validation is on by default and also covers names and namespaces. `SkipValidation` doesn't turn off the single-root check or the limits.
+- `Dispose` throws when the document is incomplete.
+
+### Differences from System.Xml.XmlWriter
+
+- The output is UTF-8 only, to an `IBufferWriter<byte>` or a `Stream`. There's no `TextWriter` or `StringBuilder` target.
+- There's no `WriteDocType`, `WriteEntityRef`, `WriteStartDocument`, or `WriteEndDocument`. The declaration is written for you, and nothing closes open elements for you.
+- `Reset` lets one instance write many documents.
+- Typed values have their own methods, in place of `WriteValue` overloads and `XmlConvert`.

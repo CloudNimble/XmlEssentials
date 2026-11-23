@@ -1,8 +1,9 @@
 ---
 title: XmlReferenceHandler
+description: "Creates resolvers that track object identity across a serialize or deserialize operation."
 icon: shapes
 tag: "ABSTRACT"
-keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization', 'class']
+keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute']
 ---
 
 ## Definition
@@ -16,6 +17,132 @@ keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferen
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
 ```
+
+## Summary
+
+Creates resolvers that track object identity across a serialize or deserialize operation.
+
+## Usage
+
+Set `XmlSerializerOptions.ReferenceHandler` to tell the serializer what to do when an object graph holds the same object more than once. The property is `null` by default, which means every object is written each time it is met. The class corresponds to `ReferenceHandler` in System.Text.Json.
+
+| Handler | A repeated object is written as | Round trip restores the graph |
+| --- | --- | --- |
+| `null` (default) | A full copy. A cycle fails with `XmlException` when the writer reaches `MaxDepth`. | No |
+| `XmlReferenceHandler.Preserve` | An empty element with a `ref` attribute that points to the `id` of the first appearance. | Yes |
+| `XmlReferenceHandler.IgnoreCycles` | An empty element marked `xsi:nil="true"`. | No |
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    ReferenceHandler = XmlReferenceHandler.Preserve,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+```
+
+The `id` and `ref` attributes are in the namespace `urn:CloudNimble.Text.Xml:refs`, which is available as `XmlNamespaces.Refs`. See [Preserve references](/guides/preserve-references) for the full article.
+
+## Examples
+
+### Preserve a cycle
+
+An employee refers to a manager, and the manager lists the employee as a direct report. With `Preserve`, the cycle is written once and restored when the document is read.
+
+```csharp
+var tyler = new Employee { Name = "Tyler Stein" };
+var adrian = new Employee { Name = "Adrian King", Manager = tyler };
+tyler.DirectReports.Add(adrian);
+
+var options = new XmlSerializerOptions
+{
+    ReferenceHandler = XmlReferenceHandler.Preserve,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+string xml = XmlSerializer.Serialize(tyler, options);
+output.WriteLine(xml);
+
+Employee? copy = XmlSerializer.Deserialize<Employee>(xml, options);
+output.WriteLine(ReferenceEquals(copy, copy!.DirectReports[0].Manager));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Employee xmlns:ns1="urn:CloudNimble.Text.Xml:refs" ns1:id="1">
+  <Name>Tyler Stein</Name>
+  <Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <DirectReports>
+    <Employee ns1:id="2">
+      <Name>Adrian King</Name>
+      <Manager ns1:ref="1"/>
+      <DirectReports/>
+    </Employee>
+  </DirectReports>
+</Employee>
+True
+```
+
+### Ignore a cycle
+
+With `IgnoreCycles`, the same graph is written without identifiers, and the member that would close the cycle is nil.
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    ReferenceHandler = XmlReferenceHandler.IgnoreCycles,
+    WriteIndented = true,
+    NewLine = "\n",
+};
+
+string xml = XmlSerializer.Serialize(tyler, options);
+output.WriteLine(xml);
+
+Employee? copy = XmlSerializer.Deserialize<Employee>(xml, options);
+output.WriteLine(copy!.DirectReports[0].Manager is null);
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Employee>
+  <Name>Tyler Stein</Name>
+  <Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <DirectReports>
+    <Employee>
+      <Name>Adrian King</Name>
+      <Manager xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+      <DirectReports/>
+    </Employee>
+  </DirectReports>
+</Employee>
+True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/17_PreserveReferences.cs)
+
+## Best Practices
+
+- Leave `ReferenceHandler` unset unless the graph has shared objects or cycles. With no handler, the serializer does no reference tracking.
+- Use `Preserve` when both ends use XmlEssentials and the graph must come back as it was.
+- Use `IgnoreCycles` when the document goes to a consumer that knows nothing about `id` and `ref`, and losing the repeated objects is acceptable.
+- Read a document with the handler that wrote it. Without a handler, a `ref` attribute is an `XmlException`.
+- If the cycle is caused by a back-reference that you don't need in the document, such as a child's `Parent` property, consider `[XmlIgnore]` on that member instead of a handler.
+
+## Considerations
+
+- **Cost.** In the library's measurements, writing 200 customer objects takes 134 µs with `Preserve` against 50 µs with no handler. Each object costs a dictionary lookup, an identifier string, and a namespaced attribute.
+- **What gets an identifier.** Objects with members do. Strings, numbers, other simple values, and collections do not.
+- **Collection items.** A repeated object is replaced by a reference when a member holds it. An object that appears twice as an item of a collection is written in full both times.
+- **`IgnoreCycles` is broader than its name.** It writes nil for every repeated object, including one that two members share without forming a cycle. System.Text.Json writes `null` only for a true cycle.
+- **Custom handlers.** A class derived from `XmlReferenceHandler` supplies the resolver that is used when reading. When writing, `id` and `ref` attributes are written only for the built-in `Preserve` instance. With any other handler, a repeated object is written as nil.
+- **Sequences.** `SerializeAsyncEnumerable` and `DeserializeAsyncEnumerable` don't apply the handler.
+- **Source generation.** A generated converter throws `NotSupportedException` when the options have a handler. Use the reflection resolver for types that need one.
+- **Thread safety.** `Preserve` and `IgnoreCycles` are stateless singletons. Each call to `Serialize` or `Deserialize` gets its own resolver, so options that use them can be shared between threads.
 
 ## Constructors
 
@@ -33,6 +160,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreCycles
 
+Gets a handler that omits already-seen objects as empty nillable elements.
+
 #### Syntax
 
 ```csharp
@@ -44,6 +173,9 @@ public static CloudNimble.Text.Xml.Serialization.XmlReferenceHandler IgnoreCycle
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Preserve
+
+Gets a handler that writes `id` / `ref` attributes in
+`urn:CloudNimble.Text.Xml:refs`.
 
 #### Syntax
 
@@ -59,6 +191,8 @@ Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateResolver <Badge color="orange">Abstract</Badge>
 
+Creates a resolver for one serialize or deserialize operation.
+
 #### Syntax
 
 ```csharp
@@ -68,6 +202,7 @@ public abstract CloudNimble.Text.Xml.Serialization.XmlReferenceResolver CreateRe
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceResolver`
+A new resolver.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -186,4 +321,12 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlReferenceResolver
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlNamespaces
+- CloudNimble.Text.Xml.XmlNilHandling
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
 

@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlEnumHandling` here.
-
+- The setting affects writing. It applies to enumeration members written as elements and as attributes.
+- With `Name`, a `[Flags]` value is written as the names of its flags separated by spaces, for example `Class Struct`. A value that has no name is written as its number.
+- A name that isn't a member of the enumeration is an `XmlException` when read, with the message `The value is not a valid enum member.`
+- Names are more readable and survive a renumbering of the enumeration. Numbers survive a rename. Choose the form that matches how the type is expected to change.
+- System.Text.Json writes enumerations as numbers by default and needs `JsonStringEnumConverter` for names. XmlEssentials writes names by default, as `System.Xml.Serialization` does.

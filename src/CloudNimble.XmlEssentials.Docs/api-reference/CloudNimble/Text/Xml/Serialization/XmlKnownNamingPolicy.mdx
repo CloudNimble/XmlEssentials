@@ -1,8 +1,9 @@
 ---
 title: XmlKnownNamingPolicy
+description: "Built-in naming policies selectable from source-generation options."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.XmlSerializerOptions']
 ---
 
 ## Definition
@@ -19,22 +20,44 @@ keywords: ['XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlKnownN
 CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy
 ```
 
+## Summary
+
+Built-in naming policies selectable from source-generation options.
+
+## Usage
+
+`XmlKnownNamingPolicy` names the built-in naming policies as an enumeration, so that you can choose one in an attribute. An attribute argument has to be a compile-time constant, and an [`XmlNamingPolicy`](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) instance isn't one.
+
+It is the type of the `PropertyNamingPolicy`, `ElementNamingPolicy`, and `AttributeNamingPolicy` properties of [`XmlSourceGenerationOptionsAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute). It is the counterpart of `JsonKnownNamingPolicy`.
+
+| Value | Policy | `StreetAddress` becomes |
+| --- | --- | --- |
+| `Unspecified` | None. Names are unchanged. | `StreetAddress` |
+| `CamelCase` | `XmlNamingPolicy.CamelCase` | `streetAddress` |
+| `SnakeCaseLower` | `XmlNamingPolicy.SnakeCaseLower` | `street_address` |
+| `SnakeCaseUpper` | `XmlNamingPolicy.SnakeCaseUpper` | `STREET_ADDRESS` |
+| `KebabCaseLower` | `XmlNamingPolicy.KebabCaseLower` | `street-address` |
+| `KebabCaseUpper` | `XmlNamingPolicy.KebabCaseUpper` | `STREET-ADDRESS` |
+| `PascalCase` | `XmlNamingPolicy.PascalCase` | `StreetAddress` |
+
+When you set options in code instead, assign an `XmlNamingPolicy` to `XmlSerializerOptions` directly. See [Use source generation](/guides/source-generation) and [Customize names and shape](/guides/customize-names#use-a-naming-policy-for-all-names).
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Unspecified` | 0 |  |
-| `CamelCase` | 1 |  |
-| `SnakeCaseLower` | 2 |  |
-| `SnakeCaseUpper` | 3 |  |
-| `KebabCaseLower` | 4 |  |
-| `KebabCaseUpper` | 5 |  |
-| `PascalCase` | 6 |  |
+| `Unspecified` | 0 | Leave names unchanged. |
+| `CamelCase` | 1 | [XmlNamingPolicy.CamelCase](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#camelcase). |
+| `SnakeCaseLower` | 2 | [XmlNamingPolicy.SnakeCaseLower](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#snakecaselower). |
+| `SnakeCaseUpper` | 3 | [XmlNamingPolicy.SnakeCaseUpper](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#snakecaseupper). |
+| `KebabCaseLower` | 4 | [XmlNamingPolicy.KebabCaseLower](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#kebabcaselower). |
+| `KebabCaseUpper` | 5 | [XmlNamingPolicy.KebabCaseUpper](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#kebabcaseupper). |
+| `PascalCase` | 6 | [XmlNamingPolicy.PascalCase](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#pascalcase). |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.XmlNamingPolicy
+- CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute
+- CloudNimble.Text.Xml.Serialization.XmlSerializerContext
+- CloudNimble.Text.Xml.XmlSerializerOptions
 

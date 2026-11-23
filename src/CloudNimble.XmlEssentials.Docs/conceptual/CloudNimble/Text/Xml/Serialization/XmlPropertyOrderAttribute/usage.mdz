@@ -1,5 +1,32 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Apply `[XmlPropertyOrder]` to a property or field to set where it is written among the members of its type. It is the counterpart of `[JsonPropertyOrder]`. Many XML schemas require elements in a fixed sequence, and this attribute lets you match one without rearranging your class.
 
-Describe how to use `XmlPropertyOrderAttribute` here.
+```csharp
+public sealed class Address
+{
+    public string? PostalCode { get; set; }
 
+    [XmlPropertyOrder(1)]
+    public string? City { get; set; }
+
+    [XmlPropertyOrder(0)]
+    public string? Street { get; set; }
+}
+```
+
+```csharp
+var address = new Address { PostalCode = "98052", City = "Redmond", Street = "1 Main St" };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(address, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Address><Street>1 Main St</Street><City>Redmond</City><PostalCode>98052</PostalCode></Address>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+Members with an order of zero or more are written first, lowest number first. Members with no order follow in declaration order, base class members before derived class members.

@@ -1,0 +1,143 @@
+---
+title: "Source-generation modes in XmlEssentials"
+sidebarTitle: "Source-generation modes"
+description: "Learn what the XmlEssentials generator writes in each XmlSourceGenerationMode, how the modes behave at run time, and which one to pick."
+icon: "sliders"
+---
+
+A source-generated [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) can work in two ways. In *serialization mode*, the generator writes a converter for each type, and that converter reads and writes the XML directly. In *metadata mode*, the context is a typed front for the run-time resolver. This article explains what each mode produces and when to use it.
+
+The enumeration is named after `JsonSourceGenerationMode` in System.Text.Json and has the same three members. What metadata mode produces is different here, as this article explains.
+
+## Choose a mode
+
+Set `GenerationMode` on [`[XmlSourceGenerationOptions]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute). Without the attribute, a context uses `Default`.
+
+```csharp MetadataOrderXmlContext.cs
+[XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
+[XmlSerializable(typeof(Order))]
+public partial class MetadataOrderXmlContext : XmlSerializerContext
+{
+}
+```
+
+[`XmlSourceGenerationMode`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode) has these members:
+
+| Member | Value | What the generator writes for each object type |
+| --- | --- | --- |
+| `Default` | 0 | The same as `Serialization`. |
+| `Metadata` | 1 | An `XmlTypeInfo<T>` property that asks [`DefaultXmlTypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver) for the type info at run time. No converter. |
+| `Serialization` | 2 | A converter class with `Read` and `Write` methods that call `Utf8XmlReader` and `Utf8XmlWriter`, and an `XmlTypeInfo<T>` property that wraps it. |
+
+`Metadata | Serialization` behaves as `Serialization` does.
+
+Whatever the mode, the context has the same public shape: `Default`, the two constructors, one `XmlTypeInfo<T>` property for each type, and `GetTypeInfo`. You can change the mode without changing the code that calls the serializer.
+
+<Note>
+`[XmlSerializable]` also has a `GenerationMode` property. The generator doesn't read it. The mode on `[XmlSourceGenerationOptions]` applies to every type in the context. To use both modes, declare two contexts.
+</Note>
+
+## See the difference
+
+The following example takes the type info for the same `Order` type from a context in each mode. It prints the name of the converter behind each one and the number of members the type info describes, and then serializes an order with both.
+
+```csharp Program.cs
+XmlTypeInfo<Order> generated = OrderXmlContext.Default.Order;
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Default:  {generated.Converter.GetType().Name}, {generated.Properties.Count} properties");
+output.WriteLine($"Metadata: {metadata.Converter.GetType().Name}, {metadata.Properties.Count} properties");
+
+var order = new Order { Id = 7, Customer = "Grace" };
+output.WriteLine(XmlSerializer.Serialize(order, generated));
+output.WriteLine(XmlSerializer.Serialize(order, metadata));
+```
+
+The code produces the following output:
+
+```text
+Default:  OrderXmlConverter, 0 properties
+Metadata: XmlObjectConverter`1, 3 properties
+<?xml version="1.0" encoding="utf-8"?><Order Id="7"><Customer>Grace</Customer></Order>
+<?xml version="1.0" encoding="utf-8"?><Order Id="7"><Customer>Grace</Customer></Order>
+```
+
+What to notice:
+
+- In the default mode, the converter is `OrderXmlConverter`, a class the generator wrote inside the context. In metadata mode, it's `XmlObjectConverter<Order>`, the converter the reflection resolver uses.
+- Both produce the same XML for this type.
+- Only the metadata-mode type info lists the type's members in [`Properties`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo). A generated converter has its members compiled in, so its type info reports none.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)
+
+## Inspect the contract in metadata mode
+
+Because metadata-mode type info comes from the run-time resolver, you can read the contract it built: the name of the document element and one [`XmlPropertyInfo`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfo) for each member, in the order the members are written.
+
+```csharp Program.cs
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Root element: {metadata.RootName.LocalName}");
+foreach (XmlPropertyInfo property in metadata.Properties)
+{
+    string kind = property.IsAttribute ? "attribute" : "element";
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+}
+```
+
+The code produces the following output:
+
+```text
+Root element: Order
+Id: attribute, Int32
+Customer: element, String
+Line: element, List`1
+```
+
+The type info is read-only. Unlike `JsonTypeInfo` in System.Text.Json, it has no setters, so you can't change a contract after the resolver builds it.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)
+
+## Compare the modes
+
+| | `Default` and `Serialization` | `Metadata` |
+| --- | --- | --- |
+| How a type is read and written | By a generated converter. | By the run-time resolver's converter, built with reflection on first use. |
+| Native AOT and trimming | Safe. | Not safe. The resolver uses reflection and creates generic types at run time. |
+| `XmlSerializerOptions` settings | A subset. See [Which options generated converters apply](/guides/source-generation#which-options-generated-converters-apply). | All. |
+| Custom converters on member types | Enumerations only. | All. |
+| `XmlTypeInfo<T>.Properties` | Empty. | One entry for each member. |
+| `ReferenceHandler` | Throws `NotSupportedException`. | Supported. |
+| Compile-time diagnostics | Reported. | Reported. The generator checks the types in both modes. |
+
+A context in either mode writes a converter only for object types: classes and structs with members. For an enumeration you list with `[XmlSerializable]`, the property returns the built-in enumeration converter without reflection. For a collection or a simple value you list, such as `List<Order>` or `int`, the property returns type info from the run-time resolver in both modes.
+
+## When to use each mode
+
+Use **`Default`** for a context you publish with trimming or Native AOT, and for the types on your hot path.
+
+Use **`Metadata`** when you want the compile-time checks and the typed `Default.Order` properties of a context, and you also need behavior only the run-time resolver has: custom converters on member types, `NilHandling`, `DefaultIgnoreCondition`, a `ReferenceHandler`, or the member list in `Properties`. The application must then be one that allows reflection.
+
+There's no reason to choose `Serialization` over `Default`. They produce the same code.
+
+## See also
+
+<Columns cols={2}>
+  <Card title="Use source generation" icon="wand-magic-sparkles" href="/guides/source-generation">
+    Declare a context and call the serializer with it.
+  </Card>
+  <Card title="Reflection vs. source generation" icon="scale-balanced" href="/guides/reflection-vs-source-generation">
+    What each approach does and costs.
+  </Card>
+  <Card title="Custom converters" icon="arrows-rotate" href="/guides/custom-converters">
+    Write a converter, and use it with a metadata-mode context.
+  </Card>
+  <Card title="Publish with Native AOT" icon="rocket" href="/guides/native-aot">
+    Why Native AOT needs the default mode.
+  </Card>
+</Columns>
+
+- [`XmlSourceGenerationMode`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode)
+- [`XmlSourceGenerationOptionsAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute)
+- [`XmlTypeInfo`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo)
+- [`XmlPropertyInfo`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfo)

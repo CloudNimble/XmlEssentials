@@ -2,7 +2,7 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Token produced by <see cref="Utf8XmlReader"/> as it walks a UTF-8 XML document.
+    /// Specifies the type of token that a <see cref="Utf8XmlReader"/> is positioned on in a UTF-8 XML document.
     /// </summary>
     /// <remarks>
     /// Empty elements (<c>&lt;e/&gt;</c>) are reported as <see cref="StartElement"/> with
@@ -14,7 +14,7 @@ namespace CloudNimble.Text.Xml
     {
 
         /// <summary>
-        /// No token has been read yet, or the reader has reached the end of a complete document.
+        /// No token. No token has been read yet, or the reader has reached the end of a complete document.
         /// </summary>
         None = 0,
 
@@ -44,7 +44,8 @@ namespace CloudNimble.Text.Xml
         CData = 5,
 
         /// <summary>
-        /// A comment, reported only when <see cref="XmlCommentHandling.Allow"/> is set.
+        /// A comment, reported only when <see cref="XmlReaderOptions.CommentHandling"/> is
+        /// <see cref="XmlCommentHandling.Allow"/>.
         /// </summary>
         Comment = 6,
 

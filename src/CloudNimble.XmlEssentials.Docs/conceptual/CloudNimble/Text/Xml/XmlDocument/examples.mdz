@@ -1,24 +1,148 @@
-# Examples
+### Parse a document and write it back
 
-UTF-8 span and stream:
-
-```csharp
-using var fromUtf8 = XmlDocument.Parse("<e>1</e>"u8);
-using var stream = new MemoryStream("<e>2</e>"u8.ToArray());
-using var fromStream = XmlDocument.Parse(stream);
-```
-
-Keep comments and round-trip them:
+`WriteTo` writes what was parsed, comments included. This document is already spelled the way the writer spells XML, so it comes back identical.
 
 ```csharp
-using var document = XmlDocument.Parse(
-    "<!--hi--><e/><!--tail-->",
-    new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+const string xml = """<?xml version="1.0" encoding="utf-8"?><!-- exported nightly --><c:Catalog xmlns:c="urn:example:catalog" updated="2026-03-14"><c:Product sku="KB-1">Keyboard</c:Product><c:Discontinued></c:Discontinued><c:Spare/></c:Catalog>""";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer))
+{
+    document.WriteTo(writer);
+}
+
+string written = Encoding.UTF8.GetString(buffer.WrittenSpan);
+output.WriteLine(written);
+output.WriteLine($"Same as the input: {written == xml}");
 ```
 
-Clone the root into a mutable tree:
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?><!-- exported nightly --><c:Catalog xmlns:c="urn:example:catalog" updated="2026-03-14"><c:Product sku="KB-1">Keyboard</c:Product><c:Discontinued></c:Discontinued><c:Spare/></c:Catalog>
+Same as the input: True
+```
+
+### See what a round trip normalizes
+
+A round trip preserves the content, the comments, and the indentation inside the root element. It isn't byte for byte when the input spells something differently from the writer.
 
 ```csharp
-var node = (XmlElementNode)document.RootElement.CloneNode();
-node.SetAttribute("id", "1");
+const string xml =
+    "<?xml version='1.0'?>\r\n" +
+    "<!-- exported nightly -->\r\n" +
+    "<Order  id='1042'   status=\"open\">\r\n" +
+    "  <!-- rush -->\r\n" +
+    "  <Item>Keyboard &#65;</Item>\r\n" +
+    "  <Notes />\r\n" +
+    "</Order>\r\n";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer))
+{
+    document.WriteTo(writer);
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan).Replace("\r", "\\r"));
 ```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?><!-- exported nightly --><Order id="1042" status="open">
+  <!-- rush -->
+  <Item>Keyboard A</Item>
+  <Notes/>
+</Order>
+```
+
+The comments and the indentation inside `Order` are kept. The white space outside the root element is dropped, the declaration and the attribute quotes are written the writer's way, `<Notes />` becomes `<Notes/>`, CRLF becomes LF, and `&#65;` is written as `A`.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/28_WriteAndConvertXmlDocument.cs)
+
+### Parse one element at a time from a reader
+
+`ParseValue` reads the element a `Utf8XmlReader` is on and leaves the reader on its end tag, so only one record is in memory at a time.
+
+```csharp
+ReadOnlySpan<byte> feed = """
+    <Feed>
+      <Entry id="1"><Title>First post</Title></Entry>
+      <Entry id="2"><Title>Second post</Title></Entry>
+    </Feed>
+    """u8;
+
+var reader = new Utf8XmlReader(feed);
+while (reader.Read())
+{
+    if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
+    {
+        using XmlDocument entry = XmlDocument.ParseValue(ref reader);
+        XmlElement root = entry.RootElement;
+        output.WriteLine($"{root.GetAttribute("id").GetInt32()}: {root.GetChild("Title").GetString()}");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+1: First post
+2: Second post
+```
+
+### Test input without an exception
+
+```csharp
+var options = new XmlDocumentOptions();
+
+if (XmlDocument.TryParse("<Order><Item>Keyboard</Item></Order>"u8, options, out XmlDocument? document))
+{
+    using (document)
+    {
+        output.WriteLine($"Parsed: {document!.RootElement.LocalName}");
+    }
+}
+
+if (!XmlDocument.TryParse("<Order><Item>Keyboard</Order>"u8, options, out XmlDocument? broken))
+{
+    output.WriteLine($"Not well formed: document is null: {broken is null}");
+}
+```
+
+The code produces the following output:
+
+```text
+Parsed: Order
+Not well formed: document is null: True
+```
+
+### Read the XML declaration
+
+```csharp
+using (XmlDocument document = XmlDocument.Parse("""<?xml version="1.1" encoding="UTF-8" standalone="yes"?><Order/>"""))
+{
+    if (document.Declaration is { } declaration)
+    {
+        output.WriteLine($"version {declaration.Version}, encoding {declaration.Encoding}, standalone {declaration.Standalone}");
+    }
+}
+
+using (XmlDocument document = XmlDocument.Parse("<Order/>"))
+{
+    output.WriteLine($"has a declaration: {document.Declaration.HasValue}");
+}
+```
+
+The code produces the following output:
+
+```text
+version 1.1, encoding utf-8, standalone True
+has a declaration: False
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)

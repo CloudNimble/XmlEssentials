@@ -2,7 +2,8 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Maps objects to reference ids for one serialize or deserialize operation.
+    /// Defines the core behavior of preserving references on serialization and deserialization and provides a base for
+    /// resolvers that map objects to reference identifiers during one operation.
     /// </summary>
     public abstract class XmlReferenceResolver
     {
@@ -10,25 +11,38 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Methods
 
         /// <summary>
-        /// Records <paramref name="value"/> under <paramref name="referenceId"/> for later resolve.
+        /// When overridden in a derived class, adds an entry to the bag of references by using the specified identifier and value.
         /// </summary>
-        /// <param name="referenceId">The id.</param>
-        /// <param name="value">The object.</param>
+        /// <param name="referenceId">The identifier of the object.</param>
+        /// <param name="value">The object that results from reading the XML element.</param>
+        /// <remarks>
+        /// The serializer calls this method when it reads an element that carries a reference identifier.
+        /// </remarks>
         public abstract void AddReference(string referenceId, object value);
 
         /// <summary>
-        /// Returns the id for <paramref name="value"/> and whether it was already seen.
+        /// When overridden in a derived class, gets the reference identifier of the specified value if one exists; otherwise, assigns a new identifier.
         /// </summary>
-        /// <param name="value">The object.</param>
-        /// <param name="alreadyExists">When this method returns, whether the object was already assigned an id.</param>
-        /// <returns>The id.</returns>
+        /// <param name="value">The object to get an identifier for.</param>
+        /// <param name="alreadyExists">When this method returns, contains <see langword="true"/> if a reference to <paramref name="value"/> already exists; otherwise, <see langword="false"/>. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// The reference identifier for <paramref name="value"/>.
+        /// </returns>
+        /// <remarks>
+        /// The serializer calls this method before it writes an object, to decide whether to write the object or a reference to it.
+        /// </remarks>
         public abstract string GetReference(object value, out bool alreadyExists);
 
         /// <summary>
-        /// Returns the object previously recorded under <paramref name="referenceId"/>, or <see langword="null"/>.
+        /// When overridden in a derived class, returns the object related to the specified reference identifier.
         /// </summary>
-        /// <param name="referenceId">The id.</param>
-        /// <returns>The object, or <see langword="null"/>.</returns>
+        /// <param name="referenceId">The reference identifier related to the returned object.</param>
+        /// <returns>
+        /// The object that was added under <paramref name="referenceId"/>, or <see langword="null"/> if there is none.
+        /// </returns>
+        /// <remarks>
+        /// The serializer calls this method when it reads an element that refers to another object by identifier.
+        /// </remarks>
         public abstract object? ResolveReference(string referenceId);
 
         #endregion

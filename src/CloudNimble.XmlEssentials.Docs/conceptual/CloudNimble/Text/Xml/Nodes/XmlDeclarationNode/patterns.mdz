@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Patterns
 
-Use this type only in a mutable tree you assemble by hand. Parsed `XmlDocument` instances never expose it.
+Document common patterns for `XmlDeclarationNode` here.
+

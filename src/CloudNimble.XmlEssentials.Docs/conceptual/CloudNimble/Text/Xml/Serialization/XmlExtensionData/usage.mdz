@@ -1,5 +1,18 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlExtensionData` holds the attributes and child elements of an element that no member of your type maps. Add a member of this type, mark it with `[XmlExtensionData]`, and the serializer fills it when it reads and writes its content back when it serializes. It is the XML counterpart of the dictionary that `[JsonExtensionData]` uses in System.Text.Json.
 
-Describe how to use `XmlExtensionData` here.
+```csharp
+public sealed class Settings
+{
+    public string? Theme { get; set; }
 
+    [XmlExtensionData]
+    public XmlExtensionData? Extra { get; set; }
+}
+```
+
+| Property | Type | Holds |
+| --- | --- | --- |
+| `Attributes` | `Dictionary<XmlName, string>` | Each unmapped attribute, keyed by its qualified name. The value is the attribute's text with references resolved. |
+| `Elements` | `List<XmlElementNode>` | Each unmapped child element, in document order, with its attributes and content. |
+
+Both collections are created with the object and are never `null`. You can read them after deserializing, and add to them before serializing.

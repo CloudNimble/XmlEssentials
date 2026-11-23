@@ -1,5 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Best Practices
-
-Document best practices for `XmlReferenceHandler` here.
-
+- Leave `ReferenceHandler` unset unless the graph has shared objects or cycles. With no handler, the serializer does no reference tracking.
+- Use `Preserve` when both ends use XmlEssentials and the graph must come back as it was.
+- Use `IgnoreCycles` when the document goes to a consumer that knows nothing about `id` and `ref`, and losing the repeated objects is acceptable.
+- Read a document with the handler that wrote it. Without a handler, a `ref` attribute is an `XmlException`.
+- If the cycle is caused by a back-reference that you don't need in the document, such as a child's `Parent` property, consider `[XmlIgnore]` on that member instead of a handler.

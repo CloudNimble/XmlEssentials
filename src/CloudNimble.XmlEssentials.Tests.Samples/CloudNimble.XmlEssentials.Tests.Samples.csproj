@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>$(StandardTestTfms)</TargetFrameworks>
+		<RootNamespace>CloudNimble.XmlEssentials.Tests.Samples</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.Samples\CloudNimble.XmlEssentials.Samples.csproj" />
+	</ItemGroup>
+
+</Project>

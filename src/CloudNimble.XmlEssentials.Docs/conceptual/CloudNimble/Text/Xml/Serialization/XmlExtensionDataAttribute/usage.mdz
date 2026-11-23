@@ -1,5 +1,13 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Put `[XmlExtensionData]` on a member of type `XmlExtensionData` to keep the attributes and elements that no other member of the type maps. Without such a member, the serializer skips that content, or rejects it when `XmlSerializerOptions.UnmappedMemberHandling` is `Disallow`. The attribute corresponds to `[JsonExtensionData]` in System.Text.Json.
 
-Describe how to use `XmlExtensionDataAttribute` here.
+```csharp
+public sealed class Settings
+{
+    public string? Theme { get; set; }
 
+    [XmlExtensionData]
+    public XmlExtensionData? Extra { get; set; }
+}
+```
+
+After deserializing, `Extra.Attributes` and `Extra.Elements` hold what the document had beyond `Theme`. When you serialize the object, that content is written back. See `XmlExtensionData` for an example with its output, and [Mixed content and overflow](/guides/mixed-content#keep-content-that-no-member-maps) for the walkthrough.

@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlReaderState` here.
-
+- **A state made without options uses the defaults.** `new XmlReaderState()` and `default(XmlReaderState)` hold the default options, with which the reader reports comments and white space between elements.
+- **Taking a state allocates.** `Utf8XmlReader.CurrentState` copies the names of the open elements and the namespace bindings in scope, because the buffer they point into is about to be reused. The cost grows with the depth of the document and the number of namespaces in scope. `JsonReaderState` has no such cost. Take the state once per block, not once per token.
+- **A state is a snapshot.** It never changes after you take it, and two readers created from the same state don't affect each other. You can keep a state and go back to it, as long as you still have the bytes that follow it.
+- **A state doesn't hold bytes.** When `Read` returns `false` in the middle of a token, the reader stops at the start of that token. The bytes after `BytesConsumed` are yours to keep and pass again, followed by the new data.
+- **The options can't change mid-document.** The state carries them, and every reader created from the state uses them.
+- **What your code knows isn't in the state.** Which element you're inside, and what you've collected so far, belong in your own variables.

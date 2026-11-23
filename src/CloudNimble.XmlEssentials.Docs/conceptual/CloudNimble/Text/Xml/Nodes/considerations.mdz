@@ -1,5 +1,7 @@
-# Considerations
-
-XML is not a property bag. Children are an ordered mixed list, not a JSON object. A node may have only one parent; adding a node that already has a parent throws `XmlException`.
-
-`ToString` writes the node through `Utf8XmlWriter` with `OmitXmlDeclaration`. `WriteTo` skips `xmlns*` attributes and lets the writer declare namespaces from `Prefix` / `NamespaceUri`.
+- **XML isn't a property bag.** An element's children are an ordered list that can mix elements, text, comments, and more, and names can repeat. There is no equivalent of `JsonObject`.
+- **What `XmlNode.Parse` keeps.** The root element and everything inside it, including comments and the white space between elements. The XML declaration and anything outside the root element aren't part of the tree, and `<e></e>` is written back as `<e/>`.
+- **Nothing is validated until the tree is written.** An invalid name, a duplicate attribute, a prefix without a namespace, a comment that contains `--`, or a CDATA section that contains `]]>` throws an `XmlException` from `ToString` or `WriteTo`.
+- **Values are strings.** The tree has no typed getters such as `GetInt32`.
+- **Nodes are ordinary objects.** There is nothing to dispose, and a tree stays valid after the `XmlDocument` it was cloned from is disposed.
+- **No synchronization.** Don't change a tree on one thread while another thread reads or writes it.
+- **No benchmark covers the tree.** The numbers on the [Benchmarks](/benchmarks) page are for `XmlDocument`, the reader, the writer, and the serializer.

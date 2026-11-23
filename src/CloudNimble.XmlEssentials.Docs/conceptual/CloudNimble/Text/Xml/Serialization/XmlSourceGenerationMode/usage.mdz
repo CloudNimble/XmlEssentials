@@ -1,5 +1,44 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+Set the mode with the `GenerationMode` property of `[XmlSourceGenerationOptions]` on a context. It applies to every type the context lists.
 
-Describe how to use `XmlSourceGenerationMode` here.
+```csharp
+[XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
+[XmlSerializable(typeof(Order))]
+public partial class MetadataOrderXmlContext : XmlSerializerContext
+{
+}
+```
 
+| Member | What the generator writes for each object type |
+| --- | --- |
+| `Default` | The same as `Serialization`. |
+| `Serialization` | A converter that reads and writes the type with `Utf8XmlReader` and `Utf8XmlWriter`, with no reflection. Safe for trimming and Native AOT. |
+| `Metadata` | No converter. The context's `XmlTypeInfo<T>` property asks `DefaultXmlTypeInfoResolver` for the type info at run time, so every option and custom converter applies. Not safe for Native AOT. |
+
+`Metadata | Serialization` behaves as `Serialization` does.
+
+The following example shows the converter behind the type info of each mode and the number of members the type info describes:
+
+```csharp
+XmlTypeInfo<Order> generated = OrderXmlContext.Default.Order;
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Default:  {generated.Converter.GetType().Name}, {generated.Properties.Count} properties");
+output.WriteLine($"Metadata: {metadata.Converter.GetType().Name}, {metadata.Properties.Count} properties");
+
+var order = new Order { Id = 7, Customer = "Grace" };
+output.WriteLine(XmlSerializer.Serialize(order, generated));
+output.WriteLine(XmlSerializer.Serialize(order, metadata));
+```
+
+The code produces the following output:
+
+```text
+Default:  OrderXmlConverter, 0 properties
+Metadata: XmlObjectConverter`1, 3 properties
+<?xml version="1.0" encoding="utf-8"?><Order Id="7"><Customer>Grace</Customer></Order>
+<?xml version="1.0" encoding="utf-8"?><Order Id="7"><Customer>Grace</Customer></Order>
+```
+
+The names match `JsonSourceGenerationMode` in System.Text.Json, but metadata mode differs: here it defers to the run-time resolver instead of emitting metadata. For a comparison of the modes, see [Source-generation modes](/guides/source-generation-modes).
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)

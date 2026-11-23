@@ -1,5 +1,25 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlDerivedTypeAttribute` is the abstract base of `XmlDerivedTypeAttribute<T>`, which is the attribute you apply. Put one `[XmlDerivedType<T>]` on a base class for each derived type that can appear where the base type is declared.
 
-Describe how to use `XmlDerivedTypeAttribute` here.
+```csharp
+[XmlPolymorphic]
+[XmlDerivedType<Book>]
+[XmlDerivedType<Dvd>("Disc")]
+public class Product
+{
+    public string? Title { get; set; }
+}
+```
 
+- `[XmlDerivedType<Book>]` uses the type's name, `Book`, as the discriminator.
+- `[XmlDerivedType<Dvd>("Disc")]` sets the discriminator to `Disc`.
+
+What the discriminator is depends on `XmlPolymorphicAttribute.DiscriminatorPlacement`: the name of the element, the value of a named attribute, or the value of `xsi:type`. With the default placement, a `Dvd` in a list of products is written as `<Disc>`:
+
+```xml
+<Disc>
+  <Title>The Matrix</Title>
+  <Runtime>136</Runtime>
+</Disc>
+```
+
+See [Serialize derived classes](/guides/polymorphism) and the [polymorphism sample](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs).

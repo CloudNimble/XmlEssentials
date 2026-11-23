@@ -1,5 +1,3 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlIncludeAttribute` here.
-
+- This attribute is not the `XmlIncludeAttribute` of `System.Xml.Serialization`, which declares a known derived type. To declare derived types, use `[XmlDerivedType<T>]`.
+- The attribute can be applied to properties and fields only.
+- An included member is named, ordered, and mapped like a public one, and the other mapping attributes can be combined with it.

@@ -1,8 +1,9 @@
 ---
 title: XmlUnmappedMemberHandling
+description: "How unknown elements and attributes are treated on deserialize."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializerDefaults', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute']
 ---
 
 ## Definition
@@ -19,17 +20,77 @@ keywords: ['XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization.XmlU
 CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
 ```
 
+## Summary
+
+How unknown elements and attributes are treated on deserialize.
+
+## Usage
+
+`XmlUnmappedMemberHandling` says what the serializer does, when reading, with an element or attribute that no member of the target type maps to. Set it through `XmlSerializerOptions.UnmappedMemberHandling`. It is the counterpart of `JsonUnmappedMemberHandling`.
+
+| Value | Behavior |
+| --- | --- |
+| `Skip` (default) | The element or attribute is ignored. |
+| `Disallow` | The serializer throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). |
+
+```csharp
+string[] documents =
+[
+    "<Registration><Email>ada@contoso.example</Email><Plan>pro</Plan><Coupon>SPRING</Coupon></Registration>",
+    "<Registration source=\"web\"><Email>ada@contoso.example</Email><Plan>pro</Plan></Registration>",
+];
+
+var options = new XmlSerializerOptions { UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow };
+
+foreach (string xml in documents)
+{
+    Registration? registration = XmlSerializer.Deserialize<Registration>(xml);
+    output.WriteLine($"Skip: {registration!.Email} chose {registration.Plan}");
+
+    try
+    {
+        XmlSerializer.Deserialize<Registration>(xml, options);
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine($"Disallow: {ex.Message}");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+Skip: ada@contoso.example chose pro
+Disallow: Unknown element 'Coupon'.
+Skip: ada@contoso.example chose pro
+Disallow: Unknown attribute 'source'.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)
+
+## Considerations
+
+- The setting is on the options and applies to every type in the object graph. There is no attribute that sets it for one type.
+- Namespace declarations, `xsi:nil`, `xsi:type`, and the attributes the serializer itself writes for polymorphism and preserved references are never treated as unmapped.
+- A member marked `[XmlIgnore]` isn't mapped, so with `Disallow` an element for it is an error.
+- When the type has an `[XmlExtensionData]` member, unmapped elements and attributes are collected there, and `Disallow` doesn't reject them.
+- Names are matched with case unless `PropertyNameCaseInsensitive` is `true`, so with `Disallow` an element that differs from a member only by case is an error.
+- `XmlSerializerOptions.Strict` sets `Disallow`.
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Skip` | 0 |  |
-| `Disallow` | 1 |  |
+| `Skip` | 0 | Ignore members that are not mapped, unless an extension-data bag captures them. |
+| `Disallow` | 1 | Throw [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) when an unmapped member is present. |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlSerializerDefaults
+- CloudNimble.Text.Xml.XmlException
+- CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute
+- CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
+- CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute
 

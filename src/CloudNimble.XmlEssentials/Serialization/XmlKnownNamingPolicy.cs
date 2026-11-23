@@ -2,43 +2,46 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Built-in naming policies selectable from source-generation options.
+    /// Specifies the built-in <see cref="XmlNamingPolicy"/> that a source-generated context uses at run time.
     /// </summary>
+    /// <remarks>
+    /// The values are selected through the naming policy properties of <see cref="XmlSourceGenerationOptionsAttribute"/>.
+    /// </remarks>
     public enum XmlKnownNamingPolicy
     {
 
         /// <summary>
-        /// Leave names unchanged.
+        /// No naming policy. Names are not converted.
         /// </summary>
         Unspecified = 0,
 
         /// <summary>
-        /// <see cref="XmlNamingPolicy.CamelCase"/>.
+        /// The built-in <see cref="XmlNamingPolicy.CamelCase"/> naming policy.
         /// </summary>
         CamelCase = 1,
 
         /// <summary>
-        /// <see cref="XmlNamingPolicy.SnakeCaseLower"/>.
+        /// The built-in <see cref="XmlNamingPolicy.SnakeCaseLower"/> naming policy.
         /// </summary>
         SnakeCaseLower = 2,
 
         /// <summary>
-        /// <see cref="XmlNamingPolicy.SnakeCaseUpper"/>.
+        /// The built-in <see cref="XmlNamingPolicy.SnakeCaseUpper"/> naming policy.
         /// </summary>
         SnakeCaseUpper = 3,
 
         /// <summary>
-        /// <see cref="XmlNamingPolicy.KebabCaseLower"/>.
+        /// The built-in <see cref="XmlNamingPolicy.KebabCaseLower"/> naming policy.
         /// </summary>
         KebabCaseLower = 4,
 
         /// <summary>
-        /// <see cref="XmlNamingPolicy.KebabCaseUpper"/>.
+        /// The built-in <see cref="XmlNamingPolicy.KebabCaseUpper"/> naming policy.
         /// </summary>
         KebabCaseUpper = 5,
 
         /// <summary>
-        /// <see cref="XmlNamingPolicy.PascalCase"/>.
+        /// The built-in <see cref="XmlNamingPolicy.PascalCase"/> naming policy.
         /// </summary>
         PascalCase = 6,
 

@@ -2,18 +2,18 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// How objects are created when deserializing into an existing instance.
+    /// Specifies how deserialization handles object creation for a property or field that already holds an instance.
     /// </summary>
     public enum XmlObjectCreationHandling
     {
 
         /// <summary>
-        /// Replace the existing value.
+        /// Replacement of the existing value with a new instance.
         /// </summary>
         Replace = 0,
 
         /// <summary>
-        /// Populate the existing value.
+        /// Population of the instance that the property or field already holds.
         /// </summary>
         Populate = 1,
 

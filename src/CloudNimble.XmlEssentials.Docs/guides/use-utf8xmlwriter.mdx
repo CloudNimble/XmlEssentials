@@ -1,0 +1,1067 @@
+---
+title: "How to write XML with Utf8XmlWriter"
+sidebarTitle: "Use Utf8XmlWriter"
+description: "Write UTF-8 XML with Utf8XmlWriter: elements, attributes, typed values, namespaces, indentation, flushing, reuse, and validation."
+icon: "pen"
+---
+
+`Utf8XmlWriter` is a forward-only writer for UTF-8 encoded XML. You call a method for each start tag, attribute, value, and end tag, and the writer produces the bytes, escapes what needs escaping, declares namespaces, and checks that the result is well formed. This article shows how to use it.
+
+Use the writer when you produce XML by hand, when the output is too large to build as a tree first, or when you write a [custom converter](/guides/custom-converters). To write your own types as XML, use [`XmlSerializer`](/guides/serialize). To build or edit a tree, use [`XmlNode`](/guides/use-xmlnode).
+
+If you know `Utf8JsonWriter` from System.Text.Json, the shape is the same: a class that writes to an `IBufferWriter<byte>` or a `Stream`, with `WriteStart*` and `WriteEnd*` methods, typed value methods, `Flush`, `Reset`, and options in a struct.
+
+## Write to a buffer
+
+Create the writer over an `IBufferWriter<byte>`, such as an `ArrayBufferWriter<byte>` or a `PipeWriter`, and dispose it when the document is complete. Every element is a `WriteStartElement` call, then its attributes, then its content, then `WriteEndElement`.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+
+    writer.WriteStartElement("Customer");
+    writer.WriteStringValue("Ada Lovelace");
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Total");
+    writer.WriteAttributeString("currency", "EUR");
+    writer.WriteNumberValue(129.90m);
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Notes");
+    writer.WriteEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Customer>Ada Lovelace</Customer>
+  <Total currency="EUR">129.90</Total>
+  <Notes/>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+What to notice:
+
+- **The writer adds the XML declaration.** It writes it before the first element unless you [turn it off](#the-xml-declaration).
+- **A start tag stays open until you write content or end the element.** Attributes go in that window. Writing an attribute after the element has content throws an `XmlException`.
+- **`WriteEndElement` takes no name.** The writer knows which element is open. An element with no content, like `Notes`, is closed as an empty element.
+- **Disposing the writer finishes the document.** It flushes the output. If an element is still open, it throws instead. See [Validation](#validation).
+- **The output is bytes.** The sample decodes them to print them. In an application, send `buffer.WrittenSpan` or `buffer.WrittenMemory` where the XML is going.
+
+Names and values can be passed as a `string`, as a `ReadOnlySpan<char>`, or as UTF-8 in a `ReadOnlySpan<byte>`, such as a `u8` literal. The UTF-8 overloads skip the transcoding step.
+
+## Write to a stream
+
+Pass a `Stream` instead, and the writer collects output in a buffer rented from the array pool and writes it to the stream when the buffer fills and when you flush.
+
+```csharp
+using var stream = new MemoryStream();
+
+using (var writer = new Utf8XmlWriter(stream))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteEndElement();
+}
+
+output.WriteLine($"{stream.Length} bytes");
+output.WriteLine(Encoding.UTF8.GetString(stream.ToArray()));
+```
+
+The code produces the following output:
+
+```text
+84 bytes
+<?xml version="1.0" encoding="utf-8"?><Order id="1042"><Item>Keyboard</Item></Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+Disposing the writer flushes the stream and returns the rented buffer. It doesn't close or dispose the stream, so the stream stays yours to use. The output isn't indented here because the sample uses the default options.
+
+## Write typed values
+
+A value method writes one value where the writer is: inside the element that's open, or inside an attribute that you opened with `WriteStartAttribute`. The methods format .NET values in the lexical forms of XML Schema, with the invariant culture, so that any XML tool reads them the same way.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Shipment");
+    writer.WriteAttributeNumber("boxes", 3);
+    writer.WriteStartAttribute("insured");
+    writer.WriteBooleanValue(true);
+    writer.WriteEndAttribute();
+
+    writer.WriteStartElement("Id");
+    writer.WriteStringValue(new Guid("3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Sent");
+    writer.WriteStringValue(new DateTimeOffset(2026, 3, 14, 9, 30, 0, TimeSpan.FromHours(1)));
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Due");
+    writer.WriteStringValue(new DateOnly(2026, 3, 17));
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Cutoff");
+    writer.WriteStringValue(new TimeOnly(17, 0, 0));
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Transit");
+    writer.WriteStringValue(TimeSpan.FromHours(36));
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("WeightKg");
+    writer.WriteNumberValue(2.5);
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("MaxWeightKg");
+    writer.WriteNumberValue(double.PositiveInfinity);
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Fragile");
+    writer.WriteBooleanValue(false);
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Signature");
+    writer.WriteBase64StringValue([0x58, 0x4D, 0x4C, 0x21]);
+    writer.WriteEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<Shipment boxes="3" insured="true">
+  <Id>3f2504e0-4f89-11d3-9a0c-0305e82c3301</Id>
+  <Sent>2026-03-14T09:30:00+01:00</Sent>
+  <Due>2026-03-17</Due>
+  <Cutoff>17:00:00</Cutoff>
+  <Transit>P1DT12H</Transit>
+  <WeightKg>2.5</WeightKg>
+  <MaxWeightKg>INF</MaxWeightKg>
+  <Fragile>false</Fragile>
+  <Signature>WE1MIQ==</Signature>
+</Shipment>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+| Method | Accepts | Written as |
+| --- | --- | --- |
+| `WriteStringValue` | `string`, `ReadOnlySpan<char>`, UTF-8 `ReadOnlySpan<byte>` | Escaped text. |
+| `WriteStringValue` | `DateTime`, `DateTimeOffset` | `xs:dateTime`, such as `2026-03-14T09:30:00+01:00`. |
+| `WriteStringValue` | `DateOnly`, `TimeOnly` | `xs:date` and `xs:time`. |
+| `WriteStringValue` | `TimeSpan` | `xs:duration`, such as `P1DT12H`. |
+| `WriteStringValue` | `Guid` | The 36-character form with hyphens. |
+| `WriteNumberValue` | `int`, `long`, `uint`, `ulong`, `decimal`, `float`, `double` | Digits, with `.` as the decimal separator. `float` and `double` write `INF`, `-INF`, and `NaN`. |
+| `WriteBooleanValue` | `bool` | `true` or `false`. |
+| `WriteBase64StringValue` | `ReadOnlySpan<byte>` | `xs:base64Binary`. |
+
+The typed methods of [`Utf8XmlReader`](/guides/use-utf8xmlreader#read-text-and-typed-values) read every one of these forms back.
+
+Call a value method more than once in the same element and the values are written one after the other, as one run of text. `WriteStringValueSegment` does the same. It exists so that code written for `Utf8JsonWriter` ports without change.
+
+<Warning>
+Write binary data with one call to `WriteBase64StringValue`. `WriteBase64StringSegment` encodes each segment by itself, padding included, so two segments of one byte each produce `AQ==Ag==` and not the Base64 form of the two bytes together.
+</Warning>
+
+## Write a complete element in one call
+
+Most elements hold one value. For those, a `WriteElement*` method writes the start tag, the value, and the end tag together.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteElementNumber("Quantity", 2);
+    writer.WriteElementNumber("Total", 129.90m);
+    writer.WriteElementBoolean("Rush", true);
+    writer.WriteElementString("Placed", new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
+    writer.WriteElementBase64String("Signature", [0x58, 0x4D, 0x4C, 0x21]);
+    writer.WriteElementString("Comment", null);
+    writer.WriteEmptyElement("Gift");
+    writer.WriteNilElement("Discount");
+
+    writer.WriteStartElement("Notes");
+    writer.WriteFullEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<Order>
+  <Item>Keyboard</Item>
+  <Quantity>2</Quantity>
+  <Total>129.90</Total>
+  <Rush>true</Rush>
+  <Placed>2026-03-14T09:30:00Z</Placed>
+  <Signature>WE1MIQ==</Signature>
+  <Comment/>
+  <Gift/>
+  <Discount xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <Notes></Notes>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+| Method | Writes |
+| --- | --- |
+| `WriteElementString` | An element with text. A `null` string writes an empty element. Overloads take a `DateTime`, a `DateTimeOffset`, or a `Guid`. |
+| `WriteElementNumber` | An element with a number. |
+| `WriteElementBoolean` | An element with `true` or `false`. |
+| `WriteElementBase64String` | An element with Base64 text. |
+| `WriteEmptyElement` | An empty element, `<Gift/>`. |
+| `WriteNilElement` | An empty element with `xsi:nil="true"`. The writer declares the `xsi` prefix if it isn't in scope. See [Null values and xsi:nil](/guides/null-and-nil). |
+| `WriteAttributeString`, `WriteAttributeNumber` | A complete attribute on the open start tag. |
+
+To choose between the two ways of closing an element:
+
+- `WriteEndElement` writes `<Notes/>` when the element has no content, and `</Notes>` when it has.
+- `WriteFullEndElement` always writes the end tag, so an element with no content becomes `<Notes></Notes>`. Use it for consumers that treat the two forms differently, such as HTML parsers.
+
+## How the writer escapes values
+
+You pass values as they are. The writer escapes the characters that would otherwise change meaning or be changed by a reader, so a value is read back exactly as you wrote it.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Note");
+    writer.WriteAttributeString("title", "Tom & \"Jerry\" <draft>\tline one\nline two");
+    writer.WriteStringValue("if (a < b && b > c) { x = \"y\"; } ]]> done\r\n");
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+
+var reader = new Utf8XmlReader(buffer.WrittenSpan);
+reader.Read();
+reader.MoveToNextAttribute();
+output.WriteLine($"Attribute read back unchanged: {reader.GetString() == "Tom & \"Jerry\" <draft>\tline one\nline two"}");
+reader.Read();
+output.WriteLine($"Text read back unchanged: {reader.GetString() == "if (a < b && b > c) { x = \"y\"; } ]]> done\r\n"}");
+```
+
+The code produces the following output:
+
+```text
+<Note title="Tom &amp; &quot;Jerry&quot; &lt;draft>&#x9;line one&#xA;line two">if (a &lt; b &amp;&amp; b > c) { x = "y"; } ]]&gt; done&#xD;
+</Note>
+Attribute read back unchanged: True
+Text read back unchanged: True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+| Where | What the writer escapes |
+| --- | --- |
+| Element text | `&` as `&amp;`, `<` as `&lt;`, a carriage return as `&#xD;`, and the `>` of `]]>` as `&gt;`. |
+| Attribute value | `&` as `&amp;`, `<` as `&lt;`, `"` as `&quot;`, a tab as `&#x9;`, a line feed as `&#xA;`, and a carriage return as `&#xD;`. Attribute values are always in double quotes. |
+| Text and attribute values in XML 1.1 | Also U+0085 as `&#x85;`, U+2028 as `&#x2028;`, and control characters as `&#xN;`. |
+| CDATA sections, comments, processing instructions | Nothing. Content that can't be written as it is throws an `XmlException`. |
+| Names | Nothing. A name that isn't a valid XML name throws an `XmlException`. |
+
+What to notice in the output:
+
+- `>` is left alone except in `]]>`, and `"` is left alone in element text. Both are legal there.
+- The white space in the attribute is written as character references. A reader replaces a literal tab or line end in an attribute with a space, so a reference is the only way to keep it.
+- The carriage return in the text is a reference for the same reason: a reader turns a literal one into a line feed.
+
+A character that XML doesn't allow at all, such as U+0000, can't be escaped, and writing it throws `Illegal character in XML value.` [XML 1.1](#write-xml-11) allows more characters than XML 1.0.
+
+## Write namespaces
+
+To put an element or an attribute in a namespace, pass the namespace URI. You don't write `xmlns` attributes yourself unless you want to choose where they go. The writer tracks which namespaces are in scope and declares what's missing.
+
+```csharp
+const string atom = "http://www.w3.org/2005/Atom";
+const string dublinCore = "http://purl.org/dc/elements/1.1/";
+const string shop = "urn:example:shop";
+
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    // The writer declares the default namespace because nothing in scope is bound to it.
+    writer.WriteStartElement("feed", atom);
+
+    // Declare a prefix on the root so that every descendant can use it.
+    writer.WriteNamespaceDeclaration("dc", dublinCore);
+
+    // The namespace is the default one in scope, so the element needs no prefix.
+    writer.WriteElementString("title", atom, "Orders");
+
+    // The namespace is bound to dc, so the writer uses that prefix.
+    writer.WriteElementString("creator", dublinCore, "Ada");
+
+    // A prefix and a namespace that are not in scope: the writer declares them on this element.
+    writer.WriteStartElement("s", "order", shop);
+    writer.WriteAttributeString("s", "id", shop, "1042");
+    writer.WriteEndElement();
+
+    // An attribute in a namespace that has no prefix in scope gets a generated one.
+    writer.WriteStartElement("entry", atom);
+    writer.WriteAttributeString("priority", shop, "high");
+    writer.WriteAttributeString("lang", "en");
+    writer.WriteEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title>Orders</title>
+  <dc:creator>Ada</dc:creator>
+  <s:order xmlns:s="urn:example:shop" s:id="1042"/>
+  <entry xmlns:ns1="urn:example:shop" ns1:priority="high" lang="en"/>
+</feed>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+The rules the writer follows:
+
+| You call | The writer |
+| --- | --- |
+| `WriteStartElement(localName, namespaceUri)` | Uses the prefix that's bound to the namespace in scope. If the namespace is the default one in scope, writes no prefix. Otherwise, declares the namespace as the default on this element. |
+| `WriteStartElement(prefix, localName, namespaceUri)` | Writes the element with your prefix, and declares the prefix on this element if the namespace isn't in scope. |
+| `WriteAttributeString(localName, namespaceUri, value)` | Uses the prefix that's bound to the namespace. If there's none, generates one: `ns1`, `ns2`, and so on. An attribute in a namespace always needs a prefix. |
+| `WriteAttributeString(name, value)` | Writes an attribute in no namespace. |
+| `WriteNamespaceDeclaration(prefix, namespaceUri)` | Writes `xmlns:prefix="..."` on the open start tag and puts the prefix in scope for the element and its descendants. |
+| `WriteDefaultNamespace(namespaceUri)` | Writes `xmlns="..."` on the open start tag. |
+
+A declaration ends with the element it's on. That's why `s` had to be generated again as `ns1` on `entry`: the `s` prefix was declared on `s:order` and went out of scope with it. To avoid repeated declarations, declare the prefixes you need on the root element, as the sample does with `dc`.
+
+<Note>
+An element that you write without a namespace argument, such as `WriteStartElement("title")`, gets no prefix and no declaration. Under a default namespace, a reader therefore puts it in that default namespace. To take an element out of the default namespace, call `WriteDefaultNamespace("")` on its start tag, which writes `xmlns=""`.
+</Note>
+
+The writer rejects declarations that Namespaces in XML forbids: binding the `xmlns` prefix, binding `xml` to any namespace but its own, binding another prefix to either reserved namespace, and, in XML 1.0, `xmlns:p=""`. For namespaces in the serializer, see [Namespaces](/guides/namespaces).
+
+## The XML declaration
+
+By default, the writer starts the document with `<?xml version="1.0" encoding="utf-8"?>`. Four options change that.
+
+```csharp
+output.WriteLine(WriteOrder(new XmlWriterOptions()));
+output.WriteLine(WriteOrder(new XmlWriterOptions { OmitXmlDeclaration = true }));
+output.WriteLine(WriteOrder(new XmlWriterOptions { Standalone = true }));
+output.WriteLine(WriteOrder(new XmlWriterOptions { Version = XmlVersion.Version11 }));
+
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { EmitByteOrderMark = true }))
+{
+    writer.WriteEmptyElement("Order");
+}
+
+output.WriteLine($"With a byte order mark, the output starts with: {Convert.ToHexString(buffer.WrittenSpan[..3])}");
+```
+
+`WriteOrder` writes one empty element with the options it's given:
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteEmptyElement("Order");
+}
+
+return Encoding.UTF8.GetString(buffer.WrittenSpan);
+```
+
+The code produces the following output:
+
+```text
+<?xml version="1.0" encoding="utf-8"?><Order/>
+<Order/>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><Order/>
+<?xml version="1.1" encoding="utf-8"?><Order/>
+With a byte order mark, the output starts with: EFBBBF
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+| Option | Effect | Default |
+| --- | --- | --- |
+| `OmitXmlDeclaration` | `true` leaves the declaration out. Use it for a fragment that goes inside another document. | `false` |
+| `Standalone` | `true` writes `standalone="yes"`, `false` writes `standalone="no"`, and `null` writes neither. | `null` |
+| `Version` | The version in the declaration, and the character rules the writer applies. | `XmlVersion.Version10` |
+| `EmitByteOrderMark` | `true` writes the UTF-8 byte order mark (`EF BB BF`) before anything else. | `false` |
+
+The encoding is always `utf-8`, because that's the only encoding the writer produces.
+
+The writer writes the declaration by itself, before the first element, comment, or processing instruction. `WriteXmlDeclaration` writes it at a moment you choose, and it does so even when `OmitXmlDeclaration` is `true`. It must be the first thing you write. After any other output it throws `The XML declaration must be the first output.`
+
+## Indent the output
+
+By default, the writer adds no white space, which gives the smallest output. Set `Indented` to put each element on its own line.
+
+```csharp
+output.WriteLine("Not indented:");
+output.WriteLine(WriteParagraph(new XmlWriterOptions { OmitXmlDeclaration = true }));
+
+output.WriteLine("Indented:");
+output.WriteLine(WriteParagraph(new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n" }));
+
+output.WriteLine("Indented with four spaces:");
+output.WriteLine(WriteParagraph(new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentSize = 4, NewLine = "\n" }));
+```
+
+`WriteParagraph` writes an element that has only child elements and an element that mixes text with a child:
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteStartElement("Item");
+    writer.WriteElementString("Name", "Keyboard");
+    writer.WriteEndElement();
+    writer.WriteStartElement("Note");
+    writer.WriteStringValue("Leave with ");
+    writer.WriteElementString("b", "Ada");
+    writer.WriteStringValue(" only.");
+    writer.WriteEndElement();
+    writer.WriteEndElement();
+}
+
+return Encoding.UTF8.GetString(buffer.WrittenSpan);
+```
+
+The code produces the following output:
+
+```text
+Not indented:
+<Order><Item><Name>Keyboard</Name></Item><Note>Leave with <b>Ada</b> only.</Note></Order>
+Indented:
+<Order>
+  <Item>
+    <Name>Keyboard</Name>
+  </Item>
+  <Note>Leave with <b>Ada</b> only.</Note>
+</Order>
+Indented with four spaces:
+<Order>
+    <Item>
+        <Name>Keyboard</Name>
+    </Item>
+    <Note>Leave with <b>Ada</b> only.</Note>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+Indentation never changes a value. An element that holds text, such as `Note`, is written on one line, child elements included, because white space next to text is part of the content. The writer indents only between elements.
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `Indented` | `true` puts each element on its own line and indents it. | `false` |
+| `IndentSize` | How many indent characters each level gets. | 0, which means 2 |
+| `IndentCharacter` | The character to indent with, such as `' '` or `'\t'`. | A space |
+| `NewLine` | The line ending. | `Environment.NewLine` |
+
+<Tip>
+`NewLine` defaults to the line ending of the machine that runs the code, so the same program writes different bytes on Windows and on Linux. Set it to `"\n"` or `"\r\n"` when the output is compared, hashed, signed, or checked in.
+</Tip>
+
+## Write comments, CDATA, processing instructions, and raw XML
+
+Each of these has its own method.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteProcessingInstruction("xml-stylesheet", "href=\"order.xsl\" type=\"text/xsl\"");
+    writer.WriteComment(" Exported by the order service ");
+
+    writer.WriteStartElement("Order");
+    writer.WriteComment(" One line per item ");
+
+    writer.WriteStartElement("Script");
+    writer.WriteCData("if (a < b && b > c) { ship(); }");
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Address");
+    writer.WriteRawValue("<City>London</City><Country>UK</Country>"u8);
+    writer.WriteEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet href="order.xsl" type="text/xsl"?><!-- Exported by the order service -->
+<Order><!-- One line per item -->
+  <Script><![CDATA[if (a < b && b > c) { ship(); }]]></Script>
+  <Address><City>London</City><Country>UK</Country></Address>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+| Method | Writes | Rejects |
+| --- | --- | --- |
+| `WriteComment` | `<!--value-->`, inside an element or at the document level. | A value that contains `--` or ends with `-`. |
+| `WriteCData` | `<![CDATA[text]]>`, inside an element. | A value that contains `]]>`, and a CDATA section at the document level. |
+| `WriteProcessingInstruction` | `<?target data?>`, inside an element or at the document level. | The target `xml` in any letter case, and data that contains `?>`. |
+| `WriteRawValue` | The bytes or characters you pass, as they are. | Nothing. |
+
+What to notice:
+
+- **Indentation applies to elements only.** A comment or a processing instruction is written where the writer is, with no line break before it, even when `Indented` is `true`. If you want one on its own line in indented output, the writer can't do that for you.
+- **A CDATA section isn't escaped.** That's its purpose. Like text, it keeps its element on one line.
+- **The text of a comment isn't padded.** Include the spaces you want inside the delimiters.
+
+<Warning>
+`WriteRawValue` copies your input to the output without checking it and without escaping it. The `skipInputValidation` parameter has no effect: the input is never validated. If the input isn't well-formed XML, the document isn't either. Never pass text that came from a user or from another system. Use it only for XML that your own code produced.
+</Warning>
+
+## Write XML 1.1
+
+XML 1.0 has no way to write most control characters. If your data can contain them, set `Version` to `XmlVersion.Version11`. The writer then writes them as character references, and the declaration says `version="1.1"` so that a reader applies the same rules.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { Version = XmlVersion.Version11 }))
+{
+    writer.WriteElementString("Note", "bell\u0007 next line\u0085end");
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+
+try
+{
+    using var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>());
+    writer.WriteElementString("Note", "bell\u0007");
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"XML 1.0: {ex.Message}");
+}
+```
+
+The code produces the following output:
+
+```text
+<?xml version="1.1" encoding="utf-8"?><Note>bell&#x7; next line&#x85;end</Note>
+XML 1.0: Illegal character in XML value.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+Choose XML 1.1 only when you need it. Many XML tools read XML 1.0 only. `Utf8XmlReader` and `XmlDocument` read both. U+0000 isn't allowed in either version.
+
+## Encode names you write often
+
+Each time you pass a name as a `string`, the writer converts it to UTF-8. For a name that you write many times, do the conversion once: create an `XmlEncodedText` and keep it in a static field. This is the counterpart of `JsonEncodedText`.
+
+```csharp
+private static readonly XmlEncodedText ItemName = XmlEncodedText.Encode("Item");
+
+private static readonly XmlEncodedText SoldOutName = XmlEncodedText.Encode("SoldOut"u8);
+```
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+string?[] items = ["Keyboard", "Mouse", null];
+
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+{
+    writer.WriteStartElement("Items"u8);
+    foreach (var item in items)
+    {
+        if (item is null)
+        {
+            writer.WriteEmptyElement(SoldOutName);
+            continue;
+        }
+
+        writer.WriteStartElement(ItemName);
+        writer.WriteStringValue(item);
+        writer.WriteEndElement();
+    }
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+output.WriteLine($"{ItemName} is {ItemName.EncodedUtf8Bytes.Length} bytes");
+```
+
+The code produces the following output:
+
+```text
+<Items><Item>Keyboard</Item><Item>Mouse</Item><SoldOut/></Items>
+Item is 4 bytes
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+What to know:
+
+- `Encode` takes a `string`, a `ReadOnlySpan<char>`, or UTF-8 bytes, and copies them.
+- Encoding doesn't check the name. The writer checks it each time it writes it, unless validation is off.
+- `XmlEncodedText` is for element names in no namespace: `WriteStartElement` and `WriteEmptyElement` have an overload for it. For other names, a `u8` literal (as `"Items"u8` in the sample) gives the same benefit with no field.
+- It's for names only. A name is never escaped, so don't use it to carry text.
+
+## Flush and dispose
+
+The writer doesn't hand each byte to the output as you write it. Bytes are *pending* until the writer commits them, and two properties tell you where things stand:
+
+- `BytesPending` is the number of bytes written but not yet committed.
+- `BytesCommitted` is the number of bytes committed since the writer was created or reset.
+
+`Flush` commits what's pending. With an `IBufferWriter<byte>`, that makes the bytes visible in the buffer. With a `Stream`, it writes them to the stream and flushes the stream.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+
+writer.WriteStartElement("Order");
+writer.WriteElementString("Item", "Keyboard");
+output.WriteLine($"Before Flush: pending = {writer.BytesPending}, committed = {writer.BytesCommitted}, in the buffer = {buffer.WrittenCount}");
+
+writer.Flush();
+output.WriteLine($"After Flush: pending = {writer.BytesPending}, committed = {writer.BytesCommitted}, in the buffer = {buffer.WrittenCount}");
+output.WriteLine($"The buffer holds: {Encoding.UTF8.GetString(buffer.WrittenSpan)}");
+
+writer.WriteEndElement();
+writer.Flush();
+output.WriteLine($"After the end tag: pending = {writer.BytesPending}, committed = {writer.BytesCommitted}, depth = {writer.CurrentDepth}");
+output.WriteLine($"The buffer holds: {Encoding.UTF8.GetString(buffer.WrittenSpan)}");
+```
+
+The code produces the following output:
+
+```text
+Before Flush: pending = 28, committed = 0, in the buffer = 0
+After Flush: pending = 0, committed = 28, in the buffer = 28
+The buffer holds: <Order><Item>Keyboard</Item>
+After the end tag: pending = 0, committed = 36, depth = 0
+The buffer holds: <Order><Item>Keyboard</Item></Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+Until you flush, the buffer is empty: reading `buffer.WrittenSpan` before `Flush` or `Dispose` is the most common mistake with this writer. You can flush in the middle of a document, as the sample does, and what's committed is everything written so far.
+
+The writer also commits by itself when it runs out of room, so pending bytes don't pile up as the document grows. You don't need to flush to keep memory down. Flush when a consumer is waiting for the bytes.
+
+### Flush asynchronously
+
+With a stream that does real I/O, use `FlushAsync` and `await using`, so that no thread blocks while the bytes go out. The `Write*` methods themselves are synchronous: they only fill the writer's buffer.
+
+```csharp
+using var stream = new MemoryStream();
+
+await using (var writer = new Utf8XmlWriter(stream, new XmlWriterOptions { OmitXmlDeclaration = true }))
+{
+    writer.WriteStartElement("Orders");
+    for (var id = 1042; id <= 1044; id++)
+    {
+        writer.WriteStartElement("Order");
+        writer.WriteAttributeNumber("id", id);
+        writer.WriteEndElement();
+
+        await writer.FlushAsync();
+        output.WriteLine($"Order {id} flushed: the stream holds {stream.Length} bytes");
+    }
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(stream.ToArray()));
+```
+
+The code produces the following output:
+
+```text
+Order 1042 flushed: the stream holds 26 bytes
+Order 1043 flushed: the stream holds 44 bytes
+Order 1044 flushed: the stream holds 62 bytes
+<Orders><Order id="1042"/><Order id="1043"/><Order id="1044"/></Orders>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+<Note>
+When the writer's buffer fills between your calls to `FlushAsync`, the writer writes to the stream synchronously. To keep all I/O asynchronous, call `FlushAsync` often enough that the buffer, which starts at 16 KB, doesn't fill. `FlushAsync` takes a `CancellationToken`.
+</Note>
+
+`Dispose` and `DisposeAsync` flush, and then return the writer's rented buffers. After that, the `Write*` methods, `Flush`, and `Reset` throw an `ObjectDisposedException`. Disposing twice is safe.
+
+## Reuse a writer
+
+Creating a writer allocates. `Reset` puts an existing writer back to its starting state so that it can write another document with the same options, and it keeps the buffers the writer has already grown.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+
+string[] items = ["Keyboard", "Mouse", "Monitor"];
+foreach (var item in items)
+{
+    writer.WriteStartElement("Item");
+    writer.WriteStringValue(item);
+    writer.WriteEndElement();
+    writer.Flush();
+
+    output.WriteLine($"{Encoding.UTF8.GetString(buffer.WrittenSpan)} ({writer.BytesCommitted} bytes)");
+
+    buffer.ResetWrittenCount();
+    writer.Reset();
+}
+
+var other = new ArrayBufferWriter<byte>();
+writer.Reset(other);
+writer.WriteEmptyElement("Done");
+writer.Flush();
+output.WriteLine($"Second buffer: {Encoding.UTF8.GetString(other.WrittenSpan)}");
+```
+
+The code produces the following output:
+
+```text
+<Item>Keyboard</Item> (21 bytes)
+<Item>Mouse</Item> (18 bytes)
+<Item>Monitor</Item> (20 bytes)
+Second buffer: <Done/>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+| Overload | The writer then writes to |
+| --- | --- |
+| `Reset()` | The same output as before. |
+| `Reset(IBufferWriter<byte>)` | The buffer writer you pass. |
+| `Reset(Stream)` | The stream you pass. |
+
+What `Reset` does and doesn't do:
+
+- It commits pending bytes to the current output first. Nothing you wrote is lost.
+- It sets `BytesCommitted` and the depth to 0 and forgets the namespaces in scope. The next document gets its own declaration.
+- It keeps the options. To write with different options, create another writer.
+- It doesn't clear your output. The sample resets the `ArrayBufferWriter<byte>` itself.
+- It doesn't check that the previous document was complete. That check belongs to `Dispose`.
+
+A reused writer allocates nothing per document. In the library's benchmarks, writing a small document with a reused writer takes 55 ns and allocates 0 B, where `System.Xml.XmlWriter`, which has no reset, takes 325 ns and allocates 7,328 B. For a catalog of 200 items, the numbers are 23,343 ns and 0 B against 33,137 ns and 13,728 B. An allocation test in the library's test suite holds the 0 B result in place. See [Benchmarks](/benchmarks).
+
+<Warning>
+A writer isn't thread safe. Reuse one from a single thread at a time, for example one writer per thread or per pooled worker. See [Thread safety](/guides/thread-safety).
+</Warning>
+
+## Validation
+
+The writer checks what you write and throws an `XmlException` as soon as a call would make the document not well formed.
+
+```csharp
+output.WriteLine(Try(writer => writer.WriteStartElement("order id")));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteAttributeString("id", "1043");
+}));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteEmptyElement("Order");
+    writer.WriteEmptyElement("Order");
+}));
+
+output.WriteLine(Try(writer => writer.WriteStringValue("text before the root")));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteStartElement("Order");
+    writer.WriteStringValue("Keyboard");
+    writer.WriteAttributeString("id", "1042");
+}));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteStartElement("Order");
+    writer.WriteComment("ends with a dash -");
+}));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteStartElement("Order");
+    writer.WriteCData("a ]]> b");
+}));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteStartElement("Order");
+    writer.WriteStringValue("null character: \0");
+}));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteEmptyElement("Order");
+    writer.WriteEndElement();
+}));
+
+output.WriteLine(Try(writer =>
+{
+    writer.WriteStartElement("Order");
+    writer.Dispose();
+}));
+```
+
+`Try` runs the calls against a new writer and returns the message of the exception:
+
+```csharp
+var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), options);
+try
+{
+    write(writer);
+    return "No exception.";
+}
+catch (XmlException ex)
+{
+    return $"XmlException: {ex.Message}";
+}
+```
+
+The code produces the following output:
+
+```text
+XmlException: Invalid XML name.
+XmlException: Duplicate attribute.
+XmlException: Multiple root elements are not allowed.
+XmlException: Text is not allowed at the document level.
+XmlException: Attributes must be written on an open start tag.
+XmlException: Comments must not contain '--' or end with '-'.
+XmlException: CDATA must not contain ']]>'.
+XmlException: Illegal character in XML value.
+XmlException: No element to end.
+XmlException: The document has unclosed elements.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+The last line is the one to remember: `Dispose` throws when an element is still open, and in that case it doesn't flush. The writer never closes elements for you, because a document that was cut short shouldn't look complete.
+
+The writer throws three kinds of exception:
+
+| Exception | When |
+| --- | --- |
+| `XmlException` | A call would produce XML that isn't well formed, or a [limit](#limits) is exceeded. The location properties are `null`, because a writer has no line to point to. |
+| `ArgumentNullException` | A required name or a destination is `null`. |
+| `ObjectDisposedException` | The writer has been disposed. |
+
+### An error inside a using statement
+
+When a call throws in the middle of a document, elements are still open. If the writer is in a `using` statement, `Dispose` then runs, throws its own exception about the unclosed elements, and that exception replaces the first one.
+
+```csharp
+try
+{
+    using var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>());
+    writer.WriteStartElement("Order");
+    writer.WriteStartElement("order id");
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Caught: {ex.Message}");
+}
+```
+
+The code produces the following output:
+
+```text
+Caught: The document has unclosed elements.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+<Warning>
+The message you catch is from `Dispose`, not from the call that failed (`Invalid XML name.`). The same happens when your own code throws between two writer calls. When you debug a writer, look for the first exception, or catch inside the `using` block. Nothing is flushed in this case, but bytes that the writer committed earlier are already in your output, so discard the output when writing fails.
+</Warning>
+
+### Skip validation
+
+When you're certain that your code writes correct XML, `SkipValidation` turns most checks off.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteAttributeString("id", "1043");
+    writer.WriteElementString("2nd item", "Fish & chips");
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+
+try
+{
+    var reader = new Utf8XmlReader(buffer.WrittenSpan);
+    while (reader.Read())
+    {
+    }
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Reading it back: {ex.Message}");
+}
+```
+
+The code produces the following output:
+
+```text
+<Order id="1042" id="1043"><2nd item>Fish &amp; chips</2nd item></Order>
+Reading it back: Duplicate attribute.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+The writer accepted a duplicate attribute and a name that isn't a name, and produced output that no XML reader accepts.
+
+| With `SkipValidation`, the writer doesn't check | It still does |
+| --- | --- |
+| That names are valid XML names and fit in `MaxNameByteCount`. | Escape text and attribute values. |
+| That prefixes and namespace declarations follow Namespaces in XML. | Allow only one root element. |
+| That an element has no duplicate attribute. | Enforce `MaxDepth` and `MaxAttributeCount`. |
+| The characters of a comment, a CDATA section, or a processing instruction. | |
+| That every element is closed when the writer is disposed. | |
+
+Leave validation on unless a measurement shows that you need it off.
+
+## Limits
+
+Three limits guard against output that grows without bound, for example when you write a graph of objects that's deeper than you expected. Exceeding one throws an `XmlException` whose message names the option.
+
+```csharp
+output.WriteLine(Try(
+    writer =>
+    {
+        writer.WriteStartElement("Order");
+        writer.WriteStartElement("Customer");
+        writer.WriteStartElement("Name");
+    },
+    new XmlWriterOptions { MaxDepth = 2 }));
+
+output.WriteLine(Try(
+    writer =>
+    {
+        writer.WriteStartElement("Order");
+        writer.WriteAttributeString("id", "1042");
+        writer.WriteAttributeString("rush", "true");
+    },
+    new XmlWriterOptions { MaxAttributeCount = 1 }));
+
+output.WriteLine(Try(
+    writer => writer.WriteStartElement("Order"),
+    new XmlWriterOptions { MaxNameByteCount = 4 }));
+```
+
+The code produces the following output:
+
+```text
+XmlException: MaxDepth exceeded (2).
+XmlException: MaxAttributeCount exceeded (1).
+XmlException: MaxNameByteCount exceeded (4).
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+| Option | Limits | Default when 0 |
+| --- | --- | --- |
+| `MaxDepth` | How deep elements can nest. | 64 |
+| `MaxAttributeCount` | Attributes on one element, including namespace declarations. | 1,000 |
+| `MaxNameByteCount` | The length of an element name, an attribute name, or a prefix, in UTF-8 bytes. | 1,024 |
+
+A value of 0 selects the default. There's no way to turn a limit off, only to raise it. The defaults match those of [`Utf8XmlReader`](/guides/use-utf8xmlreader#set-limits), so a document the writer produces with default options is one the reader accepts with default options. The writer has no limit on the length of text or of the document, because you supply both.
+
+## What the writer doesn't support
+
+- **Encodings other than UTF-8.** To produce another encoding, transcode the output, for example with `Encoding.CreateTranscodingStream`, and write the declaration yourself.
+- **Document type declarations and entity references.** There's no method for either. `WriteRawValue` can write them, unchecked, but `Utf8XmlReader` doesn't read a document that has a DTD.
+- **Asynchronous `Write*` methods.** Writing fills a buffer, and only `FlushAsync` and `DisposeAsync` do I/O.
+- **Closing elements for you.** There's no method that ends every open element, and `Dispose` doesn't.
+- **Namespaced attributes from UTF-8 names.** `WriteAttributeString(ReadOnlySpan<byte>, ReadOnlySpan<byte>)` writes an attribute in no namespace. For a prefix or a namespace, use the `string` overloads.
+- **Single-quoted attribute values and a choice of how to escape.** The output form is fixed.
+
+## See also
+
+<Columns cols={2}>
+  <Card title="Use Utf8XmlReader" icon="book-open" href="/guides/use-utf8xmlreader">
+    Read UTF-8 XML with the reader that pairs with this writer.
+  </Card>
+  <Card title="Use XmlNode" icon="pen-to-square" href="/guides/use-xmlnode">
+    Build and edit a document as a tree, then write it.
+  </Card>
+  <Card title="Custom converters" icon="arrows-rotate" href="/guides/custom-converters">
+    Use the writer and the reader inside a converter for your own type.
+  </Card>
+  <Card title="Migrate from XmlReader and XmlWriter" icon="right-left" href="/guides/migrate/from-xmlreader-xmlwriter">
+    Map `System.Xml.XmlWriter` code to `Utf8XmlWriter`.
+  </Card>
+  <Card title="Streaming" icon="water" href="/guides/streaming">
+    Write and read large documents with the serializer.
+  </Card>
+  <Card title="Benchmarks" icon="gauge-high" href="/benchmarks">
+    See how the writer compares with `System.Xml.XmlWriter`.
+  </Card>
+</Columns>
+
+API reference: [`Utf8XmlWriter`](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter), [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions), [`XmlEncodedText`](/api-reference/CloudNimble/Text/Xml/XmlEncodedText), [`XmlVersion`](/api-reference/CloudNimble/Text/Xml/XmlVersion), [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException).

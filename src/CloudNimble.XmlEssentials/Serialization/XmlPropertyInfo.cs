@@ -4,7 +4,7 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Metadata for one serialized member of an object.
+    /// Provides XML serialization-related metadata about a property or field. This class cannot be inherited.
     /// </summary>
     public sealed class XmlPropertyInfo
     {
@@ -12,38 +12,64 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets whether the member is mapped as an XML attribute.
+        /// Gets a value that indicates whether the member is serialized as an XML attribute.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the member is serialized as an XML attribute; otherwise, <see langword="false"/>.
+        /// </value>
         public bool IsAttribute { get; }
 
         /// <summary>
-        /// Gets whether a null value is written as a nillable element.
+        /// Gets a value that indicates whether the member is nillable.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the member is nillable; otherwise, <see langword="false"/>.
+        /// </value>
+        /// <remarks>
+        /// A member is nillable when its type is a reference type, a <see cref="Nullable{T}"/>, or a collection, or when
+        /// <see cref="XmlElementAttribute.IsNullable"/> is <see langword="true"/>. How a <see langword="null"/> value is written
+        /// depends on <see cref="XmlSerializerOptions.NilHandling"/> and on the ignore condition of the member.
+        /// </remarks>
         public bool IsNillable { get; }
 
         /// <summary>
-        /// Gets whether the member must be present when deserializing.
+        /// Gets a value that indicates whether the member must be present on deserialization.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the member must be present on deserialization; otherwise, <see langword="false"/>.
+        /// </value>
         public bool IsRequired { get; }
 
         /// <summary>
-        /// Gets whether the member is mapped as simple content of the parent element.
+        /// Gets a value that indicates whether the member is serialized as the text content of the element for its containing type.
         /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the member is serialized as text content; otherwise, <see langword="false"/>.
+        /// </value>
         public bool IsText { get; }
 
         /// <summary>
         /// Gets the XML name of the member.
         /// </summary>
+        /// <value>
+        /// The name of the element or attribute that the member is serialized as.
+        /// </value>
         public XmlName Name { get; }
 
         /// <summary>
-        /// Gets the order among sibling members. <c>-1</c> means unset.
+        /// Gets the serialization order of the member among the members of its containing type.
         /// </summary>
+        /// <value>
+        /// The order of the member, or <c>-1</c> if no order is set.
+        /// </value>
         public int Order { get; }
 
         /// <summary>
-        /// Gets the type info of the member's CLR type.
+        /// Gets the metadata for the type of the member.
         /// </summary>
+        /// <value>
+        /// The serialization metadata for the type of the member.
+        /// </value>
         public XmlTypeInfo PropertyType { get; }
 
         #endregion

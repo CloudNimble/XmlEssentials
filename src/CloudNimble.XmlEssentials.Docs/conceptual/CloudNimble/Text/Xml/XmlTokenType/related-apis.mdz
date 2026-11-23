@@ -1,6 +1,5 @@
-# Related APIs
-
-- `Utf8XmlReader.TokenType`
-- `Utf8XmlReader.IsEmptyElement`
-- `XmlCommentHandling`
-- `XmlVersion`
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlCommentHandling
+CloudNimble.Text.Xml.XmlWhitespaceHandling
+CloudNimble.Text.Xml.XmlValueKind

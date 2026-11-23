@@ -4,7 +4,7 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// A mutable character-data node.
+    /// Represents a mutable XML text node. This class cannot be inherited.
     /// </summary>
     public sealed class XmlTextNode : XmlNode
     {
@@ -12,8 +12,11 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the text.
+        /// Gets or sets the text of this node.
         /// </summary>
+        /// <value>
+        /// The character data of the node, without escaping.
+        /// </value>
         public string Value { get; set; }
 
         /// <inheritdoc />
@@ -24,9 +27,9 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Constructors
 
         /// <summary>
-        /// Creates a text node.
+        /// Initializes a new instance of the <see cref="XmlTextNode"/> class with the specified text.
         /// </summary>
-        /// <param name="value">The text.</param>
+        /// <param name="value">The text of the node. The default is <see langword="null"/>, which is stored as an empty string.</param>
         public XmlTextNode(string? value = null)
         {
             Value = value ?? string.Empty;

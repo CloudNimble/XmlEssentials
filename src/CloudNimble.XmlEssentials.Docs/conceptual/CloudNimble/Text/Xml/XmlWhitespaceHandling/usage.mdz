@@ -1,9 +1,48 @@
-# Usage
+Set `XmlReaderOptions.WhitespaceHandling` to choose what a `Utf8XmlReader` does with text that is only white space and sits between elements. That's the indentation of a formatted document.
 
-`XmlReaderOptions.WhitespaceHandling` applies to **whitespace-only text between elements**:
+| Value | The reader |
+| --- | --- |
+| `Significant` | Reports the text as an `XmlTokenType.Text` token. This is the default. |
+| `Insignificant` | Skips the text. |
+| `None` | Throws an `XmlException` with the message `Whitespace-only text is not allowed.` |
 
-- `Insignificant` (default) — skip those nodes.
-- `Significant` — report them as `XmlTokenType.Text`.
-- `None` — throw `XmlException`.
+With the default, the document below produces three `Text` tokens for the indentation inside `Order`. With `Insignificant`, they're gone:
 
-Whitespace inside a leaf element's value is always part of the value. `<n> a </n>` is `" a "` under every setting.
+```csharp
+var xml = "<?xml-stylesheet href=\"order.xsl\"?>\n<Order>\n  <!-- rush -->\n  <Note><![CDATA[a < b]]></Note>\n</Order>"u8;
+
+output.WriteLine("Default options:");
+PrintTokens(xml, new XmlReaderOptions(), output);
+
+var dataOnly = new XmlReaderOptions
+{
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
+};
+
+output.WriteLine("Comments skipped and white space insignificant:");
+PrintTokens(xml, dataOnly, output);
+```
+
+```text
+Default options:
+  ProcessingInstruction target=xml-stylesheet data="href="order.xsl""
+  StartElement Order
+  Text "\n  "
+  Comment " rush "
+  Text "\n  "
+  StartElement Note
+  CData "a < b"
+  EndElement Note
+  Text "\n"
+  EndElement Order
+Comments skipped and white space insignificant:
+  ProcessingInstruction target=xml-stylesheet data="href="order.xsl""
+  StartElement Order
+  StartElement Note
+  CData "a < b"
+  EndElement Note
+  EndElement Order
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)

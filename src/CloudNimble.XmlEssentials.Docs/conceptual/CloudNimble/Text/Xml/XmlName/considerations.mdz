@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlName` here.
-
+- `XmlName` is a `readonly struct` that holds three string references. Copying it is cheap, and creating one allocates nothing beyond the strings you pass in.
+- The constructor checks only that the local name isn't `null`, empty, or white space. It doesn't check that the parts are valid XML names.
+- A `null` namespace URI or prefix becomes an empty string, so `NamespaceUri` and `Prefix` are never `null`.
+- Comparison is ordinal. Namespace URIs are compared character by character, as the Namespaces in XML recommendation requires, so `urn:Example` and `urn:example` are different namespaces.
+- The output of `ToString` is for display. The `{uri}local` form is not XML syntax.
+- `default(XmlName)` has a `null` local name. Don't use it as a name.

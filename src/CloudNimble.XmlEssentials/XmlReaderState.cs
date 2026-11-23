@@ -2,11 +2,11 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Opaque resume state for <see cref="Utf8XmlReader"/>.
+    /// Represents the state a <see cref="Utf8XmlReader"/> needs to continue reading a document with more data.
     /// </summary>
     /// <remarks>
-    /// The public surface matches <c>Utf8JsonReader</c>: only <see cref="Options"/> is visible.
-    /// <see cref="Utf8XmlReader.CurrentState"/> copies an immutable snapshot so two readers
+    /// The state is opaque. As with the state of a <c>Utf8JsonReader</c>, only <see cref="Options"/> is
+    /// visible. <see cref="Utf8XmlReader.CurrentState"/> copies an immutable snapshot so two readers
     /// never share mutable element or namespace stacks.
     /// </remarks>
     public readonly struct XmlReaderState
@@ -15,8 +15,11 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the options used to create the reader.
+        /// Gets the custom behavior of the <see cref="Utf8XmlReader"/> that this state belongs to.
         /// </summary>
+        /// <value>
+        /// The options the reader was created with.
+        /// </value>
         public XmlReaderOptions Options { get; }
 
         /// <summary>
@@ -33,9 +36,16 @@ namespace CloudNimble.Text.Xml
         #region Constructors
 
         /// <summary>
-        /// Creates a state with the given options and no parse progress.
+        /// Initializes a new instance of the <see cref="XmlReaderState"/> struct using the specified options.
         /// </summary>
-        /// <param name="options">Reader options.</param>
+        /// <param name="options">
+        /// The options that define the behavior of the <see cref="Utf8XmlReader"/>. The default is
+        /// <see langword="default"/>, which is the same as <c>new XmlReaderOptions()</c>: comments and
+        /// whitespace-only text between elements are reported as tokens.
+        /// </param>
+        /// <remarks>
+        /// The new state holds no read progress, so a reader created from it starts at the beginning of a document.
+        /// </remarks>
         public XmlReaderState(XmlReaderOptions options = default)
         {
             Options = options;

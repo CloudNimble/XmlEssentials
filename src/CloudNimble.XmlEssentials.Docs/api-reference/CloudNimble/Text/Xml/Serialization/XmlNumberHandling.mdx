@@ -1,8 +1,9 @@
 ---
 title: XmlNumberHandling
+description: "How floating-point named literals are treated."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization.XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+keywords: ['XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization.XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlException']
 ---
 
 ## Definition
@@ -19,17 +20,36 @@ keywords: ['XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization.XmlNumberHan
 CloudNimble.Text.Xml.Serialization.XmlNumberHandling
 ```
 
+## Summary
+
+How floating-point named literals are treated.
+
+## Usage
+
+`XmlNumberHandling` says whether the XML Schema names for the floating-point values that aren't numbers are allowed: `INF`, `-INF`, and `NaN`. Set it through `XmlSerializerOptions.NumberHandling`. It applies to `float` and `double` values.
+
+| Value | Behavior |
+| --- | --- |
+| `AllowNamedFloatingPointLiterals` (default) | `double.PositiveInfinity` is written as `INF`, `double.NegativeInfinity` as `-INF`, and `double.NaN` as `NaN`, and those names are accepted when reading. |
+| `Strict` | Writing one of those values, or reading one of those names, throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). |
+
+Use `Strict` when the consumer of the XML treats the element as a plain decimal number and would fail on a name.
+
+## Considerations
+
+- The default is the reverse of System.Text.Json, where named floating-point literals must be turned on. `INF`, `-INF`, and `NaN` are part of the XML Schema definition of `float` and `double`, so XML consumers that follow XML Schema accept them.
+- The setting doesn't affect integers or `decimal`, which have no such values.
+- Unlike `JsonNumberHandling`, there are no values for reading numbers from quoted strings. Every XML value is text already.
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Strict` | 0 |  |
-| `AllowNamedFloatingPointLiterals` | 1 |  |
+| `Strict` | 0 | Reject `INF`, `-INF`, and `NaN`. |
+| `AllowNamedFloatingPointLiterals` | 1 | Accept and write the XSD named literals (any letter case on read). |
 
 ## Related APIs
 
-- System.IComparable
-- System.ISpanFormattable
-- System.IFormattable
-- System.IConvertible
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlException
 

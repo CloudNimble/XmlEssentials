@@ -5,8 +5,14 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Cached escaped UTF-8 for hot element and attribute names.
+    /// Represents an XML name that is already encoded as UTF-8, so that a <see cref="Utf8XmlWriter"/> can write it
+    /// many times without encoding it again.
     /// </summary>
+    /// <remarks>
+    /// Create a value once with <see cref="Encode(string)"/> and reuse it for a name that is written often.
+    /// Encoding converts the name to UTF-8. It does not escape or check the name. The writer checks the name
+    /// when it writes it.
+    /// </remarks>
     public readonly struct XmlEncodedText : IEquatable<XmlEncodedText>
     {
 
@@ -19,8 +25,11 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
-        /// Gets the encoded UTF-8 bytes.
+        /// Gets the UTF-8 encoded representation of the name.
         /// </summary>
+        /// <value>
+        /// The UTF-8 bytes of the name. The span is empty for a default <see cref="XmlEncodedText"/>.
+        /// </value>
         public ReadOnlySpan<byte> EncodedUtf8Bytes => _utf8;
 
         #endregion
@@ -41,10 +50,15 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
-        /// Encodes <paramref name="value"/> as UTF-8 name bytes.
+        /// Encodes a name specified as a string to UTF-8.
         /// </summary>
-        /// <param name="value">The name.</param>
-        /// <returns>The encoded name.</returns>
+        /// <param name="value">The name to encode.</param>
+        /// <returns>
+        /// The UTF-8 encoded name.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="value"/> is <see langword="null"/>.
+        /// </exception>
         public static XmlEncodedText Encode(string value)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -52,10 +66,12 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Encodes <paramref name="value"/> as UTF-8 name bytes.
+        /// Encodes a name specified as a read-only span of characters to UTF-8.
         /// </summary>
-        /// <param name="value">The name.</param>
-        /// <returns>The encoded name.</returns>
+        /// <param name="value">The name to encode.</param>
+        /// <returns>
+        /// The UTF-8 encoded name.
+        /// </returns>
         public static XmlEncodedText Encode(ReadOnlySpan<char> value)
         {
             var utf8 = new byte[Encoding.UTF8.GetByteCount(value)];
@@ -64,10 +80,12 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Encodes <paramref name="utf8Value"/> as UTF-8 name bytes.
+        /// Creates an encoded name from a name specified as a read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="utf8Value">The UTF-8 name.</param>
-        /// <returns>The encoded name.</returns>
+        /// <param name="utf8Value">The UTF-8 encoded name. The bytes are copied.</param>
+        /// <returns>
+        /// The UTF-8 encoded name.
+        /// </returns>
         public static XmlEncodedText Encode(ReadOnlySpan<byte> utf8Value)
         {
             return new XmlEncodedText(utf8Value.ToArray());
@@ -100,22 +118,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns true when both values have the same UTF-8 bytes.
+        /// Determines whether two <see cref="XmlEncodedText"/> values have the same UTF-8 bytes.
         /// </summary>
-        /// <param name="left">The first value.</param>
-        /// <param name="right">The second value.</param>
-        /// <returns><see langword="true"/> if the values are equal.</returns>
+        /// <param name="left">The first value to compare.</param>
+        /// <param name="right">The second value to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> have the same UTF-8 bytes;
+        /// otherwise, <see langword="false"/>.
+        /// </returns>
         public static bool operator ==(XmlEncodedText left, XmlEncodedText right)
         {
             return left.Equals(right);
         }
 
         /// <summary>
-        /// Returns true when the values differ.
+        /// Determines whether two <see cref="XmlEncodedText"/> values have different UTF-8 bytes.
         /// </summary>
-        /// <param name="left">The first value.</param>
-        /// <param name="right">The second value.</param>
-        /// <returns><see langword="true"/> if the values are not equal.</returns>
+        /// <param name="left">The first value to compare.</param>
+        /// <param name="right">The second value to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> have different UTF-8 bytes;
+        /// otherwise, <see langword="false"/>.
+        /// </returns>
         public static bool operator !=(XmlEncodedText left, XmlEncodedText right)
         {
             return !left.Equals(right);

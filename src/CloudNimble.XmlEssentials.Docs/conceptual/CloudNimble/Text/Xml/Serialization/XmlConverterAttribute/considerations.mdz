@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlConverterAttribute` here.
-
+- **On a property or field, the attribute isn't read.** The attribute can be applied there and the code compiles, but the serializer looks for it on types only. This differs from `[JsonConverter]` in System.Text.Json. To convert one member differently, give it a type of its own.
+- **A converter in the options wins.** `XmlSerializerOptions.Converters` is searched before the attribute, so a caller can override the converter a type names.
+- **One instance for each options instance.** The serializer creates the converter the first time the options need it and keeps it.
+- **A wrong converter type fails at run time.** If the type doesn't derive from `XmlConverter`, the serializer throws `InvalidOperationException` when it first needs a converter for the annotated type.
+- **Generated converters don't read the attribute.** In a context in the default generation mode, a member whose type carries `[XmlConverter]` is read and written member by member instead. Use a context in metadata mode, or the reflection path, for such a type.
+- **The constructor is kept when trimming.** The attribute marks the converter type so that the trimmer keeps its public parameterless constructor.

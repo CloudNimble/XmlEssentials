@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Clone a node (`DeepClone`) before attaching it to a second parent.
+Document best practices for `XmlNodeList` here.
+

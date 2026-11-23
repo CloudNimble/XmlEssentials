@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlConverterFactory` here.
-
+- **The returned converter must match the type exactly.** If `CreateConverter` returns `null`, the serializer throws `InvalidOperationException`. It also throws when the converter returned is for another type.
+- **`CreateConverter` runs once for each type and options instance.** The serializer keeps the converter it returns, so the work of creating it isn't repeated.
+- **Order in the `Converters` list matters.** The first converter or factory whose `CanConvert` returns `true` is used. Put a converter for one specific type before a factory that also covers it.
+- **Reflection in a factory isn't safe for Native AOT.** A factory that calls `MakeGenericType` or `Activator.CreateInstance` on a constructed type needs code the ahead-of-time compiler may not have produced. In an AOT application, construct the converters directly, for example in a `switch` on `typeToConvert`.
+- **Source generation.** A generated converter in the default mode asks the options for a converter only for enumeration members, so an enumeration factory such as the one in the example applies there. A factory for classes or structs doesn't.
+- **A factory makes `CanConvert` broad, so keep it precise.** A factory that returns `true` for types it can't handle hides the built-in converter for those types.

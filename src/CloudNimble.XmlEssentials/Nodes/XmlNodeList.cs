@@ -6,8 +6,13 @@ namespace CloudNimble.Text.Xml.Nodes
 {
 
     /// <summary>
-    /// An ordered list of child <see cref="XmlNode"/> instances.
+    /// Represents the ordered list of child nodes of an <see cref="XmlElementNode"/>. This class cannot be inherited.
     /// </summary>
+    /// <remarks>
+    /// A node can belong to one list at a time. Adding, inserting, or assigning a node that already has a
+    /// parent throws an <see cref="XmlException"/>, and <see langword="null"/> throws an
+    /// <see cref="ArgumentNullException"/>. A node that is removed or replaced has no parent afterward.
+    /// </remarks>
     public sealed class XmlNodeList : IList<XmlNode>
     {
 

@@ -1,8 +1,9 @@
 ---
 title: XmlDeclarationInfo
+description: "Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed."
 icon: cubes
 tag: "SEALED"
-keywords: ['XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `XmlDocument`', '- `XmlVersion`', '- `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`', '- `Utf8XmlWriter`']
+keywords: ['XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml.XmlVersion', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml.Nodes.XmlDeclarationNode']
 ---
 
 ## Definition
@@ -19,54 +20,56 @@ keywords: ['XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'Clo
 CloudNimble.Text.Xml.XmlDeclarationInfo
 ```
 
+## Summary
+
+Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed.
+
 ## Usage
 
-# Usage
-
-`XmlDocument.Declaration` is an optional `XmlDeclarationInfo` captured at parse time.
+`XmlDeclarationInfo` is what `XmlDocument` keeps of a document's XML declaration: the version, the encoding, and the `standalone` flag. Read it from `XmlDocument.Declaration`, which is `null` when the document has no declaration.
 
 ```csharp
-using var document = XmlDocument.Parse("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?><e/>");
-var declaration = document.Declaration!.Value;
-Console.WriteLine(declaration.Version);    // 1.0
-Console.WriteLine(declaration.Encoding);   // utf-8
-Console.WriteLine(declaration.Standalone); // true
+using var document = XmlDocument.Parse("<?xml version=\"1.1\" encoding=\"UTF-8\" standalone=\"yes\"?><Order/>"u8);
+
+if (document.Declaration is XmlDeclarationInfo declaration)
+{
+    output.WriteLine($"Version: {declaration.Version}");
+    output.WriteLine($"Encoding: {declaration.Encoding}");
+    output.WriteLine($"Standalone: {declaration.Standalone}");
+}
+
+using var bare = XmlDocument.Parse("<Order/>"u8);
+output.WriteLine($"A document without a declaration has one: {bare.Declaration.HasValue}");
 ```
 
-## Examples
-
-# Examples
-
-Version 1.1 is recorded when the declaration says so:
-
-```csharp
-using var document = XmlDocument.Parse("<?xml version=\"1.1\" encoding=\"utf-8\"?><e/>");
-document.Declaration!.Value.Version; // 1.1
+```text
+Version: 1.1
+Encoding: utf-8
+Standalone: True
+A document without a declaration has one: False
 ```
 
-## Best Practices
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
 
-# Best Practices
+See [How to use XmlDocument](/guides/use-xmldocument) for the rest of the document API.
 
-Read `Declaration` only while the document is undisposed. Treat a missing declaration as XML 1.0 with no standalone flag.
+## Remarks
 
-## Patterns
-
-# Patterns
-
-**Round-trip.** `XmlDocument.WriteTo` writes the captured declaration (version and standalone) before the root. The writer is marked so it does not emit a second declaration.
+Mutable trees use `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode` instead.
 
 ## Considerations
 
-# Considerations
-
-This is a readonly struct. Encoding is always `utf-8` for documents this stack accepts. `Standalone` is null when the pseudo-attribute was omitted.
-
-Mutable trees use `Nodes.XmlDeclarationNode` instead. Mutating that type cannot change `XmlDocument.Declaration`.
+- **The values are normalized, not copied from the source.** For a parsed document, `Version` is `1.0` or `1.1`, and `Encoding` is always `utf-8`, however the document spelled it. In the example, the source says `UTF-8`.
+- **`Standalone` has three states:** `true` for `standalone="yes"`, `false` for `standalone="no"`, and `null` when the declaration doesn't say.
+- **A missing declaration isn't an error.** `XmlDocument.Declaration` is `null`, and the document is XML 1.0.
+- **`Utf8XmlReader` doesn't produce this type.** The reader reports the declaration as an `XmlTokenType.XmlDeclaration` token and exposes only the version, as `Utf8XmlReader.Version`.
+- **It's an immutable value.** In the tree that you can change, the declaration is a `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`.
 
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates declaration info.
 
 #### Syntax
 
@@ -78,9 +81,9 @@ public XmlDeclarationInfo(string version, string encoding, bool? standalone)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `version` | `string` | - |
-| `encoding` | `string` | - |
-| `standalone` | `bool?` | - |
+| `version` | `string` | The version string. |
+| `encoding` | `string` | The encoding string. |
+| `standalone` | `bool?` | The standalone flag, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -106,6 +109,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encoding
 
+Gets the declared encoding. Always `utf-8` for documents this stack accepts.
+
 #### Syntax
 
 ```csharp
@@ -118,6 +123,8 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Standalone
 
+Gets the standalone pseudo-attribute, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when omitted.
+
 #### Syntax
 
 ```csharp
@@ -129,6 +136,8 @@ public bool? Standalone { get; }
 Type: `bool?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
+
+Gets the declared version, `1.0` or `1.1`.
 
 #### Syntax
 
@@ -310,9 +319,9 @@ Type: `string?`
 
 ## Related APIs
 
-- # Related APIs
-- - `XmlDocument`
-- - `XmlVersion`
-- - `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`
-- - `Utf8XmlWriter`
+- CloudNimble.Text.Xml.XmlDocument
+- CloudNimble.Text.Xml.XmlVersion
+- CloudNimble.Text.Xml.Utf8XmlReader
+- CloudNimble.Text.Xml.XmlWriterOptions
+- CloudNimble.Text.Xml.Nodes.XmlDeclarationNode
 

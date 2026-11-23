@@ -1,7 +1,8 @@
 ---
 title: IXmlTypeInfoResolver
+description: "Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type."
 icon: plug
-keywords: ['IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization', 'interface']
+keywords: ['IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization', 'interface', 'CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializer']
 ---
 
 ## Definition
@@ -16,9 +17,58 @@ keywords: ['IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.IXmlTypeI
 CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver
 ```
 
+## Summary
+
+Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type.
+
+## Usage
+
+A resolver answers one question for the serializer: what is the contract for this type? `XmlSerializerOptions.TypeInfoResolver` holds the resolver an options instance uses. The library has two implementations, and most applications use only these:
+
+- `DefaultXmlTypeInfoResolver`, which builds contracts with reflection at run time.
+- Every source-generated `XmlSerializerContext`, which returns the type info the generator wrote.
+
+When you don't set a resolver, the options use `DefaultXmlTypeInfoResolver.Instance`. The following example prints the resolver that built the contract for a type no context lists:
+
+```csharp
+var receipt = new Receipt { Number = 77, Paid = 129.90m };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(receipt, options);
+output.WriteLine(xml);
+
+Receipt? copy = XmlSerializer.Deserialize<Receipt>(xml, options);
+output.WriteLine($"Receipt {copy!.Number}: {copy.Paid}");
+output.WriteLine(options.TypeInfoResolver!.GetType().Name);
+```
+
+The code produces the following output:
+
+```text
+<Receipt><Number>77</Number><Paid>129.90</Paid></Receipt>
+Receipt 77: 129.90
+DefaultXmlTypeInfoResolver
+```
+
+A resolver returns `null` for a type it doesn't handle. `XmlSerializerOptions.TypeInfoResolverChain` is a list view of the resolver: the options ask each entry in order and use the first answer that isn't `null`.
+
+The interface is the counterpart of `IJsonTypeInfoResolver` in System.Text.Json.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)
+
+## Considerations
+
+- **A resolver is asked once for each type.** The options cache the answer, and the first request makes the options read-only. Changing what a resolver returns later has no effect on options that already asked.
+- **The type info must be for the requested type.** If a resolver returns type info for another type, the options throw `InvalidOperationException`.
+- **`XmlTypeInfo` has no public constructor.** A resolver you write returns type info it gets from another resolver or from a context. That makes a custom resolver a way to choose between existing contracts, not a way to build new ones. Unlike System.Text.Json, there's no modifier API for changing a contract.
+- **Generated contexts ignore the `options` argument.** A context returns type info bound to its own `Options`. It also answers for types it doesn't list, by using the reflection resolver, so in a `TypeInfoResolverChain` the first generated context answers every request.
+- **With the reflection switch off, there's no default.** When `XmlSerializer.IsReflectionEnabledByDefault` is `false`, `TypeInfoResolver` is `null` until you set it, and a serializer call that needs it throws `InvalidOperationException`.
+
 ## Methods
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo <Badge color="orange">Abstract</Badge>
+
+Returns type info for *type*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this resolver does not handle it.
 
 #### Syntax
 
@@ -30,10 +80,19 @@ CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(System.Type type, Clo
 
 | Name | Type | Description |
 |------|------|-------------|
-| `type` | `System.Type` | - |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | - |
+| `type` | `System.Type` | The CLR type. |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serializer options. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?`
+The type info, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver
+- CloudNimble.Text.Xml.Serialization.XmlSerializerContext
+- CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlSerializer
 

@@ -1,3 +1,9 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
-`TokenType` maps element kinds to `StartElement`, attributes to `Attribute`, and leaves to their token. Unknown kinds map to `None`.
+Provide examples of using `XmlValueKind` here.
+
+```csharp
+// Example code here
+```
+

@@ -1,6 +1,5 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Related APIs
-
-- API 1
-- API 2
-
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlWriterOptions
+CloudNimble.Text.Xml.XmlDeclarationInfo
+CloudNimble.Text.Xml.XmlReaderState

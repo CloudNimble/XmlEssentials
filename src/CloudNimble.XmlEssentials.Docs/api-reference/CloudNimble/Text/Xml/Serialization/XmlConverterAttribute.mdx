@@ -1,8 +1,9 @@
 ---
 title: XmlConverterAttribute
+description: "Specifies a converter for a type or member."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlConverter', 'CloudNimble.Text.Xml.Serialization.XmlConverterFactory', 'CloudNimble.Text.Xml.XmlSerializerOptions']
 ---
 
 ## Definition
@@ -19,9 +20,66 @@ keywords: ['XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConve
 CloudNimble.Text.Xml.Serialization.XmlConverterAttribute
 ```
 
+## Summary
+
+Specifies a converter for a type or member.
+
+## Usage
+
+Apply `[XmlConverter]` to a class, struct, or enumeration to name the converter the serializer uses for it. Every `XmlSerializerOptions` instance then uses that converter, with nothing to register.
+
+```csharp
+[XmlConverter(typeof(GeoPointConverter))]
+public readonly struct GeoPoint
+{
+    public GeoPoint(double latitude, double longitude)
+    {
+        Latitude = latitude;
+        Longitude = longitude;
+    }
+
+    public double Latitude { get; }
+
+    public double Longitude { get; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var warehouse = new Warehouse { Name = "North", Location = new GeoPoint(47.61, -122.33) };
+
+string xml = XmlSerializer.Serialize(warehouse, options);
+output.WriteLine(xml);
+
+Warehouse? copy = XmlSerializer.Deserialize<Warehouse>(xml, options);
+output.WriteLine($"{copy!.Name}: {copy.Location.Latitude}, {copy.Location.Longitude}");
+```
+
+The code produces the following output:
+
+```text
+<Warehouse><Location><Lat>47.61</Lat><Lon>-122.33</Lon></Location><Name>North</Name></Warehouse>
+North: 47.61, -122.33
+```
+
+The converter type must derive from `XmlConverter<T>` or `XmlConverterFactory` and have a public parameterless constructor. The attribute is the counterpart of `JsonConverterAttribute` in System.Text.Json.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
+
+## Considerations
+
+- **On a property or field, the attribute isn't read.** The attribute can be applied there and the code compiles, but the serializer looks for it on types only. This differs from `[JsonConverter]` in System.Text.Json. To convert one member differently, give it a type of its own.
+- **A converter in the options wins.** `XmlSerializerOptions.Converters` is searched before the attribute, so a caller can override the converter a type names.
+- **One instance for each options instance.** The serializer creates the converter the first time the options need it and keeps it.
+- **A wrong converter type fails at run time.** If the type doesn't derive from `XmlConverter`, the serializer throws `InvalidOperationException` when it first needs a converter for the annotated type.
+- **Generated converters don't read the attribute.** In a context in the default generation mode, a member whose type carries `[XmlConverter]` is read and written member by member instead. Use a context in metadata mode, or the reflection path, for such a type.
+- **The constructor is kept when trimming.** The attribute marks the converter type so that the trimmer keeps its public parameterless constructor.
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -33,7 +91,7 @@ public XmlConverterAttribute(System.Type converterType)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `converterType` | `System.Type` | - |
+| `converterType` | `System.Type` | A type that derives from [XmlConverter](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter). |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -58,6 +116,8 @@ public Object()
 ## Properties
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConverterType
+
+Gets the converter type.
 
 #### Syntax
 
@@ -950,4 +1010,10 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlConverter
+- CloudNimble.Text.Xml.Serialization.XmlConverterFactory
+- CloudNimble.Text.Xml.XmlSerializerOptions
 

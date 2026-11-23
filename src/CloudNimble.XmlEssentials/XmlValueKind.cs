@@ -2,28 +2,29 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// Discriminator for an <see cref="XmlElement"/> cursor or an <c>XmlNode</c> in the mutable tree.
+    /// Specifies the kind of XML node that an <see cref="XmlElement"/> or a
+    /// <see cref="CloudNimble.Text.Xml.Nodes.XmlNode"/> represents.
     /// </summary>
     public enum XmlValueKind : byte
     {
 
         /// <summary>
-        /// No node is selected.
+        /// No node. This is the kind of a default <see cref="XmlElement"/>.
         /// </summary>
         Undefined = 0,
 
         /// <summary>
-        /// The document node (immutable <see cref="XmlDocument"/> only).
+        /// A document node. Neither <see cref="XmlDocument"/> nor the mutable tree reports this kind.
         /// </summary>
         Document = 1,
 
         /// <summary>
-        /// An element with a start and end tag.
+        /// An element with a start tag and an end tag.
         /// </summary>
         Element = 2,
 
         /// <summary>
-        /// An empty element (<c>&lt;e/&gt;</c>).
+        /// An empty-element tag (<c>&lt;e/&gt;</c>).
         /// </summary>
         EmptyElement = 3,
 
@@ -53,12 +54,12 @@ namespace CloudNimble.Text.Xml
         ProcessingInstruction = 8,
 
         /// <summary>
-        /// The XML declaration.
+        /// The XML declaration. Only <see cref="CloudNimble.Text.Xml.Nodes.XmlDeclarationNode"/> reports this kind.
         /// </summary>
         XmlDeclaration = 9,
 
         /// <summary>
-        /// An element with <c>xsi:nil="true"</c>.
+        /// An element whose <c>xsi:nil</c> attribute is <c>true</c> or <c>1</c>. Only <see cref="XmlElement"/> reports this kind.
         /// </summary>
         Nil = 10,
 

@@ -1,5 +1,22 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Usage
+`XmlReaderState` is what lets a `Utf8XmlReader` read a document that arrives in blocks. A reader is a `ref struct` and can't outlive the block it reads, so everything it knows about the document so far travels in this value from one reader to the next. It's the counterpart of `JsonReaderState`.
 
-Describe how to use `XmlReaderState` here.
+You use it in two places:
 
+1. Before the first block, create a state that holds your options:
+
+   ```csharp
+   var state = new XmlReaderState(new XmlReaderOptions());
+   ```
+
+2. For every block, pass the state to the reader's constructor, and take the new state from `CurrentState` when `Read` returns `false`:
+
+   ```csharp
+   var reader = new Utf8XmlReader(buffer.AsSpan(0, buffered), isFinalBlock, state);
+   ```
+
+   ```csharp
+   state = reader.CurrentState;
+   var consumed = (int)reader.BytesConsumed;
+   ```
+
+The state is opaque. Its only public member is `Options`, the options it was created with. The complete loop is in the examples.

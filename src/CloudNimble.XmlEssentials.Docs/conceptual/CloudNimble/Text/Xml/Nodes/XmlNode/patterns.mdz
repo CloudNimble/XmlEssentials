@@ -1,3 +1,21 @@
-# Patterns
+### Read, then edit
 
-**Read then edit.** `XmlDocument.Parse` → `CloneNode` → mutate. Or `XmlNode.Parse` when you do not need the pooled document.
+Use `XmlNode.Parse` when you intend to change the document throughout. Use `XmlDocument.Parse` and `XmlElement.CloneNode` when you read most of the document and change a small part.
+
+### Edit one record at a time
+
+Read a large input with `Utf8XmlReader`, call `XmlNode.ParseValue` for each record you need to change, write the changed record with `WriteTo`, and move on. Only one record is in the tree at a time.
+
+### Process nodes by type
+
+```csharp
+foreach (XmlNode child in order.Children)
+{
+    if (child is XmlElementNode { LocalName: "Item" } item)
+    {
+        output.WriteLine($"{item.Attributes["sku"]!.Value}: {item.InnerText}");
+    }
+}
+```
+
+This loop is part of the first example for the `CloudNimble.Text.Xml.Nodes` namespace. A property pattern picks the elements with one name and skips text, comments, and everything else.

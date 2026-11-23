@@ -1,8 +1,9 @@
 ---
 title: XmlElement
+description: "A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`."
 icon: cubes
 tag: "SEALED"
-keywords: ['XmlElement', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `XmlDocument`', '- `XmlValueKind`', '- `XmlTokenType`', '- `CloudNimble.Text.Xml.Nodes.XmlNode`']
+keywords: ['XmlElement', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml.XmlValueKind', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml.XmlAttributes', 'CloudNimble.Text.Xml.XmlNamespaces']
 ---
 
 ## Definition
@@ -19,72 +20,478 @@ keywords: ['XmlElement', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xm
 CloudNimble.Text.Xml.XmlElement
 ```
 
+## Summary
+
+A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`.
+
 ## Usage
 
-# Usage
+An `XmlElement` is one node of an [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument): an element, an attribute, a text node, a CDATA section, a comment, or a processing instruction. `ValueKind` says which. It's the XML counterpart of `JsonElement`: a small struct that points into the document and is usable only while the document is alive.
 
-`XmlElement` is a struct cursor into an `XmlDocument`, analogous to `JsonElement`. Read names, attributes, children, and typed values from the current node.
+You get the first one from `XmlDocument.RootElement`. From there, `GetChild` and `GetAttribute` find a node by name and throw an `XmlException` when it's missing, and `TryGetChild` and `TryGetAttribute` return `false` instead. The typed getters convert a value.
 
 ```csharp
-using var document = XmlDocument.Parse("<e a=\"1\"><n>42</n></e>");
-var root = document.RootElement;
-var n = root.GetChild("n").GetInt32();
-foreach (var attr in root.EnumerateAttributes())
+const string xml = """
+    <Order id="1042">
+      <Customer>Ada Lovelace</Customer>
+      <Total currency="GBP">129.90</Total>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"Customer: {order.GetChild("Customer").GetString()}");
+output.WriteLine($"Order id: {order.GetAttribute("id").GetInt32()}");
+
+if (order.TryGetChild("Total", out XmlElement total) && total.TryGetAttribute("currency", out XmlElement currency))
 {
-    Console.WriteLine($"{attr.LocalName}={attr.GetString()}");
+    output.WriteLine($"Total: {total.GetDecimal()} {currency.GetString()}");
+}
+
+if (!order.TryGetChild("Discount", out _))
+{
+    output.WriteLine("No Discount element");
+}
+
+try
+{
+    order.GetChild("Discount");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+try
+{
+    order.GetAttribute("status");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
 }
 ```
 
-`GetRawXml` reconstructs this node. `CloneNode` copies it into a mutable `XmlNode` tree.
+The code produces the following output:
+
+```text
+Customer: Ada Lovelace
+Order id: 1042
+Total: 129.90 GBP
+No Discount element
+Child element 'Discount' was not found.
+Attribute 'status' was not found.
+```
+
+The members fall into these groups:
+
+| To | Use |
+| --- | --- |
+| Identify the node | `ValueKind`, `TokenType`, `LocalName`, `Prefix`, `NamespaceUri`, `IsEmptyElement`, `IsNil` |
+| Find a node by name | `GetChild`, `TryGetChild`, `GetAttribute`, `TryGetAttribute` |
+| Visit every node | `EnumerateChildren`, `EnumerateAttributes`, `AttributeCount` |
+| Read a value | `GetString`, `GetBoolean`, `GetInt32`, `GetInt64`, `GetDecimal`, `GetDouble`, `GetDateTime`, `GetDateTimeOffset`, `GetGuid`, `GetBytesFromBase64` |
+| Read text or markup | `GetInnerText`, `GetRawXml` |
+| Write or copy the node | `WriteTo`, `CloneNode` |
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)
+
+## Remarks
+
+Name lookups, enumeration, the numeric and Boolean getters, and [XmlElement.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlElement#writeto) do not allocate.
+Members that return a [String](https://learn.microsoft.com/dotnet/api/system.string), a `byte[]`, or an [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode)
+allocate only that result.
 
 ## Examples
 
-# Examples
+### Enumerate children and attributes
 
-Namespaced lookup:
-
-```csharp
-using var document = XmlDocument.Parse("<r xmlns:p=\"urn:x\"><p:a>1</p:a></r>");
-document.RootElement.GetChild("a", "urn:x").GetInt32(); // 1
-```
-
-Typed values use XSD 1.0 lexical forms (`true`/`false`/`1`/`0`, `INF`/`NaN`, round-trip dateTime, GUID, base64).
+A document keeps the white space between elements and the comments, so a loop over the children skips what isn't an element.
 
 ```csharp
-using var document = XmlDocument.Parse("<e>true</e>");
-document.RootElement.GetBoolean(); // true
+const string xml = """
+    <Order id="1042" status="open">
+      <Item sku="KB-1">Keyboard</Item>
+      <Item sku="MS-2">Mouse</Item>
+      <Note/>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"{order.AttributeCount} attributes");
+foreach (XmlElement attribute in order.EnumerateAttributes())
+{
+    output.WriteLine($"  {attribute.LocalName} = {attribute.GetString()}");
+}
+
+foreach (XmlElement child in order.EnumerateChildren())
+{
+    if (child.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil))
+    {
+        continue;
+    }
+
+    if (child.TryGetAttribute("sku", out XmlElement sku))
+    {
+        output.WriteLine($"{child.LocalName} {sku.GetString()}: {child.GetString()}");
+    }
+    else
+    {
+        output.WriteLine($"{child.LocalName} ({child.ValueKind})");
+    }
+}
 ```
+
+The code produces the following output:
+
+```text
+2 attributes
+  id = 1042
+  status = open
+Item KB-1: Keyboard
+Item MS-2: Mouse
+Note (EmptyElement)
+```
+
+### Find names in a namespace
+
+The one-argument lookups match a local name in any namespace. Pass a namespace URI to match one namespace, or an empty string for a name in no namespace.
+
+```csharp
+const string xml = """
+    <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <title>Release notes</title>
+      <dc:title>Notes de version</dc:title>
+      <link href="https://example.com/" dc:language="fr"/>
+    </feed>
+    """;
+
+const string atom = "http://www.w3.org/2005/Atom";
+const string dc = "http://purl.org/dc/elements/1.1/";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement feed = document.RootElement;
+
+output.WriteLine($"Atom title: {feed.GetChild("title", atom).GetString()}");
+output.WriteLine($"Dublin Core title: {feed.GetChild("title", dc).GetString()}");
+output.WriteLine($"First title in any namespace: {feed.GetChild("title").GetString()}");
+
+XmlElement dcTitle = feed.GetChild("title", dc);
+output.WriteLine($"Prefix '{dcTitle.Prefix}', local name '{dcTitle.LocalName}', namespace '{dcTitle.NamespaceUri}'");
+
+XmlElement link = feed.GetChild("link", atom);
+output.WriteLine($"href: {link.GetAttribute("href", "").GetString()}");
+output.WriteLine($"language: {link.GetAttribute("language", dc).GetString()}");
+
+output.WriteLine($"feed has {feed.AttributeCount} attributes:");
+foreach (XmlElement attribute in feed.EnumerateAttributes())
+{
+    string name = attribute.Prefix.Length == 0 ? attribute.LocalName : $"{attribute.Prefix}:{attribute.LocalName}";
+    output.WriteLine($"  {name} = {attribute.GetString()}");
+}
+```
+
+The code produces the following output:
+
+```text
+Atom title: Release notes
+Dublin Core title: Notes de version
+First title in any namespace: Release notes
+Prefix 'dc', local name 'title', namespace 'http://purl.org/dc/elements/1.1/'
+href: https://example.com/
+language: fr
+feed has 2 attributes:
+  xmlns = http://www.w3.org/2005/Atom
+  xmlns:dc = http://purl.org/dc/elements/1.1/
+```
+
+### Read typed values
+
+```csharp
+const string xml = """
+    <Shipment id="7c9e6679-7425-40de-944b-e07fc1f90ae7" express="1">
+      <Parcels> 3 </Parcels>
+      <WeightKg>12.5</WeightKg>
+      <Cost>49.90</Cost>
+      <TrackingNumber>940011189922</TrackingNumber>
+      <ShippedOn>2026-03-14T09:30:00Z</ShippedOn>
+      <Signature>SGVsbG8=</Signature>
+      <Carrier>Contoso Freight</Carrier>
+    </Shipment>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement shipment = document.RootElement;
+
+Guid id = shipment.GetAttribute("id").GetGuid();
+bool express = shipment.GetAttribute("express").GetBoolean();
+int parcels = shipment.GetChild("Parcels").GetInt32();
+double weight = shipment.GetChild("WeightKg").GetDouble();
+decimal cost = shipment.GetChild("Cost").GetDecimal();
+long tracking = shipment.GetChild("TrackingNumber").GetInt64();
+DateTimeOffset shippedOn = shipment.GetChild("ShippedOn").GetDateTimeOffset();
+byte[] signature = shipment.GetChild("Signature").GetBytesFromBase64();
+
+output.WriteLine($"id: {id}");
+output.WriteLine($"express: {express}");
+output.WriteLine($"parcels: {parcels} (the string is '{shipment.GetChild("Parcels").GetString()}')");
+output.WriteLine($"weight: {weight.ToString(CultureInfo.InvariantCulture)}");
+output.WriteLine($"cost: {cost.ToString(CultureInfo.InvariantCulture)}");
+output.WriteLine($"tracking: {tracking}");
+output.WriteLine($"shipped on: {shippedOn.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture)}");
+output.WriteLine($"signature: {signature.Length} bytes");
+
+try
+{
+    shipment.GetChild("Carrier").GetInt32();
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Carrier as an integer: {ex.Message}");
+}
+```
+
+The code produces the following output:
+
+```text
+id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+express: True
+parcels: 3 (the string is ' 3 ')
+weight: 12.5
+cost: 49.90
+tracking: 940011189922
+shipped on: 2026-03-14 09:30 +00:00
+signature: 5 bytes
+Carrier as an integer: The value is not a valid integer.
+```
+
+### Compare GetString, GetInnerText, and GetRawXml
+
+```csharp
+const string xml = """<Note priority="high">Ship **today**, <![CDATA[before 5 & not later]]>.<?audit checked?></Note>""";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement note = document.RootElement;
+
+output.WriteLine($"GetString:    {note.GetString()}");
+output.WriteLine($"GetInnerText: {note.GetInnerText()}");
+output.WriteLine($"GetRawXml:    {note.GetRawXml()}");
+
+foreach (XmlElement child in note.EnumerateChildren())
+{
+    if (child.ValueKind is XmlValueKind.ProcessingInstruction)
+    {
+        output.WriteLine($"On the processing instruction, GetString is '{child.GetString()}' and GetInnerText is '{child.GetInnerText()}'");
+    }
+}
+
+output.WriteLine($"GetRawXml on an attribute is empty: {note.GetAttribute("priority").GetRawXml().Length == 0}");
+```
+
+The code produces the following output:
+
+```text
+GetString:    Ship today, before 5 & not later.
+GetInnerText: Ship today, before 5 & not later.
+GetRawXml:    <Note priority="high">Ship **today**, <![CDATA[before 5 & not later]]>.<?audit checked?></Note>
+On the processing instruction, GetString is 'checked' and GetInnerText is ''
+GetRawXml on an attribute is empty: True
+```
+
+### Read a nil element
+
+```csharp
+const string xml = """
+    <Order xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <ShippedOn xsi:nil="true"/>
+      <Total>129.90</Total>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement shippedOn = document.RootElement.GetChild("ShippedOn");
+
+output.WriteLine($"ValueKind: {shippedOn.ValueKind}");
+output.WriteLine($"IsNil: {shippedOn.IsNil}");
+output.WriteLine($"GetString returns null: {shippedOn.GetString() is null}");
+output.WriteLine($"GetInnerText returns an empty string: {shippedOn.GetInnerText().Length == 0}");
+
+try
+{
+    shippedOn.GetDateTimeOffset();
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+XmlElement nil = shippedOn.GetAttribute(XmlAttributes.Nil, XmlNamespaces.Xsi);
+output.WriteLine($"{nil.Prefix}:{nil.LocalName} = {nil.GetBoolean()}");
+```
+
+The code produces the following output:
+
+```text
+ValueKind: Nil
+IsNil: True
+GetString returns null: True
+GetInnerText returns an empty string: True
+The element is nil and has no value.
+xsi:nil = True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)
 
 ## Best Practices
 
-# Best Practices
-
-- Keep the `XmlDocument` alive for the lifetime of any cursor.
-- Prefer `TryGetChild` / `TryGetAttribute` on optional names.
-- Use `ValueKind` or `TokenType` before calling typed getters on mixed content.
-- Do not compare `XmlElement` instances from different documents; equality is document plus row index.
+- **Keep the document alive while you use its elements.** Don't return an `XmlElement` from a method that disposes the document or store one in a field that outlives it. Copy the value, or call `CloneNode`.
+- **Test for all three element kinds.** An element's `ValueKind` is `Element`, `EmptyElement` (for `<e/>`), or `Nil`. A check for `Element` alone skips the other two.
+- **Check `ValueKind` when you enumerate.** A document keeps comments and the white space between elements by default, so the children of an indented element include `Text` nodes for the indentation, as well as any CDATA sections, comments, and processing instructions.
+- **Read values from leaf elements.** `GetString` and `GetInnerText` on an element that has child elements include the white space between them.
+- **Use the `Try` lookups for optional names** and the `Get` lookups for names the document must have, so that a missing required name fails with a message that names it.
+- **Pass the namespace URI when a document mixes vocabularies.** The one-argument lookups return the first match in any namespace.
+- **Check `IsNil` before a typed getter** on an element that can carry `xsi:nil`. A typed getter on a nil element throws.
+- **Use `GetDateTimeOffset` for values with a time zone.** `GetDateTime` converts an offset other than `Z` to local time.
+- **Prefer a typed getter to parsing `GetString` yourself.** The getters apply the XML Schema lexical rules, don't depend on the current culture, and don't allocate a string.
 
 ## Patterns
 
-# Patterns
+### Switch on the kind of each child
 
-**Named child.** `TryGetChild(localName, out var child)` then `GetInt32` / `GetString`. Missing names return false; `GetChild` throws `XmlException`.
+Content you don't control can hold any kind of node. A `switch` on `ValueKind` handles each one.
 
-**Attributes.** `GetAttribute("id")` for a required attribute. `EnumerateAttributes` walks in document order, including `xmlns*` that the writer will skip on `WriteTo`.
+```csharp
+const string xml = """
+    <Order xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- packed by hand --><Item>Keyboard</Item><Gift/><Coupon xsi:nil="true"/>Leave at the door<![CDATA[**fragile**]]><?print label?></Order>
+    """;
 
-**Write.** `WriteTo(writer)` or `GetRawXml()` for a fragment. `xmlns*` attributes are not written as attributes; `Utf8XmlWriter` redeclares namespaces from the element URI and prefix.
+using XmlDocument document = XmlDocument.Parse(xml);
+
+foreach (XmlElement child in document.RootElement.EnumerateChildren())
+{
+    string description = child.ValueKind switch
+    {
+        XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil => $"<{child.LocalName}>",
+        XmlValueKind.ProcessingInstruction => $"target '{child.LocalName}', data '{child.GetString()}'",
+        _ => $"'{child.GetString()}'",
+    };
+
+    output.WriteLine($"{child.ValueKind,-21} {child.TokenType,-21} {description}");
+}
+```
+
+The code produces the following output:
+
+```text
+Comment               Comment               ' packed by hand '
+Element               StartElement          <Item>
+EmptyElement          StartElement          <Gift>
+Nil                   StartElement          <Coupon>
+Text                  Text                  'Leave at the door'
+CData                 CData                 '**fragile**'
+ProcessingInstruction ProcessingInstruction target 'print', data 'label'
+```
+
+### Copy an element into the mutable tree
+
+`CloneNode` returns a copy that owns its data and outlives the document.
+
+```csharp
+XmlElementNode product;
+
+using (XmlDocument document = XmlDocument.Parse("""<Catalog><Product sku="KB-1"><Name>Keyboard</Name></Product></Catalog>"""))
+{
+    product = (XmlElementNode)document.RootElement.GetChild("Product").CloneNode();
+}
+
+product.SetAttribute("sku", "KB-2");
+product.AddElement("Price").InnerText = "49.90";
+
+output.WriteLine(product.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Product sku="KB-2"><Name>Keyboard</Name><Price>49.90</Price></Product>
+```
+
+### Write an element inside new markup
+
+`WriteTo` writes the node and everything in it. The writer adds a declaration for any namespace that an ancestor outside the copied part declared.
+
+```csharp
+const string xml = """<c:Catalog xmlns:c="urn:example:catalog"><c:Product sku="KB-1">Keyboard</c:Product><c:Product sku="MS-2">Mouse</c:Product></c:Catalog>""";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Picked");
+    foreach (XmlElement product in document.RootElement.EnumerateChildren())
+    {
+        if (product.GetAttribute("sku").GetString() == "MS-2")
+        {
+            product.WriteTo(writer);
+        }
+    }
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<Picked>
+  <c:Product xmlns:c="urn:example:catalog" sku="MS-2">Mouse</c:Product>
+</Picked>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/28_WriteAndConvertXmlDocument.cs)
 
 ## Considerations
 
-# Considerations
+### Lifetime
 
-The default cursor (`default(XmlElement)`) has `ValueKind` `Undefined`. Any other member throws `InvalidOperationException`.
+- An `XmlElement` holds a reference to its document and a position in it. It holds no data of its own.
+- After the document is disposed, every member that reads from it throws `ObjectDisposedException`.
+- `default(XmlElement)` refers to no node. `ValueKind` returns `Undefined`, and every other member that reads a node throws `InvalidOperationException`.
+- Two values are equal when they point at the same node of the same document.
 
-Empty elements are `XmlValueKind.EmptyElement` with `IsEmptyElement` true. `xsi:nil="true"` is `XmlValueKind.Nil` and `GetString` returns null.
+### Values
 
-Enumerators are nested types (`XmlElement.Enumerator`, `XmlElement.AttributeEnumerator`) to match `JsonElement`. `GetEnumerator` returns the same struct so `foreach` works.
+- The value of an attribute, a text node, a CDATA section, a comment, or a processing instruction is its content. The value of an element is the text of every text node and CDATA section inside it, at any depth, in document order.
+- The text of an element that has child elements includes the white space between them when the document keeps it, which is the default. For `<r>`, a line break, two spaces, ``x``, a line break, and `</r>`, the value of `r` is `"\n  x\n"` and the value of `c` is `"x"`.
+- `GetString` returns the value unchanged, white space included, and `null` for a nil element. `GetInnerText` returns an empty string for a nil element, a comment, or a processing instruction.
+- The typed getters ignore white space around the value and follow the XML Schema lexical forms. `GetBoolean` accepts `true`, `false`, `1`, and `0`. `GetDecimal` doesn't accept an exponent. `GetDouble` accepts `INF`, `-INF`, and `NaN`.
+- A value that can't be converted throws `XmlException`. There are no `TryGet` methods for values.
+- There are getters only for `bool`, `int`, `long`, `decimal`, `double`, `DateTime`, `DateTimeOffset`, `Guid`, and Base64 bytes. For another type, convert the result of `GetString`.
+- `GetDateTime` returns `DateTimeKind.Utc` for a value that ends in `Z`, `Unspecified` for a value without a time zone, and local time for any other offset. `GetDateTimeOffset` gives a value without a time zone the local offset.
 
-`GetInnerText` concatenates descendant text and CDATA. Comments and PIs are omitted from inner text.
+### Navigation
+
+- `GetChild` and `TryGetChild` search direct children and return the first match in document order. There is no descendant search, no parent, no sibling access, and no access by index.
+- `TryGetAttribute` has no overload that takes a namespace URI. `GetAttribute` does.
+- `EnumerateChildren` returns every child node. With the default options that includes a `Text` node for each run of white space between elements and a `Comment` node for each comment.
+- `AttributeCount` and `EnumerateAttributes` include namespace declarations (`xmlns` and `xmlns:prefix`).
+- The enumerators are structs that work with `foreach`. They don't implement `IEnumerable<T>`, so LINQ doesn't apply.
+- On a node that isn't an element, the lookups find nothing, the enumerators are empty, and `LocalName` is an empty string (or the target, for a processing instruction).
+
+### Allocation
+
+Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `WriteTo` don't allocate. `LocalName`, `Prefix`, `NamespaceUri`, `GetString`, `GetInnerText`, and `GetRawXml` allocate the string they return, `GetBytesFromBase64` allocates the array, and `CloneNode` allocates the copy.
+
+### Markup
+
+`GetRawXml` writes the node with a `Utf8XmlWriter`; it isn't a slice of the original input. It returns an empty string for an attribute. `IsEmptyElement` is `true` for `<e/>` and `false` for `<e></e>`, and `WriteTo` keeps the difference.
 
 ## Constructors
 
@@ -112,6 +519,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeCount
 
+Gets the number of attributes on this element.
+
 #### Syntax
 
 ```csharp
@@ -123,6 +532,8 @@ public int AttributeCount { get; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsEmptyElement
+
+Gets whether this element is empty (`<e/>`).
 
 #### Syntax
 
@@ -136,6 +547,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNil
 
+Gets whether this element carries `xsi:nil="true"`.
+
 #### Syntax
 
 ```csharp
@@ -147,6 +560,8 @@ public bool IsNil { get; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalName
+
+Gets the local name.
 
 #### Syntax
 
@@ -160,6 +575,8 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUri
 
+Gets the namespace URI, or empty.
+
 #### Syntax
 
 ```csharp
@@ -171,6 +588,8 @@ public string NamespaceUri { get; }
 Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Prefix
+
+Gets the prefix, or empty.
 
 #### Syntax
 
@@ -184,6 +603,8 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TokenType
 
+Gets the token type corresponding to this cursor.
+
 #### Syntax
 
 ```csharp
@@ -195,6 +616,8 @@ public CloudNimble.Text.Xml.XmlTokenType TokenType { get; }
 Type: `CloudNimble.Text.Xml.XmlTokenType`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueKind
+
+Gets the value kind of this cursor.
 
 #### Syntax
 
@@ -210,6 +633,8 @@ Type: `CloudNimble.Text.Xml.XmlValueKind`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CloneNode
 
+Deep-clones this cursor into a mutable node.
+
 #### Syntax
 
 ```csharp
@@ -219,8 +644,11 @@ public CloudNimble.Text.Xml.Nodes.XmlNode CloneNode()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode`
+The mutable clone.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumerateAttributes
+
+Enumerates attributes on this element.
 
 #### Syntax
 
@@ -231,8 +659,11 @@ public CloudNimble.Text.Xml.XmlElement.AttributeEnumerator EnumerateAttributes()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement.AttributeEnumerator`
+An attribute enumerator.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumerateChildren
+
+Enumerates child nodes of this element.
 
 #### Syntax
 
@@ -243,6 +674,7 @@ public CloudNimble.Text.Xml.XmlElement.Enumerator EnumerateChildren()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement.Enumerator`
+A child enumerator.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
 
@@ -343,6 +775,8 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetAttribute
 
+Returns the named attribute.
+
 #### Syntax
 
 ```csharp
@@ -353,13 +787,16 @@ public CloudNimble.Text.Xml.XmlElement GetAttribute(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
+| `localName` | `string` | The local name. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
+The attribute cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetAttribute
+
+Returns the named attribute in *namespaceUri*.
 
 #### Syntax
 
@@ -371,14 +808,17 @@ public CloudNimble.Text.Xml.XmlElement GetAttribute(string localName, string nam
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
-| `namespaceUri` | `string` | - |
+| `localName` | `string` | The local name. |
+| `namespaceUri` | `string` | The namespace URI. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
+The attribute cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBoolean
+
+Returns the current value as a boolean.
 
 #### Syntax
 
@@ -389,8 +829,11 @@ public bool GetBoolean()
 #### Returns
 
 Type: `bool`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBytesFromBase64
+
+Returns the current value as base64-decoded bytes.
 
 #### Syntax
 
@@ -401,8 +844,11 @@ public byte[] GetBytesFromBase64()
 #### Returns
 
 Type: `byte[]`
+The decoded bytes.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetChild
+
+Returns the named child element.
 
 #### Syntax
 
@@ -414,13 +860,16 @@ public CloudNimble.Text.Xml.XmlElement GetChild(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
+| `localName` | `string` | The local name. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
+The child cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetChild
+
+Returns the named child element in *namespaceUri*.
 
 #### Syntax
 
@@ -432,14 +881,17 @@ public CloudNimble.Text.Xml.XmlElement GetChild(string localName, string namespa
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
-| `namespaceUri` | `string` | - |
+| `localName` | `string` | The local name. |
+| `namespaceUri` | `string` | The namespace URI. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
+The child cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateTime
+
+Returns the current value as a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime).
 
 #### Syntax
 
@@ -450,8 +902,11 @@ public System.DateTime GetDateTime()
 #### Returns
 
 Type: `System.DateTime`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateTimeOffset
+
+Returns the current value as a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset).
 
 #### Syntax
 
@@ -462,8 +917,11 @@ public System.DateTimeOffset GetDateTimeOffset()
 #### Returns
 
 Type: `System.DateTimeOffset`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDecimal
+
+Returns the current value as a decimal.
 
 #### Syntax
 
@@ -474,8 +932,11 @@ public decimal GetDecimal()
 #### Returns
 
 Type: `decimal`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDouble
+
+Returns the current value as a double.
 
 #### Syntax
 
@@ -486,8 +947,11 @@ public double GetDouble()
 #### Returns
 
 Type: `double`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetGuid
+
+Returns the current value as a [Guid](https://learn.microsoft.com/dotnet/api/system.guid).
 
 #### Syntax
 
@@ -498,6 +962,7 @@ public System.Guid GetGuid()
 #### Returns
 
 Type: `System.Guid`
+The parsed value.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
 
@@ -541,6 +1006,8 @@ Type: `int`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInnerText
 
+Returns concatenated descendant text.
+
 #### Syntax
 
 ```csharp
@@ -550,8 +1017,11 @@ public string GetInnerText()
 #### Returns
 
 Type: `string`
+The inner text.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt32
+
+Returns the current value as a 32-bit integer.
 
 #### Syntax
 
@@ -562,8 +1032,11 @@ public int GetInt32()
 #### Returns
 
 Type: `int`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt64
+
+Returns the current value as a 64-bit integer.
 
 #### Syntax
 
@@ -574,8 +1047,11 @@ public long GetInt64()
 #### Returns
 
 Type: `long`
+The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetRawXml
+
+Reconstructs this node as XML text. An attribute has no markup outside its element, so the result is empty for one.
 
 #### Syntax
 
@@ -586,8 +1062,11 @@ public string GetRawXml()
 #### Returns
 
 Type: `string`
+The XML markup.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetString
+
+Returns the current value as a string.
 
 #### Syntax
 
@@ -598,6 +1077,7 @@ public string GetString()
 #### Returns
 
 Type: `string?`
+The string value, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this element is nil.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
 
@@ -678,6 +1158,8 @@ Type: `string?`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetAttribute
 
+Attempts to get the named attribute.
+
 #### Syntax
 
 ```csharp
@@ -688,14 +1170,17 @@ public bool TryGetAttribute(string localName, out CloudNimble.Text.Xml.XmlElemen
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
-| `value` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `localName` | `string` | The local name. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns true, the attribute cursor. |
 
 #### Returns
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the attribute exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
+
+Attempts to get the named child element.
 
 #### Syntax
 
@@ -707,14 +1192,17 @@ public bool TryGetChild(string localName, out CloudNimble.Text.Xml.XmlElement va
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
-| `value` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `localName` | `string` | The local name. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns true, the child cursor. |
 
 #### Returns
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the child exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
+
+Attempts to get the named child element in *namespaceUri*.
 
 #### Syntax
 
@@ -726,15 +1214,18 @@ public bool TryGetChild(string localName, string namespaceUri, out CloudNimble.T
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | - |
-| `namespaceUri` | `string` | - |
-| `value` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `localName` | `string` | The local name. |
+| `namespaceUri` | `string` | The namespace URI. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns true, the child cursor. |
 
 #### Returns
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the child exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteTo
+
+Writes this node to *writer*.
 
 #### Syntax
 
@@ -746,15 +1237,18 @@ public void WriteTo(CloudNimble.Text.Xml.Utf8XmlWriter writer)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The destination writer. |
 
 ## Related APIs
 
-- # Related APIs
-- - `XmlDocument`
-- - `XmlValueKind`
-- - `XmlTokenType`
-- - `CloudNimble.Text.Xml.Nodes.XmlNode`
-- - `Utf8XmlWriter`
-- - `System.Text.Json.JsonElement`
+- CloudNimble.Text.Xml.XmlDocument
+- CloudNimble.Text.Xml.XmlValueKind
+- CloudNimble.Text.Xml.XmlTokenType
+- CloudNimble.Text.Xml.XmlAttributes
+- CloudNimble.Text.Xml.XmlNamespaces
+- CloudNimble.Text.Xml.Utf8XmlWriter
+- CloudNimble.Text.Xml.XmlSerializer
+- CloudNimble.Text.Xml.XmlException
+- CloudNimble.Text.Xml.Nodes.XmlNode
+- CloudNimble.Text.Xml.Nodes.XmlElementNode
 

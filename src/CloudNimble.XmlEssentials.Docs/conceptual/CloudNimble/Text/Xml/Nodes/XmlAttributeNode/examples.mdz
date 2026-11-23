@@ -1,7 +1,9 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Examples
 
+Provide examples of using `XmlAttributeNode` here.
+
 ```csharp
-var holder = new XmlElementNode("e");
-holder.Attributes.Add(new XmlAttributeNode("a", "1", "urn:x", "p"));
-holder.ToString(); // contains p:a="1"
+// Example code here
 ```
+

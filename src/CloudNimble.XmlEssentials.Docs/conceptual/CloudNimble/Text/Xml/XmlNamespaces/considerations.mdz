@@ -1,5 +1,3 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-The `xml` and `xmlns` prefixes are always bound. Rebinding `xml` to a different URI, or declaring `xmlns`, is an error. `xmlns:p=""` is illegal in XML 1.0 and unbinds `p` in XML 1.1.
-
+- The `xml` and `xmlns` prefixes are bound for the whole of every document. The reader rejects a document that binds `xml` to another namespace, declares the `xmlns` prefix, or binds either of the two reserved namespaces to another prefix.
+- `Refs` is specific to XmlEssentials. Another XML library treats the `id` and `ref` attributes in that namespace as ordinary attributes.
+- The members are constants, so their values are compiled into your assembly.

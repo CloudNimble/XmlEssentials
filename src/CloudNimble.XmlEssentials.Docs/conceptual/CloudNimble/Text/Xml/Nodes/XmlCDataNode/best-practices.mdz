@@ -1,3 +1,5 @@
+<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
 # Best Practices
 
-Keep CDATA as a child of an element. Do not put `]]>` in the value.
+Document best practices for `XmlCDataNode` here.
+

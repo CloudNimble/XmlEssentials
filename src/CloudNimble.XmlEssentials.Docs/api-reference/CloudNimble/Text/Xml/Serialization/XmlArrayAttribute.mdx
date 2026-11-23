@@ -1,8 +1,9 @@
 ---
 title: XmlArrayAttribute
+description: "Wraps a collection in a parent element. Without this attribute, items are repeated using the member name."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlArrayAttribute', 'CloudNimble.Text.Xml.Serialization.XmlArrayAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlArrayAttribute', 'CloudNimble.Text.Xml.Serialization.XmlArrayAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute']
 ---
 
 ## Definition
@@ -19,9 +20,123 @@ keywords: ['XmlArrayAttribute', 'CloudNimble.Text.Xml.Serialization.XmlArrayAttr
 CloudNimble.Text.Xml.Serialization.XmlArrayAttribute
 ```
 
+## Summary
+
+Wraps a collection in a parent element. Without this attribute, items are repeated using the member name.
+
+## Usage
+
+Apply `[XmlArray]` to a collection property or field to write its items inside one wrapper element. Without the attribute, the items are written as repeated elements named after the member, with no wrapper. Pair it with [`[XmlArrayItem]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayItemAttribute) to name the items.
+
+```csharp
+public sealed class Album
+{
+    public string? Title { get; set; }
+
+    [XmlArray("Tracks")]
+    [XmlArrayItem("Track")]
+    public List<string>? Tracks { get; set; }
+}
+```
+
+```csharp
+var album = new Album { Title = "Kind of Blue", Tracks = ["So What", "Freddie Freeloader"] };
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(album, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Album>
+  <Title>Kind of Blue</Title>
+  <Tracks>
+    <Track>So What</Track>
+    <Track>Freddie Freeloader</Track>
+  </Tracks>
+</Album>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/12_SerializeCollections.cs)
+
+The name is optional. `[XmlArray]` with no arguments uses the member name for the wrapper.
+
+## Examples
+
+The following examples show the names and the shapes that a wrapped collection produces.
+
+### Default item names
+
+Without `[XmlArrayItem]`, each item of a wrapped collection is named after its .NET type.
+
+```csharp
+public sealed class Scoreboard
+{
+    public string? Player { get; set; }
+
+    [XmlArray]
+    public int[]? Scores { get; set; }
+}
+```
+
+```csharp
+var board = new Scoreboard { Player = "Ada", Scores = [90, 85] };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+output.WriteLine(XmlSerializer.Serialize(board, options));
+```
+
+The code produces the following output:
+
+```xml
+<Scoreboard><Player>Ada</Player><Scores><Int32>90</Int32><Int32>85</Int32></Scores></Scoreboard>
+```
+
+### Empty and null collections
+
+A wrapper can show the difference between an empty collection and a `null` one. Repeated elements with no wrapper can't. `Playlist.Tracks` in the following example has no `[XmlArray]`.
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+output.WriteLine(XmlSerializer.Serialize(new Playlist { Name = "Empty", Tracks = [] }, options));
+output.WriteLine(XmlSerializer.Serialize(new Album { Title = "Empty", Tracks = [] }, options));
+output.WriteLine(XmlSerializer.Serialize(new Album { Title = "Null", Tracks = null }, options));
+
+Album? empty = XmlSerializer.Deserialize<Album>("<Album><Title>Empty</Title><Tracks /></Album>");
+output.WriteLine($"Wrapped and empty: {empty!.Tracks?.Count.ToString() ?? "null"}");
+
+Album? missing = XmlSerializer.Deserialize<Album>("<Album><Title>Missing</Title></Album>");
+output.WriteLine($"Wrapper missing: {missing!.Tracks?.Count.ToString() ?? "null"}");
+```
+
+The code produces the following output:
+
+```text
+<Playlist><Name>Empty</Name></Playlist>
+<Album><Title>Empty</Title><Tracks/></Album>
+<Album><Title>Null</Title><Tracks xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/></Album>
+Wrapped and empty: 0
+Wrapper missing: null
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/12_SerializeCollections.cs)
+
+## Considerations
+
+- `System.Xml.Serialization.XmlSerializer` wraps collections by default. This serializer doesn't, so add `[XmlArray]` when you need XML that matches what that serializer produced.
+- The default item name is the .NET type name of the item, such as `Int32`, `String`, or the name of your class, converted by the element naming policy.
+- `[XmlPropertyName]` on the same member takes precedence over `ElementName`, and `[XmlPropertyOrder]` and `[XmlElement(Order = n)]` take precedence over `Order`.
+- The serializer doesn't read `IsNullable`. A `null` wrapped collection is written as the wrapper marked `xsi:nil="true"`. It is left out only when the ignore condition that applies to the member is `WhenWritingNull`. `WhenWritingDefault` doesn't leave it out, and with `NilHandling` set to `Omit` or `WriteEmptyElement` it is written as an empty wrapper.
+- The attribute applies to collections. A dictionary is always written inside an element named after the member, without it.
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute with the member name as the wrapper name.
 
 #### Syntax
 
@@ -30,6 +145,8 @@ public XmlArrayAttribute()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -41,7 +158,7 @@ public XmlArrayAttribute(string elementName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `elementName` | `string` | - |
+| `elementName` | `string` | The wrapper element local name. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -67,6 +184,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementName
 
+Gets or sets the wrapper element local name. When null or empty, the member name after the naming policy is used.
+
 #### Syntax
 
 ```csharp
@@ -78,6 +197,8 @@ public string ElementName { get; set; }
 Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNullable
+
+Gets or sets whether a null collection is nillable.
 
 #### Syntax
 
@@ -91,6 +212,8 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
 
+Gets or sets the namespace URI of the wrapper.
+
 #### Syntax
 
 ```csharp
@@ -102,6 +225,8 @@ public string Namespace { get; set; }
 Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Order
+
+Gets or sets the order among child elements. The default of `-1` means unset.
 
 #### Syntax
 
@@ -994,4 +1119,11 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute
+- CloudNimble.Text.Xml.Serialization.XmlElementAttribute
+- CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
+- CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute
 

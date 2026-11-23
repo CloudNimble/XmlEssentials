@@ -1,8 +1,9 @@
 ---
 title: XmlRootAttribute
+description: "Sets the document element name and namespace of a type."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
+keywords: ['XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute']
 ---
 
 ## Definition
@@ -19,9 +20,64 @@ keywords: ['XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRootAttrib
 CloudNimble.Text.Xml.Serialization.XmlRootAttribute
 ```
 
+## Summary
+
+Sets the document element name and namespace of a type.
+
+## Usage
+
+Apply `[XmlRoot]` to a class, struct, or interface to name the document element that is written when a value of that type is the root of the document. Without it, the document element is the type name, converted by the element naming policy.
+
+```csharp
+[XmlRoot("product")]
+public sealed class CatalogItem
+{
+    [XmlAttribute("sku")]
+    public string? Sku { get; set; }
+
+    [XmlPropertyName("title")]
+    public string? Name { get; set; }
+
+    [XmlElement("unit-price")]
+    public decimal UnitPrice { get; set; }
+}
+```
+
+```csharp
+var item = new CatalogItem { Sku = "KB-101", Name = "Keyboard", UnitPrice = 49.95m };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(item, options);
+output.WriteLine(xml);
+
+CatalogItem? copy = XmlSerializer.Deserialize<CatalogItem>(xml, options);
+output.WriteLine($"{copy!.Sku}: {copy.Name}");
+```
+
+The code produces the following output:
+
+```text
+<product sku="KB-101"><title>Keyboard</title><unit-price>49.95</unit-price></product>
+KB-101: Keyboard
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+Set `Namespace` to put the document element in an XML namespace. See [Namespaces](/guides/namespaces).
+
+## Considerations
+
+- The name is used exactly as written. A naming policy doesn't convert it.
+- When reading, the document element must have this name, matched with case, or the serializer throws an `XmlException`. `PropertyNameCaseInsensitive` doesn't apply to the document element.
+- The attribute names the type as a document element. When the type is the type of a member of another object, the element is named after that member.
+- When `Namespace` is `null`, `XmlSerializerOptions.DefaultNamespace` is used.
+- The serializer doesn't read `IsNullable`. A `null` reference at the root is written as the document element marked `xsi:nil="true"` whatever its value.
+
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute with the type name as the document element.
 
 #### Syntax
 
@@ -30,6 +86,8 @@ public XmlRootAttribute()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+Creates the attribute.
 
 #### Syntax
 
@@ -41,7 +99,7 @@ public XmlRootAttribute(string elementName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `elementName` | `string` | - |
+| `elementName` | `string` | The document element local name. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -67,6 +125,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementName
 
+Gets or sets the document element local name. When null or empty, the CLR type name is used.
+
 #### Syntax
 
 ```csharp
@@ -79,6 +139,8 @@ Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNullable
 
+Gets or sets whether a null value of this type is nillable. When unset, nillability follows the CLR type.
+
 #### Syntax
 
 ```csharp
@@ -90,6 +152,8 @@ public bool IsNullable { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
+
+Gets or sets the namespace URI of the document element.
 
 #### Syntax
 
@@ -982,4 +1046,12 @@ public virtual string ToString()
 #### Returns
 
 Type: `string?`
+
+## Related APIs
+
+- CloudNimble.Text.Xml.XmlSerializer
+- CloudNimble.Text.Xml.XmlSerializerOptions
+- CloudNimble.Text.Xml.XmlNamingPolicy
+- CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
+- CloudNimble.Text.Xml.Serialization.XmlElementAttribute
 

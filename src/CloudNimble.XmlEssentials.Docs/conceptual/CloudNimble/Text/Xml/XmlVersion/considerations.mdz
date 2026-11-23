@@ -1,5 +1,17 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
+XML 1.1 isn't a superset of XML 1.0. The same bytes can mean different things in the two versions, which is why the library tracks the version instead of treating every document alike.
 
-Document considerations for `XmlVersion` here.
+| | XML 1.0 | XML 1.1 |
+| --- | --- | --- |
+| U+0085 (next line) and U+2028 (line separator) in text | Ordinary characters. | Line ends. The reader reports them as a line feed, and the writer writes them as character references so that they're read back unchanged. |
+| Control characters U+0001 to U+001F, other than tab, line feed, and carriage return | Not allowed, even as a character reference. The writer throws. | Allowed only as a character reference. The writer writes one. |
+| `xmlns:p=""` | An error. | Removes the binding of the prefix `p`. |
 
+Other things to know:
+
+- **`Version10` is the default** for the writer, and for a reader until it has read a declaration that says otherwise.
+- **U+0000 isn't allowed in either version.**
+- **Write XML 1.1 only when your data needs it.** Not every XML tool reads it.
+- **A version number other than `1.1` is read as XML 1.0,** provided it has the form `1.x`.
+- **The version survives reading in blocks.** `XmlReaderState` carries it from one reader to the next.
+
+See [XML conformance](/guides/xml-conformance) for the full list of rules.

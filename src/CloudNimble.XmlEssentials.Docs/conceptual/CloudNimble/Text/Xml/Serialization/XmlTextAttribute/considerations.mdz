@@ -1,5 +1,6 @@
-<!-- TODO: REMOVE THIS COMMENT AFTER YOU CUSTOMIZE THIS CONTENT -->
-# Considerations
-
-Document considerations for `XmlTextAttribute` here.
-
+- A type can have one text member. A second `[XmlText]` or `[XmlCData]` member throws a `NotSupportedException` the first time the type is used.
+- A type with a text member can have XML attributes but no child elements. For text interleaved with elements, see [Mixed content](/guides/mixed-content).
+- The member must be a simple value, such as a string, a number, or a date.
+- A `null` value writes no text, so the element is empty. When reading, an element with no text leaves the member at its default value.
+- The member has no XML name of its own, so naming policies and `[XmlPropertyName]` have nothing to rename.
+- To write the text as a CDATA section, use `[XmlCData]` instead.

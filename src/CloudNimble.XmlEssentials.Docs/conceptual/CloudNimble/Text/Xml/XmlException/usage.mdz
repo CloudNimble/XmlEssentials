@@ -1,17 +1,37 @@
-# Usage
+The library throws `XmlException` for every problem with XML itself: input that isn't well formed, a limit that's exceeded, a value that can't be read as the type you asked for, and output that the writer refuses to produce. Catch it around the code that reads or writes.
 
-`Utf8XmlReader` throws `XmlException` for well-formedness errors, illegal characters, DTD markup, and exceeded DoS limits. Catch it around the `Read` loop.
+When the exception comes from `Utf8XmlReader`, it says where the reader was:
 
 ```csharp
+var xml = "<Order>\n  <Item>Keyboard</Itm>\n</Order>"u8;
+
 try
 {
-    var reader = new Utf8XmlReader(utf8);
-    while (reader.Read()) { }
+    var reader = new Utf8XmlReader(xml);
+    while (reader.Read())
+    {
+    }
 }
 catch (XmlException ex)
 {
-    Console.WriteLine($"{ex.LineNumber}:{ex.LinePosition} {ex.Message}");
+    output.WriteLine($"Message: {ex.Message}");
+    output.WriteLine($"Line {ex.LineNumber}, position {ex.LinePosition} (byte {ex.BytePosition} of the document)");
+    output.WriteLine($"Path: {ex.Path ?? "(not set)"}");
 }
 ```
 
-This type is not `System.Xml.XmlException` and does not wrap it.
+```text
+Message: End tag does not match start tag.
+Line 2, position 23 (byte 30 of the document)
+Path: (not set)
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
+
+| Property | Value |
+| --- | --- |
+| `Message` | What's wrong. It doesn't include the position. |
+| `LineNumber` | The line, counting from 1, or `null`. |
+| `LinePosition` | The position in the line, counting from 1, in UTF-8 bytes, or `null`. |
+| `BytePosition` | The offset from the start of the document, counting from 0, or `null`. |
+| `Path` | A path in the document, or `null`. `Utf8XmlReader` doesn't set it. |

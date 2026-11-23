@@ -1,6 +1,5 @@
-# Related APIs
-
-- `Utf8XmlReader.NamespaceUriSpan`
-- `Utf8XmlReader.NamespaceUriEquals`
-- `XmlAttributes.Nil`
-- `XmlName`
+CloudNimble.Text.Xml.XmlAttributes
+CloudNimble.Text.Xml.XmlName
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
