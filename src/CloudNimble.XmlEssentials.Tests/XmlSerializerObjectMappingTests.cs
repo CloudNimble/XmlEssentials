@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using CloudNimble.Text.Xml;
@@ -270,6 +271,64 @@ namespace CloudNimble.XmlEssentials.Tests
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, DictionaryKeyPolicy = XmlNamingPolicy.CamelCase };
             XmlSerializer.Serialize(new Dictionary<string, int> { ["FirstName"] = 1 }, options)
                 .Should().Be("<DictionaryOfStringInt32><firstName>1</firstName></DictionaryOfStringInt32>");
+        }
+
+        [TestMethod]
+        public void Dictionary_ObjectValues_AreWrittenUnderTheirKeys()
+        {
+            var xml = XmlSerializer.Serialize(new Dictionary<string, Person> { ["lead"] = new Person { Name = "Ada", Age = 36 } }, Bare);
+            xml.Should().Be("<DictionaryOfStringPerson><lead><Name>Ada</Name><Age>36</Age></lead></DictionaryOfStringPerson>");
+            var read = XmlSerializer.Deserialize<Dictionary<string, Person>>(xml)!;
+            read.Keys.Should().Equal("lead");
+            read["lead"].Name.Should().Be("Ada");
+            read["lead"].Age.Should().Be(36);
+        }
+
+        [TestMethod]
+        public void Dictionary_NullValue_IsWrittenAsAnEmptyElement()
+        {
+            var xml = XmlSerializer.Serialize(new Dictionary<string, string?> { ["a"] = null, ["b"] = "x" }, Bare);
+            xml.Should().Be("<DictionaryOfStringString><a/><b>x</b></DictionaryOfStringString>");
+        }
+
+        [TestMethod]
+        public void Dictionary_EmptyValues_AreWrittenAsAStartAndAnEndTag()
+        {
+            XmlSerializer.Serialize(new Dictionary<string, string> { ["a"] = string.Empty, ["b"] = "x" }, Bare)
+                .Should().Be("<DictionaryOfStringString><a></a><b>x</b></DictionaryOfStringString>");
+            XmlSerializer.Serialize(new Dictionary<string, byte[]> { ["a"] = [], ["b"] = [1] }, Bare)
+                .Should().Be("<DictionaryOfStringByteArray><a></a><b>AQ==</b></DictionaryOfStringByteArray>");
+        }
+
+        [TestMethod]
+        public void Dictionary_KeysOfAnyLength_RoundTrip()
+        {
+            var shorter = new string('a', 32);
+            var longer = new string('b', 33);
+            var map = new Dictionary<string, int> { [shorter] = 1, [longer] = 2 };
+            var xml = XmlSerializer.Serialize(map, Bare);
+            xml.Should().Be($"<DictionaryOfStringInt32><{shorter}>1</{shorter}><{longer}>2</{longer}></DictionaryOfStringInt32>");
+            XmlSerializer.Deserialize<Dictionary<string, int>>(xml).Should().Equal(map);
+        }
+
+        [TestMethod]
+        public void Dictionary_Indented_PutsEachEntryOnItsOwnLine()
+        {
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, WriteIndented = true, NewLine = "\n" };
+            XmlSerializer.Serialize(new Dictionary<string, int> { ["a"] = 1, ["b"] = 2 }, options)
+                .Should().Be("<DictionaryOfStringInt32>\n  <a>1</a>\n  <b>2</b>\n</DictionaryOfStringInt32>");
+        }
+
+        [TestMethod]
+        public void Dictionary_ConverterCalledAtDocumentLevel_WritesTheEntryAsTheDocumentElement()
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+            {
+                Bare.GetTypeInfo<Dictionary<string, int>>().Converter.Write(writer, new Dictionary<string, int> { ["a"] = 1 }, Bare);
+            }
+
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<a>1</a>");
         }
 
         [TestMethod]

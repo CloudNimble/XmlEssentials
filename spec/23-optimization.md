@@ -319,8 +319,8 @@ Each library reads the document it wrote and writes into a sink that is reused b
 | Bcl_WriteCustomer | WriteCustomer | 4334 ns | 1.00 | 8648 B | 1.00 |
 | Stj_WriteCustomer | WriteCustomer | 1493 ns | 0.34 | 312 B | 0.04 |
 | XmlEssentials_WriteCustomer | WriteCustomer | 1681 ns | 0.39 | 0 B | 0.00 |
-| Stj_WriteDictionary | WriteDictionary | 1248 ns |  | 0 B |  |
-| XmlEssentials_WriteDictionary | WriteDictionary | 2378 ns |  | 0 B |  |
+| Stj_WriteDictionary | WriteDictionary | 976 ns |  | 0 B |  |
+| XmlEssentials_WriteDictionary | WriteDictionary | 1658 ns |  | 0 B |  |
 | Bcl_WriteDrawing | WriteDrawing | 130754 ns | 1.00 | 30098 B | 1.00 |
 | Stj_WriteDrawing | WriteDrawing | 86951 ns | 0.67 | 313 B | 0.01 |
 | XmlEssentials_WriteDrawing | WriteDrawing | 69506 ns | 0.53 | 0 B | 0.00 |
@@ -426,6 +426,15 @@ Three items were left after the third pass. Times are direct loops against the c
 - **Generated converters.** They could not create a type through a constructor with parameters (`new T()` was all they emitted), so a positional record in a context did not compile. They now choose the constructor by the reflection resolver's rules and call it with the typed locals they already read into, so there is no values array and no box (`GeneratedContext_RecordOfValueTypes_IsReadAllocatingOnlyTheRecord`). That test also showed 256 B per `long`, `double`, or `bool` member read: only `int`, `decimal`, and `string` had a direct path, and every other type asked the resolver for a new type info per value. The generated context now keeps the type info per type and options instance (`__GetInfo<T>`).
 - **What is still allocated.** A raw reader with no scratch buffer allocates as before. A DOM parse of the RSS file (198 KB) averages 105 B in the benchmark, but a single parse can allocate a few kilobytes: its buffers are larger than the shared pool keeps per thread, so renting them sometimes allocates in the pool. That was so before this pass and is why `Parse_RealDocument_AllocatesOnlyTheDocument` covers the other three fixtures and not that one.
 - Pinned by `Drain_RealDocumentWithScratch_AllocatesNothing`, `Parse_RealDocument_AllocatesOnlyTheDocument`, `Deserialize_StringThatNeedsDecoding_AllocatesOnlyTheString`, `Deserialize_RecordOfValueTypes_AllocatesOnlyTheRecord`, and `Deserialize_RecordWithAString_AllocatesOnlyTheRecordAndItsString`.
+
+#### Fifth pass: a last look
+
+The full suite was run on the checked-in code, the rows that looked different were rerun, and one change was made.
+
+- **Nothing had regressed.** `DomParseCatalog` read 30.1 µs in the full run against 26.8 µs in the table; two reruns of that class gave 27.4 and 27.2 µs (0.53 of BCL both times). `CatalogDrain` read 20.2 µs with an error of 2.4 µs and 17.8 and 17.3 µs when rerun. Every other row was within the noise this machine has.
+- **`ReadSequence` allocates 9672 B, 120 B more than the table above.** The reader state now carries each open element's prefix, so that an end tag in a later buffer can be checked against the prefix its start tag used: one array when the state is captured and one each time a reader resumes from it. This is per call, not per value, and it was attributed by reading the code, not by a probe.
+- **A dictionary entry with a string key and a scalar value is written as a leaf element** (`XmlDictionaryConverter.WriteLeafEntry`), as a scalar member of an object already was. The key has just been shown to be an ASCII NCName, so the two tags are built on the stack from it and no element frame is pushed. It applies to keys of up to 32 characters; a longer key, a null value, a value that is not a built-in scalar, or a writer that is not inside an element takes the path it took before. `WriteDictionary` went from 2337 to 1658 ns in the benchmark (the two `WriteDictionary` rows above are from that later run, in which STJ was also faster than in the first; the other rows in the table were within noise and were not regenerated). In a direct loop, 100 `int` entries went from 2285 to 1651 ns and 100 `string` entries from 2633 to 1899 ns, 0 B before and after. The output is the same byte for byte, pinned by `Dictionary_KeysOfAnyLength_RoundTrip`, `Dictionary_Indented_PutsEachEntryOnItsOwnLine`, `Dictionary_NullValue_IsWrittenAsAnEmptyElement`, `Dictionary_EmptyValues_AreWrittenAsAStartAndAnEndTag`, `Dictionary_ObjectValues_AreWrittenUnderTheirKeys`, and `Dictionary_ConverterCalledAtDocumentLevel_WritesTheEntryAsTheDocumentElement`.
+- **Looked at and left.** Enum and `DateTime` reads are 4 and 9 ns over `int` in the scalar table, which is the cost of comparing a name and of parsing twenty characters. The remaining distance to STJ on `WriteOrders`, `WriteMembers`, and `ReadReadings` is the per-element and per-attribute cost the earlier passes measured.
 
 #### What the benchmarks and tests found
 

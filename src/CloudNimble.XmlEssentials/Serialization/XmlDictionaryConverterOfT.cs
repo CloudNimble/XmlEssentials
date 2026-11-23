@@ -26,9 +26,19 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #region Fields
 
+        /// <summary>
+        /// The longest key, in characters, that is written as a leaf element.
+        /// </summary>
+        internal const int MaxLeafKeyLength = 32;
+
         private readonly bool _isInterface;
         private readonly XmlTypeInfo<TKey> _keyInfo;
         private readonly XmlTypeInfo<TValue> _valueInfo;
+
+        /// <summary>
+        /// The value's converter when it is one of the built-in scalar converters, which write one text value and nothing else.
+        /// </summary>
+        private readonly XmlValueConverter<TValue>? _valueLeafConverter;
 
         #endregion
 
@@ -43,6 +53,7 @@ namespace CloudNimble.Text.Xml.Serialization
             _isInterface = typeof(TDictionary).IsInterface;
             _keyInfo = options.GetTypeInfo<TKey>();
             _valueInfo = options.GetTypeInfo<TValue>();
+            _valueLeafConverter = _valueInfo.Converter as XmlValueConverter<TValue>;
         }
 
         #endregion
@@ -130,6 +141,11 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="value">The value.</param>
         /// <param name="policy">The naming policy applied to string keys, or null.</param>
         /// <param name="options">The serializer options.</param>
+        /// <remarks>
+        /// A short key with a scalar value is written as a leaf element, as a scalar member of an object is: the
+        /// start and end tags are built on the stack from the key, which <see cref="XmlCollectionShape.IsNcName"/>
+        /// has just shown to be an ASCII NCName, and no element frame is pushed for it.
+        /// </remarks>
         internal void WriteEntry(Utf8XmlWriter writer, TKey key, TValue value, XmlNamingPolicy? policy, XmlSerializerOptions options)
         {
             if (key is string text)
@@ -137,6 +153,12 @@ namespace CloudNimble.Text.Xml.Serialization
                 var mapped = policy is null ? text : policy.ConvertName(text);
                 if (mapped != "Key" && XmlCollectionShape.IsNcName(mapped))
                 {
+                    if (_valueLeafConverter is not null && mapped.Length <= MaxLeafKeyLength && writer.CurrentDepth > 0 && !XmlConverterHelpers.IsNull(value))
+                    {
+                        WriteLeafEntry(writer, mapped, value, options);
+                        return;
+                    }
+
                     writer.WriteStartElement(mapped);
                     WriteValue(writer, value, options);
                     return;
@@ -148,6 +170,33 @@ namespace CloudNimble.Text.Xml.Serialization
             writer.WriteEndElement();
             writer.WriteStartElement("Value"u8);
             WriteValue(writer, value, options);
+        }
+
+        /// <summary>
+        /// Writes <c>&lt;name&gt;value&lt;/name&gt;</c> without an element frame.
+        /// </summary>
+        /// <param name="writer">The writer, inside an element.</param>
+        /// <param name="name">The element name: an ASCII NCName of at most <see cref="MaxLeafKeyLength"/> characters.</param>
+        /// <param name="value">The value, which is not null.</param>
+        /// <param name="options">The serializer options.</param>
+        internal void WriteLeafEntry(Utf8XmlWriter writer, string name, TValue value, XmlSerializerOptions options)
+        {
+            // The buffer holds "<<name>". The start tag is everything after the first byte; changing the
+            // second byte to '/' then makes the whole buffer the end tag.
+            Span<byte> tags = stackalloc byte[MaxLeafKeyLength + 3];
+            tags = tags[..(name.Length + 3)];
+            tags[0] = (byte)'<';
+            tags[1] = (byte)'<';
+            for (var i = 0; i < name.Length; i++)
+            {
+                tags[i + 2] = (byte)name[i];
+            }
+
+            tags[^1] = (byte)'>';
+            writer.WriteLeafStart(tags[1..]);
+            _valueLeafConverter!.WriteValue(writer, value, options);
+            tags[1] = (byte)'/';
+            writer.WriteLeafEnd(tags);
         }
 
         /// <summary>
