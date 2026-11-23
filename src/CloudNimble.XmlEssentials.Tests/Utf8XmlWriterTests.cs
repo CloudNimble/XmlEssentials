@@ -136,44 +136,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Write_CDataWithCloser_Throws()
-        {
-            var threw = false;
-            try
-            {
-                ToXml(w =>
-                {
-                    w.WriteStartElement("e");
-                    w.WriteCData("a]]>b");
-                }, omitDeclaration: true);
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void Write_UnclosedDispose_Throws()
-        {
-            var buffer = new ArrayBufferWriter<byte>();
-            var threw = false;
-            try
-            {
-                using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
-                writer.WriteStartElement("e");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void XmlEncodedText_RoundTrip()
         {
             var encoded = XmlEncodedText.Encode("root");

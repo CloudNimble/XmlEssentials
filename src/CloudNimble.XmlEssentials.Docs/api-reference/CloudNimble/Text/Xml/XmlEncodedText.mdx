@@ -1,6 +1,5 @@
 ---
 title: XmlEncodedText
-description: "Cached escaped UTF-8 for hot element and attribute names."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `Utf8XmlWriter`', '- `XmlName`', '- `System.Text.Json.JsonEncodedText`']
@@ -19,10 +18,6 @@ keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble
 ```csharp
 CloudNimble.Text.Xml.XmlEncodedText
 ```
-
-## Summary
-
-Cached escaped UTF-8 for hot element and attribute names.
 
 ## Usage
 
@@ -99,8 +94,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EncodedUtf8Bytes
 
-Gets the encoded UTF-8 bytes.
-
 #### Syntax
 
 ```csharp
@@ -115,8 +108,6 @@ Type: `System.ReadOnlySpan<byte>`
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
 
-Encodes *value* as UTF-8 name bytes.
-
 #### Syntax
 
 ```csharp
@@ -127,16 +118,13 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `string` | The name. |
+| `value` | `string` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
-The encoded name.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
-
-Encodes *value* as UTF-8 name bytes.
 
 #### Syntax
 
@@ -148,16 +136,13 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<cha
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<char>` | The name. |
+| `value` | `System.ReadOnlySpan<char>` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
-The encoded name.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
-
-Encodes *utf8Value* as UTF-8 name bytes.
 
 #### Syntax
 
@@ -169,12 +154,11 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<byt
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 name. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
-The encoded name.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
 

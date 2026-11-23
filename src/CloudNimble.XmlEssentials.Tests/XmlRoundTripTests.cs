@@ -234,17 +234,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void NodeTree_PrefixWithoutNamespace()
         {
             var orphan = new XmlElementNode("e", string.Empty, "p");
-            var threw = false;
-            try
-            {
-                orphan.ToString();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
+            FluentActions.Invoking(() => orphan.ToString()).Should().ThrowExactly<XmlException>().WithMessage("Prefixed names require a namespace URI.");
             XmlWriterHarness.ToXml(orphan.WriteTo, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true }).Should().Be("<p:e/>");
         }
 
@@ -492,14 +482,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Reader_EndTag_WithAnotherPrefixOnAWellKnownNamespace()
-        {
-            XmlReaderHarness.Tokens("<a:e xmlns:a=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:b=\"http://www.w3.org/2001/XMLSchema-instance\"></b:e>"u8, new XmlReaderOptions()).Should().Equal(
-                "StartElement a:e{http://www.w3.org/2001/XMLSchema-instance} open @xmlns:a{http://www.w3.org/2000/xmlns/}=[http://www.w3.org/2001/XMLSchema-instance] @xmlns:b{http://www.w3.org/2000/xmlns/}=[http://www.w3.org/2001/XMLSchema-instance]",
-                "EndElement b:e{http://www.w3.org/2001/XMLSchema-instance}");
-        }
-
-        [TestMethod]
         public void Reader_MultiByteText_AndPlainAttributeValues()
         {
             var delete = ((char)0x7F).ToString();
@@ -630,7 +612,11 @@ namespace CloudNimble.XmlEssentials.Tests
             var count = DrainAttributes(xml);
             var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
             count.Should().Be(600);
-            allocated.Should().BeGreaterThan(0).And.BeLessThanOrEqualTo(512, "400 escaped attribute values must reuse one buffer per reader");
+            before = GC.GetAllocatedBytesForCurrentThread();
+            var oneBuffer = new byte[256];
+            var expected = GC.GetAllocatedBytesForCurrentThread() - before;
+            oneBuffer.Length.Should().Be(256);
+            allocated.Should().Be(expected, "600 decoded attribute values must share the one 256-byte buffer a reader starts with");
 
             var wide = "<e a=\"" + new string('&', 0).PadRight(300, 'x') + "&amp;\" b=\"" + new string('y', 400) + "&lt;\" c=\"z&gt;\"/>";
             var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(wide));

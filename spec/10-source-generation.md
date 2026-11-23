@@ -73,7 +73,9 @@ Primary library csproj:
    - XMLXE002: truly unsupported types (open generics that cannot close, `IntPtr`, pointers). **Do not fire** on `Dictionary<,>` maps, `[XmlMixed]`, `[XmlExtensionData]` bags, `[XmlNamespaceDeclarations]`, or `IAsyncEnumerable` at the `SerializeAsyncEnumerable` entry point.
    - XMLXE003: attribute mapping on complex type
    - XMLXE004: multiple `[XmlText]`
-   - XMLXE005: ambiguous constructors
+   - XMLXE008: a type or member declares `[XmlDerivedType]`. Generated converters read and write only the declared type, so this is an error until they handle derived types; use the reflection resolver for such a type.
+   - XMLXE005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, two public constructors that bind the same number of members)
+   - Constructor choice follows the reflection resolver: the marked constructor, else the public one with the most parameters among those whose every parameter is named like a member. The converter calls it with named arguments, so a parameter no member fills is left out and takes its default. XMLXE002 is also reported when no constructor can be called from generated code: the marked one is private or protected, a parameter no member fills has no default, or a class has no parameterless constructor and none that binds.
    - XMLXE006: invalid XML name after policy
    - XMLXE007: `System.Xml.Serialization.XmlIncludeAttribute` present on this type graph (class or member). Message: use `[XmlDerivedType]`. Also diagnose our `[XmlInclude]` applied to a **type** (invalid target). Looking at BCL `XmlIncludeAttribute` on the **consumer** compilation is allowed and required; the runtime library still has zero BCL XML references.
 

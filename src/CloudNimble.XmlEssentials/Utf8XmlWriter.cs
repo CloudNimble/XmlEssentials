@@ -1680,11 +1680,6 @@ namespace CloudNimble.Text.Xml
         /// <returns>UTF-8 bytes, or empty.</returns>
         internal static byte[] EncodeChars(ReadOnlySpan<char> value)
         {
-            if (value.IsEmpty)
-            {
-                return [];
-            }
-
             var utf8 = new byte[Encoding.UTF8.GetByteCount(value)];
             Encoding.UTF8.GetBytes(value, utf8);
             return utf8;
@@ -2977,15 +2972,6 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <paramref name="b"/> or a numeric character reference when required.
-        /// </summary>
-        /// <param name="b">The byte.</param>
-        internal void WriteInvalidOrByte(byte b)
-        {
-            WriteValueSlice([b], b);
-        }
-
-        /// <summary>
         /// Writes indent for <paramref name="depth"/>.
         /// </summary>
         /// <param name="depth">The indent depth.</param>
@@ -3077,93 +3063,6 @@ namespace CloudNimble.Text.Xml
             }
 
             WriteElementIndent(_depth);
-        }
-
-        /// <summary>
-        /// Writes a start tag from UTF-16 names using BCL-style ASCII raw encoding.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="prefix">The prefix, or empty.</param>
-        /// <param name="ns">The UTF-8 namespace URI, or empty.</param>
-        /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
-        internal void WriteStartElementFromChars(ReadOnlySpan<char> local, ReadOnlySpan<char> prefix, ReadOnlySpan<byte> ns, bool empty)
-        {
-            ValidateElementPrefix(prefix);
-            var nsUri = ns;
-            if (!prefix.IsEmpty && nsUri.IsEmpty)
-            {
-                if (prefix.Equals("xml", StringComparison.Ordinal))
-                {
-                    nsUri = XmlUtf8.Xml;
-                }
-                else if (prefix.Equals("xmlns", StringComparison.Ordinal))
-                {
-                    nsUri = XmlUtf8.Xmlns;
-                }
-                else if (!_options.SkipValidation)
-                {
-                    throw new XmlException("Prefixed names require a namespace URI.");
-                }
-            }
-
-            BeginStartElement();
-            WriteRaw("<"u8);
-            byte[]? autoPrefix = null;
-            if (!prefix.IsEmpty)
-            {
-                WriteCharsRaw(prefix);
-                WriteRaw(":"u8);
-            }
-            else if (!nsUri.IsEmpty)
-            {
-                var bound = LookupPrefix(nsUri);
-                if (bound is { Length: > 0 })
-                {
-                    WriteRaw(bound);
-                    WriteRaw(":"u8);
-                    autoPrefix = bound;
-                }
-            }
-
-            WriteCharsRaw(local);
-            var declarePrefixed = !prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is null;
-            var declareDefault = prefix.IsEmpty && !nsUri.IsEmpty && LookupPrefix(nsUri) is null;
-            if (empty)
-            {
-                if (!declarePrefixed && !declareDefault)
-                {
-                    WriteRaw("/>"u8);
-                    _seenRoot = true;
-                    return;
-                }
-
-                PushFrame(default, default(XmlWriterName));
-                _depth++;
-                _seenRoot = true;
-                if (declarePrefixed)
-                {
-                    WriteNamespaceDeclaration(EncodeUtf8(prefix, stackalloc byte[64], out _), nsUri);
-                }
-                else
-                {
-                    WriteDefaultNamespace(nsUri);
-                }
-
-                WriteEndElement();
-                return;
-            }
-
-            PushFrame(AppendNameFromChars(local), autoPrefix is null ? AppendNameFromChars(prefix) : AppendName(autoPrefix));
-            _depth++;
-            _seenRoot = true;
-            if (declarePrefixed)
-            {
-                WriteNamespaceDeclaration(EncodeUtf8(prefix, stackalloc byte[64], out _), nsUri);
-            }
-            else if (declareDefault)
-            {
-                WriteDefaultNamespace(nsUri);
-            }
         }
 
         /// <summary>
@@ -3838,6 +3737,12 @@ namespace CloudNimble.Text.Xml
         /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
         internal void WriteLeafEnd(ReadOnlySpan<byte> closeTag)
         {
+            ThrowIfDisposed();
+            if (_depth == 0)
+            {
+                throw new XmlException("A leaf element must be written inside an element.");
+            }
+
             WriteRaw(closeTag);
             CurrentFrame().HasText = _leafParentHadText;
         }
@@ -3856,10 +3761,15 @@ namespace CloudNimble.Text.Xml
         /// the parent, and <see cref="WriteLeafEnd"/> puts back the one thing that changes, the parent's record of
         /// holding text. The writer must be inside an element.
         /// </remarks>
-        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>.</exception>
+        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>, or no element is open.</exception>
         internal void WriteLeafStart(ReadOnlySpan<byte> openTag)
         {
             ThrowIfDisposed();
+            if (_depth == 0)
+            {
+                throw new XmlException("A leaf element must be written inside an element.");
+            }
+
             if (openTag.Length - 2 > _maxNameBytes)
             {
                 ValidateNcName(openTag[1..^1]);

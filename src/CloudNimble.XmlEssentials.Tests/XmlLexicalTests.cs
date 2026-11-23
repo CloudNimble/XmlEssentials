@@ -223,6 +223,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             XmlLexical.TryParseDouble(Utf8(text), out var value).Should().BeTrue();
             value.Should().Be(expected);
+            double.IsNegative(value).Should().Be(double.IsNegative(expected), "negative zero and zero are different values");
             ReaderText(text).GetDouble().Should().Be(expected);
             using var document = Document(text);
             document.RootElement.GetDouble().Should().Be(expected);

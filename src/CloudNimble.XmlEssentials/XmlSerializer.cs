@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +38,12 @@ namespace CloudNimble.Text.Xml
         private static readonly XmlWriterOptions DomWriterOptions = new() { Version = XmlVersion.Version11 };
 
         /// <summary>
+        /// The size of the stack buffer a reader is given when a document is deserialized from memory: room
+        /// for a decoded value and for the decoded attribute values of one start tag.
+        /// </summary>
+        internal const int ReaderScratchByteCount = 512;
+
+        /// <summary>
         /// Message for <see cref="RequiresDynamicCodeAttribute"/> on reflection overloads.
         /// </summary>
         internal const string DynMsg = "XML serialization and deserialization might require types that cannot be statically analyzed and might not be supported for trimming or AOT. Use the overload that takes an XmlTypeInfo or XmlSerializerContext, or make sure all of the required types are preserved.";
@@ -54,7 +61,9 @@ namespace CloudNimble.Text.Xml
         /// Gets whether options with no <see cref="XmlSerializerOptions.TypeInfoResolver"/> fall back to
         /// <see cref="DefaultXmlTypeInfoResolver"/>. It is <see langword="true"/> unless the
         /// <c>CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault</c> switch is <see langword="false"/>.
+        /// Native AOT consumers set that switch to <see langword="false"/> so the trimmer can drop the reflection resolver.
         /// </summary>
+        [FeatureSwitchDefinition("CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault")]
         public static bool IsReflectionEnabledByDefault { get; internal set; } =
             !AppContext.TryGetSwitch("CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault", out var enabled) || enabled;
 
@@ -95,9 +104,31 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8Xml">The UTF-8 document.</param>
         /// <param name="typeInfo">The type info.</param>
         /// <returns>The value.</returns>
+        /// <remarks>
+        /// The reader's scratch buffer is on the stack, so a document whose values need decoding is read
+        /// without a buffer being allocated for them. It is taken in this frame and the reader is created in
+        /// the next one: a reader that shares a frame with a stack buffer is copied when it is constructed,
+        /// which cost 18 ns when measured.
+        /// </remarks>
+        [SkipLocalsInit]
         internal static TValue? Read<TValue>(ReadOnlySpan<byte> utf8Xml, XmlTypeInfo typeInfo)
         {
-            var reader = new Utf8XmlReader(utf8Xml, typeInfo.Options.ToReaderOptions());
+            Span<byte> scratch = stackalloc byte[ReaderScratchByteCount];
+            return Read<TValue>(utf8Xml, scratch, typeInfo);
+        }
+
+        /// <summary>
+        /// Reads one document with a reader that uses <paramref name="scratch"/> before it allocates.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
+        /// <param name="utf8Xml">The UTF-8 document.</param>
+        /// <param name="scratch">Working memory for the reader.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <returns>The value.</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static TValue? Read<TValue>(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, XmlTypeInfo typeInfo)
+        {
+            var reader = new Utf8XmlReader(utf8Xml, scratch, typeInfo.Options.ToReaderOptions());
             return ReadDocument<TValue>(ref reader, typeInfo);
         }
 

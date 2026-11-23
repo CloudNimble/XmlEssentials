@@ -1,6 +1,5 @@
 ---
 title: XmlCommentHandling
-description: "How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlCommentHandling', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `XmlReaderOptions.CommentHandling`', '- `XmlTokenType.Comment`', '- `Utf8XmlReader.GetComment`']
@@ -20,10 +19,6 @@ keywords: ['XmlCommentHandling', 'CloudNimble.Text.Xml.XmlCommentHandling', 'Clo
 CloudNimble.Text.Xml.XmlCommentHandling
 ```
 
-## Summary
-
-How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens.
-
 ## Usage
 
 # Usage
@@ -33,12 +28,6 @@ Set `XmlReaderOptions.CommentHandling` to control `<!-- ... -->` tokens:
 - `Skip` — consume comments and do not report them. This is the `new XmlReaderOptions()` default.
 - `Allow` — report `XmlTokenType.Comment`; read the payload with `GetComment()`.
 - `Disallow` — throw `XmlException`. This is the enum's zero value.
-
-## Remarks
-
-The default for [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) is [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
-[XmlCommentHandling.Disallow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) is the enum zero-value, so construct options with
-`new XmlReaderOptions()` rather than `default` when you want the documented default.
 
 ## Examples
 
@@ -90,9 +79,9 @@ Comments containing `--` are always well-formedness errors, regardless of this s
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Disallow` | 0 | Comments are a well-formedness error and throw [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException). |
-| `Skip` | 1 | Comments are consumed and not reported. This is the [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) default. |
-| `Allow` | 2 | Comments are reported as [XmlTokenType.Comment](/api-reference/CloudNimble/Text/Xml/XmlTokenType). |
+| `Disallow` | 0 |  |
+| `Skip` | 1 |  |
+| `Allow` | 2 |  |
 
 ## Related APIs
 

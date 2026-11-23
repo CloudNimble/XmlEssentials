@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -16,6 +18,16 @@ namespace CloudNimble.Text.Xml.Serialization
     {
 
         #region Fields
+
+        /// <summary>
+        /// For each slot, whether it holds a box that stays in the values array from one object to the next.
+        /// </summary>
+        private readonly bool[] _heldSlots;
+
+        /// <summary>
+        /// A values array no reader is using, or null.
+        /// </summary>
+        private object?[]? _spareValues;
 
         /// <summary>
         /// The members written as attributes, in write order.
@@ -140,6 +152,26 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
+            _heldSlots = new bool[slotCount];
+            if (constructor is not null)
+            {
+                var filled = new List<Type>();
+                for (var m = 0; m < properties.Length; m++)
+                {
+                    filled.Clear();
+                    for (var i = 0; i < constructorMap.Length; i++)
+                    {
+                        if (constructorMap[i] == m)
+                        {
+                            filled.Add(parameters[i].ParameterType);
+                        }
+                    }
+
+                    properties[m].UseHeldBox(CollectionsMarshal.AsSpan(filled));
+                    _heldSlots[properties[m].Index] = properties[m].CreateHeldBox() is not null;
+                }
+            }
+
             var attributes = new List<XmlBoundProperty>();
             var content = new List<XmlBoundProperty>();
             var elements = new List<XmlBoundProperty>();
@@ -183,6 +215,59 @@ namespace CloudNimble.Text.Xml.Serialization
             Elements = [.. elements];
             Required = [.. required];
             UnwrappedCollections = [.. unwrapped];
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Returns the array that holds an object's values until its constructor is called.
+        /// </summary>
+        /// <returns>
+        /// An array of <see cref="SlotCount"/> slots. A slot whose member holds its value in a reusable box
+        /// has that box in it; every other slot is null.
+        /// </returns>
+        /// <remarks>
+        /// One array is kept between objects, so reading a list of records allocates the records and not an
+        /// array and a box per value beside each of them. The array is handed to one reader at a time: a
+        /// second thread, or the same type nested inside itself, finds none kept and gets a new one.
+        /// </remarks>
+        internal object?[] RentValues()
+        {
+            if (Interlocked.Exchange(ref _spareValues, null) is { } spare)
+            {
+                return spare;
+            }
+
+            var values = new object?[SlotCount];
+            foreach (var property in Properties)
+            {
+                values[property.Index] = property.CreateHeldBox();
+            }
+
+            return values;
+        }
+
+        /// <summary>
+        /// Keeps <paramref name="values"/> for the next object, once the constructor has taken what it needs.
+        /// </summary>
+        /// <param name="values">An array from <see cref="RentValues"/>.</param>
+        /// <remarks>
+        /// Everything but the reusable boxes is dropped, so the array does not keep the last object's
+        /// strings and children alive. An array is not returned when reading fails; it is simply let go.
+        /// </remarks>
+        internal void ReturnValues(object?[] values)
+        {
+            for (var i = 0; i < values.Length; i++)
+            {
+                if (!_heldSlots[i])
+                {
+                    values[i] = null;
+                }
+            }
+
+            Volatile.Write(ref _spareValues, values);
         }
 
         #endregion

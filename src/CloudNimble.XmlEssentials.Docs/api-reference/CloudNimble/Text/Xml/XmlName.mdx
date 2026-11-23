@@ -1,6 +1,5 @@
 ---
 title: XmlName
-description: "A namespace-qualified XML name: local name, namespace URI, and optional prefix."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlName', 'CloudNimble.Text.Xml.XmlName', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'System.IEquatable<CloudNimble.Text.Xml.XmlName>']
@@ -20,20 +19,9 @@ keywords: ['XmlName', 'CloudNimble.Text.Xml.XmlName', 'CloudNimble.Text.Xml', 's
 CloudNimble.Text.Xml.XmlName
 ```
 
-## Summary
-
-A namespace-qualified XML name: local name, namespace URI, and optional prefix.
-
-## Remarks
-
-Equality is the ordinal combination of [XmlName.LocalName](/api-reference/CloudNimble/Text/Xml/XmlName#localname) and [XmlName.NamespaceUri](/api-reference/CloudNimble/Text/Xml/XmlName#namespaceuri).
-[XmlName.Prefix](/api-reference/CloudNimble/Text/Xml/XmlName#prefix) is serialization sugar and is not significant for equality or mapping.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates a qualified name.
 
 #### Syntax
 
@@ -45,21 +33,9 @@ public XmlName(string localName, string namespaceUri = null, string prefix = nul
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. Cannot be null or whitespace. |
-| `namespaceUri` | `string?` | The namespace URI, or null for no namespace. |
-| `prefix` | `string?` | The prefix, or null for none. Not used in equality. |
-
-#### Examples
-
-```csharp
-var name = new XmlName("Person", "https://example.com", "e");
-Console.WriteLine(name); // e:Person
-```
-
-#### Remarks
-
-Pass a namespace URI without a prefix when comparing names. Prefix is only written
-by [XmlName.ToString](/api-reference/CloudNimble/Text/Xml/XmlName#tostring) when it is non-empty.
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
+| `prefix` | `string?` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -85,8 +61,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalName
 
-Gets the local name.
-
 #### Syntax
 
 ```csharp
@@ -99,8 +73,6 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUri
 
-Gets the namespace URI, or an empty string when the name is in no namespace.
-
 #### Syntax
 
 ```csharp
@@ -112,8 +84,6 @@ public string NamespaceUri { get; }
 Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Prefix
-
-Gets the prefix, or an empty string when the name is unprefixed.
 
 #### Syntax
 
@@ -129,8 +99,6 @@ Type: `string`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
 
-Returns true when *other* has the same local name and namespace URI.
-
 #### Syntax
 
 ```csharp
@@ -141,16 +109,13 @@ public bool Equals(CloudNimble.Text.Xml.XmlName other)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `other` | `CloudNimble.Text.Xml.XmlName` | The name to compare. |
+| `other` | `CloudNimble.Text.Xml.XmlName` | - |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the names are equal.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
-
-Returns true when *obj* is an [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) equal to this instance.
 
 #### Syntax
 
@@ -162,12 +127,11 @@ public override bool Equals(object obj)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `obj` | `object?` | The object to compare. |
+| `obj` | `object?` | - |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the names are equal.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
 
@@ -232,8 +196,6 @@ Type: `bool`
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
 
-Returns a hash code over [XmlName.LocalName](/api-reference/CloudNimble/Text/Xml/XmlName#localname) and [XmlName.NamespaceUri](/api-reference/CloudNimble/Text/Xml/XmlName#namespaceuri).
-
 #### Syntax
 
 ```csharp
@@ -243,7 +205,6 @@ public override int GetHashCode()
 #### Returns
 
 Type: `int`
-The hash code.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
 
@@ -324,9 +285,6 @@ Type: `bool`
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
 
-Returns `prefix:local` when a prefix is set, `{uri}local` when a namespace is set,
-otherwise the local name.
-
 #### Syntax
 
 ```csharp
@@ -336,7 +294,6 @@ public override string ToString()
 #### Returns
 
 Type: `string`
-A display form of the name.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
 

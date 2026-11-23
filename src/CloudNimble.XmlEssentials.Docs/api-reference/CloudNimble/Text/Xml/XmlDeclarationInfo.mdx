@@ -1,6 +1,5 @@
 ---
 title: XmlDeclarationInfo
-description: "Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `XmlDocument`', '- `XmlVersion`', '- `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`', '- `Utf8XmlWriter`']
@@ -20,10 +19,6 @@ keywords: ['XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'Clo
 CloudNimble.Text.Xml.XmlDeclarationInfo
 ```
 
-## Summary
-
-Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed.
-
 ## Usage
 
 # Usage
@@ -37,10 +32,6 @@ Console.WriteLine(declaration.Version);    // 1.0
 Console.WriteLine(declaration.Encoding);   // utf-8
 Console.WriteLine(declaration.Standalone); // true
 ```
-
-## Remarks
-
-Mutable trees use `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode` instead.
 
 ## Examples
 
@@ -77,8 +68,6 @@ Mutable trees use `Nodes.XmlDeclarationNode` instead. Mutating that type cannot 
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates declaration info.
-
 #### Syntax
 
 ```csharp
@@ -89,9 +78,9 @@ public XmlDeclarationInfo(string version, string encoding, bool? standalone)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `version` | `string` | The version string. |
-| `encoding` | `string` | The encoding string. |
-| `standalone` | `bool?` | The standalone flag, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `version` | `string` | - |
+| `encoding` | `string` | - |
+| `standalone` | `bool?` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -117,8 +106,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encoding
 
-Gets the declared encoding. Always `utf-8` for documents this stack accepts.
-
 #### Syntax
 
 ```csharp
@@ -131,8 +118,6 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Standalone
 
-Gets the standalone pseudo-attribute, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when omitted.
-
 #### Syntax
 
 ```csharp
@@ -144,8 +129,6 @@ public bool? Standalone { get; }
 Type: `bool?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
-
-Gets the declared version, `1.0` or `1.1`.
 
 #### Syntax
 

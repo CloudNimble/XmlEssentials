@@ -111,6 +111,22 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Read_ByteOrderMarkBytesAfterTheStartOfTheDocument_AreTheCharacterTheyEncode()
+        {
+            // U+FEFF is a legal character in content. Only the first three bytes of a document are a byte order mark,
+            // wherever a buffer happens to begin.
+            const string mark = "\uFEFF";
+            var xml = Encoding.UTF8.GetBytes("<e a=\"" + mark + "v\">" + mark + "text" + mark + "<!--" + mark + "--></e>");
+            var options = new XmlReaderOptions { CommentHandling = XmlCommentHandling.Allow };
+            var expected = XmlReaderHarness.Tokens(xml, options);
+            expected.Should().Equal("StartElement :e{} open @:a{}=[" + mark + "v]", "Text :{} [" + mark + "text" + mark + "]", "Comment :{} [" + mark + "]", "EndElement :e{}");
+            for (var split = 1; split < xml.Length; split++)
+            {
+                XmlReaderHarness.TokensSplitAt(xml, split, options).Should().Equal(expected, "the tokens must not depend on a split at byte {0}", split);
+            }
+        }
+
+        [TestMethod]
         public void Read_WellFormed_BomThenDeclaration()
         {
             var xml = new byte[] { 0xEF, 0xBB, 0xBF }.Concat("<?xml version=\"1.0\"?><e/>"u8.ToArray()).ToArray();
@@ -160,9 +176,9 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Read_WellFormed_EmptyFragment()
+        public void Read_EmptyInput_WhenMultipleRootsAreAllowed_HasNoTokens()
         {
-            XmlReaderHarness.MustRead("", new XmlReaderOptions { AllowMultipleRoots = true });
+            XmlReaderHarness.Tokens(""u8, new XmlReaderOptions { AllowMultipleRoots = true }).Should().BeEmpty();
         }
 
         [TestMethod]

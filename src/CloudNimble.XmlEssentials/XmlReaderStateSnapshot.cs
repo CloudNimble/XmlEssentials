@@ -38,6 +38,11 @@ namespace CloudNimble.Text.Xml
         public required string[] ElementLocalNames { get; init; }
 
         /// <summary>
+        /// Gets the prefix each open element was started with, or an empty string. An end tag must repeat it.
+        /// </summary>
+        public required string[] ElementPrefixes { get; init; }
+
+        /// <summary>
         /// Gets, per open element, whether it has reported character data, has a child element,
         /// or is under <c>xml:space="preserve"</c>. Whitespace handling after a resume depends on all three.
         /// </summary>
@@ -137,6 +142,7 @@ namespace CloudNimble.Text.Xml
                 Depth = Depth,
                 DocumentBytesConsumed = documentBytesConsumed,
                 ElementLocalNames = ElementLocalNames,
+                ElementPrefixes = ElementPrefixes,
                 ElementFlags = ElementFlags,
                 ElementNamespaceUris = ElementNamespaceUris,
                 Finished = Finished,

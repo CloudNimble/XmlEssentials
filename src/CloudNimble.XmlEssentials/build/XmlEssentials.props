@@ -1,0 +1,9 @@
+<Project>
+	<PropertyGroup>
+		<InterceptorsNamespaces>$(InterceptorsNamespaces);CloudNimble.Text.Xml.Generated</InterceptorsNamespaces>
+	</PropertyGroup>
+	<ItemGroup>
+		<CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="XmlEssentialsNamespace" />
+		<CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="XmlEssentialsContext" />
+	</ItemGroup>
+</Project>

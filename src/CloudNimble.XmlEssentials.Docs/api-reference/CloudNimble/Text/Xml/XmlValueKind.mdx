@@ -1,6 +1,5 @@
 ---
 title: XmlValueKind
-description: "Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlValueKind', 'CloudNimble.Text.Xml.XmlValueKind', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', '# Related APIs', '- `XmlElement`', '- `XmlTokenType`', '- `CloudNimble.Text.Xml.Nodes.XmlNode`', '- `XmlDeclarationInfo`']
@@ -19,10 +18,6 @@ keywords: ['XmlValueKind', 'CloudNimble.Text.Xml.XmlValueKind', 'CloudNimble.Tex
 ```csharp
 CloudNimble.Text.Xml.XmlValueKind
 ```
-
-## Summary
-
-Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree.
 
 ## Usage
 
@@ -69,17 +64,17 @@ Switch on `ValueKind` before calling typed getters. Mixed content can be text, C
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Undefined` | 0 | No node is selected. |
-| `Document` | 1 | The document node (immutable [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) only). |
-| `Element` | 2 | An element with a start and end tag. |
-| `EmptyElement` | 3 | An empty element (`<e/>`). |
-| `Attribute` | 4 | An attribute. |
-| `Text` | 5 | Character data. |
-| `CData` | 6 | A CDATA section. |
-| `Comment` | 7 | A comment. |
-| `ProcessingInstruction` | 8 | A processing instruction other than the XML declaration. |
-| `XmlDeclaration` | 9 | The XML declaration. |
-| `Nil` | 10 | An element with `xsi:nil="true"`. |
+| `Undefined` | 0 |  |
+| `Document` | 1 |  |
+| `Element` | 2 |  |
+| `EmptyElement` | 3 |  |
+| `Attribute` | 4 |  |
+| `Text` | 5 |  |
+| `CData` | 6 |  |
+| `Comment` | 7 |  |
+| `ProcessingInstruction` | 8 |  |
+| `XmlDeclaration` | 9 |  |
+| `Nil` | 10 |  |
 
 ## Related APIs
 

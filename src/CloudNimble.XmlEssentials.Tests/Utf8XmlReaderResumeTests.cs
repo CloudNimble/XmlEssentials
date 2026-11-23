@@ -264,12 +264,21 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Resume_EverySplitOffset_DrainsNamespacedDocument()
+        public void Resume_EverySplitOffset_ReadsTheNamespacedDocumentTheSame()
         {
             var xml = "<?xml version=\"1.0\"?><p:a xmlns:p=\"urn:x\" p:id=\"1\">hello</p:a>"u8.ToArray();
+            var options = new XmlReaderOptions();
             for (var split = 1; split < xml.Length; split++)
             {
-                DrainSplit(xml, split);
+                XmlReaderHarness.TokensSplitAt(xml, split, options).Should().Equal(
+                    [
+                        "XmlDeclaration :xml{} [version=\"1.0\"]",
+                        "StartElement p:a{urn:x} open @xmlns:p{http://www.w3.org/2000/xmlns/}=[urn:x] @p:id{urn:x}=[1]",
+                        "Text :{} [hello]",
+                        "EndElement p:a{urn:x}",
+                    ],
+                    "the tokens must not depend on a split at byte {0}",
+                    split);
             }
         }
 
@@ -397,29 +406,6 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var consumed = (int)reader.BytesConsumed;
             return first[consumed..].Concat(second).ToArray();
-        }
-
-        private static void DrainSplit(byte[] xml, int split)
-        {
-            try
-            {
-                var first = xml[..split];
-                var second = xml[split..];
-                var reader = new Utf8XmlReader(first, false, default);
-                while (reader.Read())
-                {
-                }
-
-                var combined = ConcatRemainder(reader, first, second);
-                var resumed = new Utf8XmlReader(combined, true, reader.CurrentState);
-                while (resumed.Read())
-                {
-                }
-            }
-            catch (XmlException ex)
-            {
-                throw new XmlException($"split {split}: {ex.Message}", ex);
-            }
         }
 
         #endregion

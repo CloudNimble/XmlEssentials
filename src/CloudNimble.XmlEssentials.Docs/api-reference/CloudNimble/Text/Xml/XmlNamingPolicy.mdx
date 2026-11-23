@@ -1,6 +1,5 @@
 ---
 title: XmlNamingPolicy
-description: "Converts CLR member and type names to XML local names."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlNamingPolicy', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml', 'class']
@@ -18,15 +17,6 @@ keywords: ['XmlNamingPolicy', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimb
 CloudNimble.Text.Xml.XmlNamingPolicy
 ```
 
-## Summary
-
-Converts CLR member and type names to XML local names.
-
-## Remarks
-
-Identity is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) on [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), matching
-`System.Text.Json.JsonNamingPolicy`.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
@@ -43,8 +33,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CamelCase
 
-Gets a policy that lowercases the first character.
-
 #### Syntax
 
 ```csharp
@@ -56,8 +44,6 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy CamelCase { get; }
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> KebabCaseLower
-
-Gets a policy that joins words with `-` in lowercase.
 
 #### Syntax
 
@@ -71,8 +57,6 @@ Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> KebabCaseUpper
 
-Gets a policy that joins words with `-` in uppercase.
-
 #### Syntax
 
 ```csharp
@@ -84,8 +68,6 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy KebabCaseUpper { get; }
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PascalCase
-
-Gets a policy that uppercases the first character.
 
 #### Syntax
 
@@ -99,8 +81,6 @@ Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SnakeCaseLower
 
-Gets a policy that joins words with `_` in lowercase.
-
 #### Syntax
 
 ```csharp
@@ -112,8 +92,6 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy SnakeCaseLower { get; }
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SnakeCaseUpper
-
-Gets a policy that joins words with `_` in uppercase.
 
 #### Syntax
 
@@ -129,8 +107,6 @@ Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConvertName <Badge color="orange">Abstract</Badge>
 
-Converts *name* to an XML local name.
-
 #### Syntax
 
 ```csharp
@@ -141,12 +117,11 @@ public abstract string ConvertName(string name)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The CLR name. |
+| `name` | `string` | - |
 
 #### Returns
 
 Type: `string`
-The XML local name.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

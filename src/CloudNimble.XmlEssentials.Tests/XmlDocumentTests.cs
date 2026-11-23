@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using CloudNimble.Text.Xml;
@@ -59,6 +60,55 @@ namespace CloudNimble.XmlEssentials.Tests
             using var document = XmlDocument.Parse("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
             document.RootElement.IsNil.Should().BeTrue();
             document.RootElement.GetString().Should().BeNull();
+        }
+
+        [TestMethod]
+        public void TokenType_ForEveryKindOfNode_IsTheReaderTokenItCameFrom()
+        {
+            const string xsi = "http://www.w3.org/2001/XMLSchema-instance";
+            using var document = XmlDocument.Parse(
+                "<r a=\"1\"><full>t</full><empty/><nil xmlns:xsi=\"" + xsi + "\" xsi:nil=\"true\"/>text<![CDATA[c]]><!--m--><?p d?></r>",
+                new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+            var kinds = new List<string> { "r:" + document.RootElement.TokenType, "a:" + document.RootElement.GetAttribute("a").TokenType };
+            foreach (var child in document.RootElement.EnumerateChildren())
+            {
+                kinds.Add(child.TokenType.ToString());
+            }
+
+            kinds.Should().Equal("r:StartElement", "a:Attribute", "StartElement", "StartElement", "StartElement", "Text", "CData", "Comment", "ProcessingInstruction");
+            document.RootElement.GetRawXml().Should().Be("<r a=\"1\"><full>t</full><empty/><nil xmlns:xsi=\"" + xsi + "\" xsi:nil=\"true\"/>text<![CDATA[c]]><!--m--><?p d?></r>");
+        }
+
+        [TestMethod]
+        [DataRow("<?xml version=\"1.0\" encoding=\"utf-8\"?>", DisplayName = "1.0")]
+        [DataRow("<?xml version=\"1.1\" encoding=\"utf-8\"?>", DisplayName = "1.1")]
+        [DataRow("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>", DisplayName = "1.0 standalone")]
+        [DataRow("<?xml version=\"1.1\" encoding=\"utf-8\" standalone=\"yes\"?>", DisplayName = "1.1 standalone")]
+        [DataRow("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>", DisplayName = "1.0 not standalone")]
+        [DataRow("<?xml version=\"1.1\" encoding=\"utf-8\" standalone=\"no\"?>", DisplayName = "1.1 not standalone")]
+        public void WriteTo_ADocumentWithADeclaration_WritesTheDeclarationItWasParsedWith(string declaration)
+        {
+            using var document = XmlDocument.Parse(declaration + "<e/>");
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = new Utf8XmlWriter(buffer))
+            {
+                document.WriteTo(writer);
+            }
+
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be(declaration + "<e/>");
+        }
+
+        [TestMethod]
+        public void WriteTo_ADeclarationWithoutAnEncoding_NamesTheEncodingItIsWrittenIn()
+        {
+            using var document = XmlDocument.Parse("<?xml version='1.0'?><e/>");
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = new Utf8XmlWriter(buffer))
+            {
+                document.WriteTo(writer);
+            }
+
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\"?><e/>");
         }
 
         [TestMethod]
@@ -232,10 +282,11 @@ namespace CloudNimble.XmlEssentials.Tests
         public void GetDateTime_Guid_Decimal_Int64()
         {
             using var dt = XmlDocument.Parse("<e>2020-01-02T03:04:05Z</e>");
-            dt.RootElement.GetDateTime().Year.Should().Be(2020);
-            dt.RootElement.GetDateTimeOffset().Year.Should().Be(2020);
+            dt.RootElement.GetDateTime().Should().Be(new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc));
+            dt.RootElement.GetDateTime().Kind.Should().Be(DateTimeKind.Utc);
+            dt.RootElement.GetDateTimeOffset().Should().Be(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero));
             using var g = XmlDocument.Parse("<e>00112233-4455-6677-8899-aabbccddeeff</e>");
-            g.RootElement.GetGuid().Should().NotBe(Guid.Empty);
+            g.RootElement.GetGuid().Should().Be(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"));
             using var d = XmlDocument.Parse("<e>1.5</e>");
             d.RootElement.GetDecimal().Should().Be(1.5m);
             using var l = XmlDocument.Parse("<e>99</e>");

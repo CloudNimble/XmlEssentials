@@ -30,8 +30,17 @@ namespace CloudNimble.XmlEssentials.Tests
             runtime.GetName().Name.Should().Be("CloudNimble.XmlEssentials");
 
             var names = runtime.GetReferencedAssemblies().Select(static a => a.Name!);
-            names.Should().NotContain(static n => n.StartsWith("System.Xml", StringComparison.Ordinal));
-            names.Should().NotContain("System.Private.Xml");
+            names.Where(static n => n.StartsWith("System.Xml", StringComparison.Ordinal) || n is "System.Private.Xml").Should().BeEmpty();
+        }
+
+        /// <summary>
+        /// The unit tests must not use BCL XML either: an expected value parsed by it would hide a defect both share.
+        /// </summary>
+        [TestMethod]
+        public void TestAssembly_DoesNotReferenceBclXml()
+        {
+            var names = typeof(ForbiddenReferencesTests).Assembly.GetReferencedAssemblies().Select(static a => a.Name!);
+            names.Where(static n => n.StartsWith("System.Xml", StringComparison.Ordinal) || n is "System.Private.Xml").Should().BeEmpty();
         }
 
         #endregion

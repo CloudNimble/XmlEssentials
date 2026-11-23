@@ -1,6 +1,5 @@
 ---
 title: Utf8XmlWriter
-description: "A UTF-8 XML writer analogous to `Utf8JsonWriter`."
 icon: lock
 tag: "SEALED"
 keywords: ['Utf8XmlWriter', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.Text.Xml', 'class', '# Related APIs', '- `XmlWriterOptions`', '- `XmlEncodedText`', '- `XmlVersion`', '- `XmlException`']
@@ -17,10 +16,6 @@ keywords: ['Utf8XmlWriter', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.T
 ```csharp
 CloudNimble.Text.Xml.Utf8XmlWriter
 ```
-
-## Summary
-
-A UTF-8 XML writer analogous to `Utf8JsonWriter`.
 
 ## Usage
 
@@ -41,12 +36,6 @@ using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDecl
 ```
 
 Pass `new XmlWriterOptions { Indented = true }` for pretty-print. A max-* of `0` means the DoS table default (depth 64, 1000 attributes, 1024-byte names).
-
-## Remarks
-
-Destinations are [IBufferWriter`1](https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1) or [Stream](https://learn.microsoft.com/dotnet/api/system.io.stream). Names and values are UTF-8.
-A max-* of 0 on [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) uses the DoS table default. Dispose flushes and throws
-when elements are still open unless [XmlWriterOptions.SkipValidation](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#skipvalidation) is true.
 
 ## Examples
 
@@ -120,8 +109,6 @@ In XML 1.1, RestrictedChar in values is written as a hexadecimal numeric charact
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates a writer that appends UTF-8 XML to *bufferWriter*.
-
 #### Syntax
 
 ```csharp
@@ -132,12 +119,10 @@ public Utf8XmlWriter(System.Buffers.IBufferWriter<byte> bufferWriter, CloudNimbl
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The destination. |
-| `options` | `CloudNimble.Text.Xml.XmlWriterOptions` | Writer options. |
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
+| `options` | `CloudNimble.Text.Xml.XmlWriterOptions` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates a writer that writes UTF-8 XML to *utf8Xml*.
 
 #### Syntax
 
@@ -149,8 +134,8 @@ public Utf8XmlWriter(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlWriterOpt
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `options` | `CloudNimble.Text.Xml.XmlWriterOptions` | Writer options. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `options` | `CloudNimble.Text.Xml.XmlWriterOptions` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -166,8 +151,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BytesCommitted
 
-Gets the number of bytes flushed to the output.
-
 #### Syntax
 
 ```csharp
@@ -179,8 +162,6 @@ public long BytesCommitted { get; }
 Type: `long`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BytesPending
-
-Gets the number of bytes buffered and not yet flushed.
 
 #### Syntax
 
@@ -194,8 +175,6 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CurrentDepth
 
-Gets the current element depth. The root is 1 while its start tag is open or it has content.
-
 #### Syntax
 
 ```csharp
@@ -207,8 +186,6 @@ public int CurrentDepth { get; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Options
-
-Gets the options used to create the writer.
 
 #### Syntax
 
@@ -285,8 +262,6 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Flush
 
-Flushes buffered bytes to the destination.
-
 #### Syntax
 
 ```csharp
@@ -294,8 +269,6 @@ public void Flush()
 ```
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> FlushAsync
-
-Flushes buffered bytes to the destination asynchronously.
 
 #### Syntax
 
@@ -307,12 +280,11 @@ public System.Threading.Tasks.Task FlushAsync(System.Threading.CancellationToken
 
 | Name | Type | Description |
 |------|------|-------------|
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the flush finishes.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -379,8 +351,6 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Reset
 
-Resets the writer to start a new document on the same destination.
-
 #### Syntax
 
 ```csharp
@@ -388,8 +358,6 @@ public void Reset()
 ```
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Reset
-
-Resets the writer onto a new [IBufferWriter`1](https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1) destination.
 
 #### Syntax
 
@@ -401,11 +369,9 @@ public void Reset(System.Buffers.IBufferWriter<byte> bufferWriter)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The new destination. |
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Reset
-
-Resets the writer onto a new [Stream](https://learn.microsoft.com/dotnet/api/system.io.stream) destination.
 
 #### Syntax
 
@@ -417,7 +383,7 @@ public void Reset(System.IO.Stream utf8Xml)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The new destination. |
+| `utf8Xml` | `System.IO.Stream` | - |
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -435,8 +401,6 @@ Type: `string?`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeNumber
 
-Writes a complete attribute with an integer value.
-
 #### Syntax
 
 ```csharp
@@ -447,12 +411,10 @@ public void WriteAttributeNumber(string name, int value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The attribute name. |
-| `value` | `int` | The value. |
+| `name` | `string` | - |
+| `value` | `int` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeNumber
-
-Writes a complete attribute with a 64-bit integer value.
 
 #### Syntax
 
@@ -464,12 +426,10 @@ public void WriteAttributeNumber(string name, long value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The attribute name. |
-| `value` | `long` | The value. |
+| `name` | `string` | - |
+| `value` | `long` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeNumber
-
-Writes a complete attribute with a double value.
 
 #### Syntax
 
@@ -481,12 +441,10 @@ public void WriteAttributeNumber(string name, double value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The attribute name. |
-| `value` | `double` | The value. |
+| `name` | `string` | - |
+| `value` | `double` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeString
-
-Writes a complete attribute.
 
 #### Syntax
 
@@ -498,12 +456,10 @@ public void WriteAttributeString(string name, string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The attribute name. |
-| `value` | `string?` | The value. |
+| `name` | `string` | - |
+| `value` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeString
-
-Writes a complete attribute in *namespaceUri*.
 
 #### Syntax
 
@@ -515,13 +471,11 @@ public void WriteAttributeString(string localName, string namespaceUri, string v
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
-| `value` | `string?` | The value. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
+| `value` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeString
-
-Writes a complete attribute with an explicit prefix.
 
 #### Syntax
 
@@ -533,14 +487,12 @@ public void WriteAttributeString(string prefix, string localName, string namespa
 
 | Name | Type | Description |
 |------|------|-------------|
-| `prefix` | `string?` | The prefix. |
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
-| `value` | `string?` | The value. |
+| `prefix` | `string?` | - |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
+| `value` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeString
-
-Writes a complete UTF-8 attribute.
 
 #### Syntax
 
@@ -552,12 +504,10 @@ public void WriteAttributeString(System.ReadOnlySpan<byte> utf8Name, System.Read
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Name` | `System.ReadOnlySpan<byte>` | The UTF-8 name. |
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 value. |
+| `utf8Name` | `System.ReadOnlySpan<byte>` | - |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttributeString
-
-Writes a complete attribute.
 
 #### Syntax
 
@@ -569,12 +519,10 @@ public void WriteAttributeString(System.ReadOnlySpan<char> name, System.ReadOnly
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `System.ReadOnlySpan<char>` | The name. |
-| `value` | `System.ReadOnlySpan<char>` | The value. |
+| `name` | `System.ReadOnlySpan<char>` | - |
+| `value` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteBase64StringSegment
-
-Writes a base64 segment, possibly incomplete.
 
 #### Syntax
 
@@ -586,12 +534,10 @@ public void WriteBase64StringSegment(System.ReadOnlySpan<byte> value, bool isFin
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<byte>` | The bytes. |
-| `isFinalSegment` | `bool` | True when this is the last segment. |
+| `value` | `System.ReadOnlySpan<byte>` | - |
+| `isFinalSegment` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteBase64StringValue
-
-Writes base64 text.
 
 #### Syntax
 
@@ -603,11 +549,9 @@ public void WriteBase64StringValue(System.ReadOnlySpan<byte> bytes)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bytes` | `System.ReadOnlySpan<byte>` | The bytes to encode. |
+| `bytes` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteBooleanValue
-
-Writes `true` or `false`.
 
 #### Syntax
 
@@ -619,11 +563,9 @@ public void WriteBooleanValue(bool value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `bool` | The value. |
+| `value` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteCData
-
-Writes a CDATA section.
 
 #### Syntax
 
@@ -635,11 +577,9 @@ public void WriteCData(string text)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `text` | `string` | The CDATA payload. |
+| `text` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteCData
-
-Writes a CDATA section.
 
 #### Syntax
 
@@ -651,11 +591,9 @@ public void WriteCData(System.ReadOnlySpan<char> text)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `text` | `System.ReadOnlySpan<char>` | The CDATA payload. |
+| `text` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteCData
-
-Writes a CDATA section.
 
 #### Syntax
 
@@ -667,11 +605,9 @@ public void WriteCData(System.ReadOnlySpan<byte> utf8Value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 CDATA payload. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteComment
-
-Writes a comment.
 
 #### Syntax
 
@@ -683,11 +619,9 @@ public void WriteComment(string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `string` | The comment payload. |
+| `value` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteComment
-
-Writes a comment.
 
 #### Syntax
 
@@ -699,11 +633,9 @@ public void WriteComment(System.ReadOnlySpan<char> value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<char>` | The comment payload. |
+| `value` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteComment
-
-Writes a comment.
 
 #### Syntax
 
@@ -715,11 +647,9 @@ public void WriteComment(System.ReadOnlySpan<byte> utf8Value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 comment payload. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteDefaultNamespace
-
-Writes a default xmlns declaration.
 
 #### Syntax
 
@@ -731,11 +661,9 @@ public void WriteDefaultNamespace(string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `namespaceUri` | `string` | The namespace URI. |
+| `namespaceUri` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteDefaultNamespace
-
-Writes a default xmlns declaration.
 
 #### Syntax
 
@@ -747,11 +675,9 @@ public void WriteDefaultNamespace(System.ReadOnlySpan<byte> utf8NamespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBase64String
-
-Writes an element with a base64 value.
 
 #### Syntax
 
@@ -763,12 +689,10 @@ public void WriteElementBase64String(string localName, System.ReadOnlySpan<byte>
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `bytes` | `System.ReadOnlySpan<byte>` | The bytes to encode. |
+| `localName` | `string` | - |
+| `bytes` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBase64String
-
-Writes an element with a base64 value.
 
 #### Syntax
 
@@ -780,12 +704,10 @@ public void WriteElementBase64String(System.ReadOnlySpan<char> localName, System
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
-| `bytes` | `System.ReadOnlySpan<byte>` | The bytes to encode. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
+| `bytes` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBase64String
-
-Writes an element with a base64 value.
 
 #### Syntax
 
@@ -797,12 +719,10 @@ public void WriteElementBase64String(System.ReadOnlySpan<byte> utf8LocalName, Sy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `bytes` | `System.ReadOnlySpan<byte>` | The bytes to encode. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `bytes` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBoolean
-
-Writes an element with a boolean value.
 
 #### Syntax
 
@@ -814,12 +734,10 @@ public void WriteElementBoolean(string localName, bool value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `bool` | The value. |
+| `localName` | `string` | - |
+| `value` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBoolean
-
-Writes an element with a boolean value.
 
 #### Syntax
 
@@ -831,12 +749,10 @@ public void WriteElementBoolean(System.ReadOnlySpan<char> localName, bool value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
-| `value` | `bool` | The value. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
+| `value` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBoolean
-
-Writes an element with a boolean value.
 
 #### Syntax
 
@@ -848,12 +764,10 @@ public void WriteElementBoolean(System.ReadOnlySpan<byte> utf8LocalName, bool va
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `value` | `bool` | The value. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `value` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with an integer value.
 
 #### Syntax
 
@@ -865,12 +779,10 @@ public void WriteElementNumber(string localName, int value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `int` | The value. |
+| `localName` | `string` | - |
+| `value` | `int` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with a 64-bit integer value.
 
 #### Syntax
 
@@ -882,12 +794,10 @@ public void WriteElementNumber(string localName, long value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `long` | The value. |
+| `localName` | `string` | - |
+| `value` | `long` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with a double value.
 
 #### Syntax
 
@@ -899,12 +809,10 @@ public void WriteElementNumber(string localName, double value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `double` | The value. |
+| `localName` | `string` | - |
+| `value` | `double` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with a single value.
 
 #### Syntax
 
@@ -916,12 +824,10 @@ public void WriteElementNumber(string localName, float value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `float` | The value. |
+| `localName` | `string` | - |
+| `value` | `float` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with a decimal value.
 
 #### Syntax
 
@@ -933,12 +839,10 @@ public void WriteElementNumber(string localName, decimal value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `decimal` | The value. |
+| `localName` | `string` | - |
+| `value` | `decimal` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with an unsigned integer value.
 
 #### Syntax
 
@@ -950,12 +854,10 @@ public void WriteElementNumber(string localName, uint value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `uint` | The value. |
+| `localName` | `string` | - |
+| `value` | `uint` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
-
-Writes an element with an unsigned 64-bit integer value.
 
 #### Syntax
 
@@ -967,12 +869,10 @@ public void WriteElementNumber(string localName, ulong value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `ulong` | The value. |
+| `localName` | `string` | - |
+| `value` | `ulong` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element with a string value.
 
 #### Syntax
 
@@ -984,12 +884,10 @@ public void WriteElementString(string localName, string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `string?` | The value, or null for an empty element. |
+| `localName` | `string` | - |
+| `value` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element in *namespaceUri* with a string value.
 
 #### Syntax
 
@@ -1001,13 +899,11 @@ public void WriteElementString(string localName, string namespaceUri, string val
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
-| `value` | `string?` | The value. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
+| `value` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element with an XSD dateTime value.
 
 #### Syntax
 
@@ -1019,12 +915,10 @@ public void WriteElementString(string localName, System.DateTime value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `System.DateTime` | The value. |
+| `localName` | `string` | - |
+| `value` | `System.DateTime` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element with an XSD dateTime value.
 
 #### Syntax
 
@@ -1036,12 +930,10 @@ public void WriteElementString(string localName, System.DateTimeOffset value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `System.DateTimeOffset` | The value. |
+| `localName` | `string` | - |
+| `value` | `System.DateTimeOffset` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element with a GUID value.
 
 #### Syntax
 
@@ -1053,12 +945,10 @@ public void WriteElementString(string localName, System.Guid value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `System.Guid` | The value. |
+| `localName` | `string` | - |
+| `value` | `System.Guid` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element with a string value.
 
 #### Syntax
 
@@ -1070,12 +960,10 @@ public void WriteElementString(System.ReadOnlySpan<char> localName, System.ReadO
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
-| `value` | `System.ReadOnlySpan<char>` | The value. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
+| `value` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
-
-Writes an element with a UTF-8 string value.
 
 #### Syntax
 
@@ -1087,12 +975,10 @@ public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, System.R
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 value. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty element `<localName/>`.
 
 #### Syntax
 
@@ -1104,11 +990,9 @@ public void WriteEmptyElement(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
+| `localName` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty element in *namespaceUri*.
 
 #### Syntax
 
@@ -1120,12 +1004,10 @@ public void WriteEmptyElement(string localName, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty element with an explicit prefix.
 
 #### Syntax
 
@@ -1137,13 +1019,11 @@ public void WriteEmptyElement(string prefix, string localName, string namespaceU
 
 | Name | Type | Description |
 |------|------|-------------|
-| `prefix` | `string?` | The prefix, or null. |
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `prefix` | `string?` | - |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty element `<localName/>`.
 
 #### Syntax
 
@@ -1155,11 +1035,9 @@ public void WriteEmptyElement(System.ReadOnlySpan<char> localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty element in *namespaceUri*.
 
 #### Syntax
 
@@ -1171,12 +1049,10 @@ public void WriteEmptyElement(System.ReadOnlySpan<char> localName, System.ReadOn
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
-| `namespaceUri` | `System.ReadOnlySpan<char>` | The namespace URI. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
+| `namespaceUri` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty UTF-8 element.
 
 #### Syntax
 
@@ -1188,11 +1064,9 @@ public void WriteEmptyElement(System.ReadOnlySpan<byte> utf8LocalName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty UTF-8 element in *utf8NamespaceUri*.
 
 #### Syntax
 
@@ -1204,12 +1078,10 @@ public void WriteEmptyElement(System.ReadOnlySpan<byte> utf8LocalName, System.Re
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty UTF-8 element with an explicit prefix.
 
 #### Syntax
 
@@ -1221,13 +1093,11 @@ public void WriteEmptyElement(System.ReadOnlySpan<byte> utf8Prefix, System.ReadO
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Prefix` | `System.ReadOnlySpan<byte>` | The UTF-8 prefix. |
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+| `utf8Prefix` | `System.ReadOnlySpan<byte>` | - |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEmptyElement
-
-Writes an empty element from cached *localName*.
 
 #### Syntax
 
@@ -1239,11 +1109,9 @@ public void WriteEmptyElement(CloudNimble.Text.Xml.XmlEncodedText localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The encoded local name. |
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEndAttribute
-
-Ends the current attribute.
 
 #### Syntax
 
@@ -1253,8 +1121,6 @@ public void WriteEndAttribute()
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteEndElement
 
-Writes an end tag, using an empty-element closer when the start tag has no content.
-
 #### Syntax
 
 ```csharp
@@ -1263,8 +1129,6 @@ public void WriteEndElement()
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteFullEndElement
 
-Writes a full end tag `</name>` even when the element is empty.
-
 #### Syntax
 
 ```csharp
@@ -1272,8 +1136,6 @@ public void WriteFullEndElement()
 ```
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNamespaceDeclaration
-
-Writes an xmlns declaration for *prefix*.
 
 #### Syntax
 
@@ -1285,12 +1147,10 @@ public void WriteNamespaceDeclaration(string prefix, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `prefix` | `string` | The prefix. |
-| `namespaceUri` | `string` | The namespace URI. |
+| `prefix` | `string` | - |
+| `namespaceUri` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNamespaceDeclaration
-
-Writes an xmlns declaration for UTF-8 *utf8Prefix*.
 
 #### Syntax
 
@@ -1302,12 +1162,10 @@ public void WriteNamespaceDeclaration(System.ReadOnlySpan<byte> utf8Prefix, Syst
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Prefix` | `System.ReadOnlySpan<byte>` | The UTF-8 prefix. |
-| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+| `utf8Prefix` | `System.ReadOnlySpan<byte>` | - |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNilElement
-
-Writes an empty nillable element.
 
 #### Syntax
 
@@ -1319,11 +1177,9 @@ public void WriteNilElement(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
+| `localName` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNilElement
-
-Writes an empty nillable element in *namespaceUri*.
 
 #### Syntax
 
@@ -1335,12 +1191,10 @@ public void WriteNilElement(string localName, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNilElement
-
-Writes an empty nillable element.
 
 #### Syntax
 
@@ -1352,11 +1206,9 @@ public void WriteNilElement(System.ReadOnlySpan<char> localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNilElement
-
-Writes an empty nillable element.
 
 #### Syntax
 
@@ -1368,11 +1220,9 @@ public void WriteNilElement(System.ReadOnlySpan<byte> utf8LocalName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNilValue
-
-Writes `xsi:nil="true"` on the current start tag.
 
 #### Syntax
 
@@ -1381,8 +1231,6 @@ public void WriteNilValue()
 ```
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes an integer value.
 
 #### Syntax
 
@@ -1394,11 +1242,9 @@ public void WriteNumberValue(int value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `int` | The value. |
+| `value` | `int` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes a 64-bit integer value.
 
 #### Syntax
 
@@ -1410,11 +1256,9 @@ public void WriteNumberValue(long value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `long` | The value. |
+| `value` | `long` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes a double value.
 
 #### Syntax
 
@@ -1426,11 +1270,9 @@ public void WriteNumberValue(double value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `double` | The value. |
+| `value` | `double` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes a single value.
 
 #### Syntax
 
@@ -1442,11 +1284,9 @@ public void WriteNumberValue(float value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `float` | The value. |
+| `value` | `float` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes a decimal value.
 
 #### Syntax
 
@@ -1458,11 +1298,9 @@ public void WriteNumberValue(decimal value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `decimal` | The value. |
+| `value` | `decimal` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes an unsigned integer value.
 
 #### Syntax
 
@@ -1474,11 +1312,9 @@ public void WriteNumberValue(uint value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `uint` | The value. |
+| `value` | `uint` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNumberValue
-
-Writes an unsigned 64-bit integer value.
 
 #### Syntax
 
@@ -1490,11 +1326,9 @@ public void WriteNumberValue(ulong value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `ulong` | The value. |
+| `value` | `ulong` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteProcessingInstruction
-
-Writes a processing instruction.
 
 #### Syntax
 
@@ -1506,12 +1340,10 @@ public void WriteProcessingInstruction(string target, string data)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `target` | `string` | The PI target. |
-| `data` | `string?` | The PI data. |
+| `target` | `string` | - |
+| `data` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteRawValue
-
-Writes raw UTF-8 XML.
 
 #### Syntax
 
@@ -1523,12 +1355,10 @@ public void WriteRawValue(System.ReadOnlySpan<byte> utf8Xml, bool skipInputValid
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The raw bytes. |
-| `skipInputValidation` | `bool` | When true, the bytes are copied without checks. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
+| `skipInputValidation` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteRawValue
-
-Writes raw XML characters.
 
 #### Syntax
 
@@ -1540,12 +1370,10 @@ public void WriteRawValue(System.ReadOnlySpan<char> xml, bool skipInputValidatio
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The raw XML. |
-| `skipInputValidation` | `bool` | When true, the text is copied without checks. |
+| `xml` | `System.ReadOnlySpan<char>` | - |
+| `skipInputValidation` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteRawValue
-
-Writes raw XML.
 
 #### Syntax
 
@@ -1557,12 +1385,10 @@ public void WriteRawValue(string xml, bool skipInputValidation = false)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The raw XML. |
-| `skipInputValidation` | `bool` | When true, the text is copied without checks. |
+| `xml` | `string` | - |
+| `skipInputValidation` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartAttribute
-
-Begins an attribute.
 
 #### Syntax
 
@@ -1574,11 +1400,9 @@ public void WriteStartAttribute(string name)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The attribute name. |
+| `name` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartAttribute
-
-Begins an attribute.
 
 #### Syntax
 
@@ -1590,11 +1414,9 @@ public void WriteStartAttribute(System.ReadOnlySpan<char> name)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `System.ReadOnlySpan<char>` | The attribute name. |
+| `name` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartAttribute
-
-Begins an attribute with an explicit prefix.
 
 #### Syntax
 
@@ -1606,13 +1428,11 @@ public void WriteStartAttribute(string prefix, string localName, string namespac
 
 | Name | Type | Description |
 |------|------|-------------|
-| `prefix` | `string?` | The prefix. |
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `prefix` | `string?` | - |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag with *localName*.
 
 #### Syntax
 
@@ -1624,11 +1444,9 @@ public void WriteStartElement(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
+| `localName` | `string` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag in *namespaceUri*.
 
 #### Syntax
 
@@ -1640,12 +1458,10 @@ public void WriteStartElement(string localName, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag with an explicit prefix.
 
 #### Syntax
 
@@ -1657,13 +1473,11 @@ public void WriteStartElement(string prefix, string localName, string namespaceU
 
 | Name | Type | Description |
 |------|------|-------------|
-| `prefix` | `string?` | The prefix, or null. |
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `prefix` | `string?` | - |
+| `localName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag with *localName*.
 
 #### Syntax
 
@@ -1675,11 +1489,9 @@ public void WriteStartElement(System.ReadOnlySpan<char> localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag with UTF-8 *utf8LocalName*.
 
 #### Syntax
 
@@ -1691,11 +1503,9 @@ public void WriteStartElement(System.ReadOnlySpan<byte> utf8LocalName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag from cached *localName*.
 
 #### Syntax
 
@@ -1707,11 +1517,9 @@ public void WriteStartElement(CloudNimble.Text.Xml.XmlEncodedText localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The encoded local name. |
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag in *namespaceUri*.
 
 #### Syntax
 
@@ -1723,12 +1531,10 @@ public void WriteStartElement(System.ReadOnlySpan<char> localName, System.ReadOn
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `System.ReadOnlySpan<char>` | The local name. |
-| `namespaceUri` | `System.ReadOnlySpan<char>` | The namespace URI. |
+| `localName` | `System.ReadOnlySpan<char>` | - |
+| `namespaceUri` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag in UTF-8 *utf8NamespaceUri*.
 
 #### Syntax
 
@@ -1740,12 +1546,10 @@ public void WriteStartElement(System.ReadOnlySpan<byte> utf8LocalName, System.Re
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartElement
-
-Writes a start tag with UTF-8 prefix, local name, and namespace.
 
 #### Syntax
 
@@ -1757,13 +1561,11 @@ public void WriteStartElement(System.ReadOnlySpan<byte> utf8Prefix, System.ReadO
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Prefix` | `System.ReadOnlySpan<byte>` | The UTF-8 prefix. |
-| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 local name. |
-| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The UTF-8 namespace URI. |
+| `utf8Prefix` | `System.ReadOnlySpan<byte>` | - |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | - |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes character data or attribute text.
 
 #### Syntax
 
@@ -1775,11 +1577,9 @@ public void WriteStringValue(string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `string?` | The value. |
+| `value` | `string?` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes character data or attribute text.
 
 #### Syntax
 
@@ -1791,11 +1591,9 @@ public void WriteStringValue(System.ReadOnlySpan<char> value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<char>` | The value. |
+| `value` | `System.ReadOnlySpan<char>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes UTF-8 character data or attribute text.
 
 #### Syntax
 
@@ -1807,11 +1605,9 @@ public void WriteStringValue(System.ReadOnlySpan<byte> utf8Value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 value. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes an XSD dateTime value.
 
 #### Syntax
 
@@ -1823,11 +1619,9 @@ public void WriteStringValue(System.DateTime value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.DateTime` | The value. |
+| `value` | `System.DateTime` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes an XSD dateTime value.
 
 #### Syntax
 
@@ -1839,11 +1633,9 @@ public void WriteStringValue(System.DateTimeOffset value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.DateTimeOffset` | The value. |
+| `value` | `System.DateTimeOffset` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes an XSD date value.
 
 #### Syntax
 
@@ -1855,11 +1647,9 @@ public void WriteStringValue(System.DateOnly value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.DateOnly` | The value. |
+| `value` | `System.DateOnly` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes an XSD time value.
 
 #### Syntax
 
@@ -1871,11 +1661,9 @@ public void WriteStringValue(System.TimeOnly value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.TimeOnly` | The value. |
+| `value` | `System.TimeOnly` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes an XSD duration value.
 
 #### Syntax
 
@@ -1887,11 +1675,9 @@ public void WriteStringValue(System.TimeSpan value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.TimeSpan` | The value. |
+| `value` | `System.TimeSpan` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValue
-
-Writes a GUID value.
 
 #### Syntax
 
@@ -1903,11 +1689,9 @@ public void WriteStringValue(System.Guid value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.Guid` | The value. |
+| `value` | `System.Guid` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValueSegment
-
-Writes a UTF-8 text segment, possibly incomplete.
 
 #### Syntax
 
@@ -1919,12 +1703,10 @@ public void WriteStringValueSegment(System.ReadOnlySpan<byte> value, bool isFina
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<byte>` | The UTF-8 segment. |
-| `isFinalSegment` | `bool` | True when this is the last segment of the value. |
+| `value` | `System.ReadOnlySpan<byte>` | - |
+| `isFinalSegment` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStringValueSegment
-
-Writes a text segment, possibly incomplete.
 
 #### Syntax
 
@@ -1936,12 +1718,10 @@ public void WriteStringValueSegment(System.ReadOnlySpan<char> value, bool isFina
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<char>` | The segment. |
-| `isFinalSegment` | `bool` | True when this is the last segment of the value. |
+| `value` | `System.ReadOnlySpan<char>` | - |
+| `isFinalSegment` | `bool` | - |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteXmlDeclaration
-
-Writes the XML declaration.
 
 #### Syntax
 

@@ -292,37 +292,17 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Write_UnclosedDispose_Throws()
         {
-            var buffer = new ArrayBufferWriter<byte>();
-            var threw = false;
-            try
-            {
-                using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
-                writer.WriteStartElement("e");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
+            var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), new XmlWriterOptions { OmitXmlDeclaration = true });
+            writer.WriteStartElement("e");
+            FluentActions.Invoking(writer.Dispose).Should().ThrowExactly<XmlException>().WithMessage("The document has unclosed elements.");
         }
 
         [TestMethod]
         public async Task Write_UnclosedDisposeAsync_Throws()
         {
-            var buffer = new ArrayBufferWriter<byte>();
-            var threw = false;
-            try
-            {
-                await using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
-                writer.WriteStartElement("e");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
+            var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), new XmlWriterOptions { OmitXmlDeclaration = true });
+            writer.WriteStartElement("e");
+            (await FluentActions.Awaiting(async () => await writer.DisposeAsync()).Should().ThrowExactlyAsync<XmlException>()).WithMessage("The document has unclosed elements.");
         }
 
         [TestMethod]

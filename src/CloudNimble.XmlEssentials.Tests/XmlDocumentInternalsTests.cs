@@ -1,6 +1,8 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Nodes;
@@ -20,14 +22,54 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
-        public void AppendExtra_Grows()
+        public void FillFromReader_EmptyInput_WhenARootIsRequired_Throws()
+        {
+            using var document = new XmlDocument();
+            var reader = new Utf8XmlReader(""u8, new XmlReaderOptions { AllowMultipleRoots = true });
+            string? message = null;
+            try
+            {
+                document.FillFromReader(ref reader, requireDocumentRoot: true);
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("The document has no root element.");
+        }
+
+        [TestMethod]
+        public void FillFromReader_TwoRoots_WhenARootIsRequired_Throws()
+        {
+            using var document = new XmlDocument();
+            var reader = new Utf8XmlReader("<a/><b/>"u8, new XmlReaderOptions { AllowMultipleRoots = true });
+            string? message = null;
+            try
+            {
+                document.FillFromReader(ref reader, requireDocumentRoot: true);
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("Multiple root elements are not allowed.");
+        }
+
+        [TestMethod]
+        public void TokenType_UnknownKind_IsNone()
         {
             using var document = XmlDocument.Parse("<e/>");
-            var first = document.Locate(new byte[300]);
-            var second = document.Locate(new byte[300]);
-            first.Should().Be(4);
-            second.Should().Be(304);
-            document.Slice(second, 300).Length.Should().Be(300);
+            var index = document.AddRow(new XmlDbRow { Kind = XmlValueKind.Document });
+            new XmlElement(document, index).TokenType.Should().Be(XmlTokenType.None);
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+            {
+                document.WriteTo(writer);
+            }
+
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<e/>");
         }
 
         [TestMethod]
@@ -51,22 +93,6 @@ namespace CloudNimble.XmlEssentials.Tests
             root.GetAttribute("a", XmlNamespaces.Xsi).GetInt32().Should().Be(1);
             root.GetAttribute("b", XmlNamespaces.Xsi).GetInt32().Should().Be(2);
             root.GetChild("c", "urn:c").NamespaceUri.Should().Be("urn:c");
-        }
-
-        [TestMethod]
-        public void FormatDeclaration_Variants()
-        {
-            Format("1.0", true).Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>");
-            Format("1.0", false).Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>");
-            Format("1.0", null).Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-            Format("1.1", true).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\" standalone=\"yes\"?>");
-            Format("1.1", false).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\" standalone=\"no\"?>");
-            Format("1.1", null).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\"?>");
-
-            static string Format(string version, bool? standalone)
-            {
-                return Encoding.UTF8.GetString(XmlDocument.FormatDeclaration(new XmlDeclarationInfo(version, "utf-8", standalone)));
-            }
         }
 
         [TestMethod]
@@ -103,11 +129,12 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Dispose_IsIdempotent()
+        public void Dispose_Twice_LeavesTheDocumentDisposed()
         {
             var document = XmlDocument.Parse("<e/>");
             document.Dispose();
             document.Dispose();
+            FluentActions.Invoking(() => document.RootElement).Should().ThrowExactly<ObjectDisposedException>();
         }
 
         [TestMethod]
@@ -157,6 +184,44 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow("<a>t</a>", 2, DisplayName = "the reader is on the text, so the next element token is an end tag")]
+        [DataRow("<a><b/></a>", 3, DisplayName = "the reader is on the end tag itself")]
+        public void ParseValue_FromAReaderWhoseElementItNeverSawStart_Throws(string xml, int reads)
+        {
+            string? message = null;
+            try
+            {
+                var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml));
+                for (var i = 0; i < reads; i++)
+                {
+                    reader.Read();
+                }
+
+                XmlDocument.ParseValue(ref reader).Dispose();
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("End tag without a matching start tag.");
+        }
+
+        [TestMethod]
+        public void ParseValue_FromAReaderOnAnElementInsideADocument_TakesThatElementAndStops()
+        {
+            var reader = new Utf8XmlReader("<a><b x=\"1\">t<c/></b><d/></a>"u8);
+            reader.Read();
+            reader.Read();
+            using var document = XmlDocument.ParseValue(ref reader);
+            document.RootElement.GetRawXml().Should().Be("<b x=\"1\">t<c/></b>");
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            reader.LocalNameEquals("b").Should().BeTrue();
+            reader.Read().Should().BeTrue();
+            reader.LocalNameEquals("d").Should().BeTrue();
+        }
+
+        [TestMethod]
         public void ParseValue_Malformed_Disposes()
         {
             var threw = false;
@@ -185,15 +250,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void ExtraSpan_Empty()
-        {
-            using var document = XmlDocument.Parse("<e/>");
-            document.Locate([]).Should().Be(0);
-            document.LocateNamespace([]).Should().Be(0);
-            document.Slice(0, 0).IsEmpty.Should().BeTrue();
-        }
-
-        [TestMethod]
         public void AddRow_Grows()
         {
             var xml = new StringBuilder("<r>");
@@ -204,142 +260,66 @@ namespace CloudNimble.XmlEssentials.Tests
 
             xml.Append("</r>");
             using var document = XmlDocument.Parse(xml.ToString());
-            document.RootElement.EnumerateChildren().MoveNext().Should().BeTrue();
+            var names = new List<string>();
+            foreach (var child in document.RootElement.EnumerateChildren())
+            {
+                names.Add(child.LocalName);
+            }
+
+            names.Should().Equal(Enumerable.Repeat("e", 40));
         }
 
         [TestMethod]
-        public void Getters_ErrorPaths()
+        public void Getters_OnAMissingNodeOrAValueOfTheWrongForm_SayWhatIsWrong()
         {
             using var document = XmlDocument.Parse("<e a=\"x\">!!!!</e>");
-            document.RootElement.AttributeCount.Should().Be(1);
-            var text = default(XmlElement);
-            foreach (var child in document.RootElement.EnumerateChildren())
+            var root = document.RootElement;
+            root.AttributeCount.Should().Be(1);
+            foreach (var child in root.EnumerateChildren())
             {
-                text = child;
+                (child.TokenType + ":" + child.AttributeCount).Should().Be("Text:0", "only an element has attributes");
             }
 
-            text.AttributeCount.Should().Be(0);
-            var threw = false;
-            try
+            var messages = new List<string>
             {
-                document.RootElement.GetAttribute("z");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
+                "attribute: " + Message(() => root.GetAttribute("z")),
+                "attribute in a namespace: " + Message(() => root.GetAttribute("a", "urn:no")),
+                "child in a namespace: " + Message(() => root.GetChild("z", "urn:x")),
+                "boolean: " + Message(() => root.GetBoolean()),
+                "base64: " + Message(() => root.GetBytesFromBase64()),
+                "dateTime: " + Message(() => root.GetDateTime()),
+                "dateTimeOffset: " + Message(() => root.GetDateTimeOffset()),
+                "decimal: " + Message(() => root.GetDecimal()),
+                "double: " + Message(() => root.GetDouble()),
+                "guid: " + Message(() => root.GetGuid()),
+                "int64: " + Message(() => root.GetInt64()),
+            };
+            messages.Should().Equal(
+                "attribute: Attribute 'z' was not found.",
+                "attribute in a namespace: Attribute 'a' was not found.",
+                "child in a namespace: Child element 'z' was not found.",
+                "boolean: The value is not a boolean.",
+                "base64: The value is not valid base64.",
+                "dateTime: The value is not a valid dateTime.",
+                "dateTimeOffset: The value is not a valid dateTime.",
+                "decimal: The value is not a valid decimal.",
+                "double: The value is not a valid double.",
+                "guid: The value is not a valid GUID.",
+                "int64: The value is not a valid integer.");
 
-            threw.Should().BeTrue();
-            threw = false;
-            try
+            static string Message(Action read)
             {
-                document.RootElement.GetAttribute("a", "urn:no");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
+                try
+                {
+                    read();
+                }
+                catch (XmlException ex)
+                {
+                    return ex.Message;
+                }
 
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetChild("z", "urn:x");
+                return "no exception";
             }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetBoolean();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetBytesFromBase64();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetDateTime();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetDateTimeOffset();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetDecimal();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetDouble();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetGuid();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-            threw = false;
-            try
-            {
-                document.RootElement.GetInt64();
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
         }
 
         [TestMethod]
@@ -381,7 +361,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Attribute_GetRawXml_AndBooleanDigits()
         {
             using var document = XmlDocument.Parse("<e a=\"1\">0</e>");
-            document.RootElement.GetAttribute("a").GetRawXml();
+            document.RootElement.GetAttribute("a").GetRawXml().Should().Be("", "an attribute has no markup outside its element");
             document.RootElement.GetAttribute("a").TokenType.Should().Be(XmlTokenType.Attribute);
             document.RootElement.GetBoolean().Should().BeFalse();
             using var one = XmlDocument.Parse("<e>1</e>");
@@ -406,11 +386,19 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             using var document = XmlDocument.Parse("<e><![CDATA[x]]><!--c--><?pi d?></e>", new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
             document.RootElement.GetRawXml().Should().Be("<e><![CDATA[x]]><!--c--><?pi d?></e>");
+            var clones = new List<string>();
             foreach (var child in document.RootElement.EnumerateChildren())
             {
-                child.CloneNode();
-                _ = child.TokenType;
+                clones.Add(child.TokenType + ":" + child.CloneNode() switch
+                {
+                    XmlCDataNode cdata => "cdata " + cdata.Value,
+                    XmlCommentNode comment => "comment " + comment.Value,
+                    XmlProcessingInstructionNode instruction => "instruction " + instruction.Target + " " + instruction.Data,
+                    var other => other.GetType().Name,
+                });
             }
+
+            clones.Should().Equal("CData:cdata x", "Comment:comment c", "ProcessingInstruction:instruction pi d");
         }
 
         [TestMethod]
@@ -440,75 +428,6 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             threw.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void FillFromReader_NoRoot_Throws()
-        {
-            using var document = new XmlDocument();
-            var reader = new Utf8XmlReader(""u8, new XmlReaderOptions { AllowMultipleRoots = true });
-            var threw = false;
-            try
-            {
-                document.FillFromReader(ref reader, requireDocumentRoot: true);
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void FillFromReader_MultipleRoots_Throws()
-        {
-            using var document = new XmlDocument();
-            var reader = new Utf8XmlReader("<a/><b/>"u8, new XmlReaderOptions { AllowMultipleRoots = true });
-            var threw = false;
-            try
-            {
-                document.FillFromReader(ref reader, requireDocumentRoot: true);
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void FillFromReader_EndElementAtDepthZero_Throws()
-        {
-            using var document = new XmlDocument();
-            var reader = new Utf8XmlReader("<e></e>"u8);
-            reader.Read();
-            reader.Read();
-            var threw = false;
-            try
-            {
-                document.FillFromReader(ref reader, requireDocumentRoot: true);
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
-        }
-
-        [TestMethod]
-        public void TokenType_UnknownKind_IsNone()
-        {
-            using var document = XmlDocument.Parse("<e/>");
-            var index = document.AddRow(new XmlDbRow { Kind = XmlValueKind.Document });
-            new XmlElement(document, index).TokenType.Should().Be(XmlTokenType.None);
-            var buffer = new ArrayBufferWriter<byte>();
-            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
-            document.WriteTo(writer);
-            writer.Flush();
-            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<e/>");
         }
 
         [TestMethod]

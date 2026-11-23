@@ -8,7 +8,7 @@ No `ILogger` in the runtime package. `XmlException` carries position and Path. C
 
 ## Rollout plan
 
-1. PRs 1–4: reader/writer/DOM. **PRs 1–5 are done.** Next is PR 6a (POCO element mapping). CI already runs `--coverage` + `coverage-gate.cs`.
+1. PRs 1–4: reader/writer/DOM. **PRs 1–8 are done (uncommitted from 6 onward).** CI is the McpEssentials process (`pr-validation.yml`, `build-and-deploy.yml`, `publish-ci-build.yml`) plus `--coverage` + `coverage-gate.cs` and Native AOT.
 2. PRs 5–10: serializer, source-gen, AOT, benches, docs. Line gate live from PR 2; branch gate at 100% since PR 4.
 3. PR 11: freeze API baseline; confirm gate still fails below 100% line or branch.
 4. **`-preview` after PR 11.** v1.0.0 when coverage, AOT smoke, docs, baseline are green.

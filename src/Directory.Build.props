@@ -71,6 +71,7 @@
 	<PropertyGroup Condition=" $(IsSourceGeneratorProject) == 'true' ">
 		<IsPackable>false</IsPackable>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<PublishAot>false</PublishAot>
 	</PropertyGroup>
 
 	<PropertyGroup Condition=" $(IsBenchmarkProject) == 'true' ">

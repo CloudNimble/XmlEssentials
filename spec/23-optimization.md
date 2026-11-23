@@ -95,7 +95,7 @@ If line coverage drops, add internals tests for the new branch **before** more s
 
 A `GC.GetAllocatedBytesForCurrentThread` test (see `Utf8XmlWriterAllocationTests.Reset_WriteCatalog_DoesNotAllocate`) is required for any claim of 0 B.
 
-## Baseline (2026-11-22, net11.0 ShortRun, Hyper-V)
+## Baseline (2026-11-23, net11.0 ShortRun, Hyper-V)
 
 Integer ns and bytes. Ratio is XmlEssentials / BCL on that category. These numbers were taken **after** the standards work (strict declaration, reserved namespaces, `]]>` detection, whitespace significance, shared XSD lexical routines, namespace-preserving `WriteTo`) and after backlog item 1. Write benches reset their `ArrayBufferWriter` with `ResetWrittenCount()`, which does not zero the buffer.
 
@@ -103,23 +103,23 @@ Integer ns and bytes. Ratio is XmlEssentials / BCL on that category. These numbe
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| BclXmlWriter_WriteCatalog | CatalogWrite | 33321 ns | 1.00 | 13728 B | 1.00 |
-| XmlEssentials_WriteCatalog | CatalogWrite | 22871 ns | 0.69 | 0 B | 0.00 |
-| BclXmlWriter_WriteTiny | TinyWrite | 343 ns | 1.00 | 7328 B | 1.00 |
-| XmlEssentials_WriteTiny | TinyWrite | 57 ns | 0.17 | 0 B | 0.00 |
+| BclXmlWriter_WriteCatalog | CatalogWrite | 33137 ns | 1.00 | 13728 B | 1.00 |
+| XmlEssentials_WriteCatalog | CatalogWrite | 23343 ns | 0.70 | 0 B | 0.00 |
+| BclXmlWriter_WriteTiny | TinyWrite | 325 ns | 1.00 | 7328 B | 1.00 |
+| XmlEssentials_WriteTiny | TinyWrite | 55 ns | 0.17 | 0 B | 0.00 |
 
 ### Reader, synthetic (new `Utf8XmlReader` per iteration on a `byte[]`)
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| BclXmlReader_DrainCatalog | CatalogDrain | 26112 ns | 1.00 | 15088 B | 1.00 |
-| XmlEssentials_DrainCatalog | CatalogDrain | 18097 ns | 0.69 | 0 B | 0.00 |
-| BclXmlReader_DrainCatalogGetInt32 | CatalogGetInt32 | 30281 ns | 1.00 | 35808 B | 1.00 |
-| XmlEssentials_DrainCatalogGetInt32 | CatalogGetInt32 | 19074 ns | 0.63 | 0 B | 0.00 |
-| BclXmlReader_DrainNamespaced | NamespacedDrain | 21043 ns | 1.00 | 15200 B | 1.00 |
-| XmlEssentials_DrainNamespaced | NamespacedDrain | 15250 ns | 0.72 | 0 B | 0.00 |
-| BclXmlReader_DrainTiny | TinyDrain | 353 ns | 1.00 | 2472 B | 1.00 |
-| XmlEssentials_DrainTiny | TinyDrain | 68 ns | 0.19 | 0 B | 0.00 |
+| BclXmlReader_DrainCatalog | CatalogDrain | 25674 ns | 1.00 | 15088 B | 1.00 |
+| XmlEssentials_DrainCatalog | CatalogDrain | 18737 ns | 0.73 | 0 B | 0.00 |
+| BclXmlReader_DrainCatalogGetInt32 | CatalogGetInt32 | 29652 ns | 1.00 | 35808 B | 1.00 |
+| XmlEssentials_DrainCatalogGetInt32 | CatalogGetInt32 | 19168 ns | 0.65 | 0 B | 0.00 |
+| BclXmlReader_DrainNamespaced | NamespacedDrain | 20491 ns | 1.00 | 15200 B | 1.00 |
+| XmlEssentials_DrainNamespaced | NamespacedDrain | 15507 ns | 0.76 | 0 B | 0.00 |
+| BclXmlReader_DrainTiny | TinyDrain | 315 ns | 1.00 | 2472 B | 1.00 |
+| XmlEssentials_DrainTiny | TinyDrain | 69 ns | 0.22 | 0 B | 0.00 |
 
 ### Reader, DOM, and writer on real documents (`RealDocumentBenchmarks`)
 
@@ -127,35 +127,39 @@ Four fixtures from the quick-xml test suite. Both sides keep whitespace and comm
 
 | Method | Category | File | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- | --- |
-| BclXmlReader_Drain | RealDrain | document.xml | 19870 ns | 1.00 | 25144 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | document.xml | 14620 ns | 0.74 | 944 B | 0.04 |
-| BclXmlReader_Drain | RealDrain | libreoffice_document.fodt | 80240 ns | 1.00 | 56017 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | libreoffice_document.fodt | 51260 ns | 0.64 | 6920 B | 0.12 |
-| BclXmlReader_Drain | RealDrain | rpm_primary.xml | 31160 ns | 1.00 | 20064 B | 1.000 |
-| XmlEssentials_Drain | RealDrain | rpm_primary.xml | 18850 ns | 0.60 | 80 B | 0.004 |
-| BclXmlReader_Drain | RealDrain | sample_rss.xml | 192070 ns | 1.00 | 47137 B | 1.00 |
-| XmlEssentials_Drain | RealDrain | sample_rss.xml | 92120 ns | 0.48 | 2073 B | 0.04 |
-| BclXmlDocument_Parse | RealDomParse | document.xml | 51680 ns | 1.00 | 127176 B | 1.000 |
-| XmlEssentials_Parse | RealDomParse | document.xml | 21160 ns | 0.41 | 1048 B | 0.008 |
-| BclXmlDocument_Parse | RealDomParse | libreoffice_document.fodt | 195180 ns | 1.00 | 353889 B | 1.00 |
-| XmlEssentials_Parse | RealDomParse | libreoffice_document.fodt | 68990 ns | 0.35 | 7025 B | 0.02 |
-| BclXmlDocument_Parse | RealDomParse | rpm_primary.xml | 72480 ns | 1.00 | 170953 B | 1.000 |
-| XmlEssentials_Parse | RealDomParse | rpm_primary.xml | 26660 ns | 0.37 | 184 B | 0.001 |
-| BclXmlDocument_Parse | RealDomParse | sample_rss.xml | 337530 ns | 1.00 | 709082 B | 1.000 |
-| XmlEssentials_Parse | RealDomParse | sample_rss.xml | 124150 ns | 0.37 | 2177 B | 0.003 |
-| BclXmlDocument_Write | RealDomWrite | document.xml | 28570 ns | 1.00 | 11032 B | 1.00 |
-| XmlEssentials_Write | RealDomWrite | document.xml | 21770 ns | 0.76 | 0 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | libreoffice_document.fodt | 96930 ns | 1.00 | 23273 B | 1.00 |
-| XmlEssentials_Write | RealDomWrite | libreoffice_document.fodt | 71030 ns | 0.73 | 0 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | rpm_primary.xml | 32480 ns | 1.00 | 8016 B | 1.00 |
-| XmlEssentials_Write | RealDomWrite | rpm_primary.xml | 21500 ns | 0.66 | 0 B | 0.00 |
-| BclXmlDocument_Write | RealDomWrite | sample_rss.xml | 151090 ns | 1.00 | 8017 B | 1.00 |
-| XmlEssentials_Write | RealDomWrite | sample_rss.xml | 78800 ns | 0.52 | 0 B | 0.00 |
+| BclXmlReader_Drain | RealDrain | document.xml | 19580 ns | 1.00 | 25144 B | 1.00 |
+| XmlEssentials_Drain | RealDrain | document.xml | 14700 ns | 0.75 | 944 B | 0.04 |
+| XmlEssentials_DrainWithScratch | RealDrain | document.xml | 14780 ns | 0.75 | 0 B | 0.00 |
+| BclXmlReader_Drain | RealDrain | libreoffice_document.fodt | 79360 ns | 1.00 | 56017 B | 1.00 |
+| XmlEssentials_Drain | RealDrain | libreoffice_document.fodt | 50830 ns | 0.64 | 6952 B | 0.12 |
+| XmlEssentials_DrainWithScratch | RealDrain | libreoffice_document.fodt | 50620 ns | 0.64 | 0 B | 0.00 |
+| BclXmlReader_Drain | RealDrain | rpm_primary.xml | 31420 ns | 1.00 | 20064 B | 1.000 |
+| XmlEssentials_Drain | RealDrain | rpm_primary.xml | 20790 ns | 0.66 | 80 B | 0.004 |
+| XmlEssentials_DrainWithScratch | RealDrain | rpm_primary.xml | 17690 ns | 0.56 | 0 B | 0.000 |
+| BclXmlReader_Drain | RealDrain | sample_rss.xml | 187340 ns | 1.00 | 47137 B | 1.00 |
+| XmlEssentials_Drain | RealDrain | sample_rss.xml | 83850 ns | 0.45 | 1441 B | 0.03 |
+| XmlEssentials_DrainWithScratch | RealDrain | sample_rss.xml | 84730 ns | 0.45 | 0 B | 0.00 |
+| BclXmlDocument_Parse | RealDomParse | document.xml | 50340 ns | 1.00 | 127176 B | 1.000 |
+| XmlEssentials_Parse | RealDomParse | document.xml | 21180 ns | 0.42 | 104 B | 0.001 |
+| BclXmlDocument_Parse | RealDomParse | libreoffice_document.fodt | 191240 ns | 1.00 | 353889 B | 1.000 |
+| XmlEssentials_Parse | RealDomParse | libreoffice_document.fodt | 68560 ns | 0.36 | 105 B | 0.000 |
+| BclXmlDocument_Parse | RealDomParse | rpm_primary.xml | 71070 ns | 1.00 | 170953 B | 1.000 |
+| XmlEssentials_Parse | RealDomParse | rpm_primary.xml | 25310 ns | 0.36 | 104 B | 0.001 |
+| BclXmlDocument_Parse | RealDomParse | sample_rss.xml | 331240 ns | 1.00 | 709082 B | 1.000 |
+| XmlEssentials_Parse | RealDomParse | sample_rss.xml | 112880 ns | 0.34 | 105 B | 0.000 |
+| BclXmlDocument_Write | RealDomWrite | document.xml | 28670 ns | 1.00 | 11032 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | document.xml | 22200 ns | 0.77 | 0 B | 0.00 |
+| BclXmlDocument_Write | RealDomWrite | libreoffice_document.fodt | 95810 ns | 1.00 | 23273 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | libreoffice_document.fodt | 71450 ns | 0.75 | 0 B | 0.00 |
+| BclXmlDocument_Write | RealDomWrite | rpm_primary.xml | 32270 ns | 1.00 | 8016 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | rpm_primary.xml | 21270 ns | 0.66 | 0 B | 0.00 |
+| BclXmlDocument_Write | RealDomWrite | sample_rss.xml | 149190 ns | 1.00 | 8017 B | 1.00 |
+| XmlEssentials_Write | RealDomWrite | sample_rss.xml | 80340 ns | 0.54 | 0 B | 0.00 |
 
 What the real documents show:
 
 - Every row is under BCL. Before backlog item 1 the namespace-heavy drains were 1.27× (WordprocessingML) and 1.79× (OpenDocument), and `WriteTo` on the OpenDocument file was 1.22×. The synthetic catalog had hidden all of it.
-- **Drain is not 0 B on real documents.** The reader keeps a few arrays per instance (namespace bindings and element stacks once they outgrow their eight inline slots, interned URIs, one buffer for decoded attribute values and one for decoded text). They are allocated per reader, not per token, but a `ref struct` has no `Dispose` and so cannot return a pooled array. The split between them has not been measured. 0 B holds for small, shallow, entity-free documents such as the synthetic ones. This is now the largest gap against the goal (see backlog item 5).
+- **Drain is 0 B on real documents when the reader is given a scratch buffer** (`XmlEssentials_DrainWithScratch`, pinned by `Drain_RealDocumentWithScratch_AllocatesNothing`). Without one the reader allocates a few arrays per instance, not per token: namespace bindings, element stacks and the attribute table once they outgrow their eight inline slots, and one buffer each for decoded attribute values and decoded text. See the fourth pass below and [reader](04-api-reader.md#scratch-buffer).
 - `RealDomWrite` is 0 B on all four, pinned by `XmlDocumentAllocationTests.WriteTo_RealDocument_DoesNotAllocate`. That test found 200 B per write on the RSS file: sibling elements that declare different prefixes reuse one binding slot in turn, so the slot's remembered bytes never matched. The writer now keeps the first 64 distinct prefixes and URIs it has seen (`InternNamespaceBytes`).
 
 ### DOM, synthetic (`XmlDocument` / `XmlElement`, PR 4)
@@ -164,16 +168,16 @@ Parse rows build and dispose one document per operation. Navigate and write rows
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| BclXmlDocument_NavigateCatalog | DomNavigate | 3519 ns | 1.00 | 0 B | - |
-| XmlEssentials_NavigateCatalog | DomNavigate | 2864 ns | 0.81 | 0 B | - |
-| BclXmlDocument_ParseCatalog | DomParseCatalog | 54796 ns | 1.00 | 136128 B | 1.000 |
-| XmlEssentials_ParseCatalog | DomParseCatalog | 28707 ns | 0.52 | 104 B | 0.001 |
-| BclXmlDocument_ParseNamespaced | DomParseNamespaced | 44048 ns | 1.00 | 110760 B | 1.000 |
-| XmlEssentials_ParseNamespaced | DomParseNamespaced | 21604 ns | 0.49 | 104 B | 0.001 |
-| BclXmlDocument_ParseTiny | DomParseTiny | 647 ns | 1.00 | 5176 B | 1.00 |
-| XmlEssentials_ParseTiny | DomParseTiny | 118 ns | 0.18 | 104 B | 0.02 |
-| BclXmlDocument_WriteCatalog | DomWrite | 28341 ns | 1.00 | 7368 B | 1.00 |
-| XmlEssentials_WriteCatalog | DomWrite | 15592 ns | 0.55 | 0 B | 0.00 |
+| BclXmlDocument_NavigateCatalog | DomNavigate | 3494 ns | 1.00 | 0 B | - |
+| XmlEssentials_NavigateCatalog | DomNavigate | 2801 ns | 0.80 | 0 B | - |
+| BclXmlDocument_ParseCatalog | DomParseCatalog | 54082 ns | 1.00 | 136128 B | 1.000 |
+| XmlEssentials_ParseCatalog | DomParseCatalog | 26826 ns | 0.50 | 104 B | 0.001 |
+| BclXmlDocument_ParseNamespaced | DomParseNamespaced | 43320 ns | 1.00 | 110760 B | 1.000 |
+| XmlEssentials_ParseNamespaced | DomParseNamespaced | 21709 ns | 0.50 | 104 B | 0.001 |
+| BclXmlDocument_ParseTiny | DomParseTiny | 650 ns | 1.00 | 5176 B | 1.00 |
+| XmlEssentials_ParseTiny | DomParseTiny | 120 ns | 0.18 | 104 B | 0.02 |
+| BclXmlDocument_WriteCatalog | DomWrite | 28184 ns | 1.00 | 7368 B | 1.00 |
+| XmlEssentials_WriteCatalog | DomWrite | 15628 ns | 0.55 | 0 B | 0.00 |
 
 The 104 B on parse is the `XmlDocument` object itself. [DOM](06-api-dom.md) rules out a document-instance cache, so parse cannot reach 0 B; everything the document holds is pooled. Before the row-store rewrite the same benches read 0.94 / 1.07 / 0.31 (parse), 3.71 with 59040 B (navigate), and 1.02 (write).
 
@@ -183,35 +187,35 @@ Each library reads the document it wrote. BCL is a cached `System.Xml.Serializat
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| Bcl_WriteDateTime | WriteDateTime | 340 ns | 1.00 | 7784 B | 1.00 |
+| Bcl_WriteDateTime | WriteDateTime | 348 ns | 1.00 | 7784 B | 1.00 |
 | XmlEssentials_WriteDateTime | WriteDateTime | 68 ns | 0.20 | 104 B | 0.01 |
-| Bcl_WriteEnum | WriteEnum | 358 ns | 1.00 | 7744 B | 1.00 |
-| XmlEssentials_WriteEnum | WriteEnum | 63 ns | 0.18 | 96 B | 0.01 |
-| Bcl_WriteInt32 | WriteInt32 | 319 ns | 1.00 | 7728 B | 1.000 |
-| Stj_WriteInt32 | WriteInt32 | 31 ns | 0.10 | 32 B | 0.004 |
-| XmlEssentials_WriteInt32 | WriteInt32 | 58 ns | 0.18 | 88 B | 0.011 |
-| Bcl_WriteInt32Buffer | WriteInt32Buffer | 324 ns | 1.00 | 7648 B | 1.00 |
-| XmlEssentials_WriteInt32Buffer | WriteInt32Buffer | 49 ns | 0.15 | 0 B | 0.00 |
-| Bcl_WriteInt32String | WriteInt32String | 353 ns | 1.00 | 7784 B | 1.000 |
-| Stj_WriteInt32String | WriteInt32String | 34 ns | 0.10 | 32 B | 0.004 |
-| XmlEssentials_WriteInt32String | WriteInt32String | 66 ns | 0.19 | 144 B | 0.018 |
-| Bcl_WriteNullable | WriteNullable | 595 ns | 1.00 | 8024 B | 1.00 |
-| XmlEssentials_WriteNullable | WriteNullable | 86 ns | 0.14 | 144 B | 0.02 |
-| Bcl_WriteString | WriteString | 336 ns | 1.00 | 7888 B | 1.00 |
-| Stj_WriteString | WriteString | 71 ns | 0.21 | 80 B | 0.01 |
-| XmlEssentials_WriteString | WriteString | 88 ns | 0.26 | 128 B | 0.02 |
-| Bcl_ReadDateTime | ReadDateTime | 1086 ns | 1.00 | 6040 B | 1.00 |
-| XmlEssentials_ReadDateTime | ReadDateTime | 66 ns | 0.06 | 0 B | 0.00 |
-| Bcl_ReadEnum | ReadEnum | 819 ns | 1.00 | 4480 B | 1.00 |
-| XmlEssentials_ReadEnum | ReadEnum | 60 ns | 0.07 | 0 B | 0.00 |
-| Bcl_ReadInt32 | ReadInt32 | 1031 ns | 1.00 | 6048 B | 1.00 |
+| Bcl_WriteEnum | WriteEnum | 355 ns | 1.00 | 7744 B | 1.00 |
+| XmlEssentials_WriteEnum | WriteEnum | 64 ns | 0.18 | 96 B | 0.01 |
+| Bcl_WriteInt32 | WriteInt32 | 331 ns | 1.00 | 7728 B | 1.000 |
+| Stj_WriteInt32 | WriteInt32 | 31 ns | 0.09 | 32 B | 0.004 |
+| XmlEssentials_WriteInt32 | WriteInt32 | 56 ns | 0.17 | 88 B | 0.011 |
+| Bcl_WriteInt32Buffer | WriteInt32Buffer | 322 ns | 1.00 | 7648 B | 1.00 |
+| XmlEssentials_WriteInt32Buffer | WriteInt32Buffer | 48 ns | 0.15 | 0 B | 0.00 |
+| Bcl_WriteInt32String | WriteInt32String | 336 ns | 1.00 | 7784 B | 1.000 |
+| Stj_WriteInt32String | WriteInt32String | 35 ns | 0.10 | 32 B | 0.004 |
+| XmlEssentials_WriteInt32String | WriteInt32String | 65 ns | 0.19 | 144 B | 0.018 |
+| Bcl_WriteNullable | WriteNullable | 600 ns | 1.00 | 8024 B | 1.00 |
+| XmlEssentials_WriteNullable | WriteNullable | 78 ns | 0.13 | 144 B | 0.02 |
+| Bcl_WriteString | WriteString | 356 ns | 1.00 | 7888 B | 1.00 |
+| Stj_WriteString | WriteString | 66 ns | 0.18 | 80 B | 0.01 |
+| XmlEssentials_WriteString | WriteString | 90 ns | 0.25 | 128 B | 0.02 |
+| Bcl_ReadDateTime | ReadDateTime | 1114 ns | 1.00 | 6040 B | 1.00 |
+| XmlEssentials_ReadDateTime | ReadDateTime | 71 ns | 0.06 | 0 B | 0.00 |
+| Bcl_ReadEnum | ReadEnum | 813 ns | 1.00 | 4480 B | 1.00 |
+| XmlEssentials_ReadEnum | ReadEnum | 59 ns | 0.07 | 0 B | 0.00 |
+| Bcl_ReadInt32 | ReadInt32 | 1030 ns | 1.00 | 5968 B | 1.00 |
 | Stj_ReadInt32 | ReadInt32 | 25 ns | 0.02 | 0 B | 0.00 |
-| XmlEssentials_ReadInt32 | ReadInt32 | 59 ns | 0.06 | 0 B | 0.00 |
-| Bcl_ReadInt32Stream | ReadInt32Stream | 1055 ns | 1.00 | 6048 B | 1.00 |
-| XmlEssentials_ReadInt32Stream | ReadInt32Stream | 63 ns | 0.06 | 0 B | 0.00 |
-| Bcl_ReadString | ReadString | 1193 ns | 1.00 | 6200 B | 1.00 |
-| Stj_ReadString | ReadString | 75 ns | 0.06 | 96 B | 0.02 |
-| XmlEssentials_ReadString | ReadString | 168 ns | 0.14 | 168 B | 0.03 |
+| XmlEssentials_ReadInt32 | ReadInt32 | 55 ns | 0.05 | 0 B | 0.00 |
+| Bcl_ReadInt32Stream | ReadInt32Stream | 1036 ns | 1.00 | 5968 B | 1.00 |
+| XmlEssentials_ReadInt32Stream | ReadInt32Stream | 68 ns | 0.07 | 0 B | 0.00 |
+| Bcl_ReadString | ReadString | 1200 ns | 1.00 | 6120 B | 1.00 |
+| Stj_ReadString | ReadString | 77 ns | 0.06 | 96 B | 0.02 |
+| XmlEssentials_ReadString | ReadString | 122 ns | 0.10 | 96 B | 0.02 |
 
 - Every write row allocates only what it returns (the array or the string); `WriteInt32Buffer` writes into the caller's buffer and is 0 B. Pinned by `XmlSerializerAllocationTests` (`Serialize_ToBufferWriter_DoesNotAllocate`, `Serialize_Enum_ToBufferWriter_DoesNotAllocate`, `Serialize_ToUtf8Bytes_AllocatesOnlyTheResult`).
 - The 0 B read rows are pinned by `Deserialize_FromUtf8_DoesNotAllocate`, `Deserialize_FromStream_DoesNotAllocate`, `Deserialize_DateTime_FromUtf8_DoesNotAllocate`, and `Deserialize_Enum_FromUtf8_DoesNotAllocate`. `ReadString` allocates the string it returns.
@@ -224,11 +228,11 @@ Same value, `<Int32>12345</Int32>`, with and without the 38-byte XML declaration
 
 | Method | Category | Mean | Allocated |
 | --- | --- | --- | --- |
-| Reader_Declared | ReadInt32Parts | 44 ns | 0 B |
+| Reader_Declared | ReadInt32Parts | 46 ns | 0 B |
 | Reader_Plain | ReadInt32Parts | 41 ns | 0 B |
-| Serializer_Declared | ReadInt32Parts | 58 ns | 0 B |
-| Serializer_Plain | ReadInt32Parts | 55 ns | 0 B |
-| Serializer_Plain_TypeInfo | ReadInt32Parts | 47 ns | 0 B |
+| Serializer_Declared | ReadInt32Parts | 56 ns | 0 B |
+| Serializer_Plain | ReadInt32Parts | 51 ns | 0 B |
+| Serializer_Plain_TypeInfo | ReadInt32Parts | 50 ns | 0 B |
 
 Before the three reader changes below: `Reader_Plain` 57 ns, `Reader_Declared` 121 ns, `Serializer_Plain_TypeInfo` 67 ns, `Serializer_Plain` 78 ns, `Serializer_Declared` 146 ns. A single declared read went from 146 ns to 68 ns.
 
@@ -243,12 +247,12 @@ BCL has no streaming call, so its baseline is a cached `XmlSerializer` over `int
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| Bcl_ReadArray | ReadSequence | 41141 ns | 1.00 | 61152 B | 1.00 |
-| Stj_ReadSequence | ReadSequence | 28082 ns | 0.68 | 8968 B | 0.15 |
-| XmlEssentials_ReadSequence | ReadSequence | 32339 ns | 0.79 | 9552 B | 0.16 |
-| Bcl_WriteArray | WriteSequence | 32844 ns | 1.00 | 30408 B | 1.00 |
-| Stj_WriteSequence | WriteSequence | 13910 ns | 0.42 | 376 B | 0.01 |
-| XmlEssentials_WriteSequence | WriteSequence | 21257 ns | 0.65 | 928 B | 0.03 |
+| Bcl_ReadArray | ReadSequence | 41532 ns | 1.00 | 61152 B | 1.00 |
+| Stj_ReadSequence | ReadSequence | 28113 ns | 0.68 | 8968 B | 0.15 |
+| XmlEssentials_ReadSequence | ReadSequence | 31877 ns | 0.77 | 9552 B | 0.16 |
+| Bcl_WriteArray | WriteSequence | 33014 ns | 1.00 | 30408 B | 1.00 |
+| Stj_WriteSequence | WriteSequence | 13899 ns | 0.42 | 376 B | 0.01 |
+| XmlEssentials_WriteSequence | WriteSequence | 21519 ns | 0.65 | 928 B | 0.03 |
 
 - **Both rows are under BCL: 0.79 reading and 0.65 writing.** They were level with it (0.98 to 1.07) until the fixed cost of a small element was cut, see "The fixed cost of a small element" below, and 0.93 to 0.98 and 0.85 until a scalar element was read and written as a leaf, see "Second pass: the element itself".
 - `ReadSequence` history: 221981 ns and 545561 B (5.40 of BCL) when streaming first shipped, with a reader state captured and two readers built per value; 65638 ns (1.60) with one state per buffer and every value tokenized twice; 51849 ns (1.26) with one pass and the reader copied after each value; about 43000 ns (1.00 to 1.05) now.
@@ -280,56 +284,60 @@ The tests written for that skip found a conformance gap that had been there sinc
 
 Process rule that follows: **when a row moves by a large amount for no visible reason, time it outside BenchmarkDotNet with `DOTNET_TieredCompilation=0`.** If the untiered number is much worse than the tiered one, the hot path depends on a JIT decision and should be fixed so it does not.
 
+### Serializer, graph columns (`XmlSerializerGraphBenchmarks`, PR 9)
+
+The missing first-call and source-gen columns live on the Customer graph (two addresses, 20 line items, four tags). Numbers: [benchmarks](15-benchmarks.md#graph-xmlserializergraphbenchmarks-net110-shortrun-2026-11-23). Cached reflection write is 0 B and 0.39 of BCL. Source-gen write was 1.09 of BCL and 9 KB per call because every scalar went through `TypeInfoResolver.GetTypeInfo`; generated converters now call `WriteNumberValue` / `WriteStringValue` / `WriteBooleanValue` and `ReadInt32Element` / `ReadDecimalElement` for those primitives. Source-gen write is 0 B and **0.31 of BCL** (faster than cached reflection) after generated converters call `WriteLeafStart`/`WriteLeafEnd` with prebuilt `"<Name>"u8` tags, matching the reflection binder's `LeafOpenTag`. Source-gen read is slightly ahead of cached reflection on this graph. Interceptors are emitted only when `InterceptorsNamespaces` includes `CloudNimble.Text.Xml.Generated`, so the Performance project can reference the generator without rewriting its reflection rows.
+
 ### Serializer, objects (`XmlSerializerObjectBenchmarks`, PR 6)
 
 Each library reads the document it wrote and writes into a sink that is reused between calls. The models are in `CloudNimble.XmlEssentials.Performance/Models` and carry both libraries' attributes, so the documents have the same shape (the BCL ones are about 100 bytes longer because they declare `xsi` and `xsd`). The lists hold 1,000 items; the dictionary holds 100. The BCL serializer cannot map a record created through its constructor or a dictionary, so `Members` and `Dictionary` have no BCL row.
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| Bcl_ReadCustomer | ReadCustomer | 8793 ns | 1.00 | 16496 B | 1.00 |
-| Stj_ReadCustomer | ReadCustomer | 3022 ns | 0.34 | 3576 B | 0.22 |
-| XmlEssentials_ReadCustomer | ReadCustomer | 3367 ns | 0.38 | 3224 B | 0.20 |
-| Stj_ReadDictionary | ReadDictionary | 3670 ns |  | 13392 B |  |
-| XmlEssentials_ReadDictionary | ReadDictionary | 4003 ns |  | 13392 B |  |
-| Bcl_ReadDrawing | ReadDrawing | 209954 ns | 1.00 | 130866 B | 1.00 |
-| Stj_ReadDrawing | ReadDrawing | 144239 ns | 0.69 | 117914 B | 0.90 |
-| XmlEssentials_ReadDrawing | ReadDrawing | 114338 ns | 0.54 | 90793 B | 0.69 |
-| Stj_ReadMembers | ReadMembers | 163536 ns |  | 240274 B |  |
-| XmlEssentials_ReadMembers | ReadMembers | 165533 ns |  | 247802 B |  |
-| Bcl_ReadMoney | ReadMoney | 268502 ns | 1.00 | 146251 B | 1.00 |
-| Stj_ReadMoney | ReadMoney | 92919 ns | 0.35 | 89073 B | 0.61 |
-| XmlEssentials_ReadMoney | ReadMoney | 89583 ns | 0.33 | 88601 B | 0.61 |
-| Bcl_ReadOrder | ReadOrder | 2044 ns | 1.00 | 7448 B | 1.00 |
-| Stj_ReadOrder | ReadOrder | 345 ns | 0.17 | 232 B | 0.03 |
-| XmlEssentials_ReadOrder | ReadOrder | 469 ns | 0.23 | 296 B | 0.04 |
-| Bcl_ReadOrders | ReadOrders | 784576 ns | 1.00 | 567319 B | 1.00 |
-| Stj_ReadOrders | ReadOrders | 330984 ns | 0.42 | 249075 B | 0.44 |
-| XmlEssentials_ReadOrders | ReadOrders | 444197 ns | 0.57 | 248667 B | 0.44 |
-| Bcl_ReadReadings | ReadReadings | 345448 ns | 1.00 | 267715 B | 1.00 |
-| Stj_ReadReadings | ReadReadings | 143904 ns | 0.42 | 105074 B | 0.39 |
-| XmlEssentials_ReadReadings | ReadReadings | 195325 ns | 0.57 | 104602 B | 0.39 |
-| Bcl_WriteCustomer | WriteCustomer | 4129 ns | 1.00 | 8648 B | 1.00 |
-| Stj_WriteCustomer | WriteCustomer | 1482 ns | 0.36 | 312 B | 0.04 |
-| XmlEssentials_WriteCustomer | WriteCustomer | 1728 ns | 0.42 | 0 B | 0.00 |
-| Stj_WriteDictionary | WriteDictionary | 1252 ns |  | 0 B |  |
-| XmlEssentials_WriteDictionary | WriteDictionary | 2386 ns |  | 0 B |  |
-| Bcl_WriteDrawing | WriteDrawing | 131666 ns | 1.00 | 30098 B | 1.00 |
-| Stj_WriteDrawing | WriteDrawing | 80973 ns | 0.61 | 313 B | 0.01 |
-| XmlEssentials_WriteDrawing | WriteDrawing | 70420 ns | 0.53 | 0 B | 0.00 |
-| Stj_WriteMembers | WriteMembers | 57350 ns |  | 312 B |  |
-| XmlEssentials_WriteMembers | WriteMembers | 71134 ns |  | 0 B |  |
-| Bcl_WriteMoney | WriteMoney | 82070 ns | 1.00 | 48009 B | 1.000 |
-| Stj_WriteMoney | WriteMoney | 55105 ns | 0.67 | 312 B | 0.006 |
-| XmlEssentials_WriteMoney | WriteMoney | 56167 ns | 0.68 | 0 B | 0.000 |
-| Bcl_WriteOrder | WriteOrder | 1013 ns | 1.00 | 8192 B | 1.00 |
-| Stj_WriteOrder | WriteOrder | 190 ns | 0.19 | 0 B | 0.00 |
-| XmlEssentials_WriteOrder | WriteOrder | 273 ns | 0.27 | 0 B | 0.00 |
-| Bcl_WriteOrders | WriteOrders | 418925 ns | 1.00 | 214507 B | 1.000 |
-| Stj_WriteOrders | WriteOrders | 202642 ns | 0.48 | 314 B | 0.001 |
-| XmlEssentials_WriteOrders | WriteOrders | 234070 ns | 0.56 | 0 B | 0.000 |
-| Bcl_WriteReadings | WriteReadings | 209447 ns | 1.00 | 131138 B | 1.000 |
-| Stj_WriteReadings | WriteReadings | 106860 ns | 0.51 | 313 B | 0.002 |
-| XmlEssentials_WriteReadings | WriteReadings | 136989 ns | 0.65 | 0 B | 0.000 |
+| Bcl_ReadCustomer | ReadCustomer | 8689 ns | 1.00 | 16496 B | 1.00 |
+| Stj_ReadCustomer | ReadCustomer | 2993 ns | 0.34 | 3576 B | 0.22 |
+| XmlEssentials_ReadCustomer | ReadCustomer | 3368 ns | 0.39 | 3168 B | 0.19 |
+| Stj_ReadDictionary | ReadDictionary | 3696 ns |  | 13392 B |  |
+| XmlEssentials_ReadDictionary | ReadDictionary | 4053 ns |  | 13392 B |  |
+| Bcl_ReadDrawing | ReadDrawing | 209760 ns | 1.00 | 130866 B | 1.00 |
+| Stj_ReadDrawing | ReadDrawing | 144158 ns | 0.69 | 117914 B | 0.90 |
+| XmlEssentials_ReadDrawing | ReadDrawing | 114728 ns | 0.55 | 90793 B | 0.69 |
+| Stj_ReadMembers | ReadMembers | 167605 ns |  | 240274 B |  |
+| XmlEssentials_ReadMembers | ReadMembers | 170462 ns |  | 143802 B |  |
+| Bcl_ReadMoney | ReadMoney | 268210 ns | 1.00 | 146251 B | 1.00 |
+| Stj_ReadMoney | ReadMoney | 100397 ns | 0.37 | 89073 B | 0.61 |
+| XmlEssentials_ReadMoney | ReadMoney | 91606 ns | 0.34 | 88601 B | 0.61 |
+| Bcl_ReadOrder | ReadOrder | 2071 ns | 1.00 | 7368 B | 1.00 |
+| Stj_ReadOrder | ReadOrder | 318 ns | 0.15 | 232 B | 0.03 |
+| XmlEssentials_ReadOrder | ReadOrder | 457 ns | 0.22 | 232 B | 0.03 |
+| Bcl_ReadOrders | ReadOrders | 771469 ns | 1.00 | 567319 B | 1.00 |
+| Stj_ReadOrders | ReadOrders | 330520 ns | 0.43 | 249075 B | 0.44 |
+| XmlEssentials_ReadOrders | ReadOrders | 433455 ns | 0.56 | 248603 B | 0.44 |
+| Bcl_ReadReadings | ReadReadings | 346818 ns | 1.00 | 267715 B | 1.00 |
+| Stj_ReadReadings | ReadReadings | 145485 ns | 0.42 | 105074 B | 0.39 |
+| XmlEssentials_ReadReadings | ReadReadings | 201662 ns | 0.58 | 104602 B | 0.39 |
+| Bcl_WriteCustomer | WriteCustomer | 4334 ns | 1.00 | 8648 B | 1.00 |
+| Stj_WriteCustomer | WriteCustomer | 1493 ns | 0.34 | 312 B | 0.04 |
+| XmlEssentials_WriteCustomer | WriteCustomer | 1681 ns | 0.39 | 0 B | 0.00 |
+| Stj_WriteDictionary | WriteDictionary | 1248 ns |  | 0 B |  |
+| XmlEssentials_WriteDictionary | WriteDictionary | 2378 ns |  | 0 B |  |
+| Bcl_WriteDrawing | WriteDrawing | 130754 ns | 1.00 | 30098 B | 1.00 |
+| Stj_WriteDrawing | WriteDrawing | 86951 ns | 0.67 | 313 B | 0.01 |
+| XmlEssentials_WriteDrawing | WriteDrawing | 69506 ns | 0.53 | 0 B | 0.00 |
+| Stj_WriteMembers | WriteMembers | 56962 ns |  | 312 B |  |
+| XmlEssentials_WriteMembers | WriteMembers | 68674 ns |  | 0 B |  |
+| Bcl_WriteMoney | WriteMoney | 83452 ns | 1.00 | 48009 B | 1.000 |
+| Stj_WriteMoney | WriteMoney | 55039 ns | 0.66 | 312 B | 0.006 |
+| XmlEssentials_WriteMoney | WriteMoney | 63553 ns | 0.76 | 0 B | 0.000 |
+| Bcl_WriteOrder | WriteOrder | 1030 ns | 1.00 | 8192 B | 1.00 |
+| Stj_WriteOrder | WriteOrder | 187 ns | 0.18 | 0 B | 0.00 |
+| XmlEssentials_WriteOrder | WriteOrder | 266 ns | 0.26 | 0 B | 0.00 |
+| Bcl_WriteOrders | WriteOrders | 423885 ns | 1.00 | 214507 B | 1.000 |
+| Stj_WriteOrders | WriteOrders | 202953 ns | 0.48 | 314 B | 0.001 |
+| XmlEssentials_WriteOrders | WriteOrders | 234705 ns | 0.55 | 0 B | 0.000 |
+| Bcl_WriteReadings | WriteReadings | 216607 ns | 1.00 | 131138 B | 1.000 |
+| Stj_WriteReadings | WriteReadings | 109307 ns | 0.50 | 313 B | 0.002 |
+| XmlEssentials_WriteReadings | WriteReadings | 132853 ns | 0.61 | 0 B | 0.000 |
 
 | Category | What it holds |
 | --- | --- |
@@ -342,7 +350,7 @@ Each library reads the document it wrote and writes into a sink that is reused b
 | `Dictionary` | 100 integers keyed by name |
 
 - **Every row with a BCL baseline is under it: 0.23 to 0.57 reading and 0.27 to 0.68 writing.** As PR 6 first worked, three rows were over (`WriteOrders` 1.21, `WriteReadings` 1.27, `ReadReadings` 1.51) and `ReadOrders` was 0.92.
-- **Writing an object allocates nothing**, pinned by `Serialize_Objects_ToBufferWriter_DoNotAllocate` (elements, attributes, simple content, wrapped and unwrapped lists, arrays, derived types, dictionaries, a root list, a record). Reading allocates the objects and strings it returns: `Deserialize_Person_AllocatesOnlyTheObjectAndItsString`, `Deserialize_AttributeMapped_AllocatesOnlyTheObject`, `Deserialize_Price_AllocatesOnlyTheObjectAndItsString`. Two exceptions: a type created through a constructor with parameters holds its values in an array and boxes its value types until the constructor runs (`ReadMembers`, 8 B per record more than STJ), and a value that needs decoding makes the reader allocate its decode buffer (see the backlog).
+- **Writing an object allocates nothing**, pinned by `Serialize_Objects_ToBufferWriter_DoNotAllocate` (elements, attributes, simple content, wrapped and unwrapped lists, arrays, derived types, dictionaries, a root list, a record). Reading allocates the objects and strings it returns: `Deserialize_Person_AllocatesOnlyTheObjectAndItsString`, `Deserialize_AttributeMapped_AllocatesOnlyTheObject`, `Deserialize_Price_AllocatesOnlyTheObjectAndItsString`. A type created through a constructor with parameters holds its values in an array its binding keeps between objects, and a value that needs decoding is decoded in the reader's scratch buffer, so neither allocates per object (see the fourth pass).
 - **The scalar rows had slowed by about 15 ns when PR 6 first worked, and the object benchmarks are what showed it.** `XmlSerializerOptions` keeps the type info it returned last and checks it before the dictionary. PR 6 put the dictionary behind a lock, so that a type still being bound is not handed out, and stopped updating that slot on a dictionary hit. After a second type had been used, every root call took the lock: `ReadInt32` was 81 ns and `WriteInt32Buffer` 67 ns in the same process that had run other types, and 63 and 48 ns in a loop that used only `int`. A hit now becomes the type info returned last, unless a type is being bound at that moment. The scalar and sequence tables above are from the run after that fix.
 
 #### What made the difference (first pass)
@@ -399,6 +407,25 @@ Each backlog item was either done, or measured and left with the reason.
 | `Guid` and `double` parsing | **Measured, not changed.** Parsing alone is 11 ns for a GUID and 17 ns for a double with `Utf8Parser`, and 9 and 16 ns with the type's own UTF-8 `TryParse`. There are 2 ns to gain. | | |
 | Text with a reference | **Measured, not changed.** One `&amp;` in a 35-byte string costs the reader 31 ns (a drain goes from 25 to 56 ns per element) and the serializer 16 ns more for the two-token path. The reader validates the reference in `ReadText` and decodes it again in `DecodeValueSpan`, with about eleven vectorized searches between them. Decoding in one pass is the fix, and it is a rewrite of the reader's most sensitive loop, so it is its own piece of work. | | |
 | Boxing in constructor-created types | **Not done.** Removing it needs a typed constructor delegate, which means generated code (PR 7) or `System.Reflection.Emit`, and the second is ruled out for AOT. | | |
+
+#### Fourth pass: the leftovers
+
+Three items were left after the third pass. Times are direct loops against the commit before this pass, best of 15 rounds.
+
+| Item | What changed | Before | After |
+| --- | --- | --- | --- |
+| Text with a reference was scanned twice | `ReadText` builds the value in the decode buffer as it scans. At the first reference or replaced line end it looks for the `<` that ends the token (one search for one byte), sizes the buffer for the whole token, and from then on copies each run and each replacement as it meets them. `DecodeValueSpan` no longer handles references and is left with CDATA, comments, and processing instructions. | one `&amp;` in 35 bytes: 47.7 ns per element; CR LF: 53.3 ns; eight references: 192 ns | 35.6 ns; 36.7 ns; 115 ns |
+| The reader allocated on real documents | Measured first: every byte was a decode buffer or a stack that had outgrown its eight inline slots (the OpenDocument file has 38 attributes and 36 namespaces on one tag). A reader can be given a scratch buffer (two new constructors) and takes that memory from it before it allocates. `XmlDocument.Parse` passes the unused end of the buffer it rents; `XmlSerializer.Deserialize` passes 512 bytes of stack. | drain: 1440 / 6952 / 944 / 80 B (RSS, OpenDocument, WordprocessingML, RPM); DOM parse: 2720 / 7056 / 1048 / 184 B; `Deserialize<string>` with a reference: 152 B | drain with a 16 KB buffer: 0 B on all four, same time; DOM parse: 105 / 105 / 104 / 104 B in the benchmark, which is the document object; 88 B, the string |
+| Constructor-created types boxed their value types | The values array is kept by the type's binding between objects (one reader at a time; a second thread or a nested object of the same type gets a new one). A value-type member holds its value in a box that stays in that array and is written through `Unsafe.Unbox`, because the constructor copies the value out. | 1,000 `Member(string, int, string, bool)`: 249,368 B; 1,000 records of three numbers: 176,600 B | 145,368 B (STJ: 240,272 B); 56,600 B (STJ: 161,072 B). Time unchanged. |
+
+- **Raising the inline slots from 8 to 32 was tried and reverted.** It made the reader about 1 KB larger: `Deserialize<int>` went from 50.3 to 58.5 ns and the tiny drain from 56.7 to 61.0 ns, and it still did not cover the OpenDocument file.
+- **A stack buffer in the reader's own frame costs 18 ns.** The reader is copied when it is constructed there. Allocated one frame up and passed down it costs nothing, which is how `XmlSerializer.Read` does it.
+- **The DOM clears what the reader wrote in the rented buffer only when it wrote something.** Clearing unconditionally, and with a `finally`, made the tiny parse 113 to 130 ns in a direct loop. Guarded, it is 113 ns again.
+- **A box is reused only where nothing can keep it.** The member must be a value type other than `Nullable<T>`, must not be a collection (its slot holds the builder), and every constructor parameter it fills must be of exactly its type. A parameter typed as `object` or an interface receives the box itself and may keep it, so such a member is boxed afresh each time (`KeptArgument_ConstructorKeepsWhatItWasGiven_TheNextReadDoesNotChangeIt`).
+- **What the pass found.** XML 1.1 section 2.11 makes CR followed by NEL one line end. The reader produced two, in text, attribute values, CDATA, comments, and processing instructions, and counted two lines. NEL and LS alone in XML 1.1 text were treated as characters when deciding whether text was white space, although they are line ends by then. Both are fixed and pinned in `Utf8XmlReaderLineEndTests`.
+- **Generated converters.** They could not create a type through a constructor with parameters (`new T()` was all they emitted), so a positional record in a context did not compile. They now choose the constructor by the reflection resolver's rules and call it with the typed locals they already read into, so there is no values array and no box (`GeneratedContext_RecordOfValueTypes_IsReadAllocatingOnlyTheRecord`). That test also showed 256 B per `long`, `double`, or `bool` member read: only `int`, `decimal`, and `string` had a direct path, and every other type asked the resolver for a new type info per value. The generated context now keeps the type info per type and options instance (`__GetInfo<T>`).
+- **What is still allocated.** A raw reader with no scratch buffer allocates as before. A DOM parse of the RSS file (198 KB) averages 105 B in the benchmark, but a single parse can allocate a few kilobytes: its buffers are larger than the shared pool keeps per thread, so renting them sometimes allocates in the pool. That was so before this pass and is why `Parse_RealDocument_AllocatesOnlyTheDocument` covers the other three fixtures and not that one.
+- Pinned by `Drain_RealDocumentWithScratch_AllocatesNothing`, `Parse_RealDocument_AllocatesOnlyTheDocument`, `Deserialize_StringThatNeedsDecoding_AllocatesOnlyTheString`, `Deserialize_RecordOfValueTypes_AllocatesOnlyTheRecord`, and `Deserialize_RecordWithAString_AllocatesOnlyTheRecordAndItsString`.
 
 #### What the benchmarks and tests found
 
@@ -510,23 +537,23 @@ STJ benches often use `JsonEncodedText` for repeated property names. Add a categ
 
 **Writer `Reset` shipped in PR 3** (benches reuse one writer at 0 B). `Utf8XmlReader` is a `ref struct`; reuse is “construct again on the same span,” which is already cheap. If a future mutable reader or sequence reader appears, give it `Reset` and a bench that reuses it.
 
-**Open: per-reader allocations on real documents.** Drains of the four fixtures allocate 80 B to 10504 B each (see the real-document table). They are growth of the reader's own arrays past their inline slots, plus decode buffers, and a `ref struct` cannot return a pooled array without a `Dispose`. Measure the split first (bindings and element stacks vs. interned URIs vs. decode buffers), then choose between larger inline capacity, a caller-supplied scratch buffer in `XmlReaderOptions`, and an explicit `Dispose`.
+**Done: per-reader allocations on real documents.** The split was measured (decode buffers, and stacks past their inline slots), and the reader takes that memory from a caller-supplied scratch buffer. See "Fourth pass: the leftovers".
 
 ### 6. DOM and serializer
 
 **DOM shipped in PR 4** (`XmlDocumentBenchmarks`, table above). DOM parse time is now mostly the tokenizer (about 21 of 31 µs on the catalog), so any further reader work is also the next DOM parse win. The mutable `Nodes` tree has no bench yet; `XmlNode.Parse` goes through `XmlDocument` and then allocates one object per node by design.
 
-**Scalar serializer benches shipped with PR 5** (`XmlSerializerBenchmarks`, table above): 0.06 to 0.26 of BCL. Open there:
+**Scalar serializer benches shipped with PR 5** (`XmlSerializerBenchmarks`, table above): 0.05 to 0.25 of BCL. Open there:
 
 - **Small elements, what is left.** The serializer now reads `<Int32>1</Int32>` in about 21 ns and writes it in about 8 ns as a leaf; through `Read` and `WriteStartElement` the reader and writer still spend about 20 and 12 ns on the tokens alone. The asynchronous iterator (about 11 ns per value) is now the largest single part of both sequence rows, and it is the price of `IAsyncEnumerable<T>`; STJ pays it too.
 - **The reader is still 1064 bytes and construction is 17 ns.** What remains of construction is the caller clearing the local and the two stacks that must be cleared. Making reader state a value instead of a heap snapshot (as `JsonReaderState` is) would make resuming allocation-free; today `CurrentState` rebuilds every name and namespace as strings and costs about 49 ns.
 - **A converter that cannot resume pays two reader copies per value when streamed** (the read-ahead). The built-in value converters do not. For object graphs (PR 6) decide whether converters become resumable, as STJ made them.
 - **`ReadText` still validates multi-byte and entity-heavy text in small steps.** `sample_rss.xml` is under BCL now, but only CDATA and comments got the plain-run skip; check an entity-dense document with tiering off.
 
-**Object benches shipped with PR 6** (`XmlSerializerObjectBenchmarks`, table above): 0.23 to 0.68 of BCL. Open there, largest first:
+**Object benches shipped with PR 6** (`XmlSerializerObjectBenchmarks`, table above): 0.22 to 0.58 of BCL reading and 0.26 to 0.76 writing. Open there, largest first:
 
-- **Text with a reference is decoded twice by the reader.** One `&amp;` costs 31 ns in the reader and 16 ns more in the serializer. `ReadText` validates the reference and `DecodeValueSpan` decodes it again. Decode in one pass, into the decode buffer, from the first byte that needs it.
-- **Constructor-created types box their value types** until the constructor runs (8 B per record over STJ). This goes away with the typed constructor call the source generator will emit (PR 7).
+- **Done: text with a reference is decoded in one pass** (47.7 to 35.6 ns per element). See the fourth pass.
+- **Done: constructor-created types no longer box their value types** on the reflection path, and generated converters call the constructor with typed locals and hold no array at all. See the fourth pass.
 - **Attributes are the widest gap to STJ.** What is left is in the start-tag parser, which records, resolves, and checks each attribute. A short scalar scan of the value was tried and was slower.
 - **Parsing is at the framework's floor for `Guid` and `double`** (11 and 17 ns of `Utf8Parser`). `DateTime` and enums are 13 and 10 ns over `int` in our own code and have not been profiled.
 - **Preserve is 2.6 times a plain write** (134 against 50 µs for 200 customers). Each object is looked up twice, once by the member that holds it and once by its own converter; one lookup would do.

@@ -35,6 +35,7 @@ namespace CloudNimble.XmlEssentials.Performance
         private XmlWriterSettings _bclWriterSettings = null!;
         private ArrayBufferWriter<byte> _buffer = null!;
         private byte[] _document = null!;
+        private readonly byte[] _scratch = new byte[16384];
         private EssentialsXmlDocument _parsed = null!;
         private XmlReaderSettings _settings = null!;
         private MemoryStream _stream = null!;
@@ -162,6 +163,28 @@ namespace CloudNimble.XmlEssentials.Performance
         public int XmlEssentials_Drain()
         {
             var reader = new Utf8XmlReader(_document, new XmlReaderOptions
+            {
+                CommentHandling = XmlCommentHandling.Allow,
+                WhitespaceHandling = XmlWhitespaceHandling.Significant,
+            });
+            var count = 0;
+            while (reader.Read())
+            {
+                count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// XmlEssentials drain with a scratch buffer the benchmark owns, so the reader allocates nothing.
+        /// </summary>
+        /// <returns>The number of tokens.</returns>
+        [Benchmark]
+        [BenchmarkCategory("RealDrain")]
+        public int XmlEssentials_DrainWithScratch()
+        {
+            var reader = new Utf8XmlReader(_document, _scratch, new XmlReaderOptions
             {
                 CommentHandling = XmlCommentHandling.Allow,
                 WhitespaceHandling = XmlWhitespaceHandling.Significant,

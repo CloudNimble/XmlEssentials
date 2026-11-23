@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -21,6 +22,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
         private readonly XmlConverter<TValue>? _converter;
         private readonly Func<object, TValue> _get;
+        private XmlHeldBox<TValue>? _held;
         private readonly XmlIgnoreCondition _ignore;
         private readonly bool _isScalar;
         private readonly Action<object, TValue>? _set;
@@ -142,6 +144,53 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
+        internal override object? CreateHeldBox()
+        {
+            return _held?.Create();
+        }
+
+        /// <inheritdoc />
+        internal override void HoldDefault(object?[] values, object? value)
+        {
+            if (_held is { } held)
+            {
+                held.Set(values[Index]!, value is null ? default! : (TValue)value);
+            }
+            else
+            {
+                values[Index] = value;
+            }
+        }
+
+        /// <inheritdoc />
+        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "The held box has one constructor and no members found by name.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "A value type always has its parameterless constructor.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The reflection resolver already closes this member's own generic type over the same value type. Native AOT callers use a generated context, which never holds values.")]
+        internal override void UseHeldBox(ReadOnlySpan<Type> parameterTypes)
+        {
+            // A box is written again for the next object, so it may only ever be handed to something that
+            // copies the value out of it: a parameter of exactly this type, or the member's own setter. A
+            // parameter typed as object or as an interface would keep the box itself. Nullable<T> boxes as
+            // T or as null, so it has no box of its own to reuse, and a collection member's slot holds its
+            // builder while the element is read.
+            var type = typeof(TValue);
+            if (!type.IsValueType || Nullable.GetUnderlyingType(type) is not null || Collection is not null)
+            {
+                return;
+            }
+
+            foreach (var parameterType in parameterTypes)
+            {
+                if (parameterType != type)
+                {
+                    return;
+                }
+            }
+
+            _held = (XmlHeldBox<TValue>)Activator.CreateInstance(typeof(XmlStructHeldBox<>).MakeGenericType(type))!;
+        }
+
+        /// <inheritdoc />
         internal override void SetHeldValue(object instance, object? value)
         {
             _set!(instance, value is null ? default! : (TValue)value);
@@ -157,7 +206,15 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (values is not null)
             {
-                values[Index] = value;
+                if (_held is { } held)
+                {
+                    held.Set(values[Index]!, value!);
+                }
+                else
+                {
+                    values[Index] = value;
+                }
+
                 return;
             }
 

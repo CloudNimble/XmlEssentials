@@ -1,6 +1,5 @@
 ---
 title: XmlWriterOptions
-description: "Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter)."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlWriterOptions', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `Utf8XmlWriter`', '- `XmlVersion`', '- `XmlReaderOptions`']
@@ -20,10 +19,6 @@ keywords: ['XmlWriterOptions', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNi
 CloudNimble.Text.Xml.XmlWriterOptions
 ```
 
-## Summary
-
-Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter).
-
 ## Usage
 
 # Usage
@@ -42,11 +37,6 @@ using var writer = new Utf8XmlWriter(buffer, options);
 ```
 
 Use the parameterless constructor so `IndentCharacter` is space and `NewLine` is `Environment.NewLine`.
-
-## Remarks
-
-A max-* of 0 means the default from the DoS table. Construct with
-`new XmlWriterOptions()` so indent defaults apply.
 
 ## Examples
 
@@ -106,9 +96,6 @@ new XmlWriterOptions
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates options with indent character space, indent size 0 (meaning 2),
-and [XmlWriterOptions.NewLine](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#newline) equal to [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
-
 #### Syntax
 
 ```csharp
@@ -139,9 +126,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmitByteOrderMark
 
-Gets or sets whether to write a UTF-8 BOM at the first output.
-Default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
-
 #### Syntax
 
 ```csharp
@@ -153,9 +137,6 @@ public bool EmitByteOrderMark { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentCharacter
-
-Gets or sets the indent character when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is true.
-Default is space when constructed with [XmlWriterOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#.ctor).
 
 #### Syntax
 
@@ -169,8 +150,6 @@ Type: `char`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Indented
 
-Gets or sets whether to pretty-print with newlines and indentation.
-
 #### Syntax
 
 ```csharp
@@ -182,9 +161,6 @@ public bool Indented { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentSize
-
-Gets or sets the number of [XmlWriterOptions.IndentCharacter](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indentcharacter)s per depth.
-0 means 2.
 
 #### Syntax
 
@@ -198,9 +174,6 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
 
-Gets or sets the maximum attributes on one element, including xmlns*.
-0 means 1000.
-
 #### Syntax
 
 ```csharp
@@ -212,9 +185,6 @@ public int MaxAttributeCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
-
-Gets or sets the maximum element depth.
-0 means 64.
 
 #### Syntax
 
@@ -228,9 +198,6 @@ Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
 
-Gets or sets the maximum UTF-8 byte length of an element or attribute name.
-0 means 1024.
-
 #### Syntax
 
 ```csharp
@@ -242,9 +209,6 @@ public int MaxNameByteCount { get; set; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
-
-Gets or sets the newline sequence when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is true.
-Default is [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline) when constructed with [XmlWriterOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#.ctor).
 
 #### Syntax
 
@@ -258,8 +222,6 @@ Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
 
-Gets or sets whether to omit `<?xml ...?>`.
-
 #### Syntax
 
 ```csharp
@@ -271,8 +233,6 @@ public bool OmitXmlDeclaration { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SkipValidation
-
-Gets or sets whether to skip name and well-formedness checks.
 
 #### Syntax
 
@@ -286,8 +246,6 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Standalone
 
-Gets or sets the standalone pseudo-attribute, or null to omit it.
-
 #### Syntax
 
 ```csharp
@@ -299,8 +257,6 @@ public bool? Standalone { get; set; }
 Type: `bool?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
-
-Gets or sets the XML version written in the declaration and used for Char checks.
 
 #### Syntax
 

@@ -172,6 +172,8 @@ public ref struct Utf8XmlReader
 {
     public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, XmlReaderOptions options = default);
     public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlReaderState state);
+    public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, XmlReaderOptions options);
+    public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, bool isFinalBlock, XmlReaderState state);
     public Utf8XmlReader(ReadOnlySequence<byte> utf8Xml, XmlReaderOptions options = default);
     public Utf8XmlReader(ReadOnlySequence<byte> utf8Xml, bool isFinalBlock, XmlReaderState state);
 
@@ -262,6 +264,23 @@ public ref struct Utf8XmlReader
 ```
 
 Lexical rules for getters: [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant).
+
+## Scratch buffer
+
+A reader needs memory of its own in four cases:
+
+- a value that holds a reference, or a line end other than LF, is decoded into a buffer;
+- a start tag has more than eight attributes;
+- more than eight namespace declarations are in scope;
+- elements are nested more than eight deep.
+
+The constructors without `scratch` allocate an array for each, once per reader. The two with `scratch` take the memory from the caller's buffer and allocate only when it runs out, so any size is correct and a larger one saves more. The four real documents in the benchmarks need between 80 bytes and about 7 KB.
+
+- The buffer's contents on entry do not matter, and it can be passed again to the reader for the next block of the same document.
+- Copies of a reader share it. See "Lifetime of a decoded `ValueSpan`, and reader copies" in [open questions](20-open-questions.md).
+- A buffer from `stackalloc` is fastest when it is allocated in the frame **above** the one that constructs the reader. In the same frame the reader was 18 ns slower to construct when measured.
+- `XmlDocument.Parse` uses the unused end of the buffer it rents for the document, and clears what the reader wrote there. `XmlSerializer.Deserialize` from memory gives the reader 512 bytes of stack.
+- There are no `ReadOnlySequence<byte>` overloads with `scratch`: a sequence of several segments is copied into an array before it is read.
 
 ## Namespace stack
 

@@ -149,7 +149,7 @@ namespace CloudNimble.Text.Xml
                 return _attributesInline[index];
             }
 
-            return _attributes![index];
+            return _attributes[index];
         }
 
         /// <summary>
@@ -197,7 +197,7 @@ namespace CloudNimble.Text.Xml
         {
             if (attribute.DecodedStart >= 0)
             {
-                return _attributeDecoded.AsSpan(attribute.DecodedStart, attribute.DecodedLength);
+                return _attributeDecoded.Slice(attribute.DecodedStart, attribute.DecodedLength);
             }
 
             return _span.Slice(attribute.ValueStart, attribute.ValueLength);
@@ -258,19 +258,19 @@ namespace CloudNimble.Text.Xml
 
             int start;
             int length;
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 start = _elementNsStartsInline[index];
                 length = _elementNsLengthsInline[index];
             }
-            else if (_elementNsStarts is null || index >= _elementNsStarts.Length)
+            else if (_elementNsStarts.IsEmpty || index >= _elementNsStarts.Length)
             {
                 return [];
             }
             else
             {
                 start = _elementNsStarts[index];
-                length = _elementNsLengths![index];
+                length = _elementNsLengths[index];
             }
 
             if (start >= 0)
@@ -321,12 +321,12 @@ namespace CloudNimble.Text.Xml
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly NamespaceBinding BindingAt(int index)
         {
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 return _nsBindingsInline[index];
             }
 
-            return _nsBindings![index];
+            return _nsBindings[index];
         }
 
         /// <summary>
@@ -348,24 +348,23 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal void EnsureElementNsCapacity(int index)
         {
-            if (_elementNsStarts is not null && index < _elementNsStarts.Length)
+            if (!_elementNsStarts.IsEmpty && index < _elementNsStarts.Length)
             {
                 return;
             }
 
-            var first = _elementNsStarts is null;
-            var n = first ? 16 : _elementNsStarts!.Length * 2;
+            var first = _elementNsStarts.IsEmpty;
+            var n = first ? InlineSlots * 2 : _elementNsStarts.Length * 2;
             while (n <= index)
             {
                 n *= 2;
             }
 
-            Array.Resize(ref _elementNsStarts, n);
-            Array.Resize(ref _elementNsLengths, n);
-            Array.Resize(ref _elementNsUris, n);
+            _elementNsStarts = Grow<int>(_elementNsStarts, _elementNsStarts.Length, n);
+            _elementNsLengths = Grow<int>(_elementNsLengths, _elementNsLengths.Length, n);
             if (first)
             {
-                for (var i = 0; i < 8; i++)
+                for (var i = 0; i < InlineSlots; i++)
                 {
                     _elementNsStarts[i] = _elementNsStartsInline[i];
                     _elementNsLengths[i] = _elementNsLengthsInline[i];
@@ -425,65 +424,6 @@ namespace CloudNimble.Text.Xml
             _internedUris[_internedUriCount] = copy;
             _internedUriCount++;
             return copy;
-        }
-
-        /// <summary>
-        /// Looks up <paramref name="prefix"/> on the in-scope namespace stack.
-        /// </summary>
-        /// <param name="prefix">The prefix, or empty for the default xmlns.</param>
-        /// <param name="declared">True when the prefix is in scope, including the built-in xml and xmlns prefixes.</param>
-        /// <returns>The URI, or empty if unbound.</returns>
-        internal readonly ReadOnlySpan<byte> LookupNamespace(scoped ReadOnlySpan<byte> prefix, out bool declared)
-        {
-            if (TryLookupBinding(prefix, out var binding))
-            {
-                declared = true;
-                return BindingUri(binding);
-            }
-
-            declared = prefix.IsEmpty;
-            return [];
-        }
-
-        /// <summary>
-        /// Finds the in-scope binding for <paramref name="prefix"/>.
-        /// </summary>
-        /// <param name="prefix">The prefix, or empty for the default xmlns.</param>
-        /// <param name="binding">When this method returns true, the matching binding.</param>
-        /// <returns><see langword="true"/> if the prefix is in scope, including xml and xmlns.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal readonly bool TryLookupBinding(scoped ReadOnlySpan<byte> prefix, out NamespaceBinding binding)
-        {
-            var length = prefix.Length;
-            if (length == 3 && prefix.SequenceEqual("xml"u8))
-            {
-                binding = new NamespaceBinding(0, OwnedEmpty, 0, OwnedXml, XmlUtf8.Xml.Length);
-                return true;
-            }
-
-            if (length == 5 && prefix.SequenceEqual("xmlns"u8))
-            {
-                binding = new NamespaceBinding(0, OwnedEmpty, 0, OwnedXmlns, XmlUtf8.Xmlns.Length);
-                return true;
-            }
-
-            for (var i = _nsCount - 1; i >= 0; i--)
-            {
-                if (BindingPrefixLengthAt(i) != length)
-                {
-                    continue;
-                }
-
-                var candidate = BindingAt(i);
-                if (length == 0 || prefix.SequenceEqual(BindingPrefix(candidate)))
-                {
-                    binding = candidate;
-                    return true;
-                }
-            }
-
-            binding = default;
-            return false;
         }
 
         /// <summary>
@@ -634,7 +574,7 @@ namespace CloudNimble.Text.Xml
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly int BindingPrefixLengthAt(int index)
         {
-            return index < 8 ? _nsBindingsInline[index].PrefixLength : _nsBindings![index].PrefixLength;
+            return index < InlineSlots ? _nsBindingsInline[index].PrefixLength : _nsBindings[index].PrefixLength;
         }
 
         /// <summary>
@@ -645,7 +585,7 @@ namespace CloudNimble.Text.Xml
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly int BindingUriLengthAt(int index)
         {
-            return index < 8 ? _nsBindingsInline[index].UriLength : _nsBindings![index].UriLength;
+            return index < InlineSlots ? _nsBindingsInline[index].UriLength : _nsBindings[index].UriLength;
         }
 
         /// <summary>
@@ -656,7 +596,7 @@ namespace CloudNimble.Text.Xml
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly int BindingDepthAt(int index)
         {
-            return index < 8 ? _nsBindingsInline[index].Depth : _nsBindings![index].Depth;
+            return index < InlineSlots ? _nsBindingsInline[index].Depth : _nsBindings[index].Depth;
         }
 
         /// <summary>
@@ -689,23 +629,23 @@ namespace CloudNimble.Text.Xml
         {
             _nsPrefixCacheMask = 0;
             _nsDefaultIndex = NsIndexUnknown;
-            if (_nsCount < 8)
+            if (_nsCount < InlineSlots)
             {
                 _nsBindingsInline[_nsCount] = binding;
             }
             else
             {
-                if (_nsBindings is null)
+                if (_nsBindings.IsEmpty)
                 {
-                    _nsBindings = new NamespaceBinding[16];
-                    for (var i = 0; i < 8; i++)
+                    _nsBindings = Grow<NamespaceBinding>(default, 0, InlineSlots * 2);
+                    for (var i = 0; i < InlineSlots; i++)
                     {
                         _nsBindings[i] = _nsBindingsInline[i];
                     }
                 }
                 else if (_nsCount == _nsBindings.Length)
                 {
-                    Array.Resize(ref _nsBindings, _nsBindings.Length * 2);
+                    _nsBindings = Grow<NamespaceBinding>(_nsBindings, _nsCount, _nsBindings.Length * 2);
                 }
 
                 _nsBindings[_nsCount] = binding;
@@ -761,25 +701,9 @@ namespace CloudNimble.Text.Xml
                 }
                 else
                 {
-                    _attributes![i].NsIndex = AttributeRecord.FirstBinding + index;
+                    _attributes[i].NsIndex = AttributeRecord.FirstBinding + index;
                 }
             }
-        }
-
-        /// <summary>
-        /// Resolves the namespace of the current element from its prefix or the default xmlns.
-        /// </summary>
-        /// <param name="prefix">The element prefix, or empty.</param>
-        /// <returns>The URI bytes in the current buffer or an interned copy.</returns>
-        internal ReadOnlySpan<byte> ResolveElementNamespace(scoped ReadOnlySpan<byte> prefix)
-        {
-            var uri = LookupNamespace(prefix, out var declared);
-            if (!prefix.IsEmpty && (!declared || uri.IsEmpty))
-            {
-                throw Error("Undeclared namespace prefix.");
-            }
-
-            return uri;
         }
 
         /// <summary>
@@ -805,24 +729,25 @@ namespace CloudNimble.Text.Xml
         internal void StoreElementNamespaceFromCurrent(int index)
         {
             _elementNsStored = true;
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 _elementNsStartsInline[index] = _currentNsStart;
                 _elementNsLengthsInline[index] = _currentNsLength;
                 if (_currentNsStart < 0 && _currentNsLength > 0)
                 {
-                    _elementNsUris ??= new byte[8][];
-                    _elementNsUris[index] = _currentNsOwned;
+                    EnsureElementNsUriCapacity(index);
+                    _elementNsUris![index] = _currentNsOwned;
                 }
 
                 return;
             }
 
             EnsureElementNsCapacity(index);
-            _elementNsStarts![index] = _currentNsStart;
-            _elementNsLengths![index] = _currentNsLength;
+            _elementNsStarts[index] = _currentNsStart;
+            _elementNsLengths[index] = _currentNsLength;
             if (_currentNsStart < 0 && _currentNsLength > 0)
             {
+                EnsureElementNsUriCapacity(index);
                 _elementNsUris![index] = _currentNsOwned;
             }
         }
@@ -835,12 +760,12 @@ namespace CloudNimble.Text.Xml
         {
             int start;
             int length;
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 start = _elementNsStartsInline[index];
                 length = _elementNsLengthsInline[index];
             }
-            else if (_elementNsStarts is null || index >= _elementNsStarts.Length)
+            else if (_elementNsStarts.IsEmpty || index >= _elementNsStarts.Length)
             {
                 SetCurrentNamespace([]);
                 return;
@@ -848,7 +773,7 @@ namespace CloudNimble.Text.Xml
             else
             {
                 start = _elementNsStarts[index];
-                length = _elementNsLengths![index];
+                length = _elementNsLengths[index];
             }
 
             _currentNsStart = start;
@@ -885,14 +810,8 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            if (TryGetBufferOffset(uri, out var start))
-            {
-                _currentNsStart = start;
-                _currentNsLength = uri.Length;
-                _currentNsOwned = XmlUtf8.Empty;
-                return;
-            }
-
+            // Every caller passes a URI that outlives the current buffer: one restored from a snapshot, or the
+            // namespace of an element whose start tag was read from an earlier buffer.
             _currentNsOwned = InternUri(uri);
             _currentNsStart = -1;
             _currentNsLength = uri.Length;
@@ -907,11 +826,6 @@ namespace CloudNimble.Text.Xml
         internal readonly bool TryGetBufferOffset(scoped ReadOnlySpan<byte> slice, out int start)
         {
             start = 0;
-            if (slice.IsEmpty || slice.Length > _span.Length)
-            {
-                return false;
-            }
-
             var offset = Unsafe.ByteOffset(
                 ref MemoryMarshal.GetReference(_span),
                 ref MemoryMarshal.GetReference(slice));
@@ -967,8 +881,6 @@ namespace CloudNimble.Text.Xml
             return start switch
             {
                 OwnedEmpty => XmlUtf8.Empty,
-                OwnedXml => XmlUtf8.Xml,
-                OwnedXmlns => XmlUtf8.Xmlns,
                 OwnedXsi => XmlUtf8.Xsi,
                 _ => _internedUris![OwnedFirstInterned - start],
             };

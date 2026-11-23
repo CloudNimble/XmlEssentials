@@ -1,0 +1,123 @@
+---
+title: XmlMetadataServices
+icon: bolt
+tag: "STATIC"
+keywords: ['XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization.XmlMetadataServices', 'CloudNimble.Text.Xml.Serialization', 'class']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml.Serialization
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.Serialization.XmlMetadataServices
+```
+
+## Methods
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateEnumConverter
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.Serialization.XmlConverter<T> CreateEnumConverter<T>() where T : struct, System.Enum
+```
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlConverter<T>`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateValueInfo
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> CreateValueInfo<T>(CloudNimble.Text.Xml.XmlSerializerOptions options, CloudNimble.Text.Xml.Serialization.XmlConverter<T> converter)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | - |
+| `converter` | `CloudNimble.Text.Xml.Serialization.XmlConverter<T>` | - |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Read
+
+#### Syntax
+
+```csharp
+public static T Read<T>(ref CloudNimble.Text.Xml.Utf8XmlReader reader, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+
+#### Returns
+
+Type: `T?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReadAttribute
+
+#### Syntax
+
+```csharp
+public static T ReadAttribute<T>(ref CloudNimble.Text.Xml.Utf8XmlReader reader, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+
+#### Returns
+
+Type: `T?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Write
+
+#### Syntax
+
+```csharp
+public static void Write<T>(CloudNimble.Text.Xml.Utf8XmlWriter writer, T value, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `value` | `T` | - |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteAttribute
+
+#### Syntax
+
+```csharp
+public static void WriteAttribute<T>(CloudNimble.Text.Xml.Utf8XmlWriter writer, CloudNimble.Text.Xml.XmlName name, T value, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `name` | `CloudNimble.Text.Xml.XmlName` | - |
+| `value` | `T` | - |
+| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | - |
+

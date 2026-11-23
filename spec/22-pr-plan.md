@@ -20,11 +20,11 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 6b | XmlText / simple content | **Done** |
 | 6c | Collections and dictionaries | **Done** |
 | 6d | Polymorphism / extension data | **Done** |
-| 6e | Mixed content, references, async enumerable | Partial: IgnoreCycles/Preserve scope, mixed types; async enumerable already in PR 5 |
-| 7 | Source generator + context | Not started |
-| 7b | XSD generator | Not started |
-| 8 | AOT / trimming tests | Not started |
-| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Partial: reader, writer, DOM and real-document benches shipped with PRs 2–4, scalar and sequence benches with PR 5, object benches (`XmlSerializerObjectBenchmarks`) with PR 6. First-call and source-generated columns are not written. |
+| 6e | Mixed content, references, async enumerable | **Done** |
+| 7 | Source generator + context | Implemented (uncommitted) |
+| 7b | XSD generator | Implemented (uncommitted) |
+| 8 | AOT / trimming tests | Implemented (uncommitted) |
+| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Implemented (uncommitted): `XmlSerializerGraphBenchmarks` adds first-call reflection and source-gen context on the Customer graph; existing object/scalar/sequence/reader/writer/DOM rows remain. |
 | 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
 | 11 | Breakdance freeze + coverage slogan check | Not started |
 
@@ -34,10 +34,11 @@ TreatWarningsAsErrors is on from PR 1. **CS1591** is in `NoWarn` until the runti
 
 Coverage **line 100%** fail starts in **PR 2**, not PR 11. Branch coverage was reported against an 80% floor until `26a0d03`; `coverage-gate.cs` now fails below **100% branch** as well. Breakdance baselines update on every public-surface PR.
 
-CI (GitHub Actions matrix `net10.0` and `net11.0`), **MTP host**:
+CI (GitHub Actions, McpEssentials process: `pr-validation.yml` / `build-and-deploy.yml` / `publish-ci-build.yml`), **MTP host**:
 
 ```bash
-dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml
+dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --no-build -f net10.0
+dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml
 dotnet run src/coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml
 ```
 
@@ -56,7 +57,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
   - `src/global.json` (SDK 11.0.x, **`test.runner`: Microsoft.Testing.Platform**)
   - `src/.editorconfig`
   - `src/coverage-gate.cs` (parse Cobertura; fail line &lt; 100% on `CloudNimble.XmlEssentials`; PR 1: exit 0 if zero instrumented lines but Cobertura file must exist)
-  - `.github/workflows/ci.yml` (matrix net10.0/net11.0; exact commands above)
+  - `.github/workflows/pr-validation.yml`, `build-and-deploy.yml`, `publish-ci-build.yml` (McpEssentials process; exact commands above)
   - empty runtime / generator / tests / performance projects
   - **Keep** existing `CloudNimble.XmlEssentials.slnx` and `CloudNimble.XmlEssentials.Docs/`
   - root `README.md`
@@ -152,6 +153,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 7: Source generator + context
 
+- **Status:** Implemented (uncommitted)
 - **Title:** `feat: XmlSerializerContext source generator packed in XmlEssentials`
 - **Depends on:** PR 6e
 - **Files:** generator (`IsSourceGeneratorProject`, `IsRoslynComponent`, pack both analyzer folders), `[XmlSerializable]`, `Default` singleton, XMLXE007 = BCL `XmlIncludeAttribute`
@@ -159,6 +161,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 7b: XSD generator
 
+- **Status:** Implemented (uncommitted)
 - **Title:** `feat: XSD AdditionalFiles generator emitting types and AOT serialize`
 - **Depends on:** PR 7
 - **Files:** XsdGenerator in the same analyzer DLL, AdditionalFiles tests, XMLXE010–013, [11](11-xsd-source-generation.md)
@@ -166,14 +169,19 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 8: AOT / trimming tests
 
+- **Status:** Implemented (uncommitted)
 - **Title:** `test: Native AOT smoke using XmlSerializerContext`
 - **Depends on:** PR 7b
+- **Files:** `CloudNimble.XmlEssentials.Tests.Aot` (`PublishAot=true`, `IsReflectionEnabledByDefault=false`, XSD AdditionalFiles + `[XmlSerializable]` context), `CloudNimble.XmlEssentials.Samples.Cli` (McMaster.Extensions.CommandLineUtils 5.x, Native AOT)
+- **Description:** Publish and run the smoke executable. Reflection overloads throw. Context and XSD-generated types round-trip. CI job `aot` on windows-latest.
 
 ## PR 9: Benchmarks vs BCL XmlSerializer vs STJ
 
+- **Status:** Implemented (uncommitted)
 - **Title:** `bench: XmlEssentials vs cached XmlSerializer vs System.Text.Json`
 - **Depends on:** PR 7
-- **Description:** Cache BCL instance. Label “BCL defaults (wrapped collections)” unless attributes pin infoset. Match indent/declaration. STJ is sidecar.
+- **Files:** `XmlSerializerGraphBenchmarks`, `GraphXmlContext`, Performance ProjectReference to the generator (no `InterceptorsNamespaces`, so reflection rows stay reflection)
+- **Description:** Cache BCL instance. Label “BCL defaults (wrapped collections)” unless attributes pin infoset. Match indent/declaration. STJ is sidecar. First-call rows create new `XmlSerializerOptions` each iteration. Source-gen rows use `GraphXmlContext.Default.Customer`.
 
 ## PR 10: DotNetDocs site
 

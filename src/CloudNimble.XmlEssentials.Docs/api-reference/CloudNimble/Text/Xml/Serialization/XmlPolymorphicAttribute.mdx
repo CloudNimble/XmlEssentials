@@ -1,6 +1,5 @@
 ---
 title: XmlPolymorphicAttribute
-description: "Declares that a type is serialized with a derived-type discriminator."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
@@ -19,10 +18,6 @@ keywords: ['XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPol
 ```csharp
 CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute
 ```
-
-## Summary
-
-Declares that a type is serialized with a derived-type discriminator.
 
 ## Constructors
 
@@ -58,8 +53,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DiscriminatorPlacement
 
-Gets or sets where the discriminator is written.
-
 #### Syntax
 
 ```csharp
@@ -72,8 +65,6 @@ Type: `CloudNimble.Text.Xml.XmlDiscriminatorPlacement`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InferClosedTypePolymorphism
 
-Gets or sets whether closed derived types are inferred when no [XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) is present.
-
 #### Syntax
 
 ```csharp
@@ -85,8 +76,6 @@ public bool InferClosedTypePolymorphism { get; set; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeDiscriminatorPropertyName
-
-Gets or sets the discriminator attribute or element name when placement is not the element name itself.
 
 #### Syntax
 
@@ -113,8 +102,6 @@ public virtual object TypeId { get; }
 Type: `object`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnknownDerivedTypeHandling
-
-Gets or sets how unknown derived types are handled.
 
 #### Syntax
 

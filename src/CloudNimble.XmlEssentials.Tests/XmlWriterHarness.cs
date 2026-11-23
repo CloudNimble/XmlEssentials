@@ -55,23 +55,67 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         /// <summary>
+        /// Runs <paramref name="write"/> and returns the message of the <see cref="XmlException"/> it throws.
+        /// </summary>
+        /// <param name="write">The write callback.</param>
+        /// <param name="options">Writer options, or null for omitted declaration.</param>
+        /// <returns>
+        /// The message, or null when the callback did not throw. Disposing the writer afterwards may throw too,
+        /// for an element left open; that is not the call under test and is ignored.
+        /// </returns>
+        public static string? ThrownMessage(Action<Utf8XmlWriter> write, XmlWriterOptions? options = null)
+        {
+            var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), options ?? new XmlWriterOptions { OmitXmlDeclaration = true });
+            string? message = null;
+            try
+            {
+                write(writer);
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            try
+            {
+                writer.Dispose();
+            }
+            catch (XmlException)
+            {
+            }
+
+            return message;
+        }
+
+        /// <summary>
         /// Asserts that <paramref name="write"/> throws <see cref="XmlException"/>.
         /// </summary>
         /// <param name="write">The write callback.</param>
         /// <param name="options">Writer options, or null for omitted declaration.</param>
         public static void MustThrow(Action<Utf8XmlWriter> write, XmlWriterOptions? options = null)
         {
+            var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), options ?? new XmlWriterOptions { OmitXmlDeclaration = true });
             var threw = false;
             try
             {
-                ToXml(write, options ?? new XmlWriterOptions { OmitXmlDeclaration = true });
+                write(writer);
             }
             catch (XmlException)
             {
                 threw = true;
             }
 
-            threw.Should().BeTrue();
+            try
+            {
+                writer.Dispose();
+            }
+            catch (XmlException)
+            {
+                // Disposing a writer with an element still open throws too. That is not the call under
+                // test, so it must not be what makes the test pass.
+            }
+
+            threw.Should().BeTrue("the calls under test must throw by themselves, before the writer is disposed");
         }
 
         #endregion

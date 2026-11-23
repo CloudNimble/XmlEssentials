@@ -1,0 +1,953 @@
+using System.Buffers;
+using System.Collections.Generic;
+using System.Linq;
+using CloudNimble.Text.Xml;
+using CloudNimble.Text.Xml.Serialization;
+using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace CloudNimble.XmlEssentials.Tests
+{
+
+    /// <summary>
+    /// Source generator: context emit, diagnostics, and interceptors.
+    /// </summary>
+    [TestClass]
+    public class XmlSerializerGeneratorTests
+    {
+
+        #region Public Methods
+
+        [TestMethod]
+        public void PartialContext_EmitsDefaultAndPersonTypeInfo()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                    public int Age { get; set; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (compilation, diagnostics, generated) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
+            var text = string.Join("\n", generated.Select(tree => tree.ToString()));
+            Declared(compilation, generated).Should().Equal(
+                "class AppXmlContext : XmlSerializerContext [CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute(typeof(Person))]",
+                "  CloudNimble.Text.Xml.Serialization.XmlTypeInfo<Person> Person");
+            RunGenerated(source + """
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        return ReferenceEquals(AppXmlContext.Default, AppXmlContext.Default) + "|" + AppXmlContext.Default.Person.Type + "|" + CloudNimble.Text.Xml.XmlSerializer.Serialize(new Person { Name = "Ada", Age = 36 }, AppXmlContext.Default.Person);
+                    }
+                }
+                """).Should().Be("True|Person|<?xml version=\"1.0\" encoding=\"utf-8\"?><Person><Name>Ada</Name><Age>36</Age></Person>");
+            compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
+        }
+
+        [TestMethod]
+        public void NonPartialContext_ReportsXMLXE001()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal class AppXmlContext : XmlSerializerContext
+                {
+                    public AppXmlContext() : base(null) { }
+                    public override XmlTypeInfo? GetTypeInfo(System.Type type) => null;
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE001");
+        }
+
+        [TestMethod]
+        public void ComplexAttribute_ReportsXMLXE003()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Address
+                {
+                    public string? Street { get; set; }
+                }
+
+                public sealed class Person
+                {
+                    [XmlAttribute]
+                    public Address? Home { get; set; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE003");
+        }
+
+        [TestMethod]
+        public void TwoTextMembers_ReportsXMLXE004()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Payload
+                {
+                    [XmlText]
+                    public string? A { get; set; }
+                    [XmlCData]
+                    public string? B { get; set; }
+                }
+
+                [XmlSerializable(typeof(Payload))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE004");
+        }
+
+        [TestMethod]
+        public void CamelCaseOptions_RenamesElements()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                }
+
+                [XmlSourceGenerationOptions(PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, generated) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
+            RunGenerated(source + """
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var read = XmlSerializer.Deserialize("<person><name>Ada</name><Name>ignored</Name></person>", AppXmlContext.Default.Person)!;
+                        return read.Name + "|" + XmlSerializer.Serialize(read, AppXmlContext.Default.Person);
+                    }
+                }
+                """).Should().Be("Ada|<?xml version=\"1.0\" encoding=\"utf-8\"?><person><name>Ada</name></person>");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_RoundTripsAPerson()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                    public int Age { get; set; }
+                }
+
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var xml = XmlSerializer.Serialize(new Person { Name = "Ada", Age = 36 }, AppXmlContext.Default.Person);
+                        var read = XmlSerializer.Deserialize(xml, AppXmlContext.Default.Person);
+                        return read!.Name + ":" + read.Age + ":" + xml;
+                    }
+                }
+                """;
+            RunGenerated(source).Should().Be("Ada:36:<Person><Name>Ada</Name><Age>36</Age></Person>");
+        }
+
+        [TestMethod]
+        public void SerializeCall_EmitsAnInterceptor()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run(Person person) => XmlSerializer.Serialize(person);
+                }
+                """;
+            var (_, diagnostics, generated) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
+            generated.SelectMany(tree => tree.GetRoot().DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.AttributeSyntax>())
+                .Select(attribute => attribute.Name.ToString())
+                .Where(name => name is "InterceptsLocation" or "global::System.Runtime.CompilerServices.InterceptsLocation" or "System.Runtime.CompilerServices.InterceptsLocation" or "InterceptsLocationAttribute" or "global::System.Runtime.CompilerServices.InterceptsLocationAttribute")
+                .Should().HaveCount(1, "the one call to XmlSerializer.Serialize in the source is the one call to intercept");
+        }
+
+        [TestMethod]
+        public void IntPtrMember_ReportsXMLXE002()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Holder
+                {
+                    public System.IntPtr Handle { get; set; }
+                }
+
+                [XmlSerializable(typeof(Holder))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE002");
+        }
+
+        [TestMethod]
+        public void UnboundGeneric_ReportsXMLXE002()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                [XmlSerializable(typeof(System.Collections.Generic.List<>))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE002");
+        }
+
+        [TestMethod]
+        public void AmbiguousConstructors_ReportsXMLXE005()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Point
+                {
+                    public int X { get; set; }
+                    public int Y { get; set; }
+                    public Point(int X, int Y) { }
+                    public Point(int Y, int X) { }
+                }
+
+                [XmlSerializable(typeof(Point))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE005");
+        }
+
+        [TestMethod]
+        public void InvalidXmlName_ReportsXMLXE006()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    [XmlElement("1name")]
+                    public string? Name { get; set; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE006");
+        }
+
+        [TestMethod]
+        public void BclXmlInclude_ReportsXMLXE007()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                [System.Xml.Serialization.XmlInclude(typeof(Person))]
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE007");
+        }
+
+        [TestMethod]
+        public void TwoXmlConstructors_ReportsXMLXE005()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Person
+                {
+                    public string? Name { get; set; }
+                    [XmlConstructor]
+                    public Person() { }
+                    [XmlConstructor]
+                    public Person(string Name) { this.Name = Name; }
+                }
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE005");
+        }
+
+        [TestMethod]
+        public void XmlMetadataServices_RoundTripsAnInt()
+        {
+            var converter = (XmlConverter<int>)XmlSerializerOptions.Default.GetConverter(typeof(int));
+            var info = XmlMetadataServices.CreateValueInfo(new XmlSerializerOptions { OmitXmlDeclaration = true }, converter);
+            var xml = XmlSerializer.Serialize(7, info);
+            xml.Should().Be("<Int32>7</Int32>");
+            XmlSerializer.Deserialize(xml, info).Should().Be(7);
+            var reader = new Utf8XmlReader("<Int32>8</Int32>"u8);
+            reader.Read();
+            XmlMetadataServices.Read(ref reader, info).Should().Be(8);
+            var buffer = new ArrayBufferWriter<byte>();
+            var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            writer.WriteStartElement("n");
+            XmlMetadataServices.Write(writer, 9, info);
+            writer.WriteEndElement();
+            writer.Dispose();
+            System.Text.Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<n>9</n>");
+            var attrBuffer = new ArrayBufferWriter<byte>();
+            var attrWriter = new Utf8XmlWriter(attrBuffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            attrWriter.WriteStartElement("e");
+            XmlMetadataServices.WriteAttribute(attrWriter, new XmlName("n"), 3, info);
+            attrWriter.WriteEndElement();
+            attrWriter.Dispose();
+            System.Text.Encoding.UTF8.GetString(attrBuffer.WrittenSpan).Should().Be("<e n=\"3\"/>");
+            var attrReader = new Utf8XmlReader("<e n=\"4\"/>"u8);
+            attrReader.Read();
+            attrReader.MoveToNextAttribute();
+            XmlMetadataServices.ReadAttribute(ref attrReader, info).Should().Be(4);
+        }
+
+        [TestMethod]
+        public void XmlMetadataServices_CreateEnumConverter_RoundTripsAName()
+        {
+            var converter = XmlMetadataServices.CreateEnumConverter<XmlTokenType>();
+            var info = XmlMetadataServices.CreateValueInfo(new XmlSerializerOptions { OmitXmlDeclaration = true }, converter);
+            var xml = XmlSerializer.Serialize(XmlTokenType.StartElement, info);
+            xml.Should().Be("<XmlTokenType>StartElement</XmlTokenType>");
+            XmlSerializer.Deserialize(xml, info).Should().Be(XmlTokenType.StartElement);
+        }
+
+        [TestMethod]
+        public void XmlSerializableAttribute_StoresTheType()
+        {
+            var attribute = new XmlSerializableAttribute(typeof(int)) { TypeInfoPropertyName = "N", GenerationMode = XmlSourceGenerationMode.Metadata };
+            attribute.Type.Should().Be(typeof(int));
+            attribute.TypeInfoPropertyName.Should().Be("N");
+            attribute.GenerationMode.Should().Be(XmlSourceGenerationMode.Metadata);
+        }
+
+        [TestMethod]
+        public void XmlSourceGenerationOptionsAttribute_KeepsEveryValueItIsGivenAndStartsUnset()
+        {
+            var attribute = new XmlSourceGenerationOptionsAttribute
+            {
+                WriteIndented = true,
+                OmitXmlDeclaration = true,
+                EmitByteOrderMark = true,
+                IncludeFields = true,
+                IgnoreReadOnlyFields = true,
+                IgnoreReadOnlyProperties = true,
+                PropertyNameCaseInsensitive = true,
+                RespectNullableAnnotations = true,
+                UseStringEnumConverter = true,
+                MaxDepth = 8,
+                DefaultNamespace = "urn:x",
+                PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase,
+                ElementNamingPolicy = XmlKnownNamingPolicy.SnakeCaseLower,
+                AttributeNamingPolicy = XmlKnownNamingPolicy.KebabCaseLower,
+                DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
+                DefaultPropertyMapping = XmlPropertyMapping.Attribute,
+                DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType,
+                EnumHandling = XmlEnumHandling.Integer,
+                NilHandling = XmlNilHandling.Omit,
+                XmlVersion = XmlVersion.Version11,
+                GenerationMode = XmlSourceGenerationMode.Serialization,
+            };
+            attribute.Should().BeEquivalentTo(new
+            {
+                WriteIndented = true,
+                OmitXmlDeclaration = true,
+                EmitByteOrderMark = true,
+                IncludeFields = true,
+                IgnoreReadOnlyFields = true,
+                IgnoreReadOnlyProperties = true,
+                PropertyNameCaseInsensitive = true,
+                RespectNullableAnnotations = true,
+                UseStringEnumConverter = true,
+                MaxDepth = 8,
+                DefaultNamespace = "urn:x",
+                PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase,
+                ElementNamingPolicy = XmlKnownNamingPolicy.SnakeCaseLower,
+                AttributeNamingPolicy = XmlKnownNamingPolicy.KebabCaseLower,
+                DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
+                DefaultPropertyMapping = XmlPropertyMapping.Attribute,
+                DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType,
+                EnumHandling = XmlEnumHandling.Integer,
+                NilHandling = XmlNilHandling.Omit,
+                XmlVersion = XmlVersion.Version11,
+                GenerationMode = XmlSourceGenerationMode.Serialization,
+            });
+            new XmlSourceGenerationOptionsAttribute().Should().BeEquivalentTo(new
+            {
+                WriteIndented = false,
+                OmitXmlDeclaration = false,
+                EmitByteOrderMark = false,
+                IncludeFields = false,
+                IgnoreReadOnlyFields = false,
+                IgnoreReadOnlyProperties = false,
+                PropertyNameCaseInsensitive = false,
+                RespectNullableAnnotations = false,
+                UseStringEnumConverter = false,
+                MaxDepth = 0,
+                DefaultNamespace = (string?)null,
+            });
+        }
+
+        [TestMethod]
+        public void GeneratedContext_PositionalRecord_IsCreatedThroughItsConstructor()
+        {
+            RunGenerated("""
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed record Person(string Name, int Age);
+
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var xml = XmlSerializer.Serialize(new Person("Ada", 36), AppXmlContext.Default.Person);
+                        var read = XmlSerializer.Deserialize("<Person><Age>36</Age><Name>Ada</Name></Person>", AppXmlContext.Default.Person);
+                        return read + "|" + (read == new Person("Ada", 36)) + "|" + xml;
+                    }
+                }
+                """).Should().Be("Person { Name = Ada, Age = 36 }|True|<Person><Name>Ada</Name><Age>36</Age></Person>");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_ConstructorParametersWithDefaults_TakeThemWhenTheDocumentLeavesThemOut()
+        {
+            RunGenerated("""
+                using System;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed record Item(string Name, int Count = 5, double Scale = 1.5, DayOfWeek Day = DayOfWeek.Friday, string Note = "n/a \"quoted\"", long? Limit = null, char Mark = 'x', bool On = true, decimal Price = 2.50m);
+
+                [XmlSerializable(typeof(Item))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var first = XmlSerializer.Deserialize("<Item><Name>a</Name></Item>", AppXmlContext.Default.Item);
+                        var second = XmlSerializer.Deserialize("<Item><Name>b</Name><Count>9</Count><Scale>2</Scale><Day>Monday</Day><Note>n</Note><Limit>7</Limit><On>false</On><Price>3</Price></Item>", AppXmlContext.Default.Item);
+                        var third = XmlSerializer.Deserialize("<Item><Count>0</Count><Name>c</Name></Item>", AppXmlContext.Default.Item);
+                        return (first == new Item("a")) + "|" + (second == new Item("b", 9, 2, DayOfWeek.Monday, "n", 7, 'x', false, 3m)) + "|" + (third == new Item("c", 0));
+                    }
+                }
+                """).Should().Be("True|True|True");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_ConstructorParameterWithNoDefault_IsRequiredUnlessTheOptionsSayOtherwise()
+        {
+            RunGenerated("""
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed record Person(string Name, int Age);
+
+                [XmlSerializable(typeof(Person))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        string message;
+                        try
+                        {
+                            XmlSerializer.Deserialize("<Person><Name>Ada</Name></Person>", AppXmlContext.Default.Person);
+                            message = "no exception";
+                        }
+                        catch (XmlException ex)
+                        {
+                            message = ex.Message;
+                        }
+
+                        var lenient = new AppXmlContext(new XmlSerializerOptions { RespectRequiredConstructorParameters = false });
+                        var read = XmlSerializer.Deserialize("<Person><Name>Ada</Name></Person>", lenient.Person);
+                        return message + "|" + read;
+                    }
+                }
+                """).Should().Be("The required constructor parameter 'Age' is missing.|Person { Name = Ada, Age = 0 }");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_MarkedConstructor_IsUsedAndAParameterNoMemberFillsTakesItsDefault()
+        {
+            RunGenerated("""
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Scored
+                {
+                    public Scored()
+                    {
+                        Name = "parameterless";
+                    }
+
+                    [XmlConstructor]
+                    internal Scored(string Name, int bonus = 5)
+                    {
+                        this.Name = Name;
+                        Total = bonus;
+                    }
+
+                    public string Name { get; }
+
+                    [XmlIgnore]
+                    public int Total { get; }
+
+                    public string? Note { get; set; }
+                }
+
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
+                [XmlSerializable(typeof(Scored))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var read = XmlSerializer.Deserialize("<Scored><Note>later</Note><Name>Ada</Name></Scored>", AppXmlContext.Default.Scored)!;
+                        return read.Name + ":" + read.Total + ":" + read.Note + ":" + XmlSerializer.Serialize(read, AppXmlContext.Default.Scored);
+                    }
+                }
+                """).Should().Be("Ada:5:later:<Scored><Name>Ada</Name><Note>later</Note></Scored>");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_InitOnlyAndRequiredMembers_AreSetAndMembersLeftOutKeepWhatTheTypeGaveThem()
+        {
+            RunGenerated("""
+                using System.Collections.Generic;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Entry
+                {
+                    public string? Id { get; init; }
+                    public required string Name { get; set; }
+                    public int Count { get; set; } = 7;
+                    public List<string> Tags { get; set; } = ["kept"];
+                }
+
+                [XmlSerializable(typeof(Entry))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var sparse = XmlSerializer.Deserialize("<Entry><Name>n</Name><Id>i</Id></Entry>", AppXmlContext.Default.Entry)!;
+                        var full = XmlSerializer.Deserialize("<Entry><Id>j</Id><Name>m</Name><Count>2</Count><Tags>a</Tags><Tags>b</Tags></Entry>", AppXmlContext.Default.Entry)!;
+                        string message;
+                        try
+                        {
+                            XmlSerializer.Deserialize("<Entry><Id>i</Id></Entry>", AppXmlContext.Default.Entry);
+                            message = "no exception";
+                        }
+                        catch (XmlException ex)
+                        {
+                            message = ex.Message;
+                        }
+
+                        return sparse.Id + ":" + sparse.Name + ":" + sparse.Count + ":" + string.Join(",", sparse.Tags)
+                            + "|" + full.Id + ":" + full.Name + ":" + full.Count + ":" + string.Join(",", full.Tags)
+                            + "|" + message;
+                    }
+                }
+                """).Should().Be("i:n:7:kept|j:m:2:a,b|The required member 'Name' is missing.");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_RecordOfValueTypes_IsReadAllocatingOnlyTheRecord()
+        {
+            RunGenerated("""
+                using System;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed record Sample(int Count, long Total, double Ratio, bool Flagged);
+
+                [XmlSerializable(typeof(Sample))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var xml = "<Sample><Count>1</Count><Total>10000000000</Total><Ratio>0.5</Ratio><Flagged>true</Flagged></Sample>"u8.ToArray();
+                        var info = AppXmlContext.Default.Sample;
+                        for (var i = 0; i < 100; i++)
+                        {
+                            XmlSerializer.Deserialize(xml, info);
+                        }
+
+                        var before = GC.GetAllocatedBytesForCurrentThread();
+                        var read = XmlSerializer.Deserialize(xml, info);
+                        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+                        before = GC.GetAllocatedBytesForCurrentThread();
+                        var same = new Sample(1, 10000000000L, 0.5, true);
+                        var expected = GC.GetAllocatedBytesForCurrentThread() - before;
+                        return (read == same) + "|" + (allocated - expected);
+                    }
+                }
+                """).Should().Be("True|0");
+        }
+
+        [TestMethod]
+        [DataRow("public sealed class Odd { public Odd(string Name, int extra) { this.Name = Name; } public string Name { get; } }", "XMLXE002", DisplayName = "no constructor can be called: one parameter is not a member and has no default")]
+        [DataRow("public sealed class Odd { [XmlConstructor] private Odd(string Name) { this.Name = Name; } public string Name { get; } }", "XMLXE002", DisplayName = "the marked constructor is private")]
+        [DataRow("public sealed class Odd { [XmlConstructor] public Odd(string Name) { this.Name = Name; } [XmlConstructor] public Odd(string Name, int Age) { this.Name = Name; this.Age = Age; } public string Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two marked constructors")]
+        [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(int Age) { this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two constructors that bind as many members")]
+        public void GeneratedContext_ConstructorThatCannotBeChosenOrCalled_IsReported(string type, string expectedId)
+        {
+            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + type + "\n[XmlSerializable(typeof(Odd))]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal(expectedId);
+        }
+
+        [TestMethod]
+        public void GeneratedContext_NilElements_AreNullWhereTheTypeAllowsItAndAnErrorWhereItDoesNot()
+        {
+            RunGenerated(""""
+                using System;
+                using System.Collections.Generic;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Holder
+                {
+                    public string? Name { get; set; } = "kept";
+                    public int? Age { get; set; } = 3;
+                    public decimal? Price { get; set; } = 1m;
+                    public int Count { get; set; } = 4;
+                    public Holder? Child { get; set; }
+                    public List<string?> Tags { get; set; } = new();
+                }
+
+                public sealed class Strict
+                {
+                    public required string Name { get; set; }
+                }
+
+                [XmlSerializable(typeof(Holder))]
+                [XmlSerializable(typeof(Strict))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private const string Nil = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"";
+
+                    private static string Try(Func<string> read)
+                    {
+                        try
+                        {
+                            return read();
+                        }
+                        catch (XmlException ex)
+                        {
+                            return ex.Message;
+                        }
+                    }
+
+                    private static string Show(Holder holder)
+                    {
+                        return (holder.Name ?? "null") + "," + (holder.Age?.ToString() ?? "null") + "," + (holder.Price?.ToString() ?? "null") + "," + holder.Count + "," + (holder.Child is null ? "null" : "child") + ",[" + string.Join(";", holder.Tags.ConvertAll(tag => tag ?? "null")) + "]";
+                    }
+
+                    public static string Run()
+                    {
+                        return string.Join("|",
+                            Try(() => Show(XmlSerializer.Deserialize($"<Holder><Name{Nil}/><Age{Nil}/><Price{Nil}/><Child{Nil}/><Tags>a</Tags><Tags{Nil}/><Tags/></Holder>", AppXmlContext.Default.Holder)!)),
+                            Try(() => Show(XmlSerializer.Deserialize($"<Holder><Name{Nil}></Name><Age{Nil}></Age><Price{Nil}></Price><Count>9</Count></Holder>", AppXmlContext.Default.Holder)!)),
+                            Try(() => Show(XmlSerializer.Deserialize("<Holder><Name/><Tags/></Holder>", AppXmlContext.Default.Holder)!)),
+                            Try(() => Show(XmlSerializer.Deserialize($"<Holder><Count{Nil}/></Holder>", AppXmlContext.Default.Holder)!)),
+                            Try(() => XmlSerializer.Deserialize($"<Strict><Name{Nil}/></Strict>", AppXmlContext.Default.Strict)!.Name));
+                    }
+                }
+                """").Should().Be("null,null,null,4,null,[a;null;]|null,null,null,9,null,[]|,3,1,4,null,[]|The element is nil but type 'System.Int32' is not nillable.|The required member 'Name' cannot be nil.");
+        }
+
+        [TestMethod]
+        public void GeneratedContext_WithAReferenceHandler_RefusesRatherThanWritingOrReadingWithoutReferences()
+        {
+            RunGenerated("""
+                using System;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed class Pet
+                {
+                    public string? Kind { get; set; }
+                }
+
+                [XmlSerializable(typeof(Pet))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Try(Func<string> call)
+                    {
+                        try
+                        {
+                            return call();
+                        }
+                        catch (NotSupportedException ex)
+                        {
+                            return ex.Message;
+                        }
+                    }
+
+                    public static string Run()
+                    {
+                        var preserve = new AppXmlContext(new XmlSerializerOptions { ReferenceHandler = XmlReferenceHandler.Preserve });
+                        return Try(() => XmlSerializer.Serialize(new Pet { Kind = "cat" }, preserve.Pet))
+                            + "|" + Try(() => XmlSerializer.Deserialize("<Pet><Kind>cat</Kind></Pet>", preserve.Pet)!.Kind!);
+                    }
+                }
+                """).Should().Be("The generated converter for 'global::Pet' does not support ReferenceHandler. Read and write this type through the reflection resolver.|The generated converter for 'global::Pet' does not support ReferenceHandler. Read and write this type through the reflection resolver.");
+        }
+
+        [TestMethod]
+        [DataRow("[XmlDerivedType<Circle>(\"circle\")] public class Shape { public int Id { get; set; } } public class Circle : Shape { public int Radius { get; set; } }", "Shape", "'Shape' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it", DisplayName = "on the type")]
+        [DataRow("public class Shape { public int Id { get; set; } } public class Circle : Shape { public int Radius { get; set; } } public class Drawing { [XmlDerivedType<Circle>(\"circle\")] public Shape? Main { get; set; } }", "Drawing", "'Drawing.Main' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it", DisplayName = "on a member")]
+        public void GeneratedContext_DerivedTypes_AreReportedRatherThanDropped(string types, string root, string expectedMessage)
+        {
+            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable(typeof(" + root + "))]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id is "XMLXE008").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal(expectedMessage);
+        }
+
+        [TestMethod]
+        public void GeneratedContext_NestedRecordsAndAnInternalConstructor_AreReadAndWritten()
+        {
+            RunGenerated("""
+                using System.Collections.Generic;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+
+                public sealed record Outer(string Name, Inner Inner, List<Inner> More);
+
+                public sealed record Inner(int Value);
+
+                public sealed class OnlyInternal
+                {
+                    internal OnlyInternal()
+                    {
+                    }
+
+                    public string? Name { get; set; }
+                }
+
+                public sealed class Renamed
+                {
+                    public Renamed(string title)
+                    {
+                        Heading = title;
+                    }
+
+                    [XmlElement("title")]
+                    public string Heading { get; }
+                }
+
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
+                [XmlSerializable(typeof(Outer))]
+                [XmlSerializable(typeof(OnlyInternal))]
+                [XmlSerializable(typeof(Renamed))]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var outer = new Outer("o", new Inner(1), new List<Inner> { new Inner(2), new Inner(3) });
+                        var xml = XmlSerializer.Serialize(outer, AppXmlContext.Default.Outer);
+                        var read = XmlSerializer.Deserialize(xml, AppXmlContext.Default.Outer)!;
+                        var same = read.Name == "o" && read.Inner == new Inner(1) && read.More.Count == 2 && read.More[0] == new Inner(2) && read.More[1] == new Inner(3);
+                        return xml + "|" + same
+                            + "|" + XmlSerializer.Deserialize("<OnlyInternal><Name>x</Name></OnlyInternal>", AppXmlContext.Default.OnlyInternal)!.Name
+                            + "|" + XmlSerializer.Deserialize("<Renamed><title>t</title></Renamed>", AppXmlContext.Default.Renamed)!.Heading;
+                    }
+                }
+                """).Should().Be("<Outer><Name>o</Name><Inner><Value>1</Value></Inner><More><Value>2</Value></More><More><Value>3</Value></More></Outer>|True|x|t");
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Describes what the generator declared, from the compiled symbols and not from the source text.
+        /// </summary>
+        /// <param name="compilation">The compilation after the generator ran.</param>
+        /// <param name="generated">The generated trees.</param>
+        /// <returns>
+        /// One line per type declared outside any other type (kind, full name, base type, attributes), each
+        /// followed by one indented line per public property, field, or enum member with its type and attributes.
+        /// </returns>
+        internal static List<string> Declared(Compilation compilation, IEnumerable<SyntaxTree> generated)
+        {
+            var lines = new List<string>();
+            var seen = new HashSet<string>();
+            foreach (var tree in generated)
+            {
+                var model = compilation.GetSemanticModel(tree);
+                foreach (var declaration in tree.GetRoot().DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.BaseTypeDeclarationSyntax>())
+                {
+                    if (model.GetDeclaredSymbol(declaration) is not INamedTypeSymbol type || type.ContainingType is not null || !seen.Add(type.ToDisplayString()))
+                    {
+                        continue;
+                    }
+
+                    var baseType = type.BaseType is { SpecialType: SpecialType.None } parent && type.TypeKind is TypeKind.Class ? " : " + parent.Name : "";
+                    lines.Add(type.TypeKind.ToString().ToLowerInvariant() + " " + type.ToDisplayString() + baseType + Attributes(type));
+                    foreach (var member in type.GetMembers().Where(m => m.DeclaredAccessibility is Accessibility.Public && !m.IsImplicitlyDeclared && !m.IsStatic || m is IFieldSymbol { IsConst: true }))
+                    {
+                        if (member is IPropertySymbol property)
+                        {
+                            lines.Add("  " + property.Type.ToDisplayString() + " " + property.Name + Attributes(property));
+                        }
+                        else if (member is IFieldSymbol field)
+                        {
+                            lines.Add("  " + (type.TypeKind is TypeKind.Enum ? "" : field.Type.ToDisplayString() + " ") + field.Name + Attributes(field));
+                        }
+                    }
+                }
+            }
+
+            return lines;
+
+            static string Attributes(ISymbol symbol)
+            {
+                var attributes = symbol.GetAttributes().Select(a => a.ToString()).ToList();
+                return attributes.Count == 0 ? "" : " [" + string.Join(", ", attributes) + "]";
+            }
+        }
+
+        /// <summary>
+        /// Compiles <paramref name="source"/> with the generator, loads the result, and calls its <c>Use.Run()</c>.
+        /// </summary>
+        /// <param name="source">A program with a context and a static <c>Use.Run</c> method that returns a string.</param>
+        /// <returns>What <c>Use.Run()</c> returned.</returns>
+        internal static string RunGenerated(string source)
+        {
+            var (compilation, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.ToString()).Should().BeEmpty();
+            compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.ToString()).Should().BeEmpty();
+            using var stream = new System.IO.MemoryStream();
+            var emit = compilation.Emit(stream);
+            emit.Diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.ToString()).Should().BeEmpty();
+            stream.Position = 0;
+            var loadContext = new System.Runtime.Loader.AssemblyLoadContext("Generated", isCollectible: true);
+            try
+            {
+                var assembly = loadContext.LoadFromStream(stream);
+                return (string)assembly.GetType("Use")!.GetMethod("Run")!.Invoke(null, null)!;
+            }
+            finally
+            {
+                loadContext.Unload();
+            }
+        }
+
+        #endregion
+
+    }
+
+}

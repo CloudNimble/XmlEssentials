@@ -1,6 +1,5 @@
 ---
 title: XmlException
-description: "Thrown when XML is not well-formed or a DoS limit is exceeded."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlException', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml', 'class', 'System.Exception', '# Related APIs', '- `Utf8XmlReader`', '- `XmlReaderOptions`', '- `System.Exception`']
@@ -19,10 +18,6 @@ keywords: ['XmlException', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Tex
 ```csharp
 CloudNimble.Text.Xml.XmlException
 ```
-
-## Summary
-
-Thrown when XML is not well-formed or a DoS limit is exceeded.
 
 ## Usage
 
@@ -43,11 +38,6 @@ catch (XmlException ex)
 ```
 
 This type is not `System.Xml.XmlException` and does not wrap it.
-
-## Remarks
-
-This type is not `System.Xml.XmlException` and does not wrap it. Location properties
-are optional; they are set when the reader knows the byte offset and line.
 
 ## Examples
 
@@ -98,8 +88,6 @@ Incomplete tokens on a final buffer throw. On a non-final buffer, `Read` returns
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates an exception with a message and no location.
-
 #### Syntax
 
 ```csharp
@@ -110,11 +98,9 @@ public XmlException(string message)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `string` | The error message. |
+| `message` | `string` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates an exception with a message and an inner exception.
 
 #### Syntax
 
@@ -126,12 +112,10 @@ public XmlException(string message, System.Exception innerException)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `string` | The error message. |
-| `innerException` | `System.Exception?` | The inner exception, or null. |
+| `message` | `string` | - |
+| `innerException` | `System.Exception?` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates an exception with parse location.
 
 #### Syntax
 
@@ -143,11 +127,11 @@ public XmlException(string message, long? bytePosition, long? lineNumber, long? 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `string` | The error message. |
-| `bytePosition` | `long?` | 0-based byte offset in the UTF-8 document, if known. |
-| `lineNumber` | `long?` | 1-based line after end-of-line normalization, if known. |
-| `linePosition` | `long?` | 1-based UTF-8 byte offset in the current line, if known. |
-| `path` | `string?` | Document path such as `/Person/@id`, if known. |
+| `message` | `string` | - |
+| `bytePosition` | `long?` | - |
+| `lineNumber` | `long?` | - |
+| `linePosition` | `long?` | - |
+| `path` | `string?` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -223,8 +207,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BytePosition
 
-Gets the 0-based byte offset in the UTF-8 document, if known.
-
 #### Syntax
 
 ```csharp
@@ -293,8 +275,6 @@ Type: `System.Exception?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LineNumber
 
-Gets the 1-based line number after end-of-line normalization, if known.
-
 #### Syntax
 
 ```csharp
@@ -306,8 +286,6 @@ public long? LineNumber { get; }
 Type: `long?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LinePosition
-
-Gets the 1-based UTF-8 byte offset in the current line, if known.
 
 #### Syntax
 
@@ -334,8 +312,6 @@ public virtual string Message { get; }
 Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Path
-
-Gets the document path such as `/Person/@id`, if known.
 
 #### Syntax
 

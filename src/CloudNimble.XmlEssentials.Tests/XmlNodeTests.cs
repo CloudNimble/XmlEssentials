@@ -125,10 +125,13 @@ namespace CloudNimble.XmlEssentials.Tests
             var array = new XmlNode[2];
             root.Children.CopyTo(array, 0);
             array[0].Should().BeSameAs(b);
+            array[1].Should().BeSameAs(a);
             root.Children[1] = new XmlTextNode("c");
             root.Children.RemoveAt(0);
+            root.ToString().Should().Be("<e>c</e>");
             root.Children.Clear();
             root.Children.Count.Should().Be(0);
+            root.ToString().Should().Be("<e/>");
         }
 
         [TestMethod]
@@ -141,6 +144,7 @@ namespace CloudNimble.XmlEssentials.Tests
             root.Attributes.IndexOf(root.Attributes[0]).Should().Be(0);
             var copy = new XmlAttributeNode[1];
             root.Attributes.CopyTo(copy, 0);
+            copy[0].Should().BeSameAs(root.Attributes[0]);
             root.Attributes.RemoveAt(0);
             root.Attributes.Count.Should().Be(0);
         }
@@ -161,7 +165,9 @@ namespace CloudNimble.XmlEssentials.Tests
             attribute.Prefix = "q";
             attribute.NamespaceUri = "urn:y";
             attribute.Value = "2";
-            ((XmlAttributeNode)attribute.DeepClone()).LocalName.Should().Be("b");
+            var clone = (XmlAttributeNode)attribute.DeepClone();
+            (clone.Prefix + ":" + clone.LocalName + "{" + clone.NamespaceUri + "}=" + clone.Value).Should().Be("q:b{urn:y}=2");
+            clone.Should().NotBeSameAs(attribute);
             var holder = new XmlElementNode("e");
             holder.Attributes.Add(new XmlAttributeNode("a", "1", "urn:x", "p"));
             holder.ToString().Should().Be("<e xmlns:p=\"urn:x\" p:a=\"1\"/>");
@@ -175,7 +181,7 @@ namespace CloudNimble.XmlEssentials.Tests
             root.NamespaceUri = "urn:x";
             root.LocalName = "e";
             var child = root.AddElement("c", "urn:x");
-            root["c", "urn:x"].Should().NotBeNull();
+            root["c", "urn:x"].Should().BeSameAs(child);
             root["missing"].Should().BeNull();
             root["c", "urn:no"].Should().BeNull();
             root.InnerText = "";
@@ -205,8 +211,10 @@ namespace CloudNimble.XmlEssentials.Tests
             root.Attributes.Insert(0, b);
             root.Attributes[1] = new XmlAttributeNode("c", "3");
             root.Attributes.Remove(b).Should().BeTrue();
+            root.ToString().Should().Be("<e c=\"3\"/>");
             root.Attributes.IsReadOnly.Should().BeFalse();
             root.Attributes.Clear();
+            root.ToString().Should().Be("<e/>");
         }
 
         [TestMethod]
@@ -235,9 +243,13 @@ namespace CloudNimble.XmlEssentials.Tests
             new XmlElementNode("e").ValueKind.Should().Be(XmlValueKind.Element);
             root.Children.Remove(new XmlTextNode("missing")).Should().BeFalse();
             root.Attributes.Remove(new XmlAttributeNode("z")).Should().BeFalse();
-            foreach (XmlNode _ in root)
+            var enumerated = new System.Collections.Generic.List<XmlValueKind>();
+            foreach (XmlNode child in root)
             {
+                enumerated.Add(child.ValueKind);
             }
+
+            enumerated.Should().Equal(XmlValueKind.Text, XmlValueKind.CData, XmlValueKind.Comment, XmlValueKind.ProcessingInstruction);
         }
 
         [TestMethod]

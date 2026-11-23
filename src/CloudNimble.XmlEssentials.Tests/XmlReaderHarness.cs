@@ -125,12 +125,20 @@ namespace CloudNimble.XmlEssentials.Tests
 
         public static void MustRead(string xml, XmlReaderOptions? options = null)
         {
-            Drain(xml, options);
+            MustRead(Encoding.UTF8.GetBytes(xml), options);
         }
 
         public static void MustRead(byte[] xml, XmlReaderOptions? options = null)
         {
-            Drain(xml, options);
+            // Reading without an error is the least of it: the document has to hold an element, and what is
+            // read must not depend on where the input happens to be cut.
+            var settings = options ?? new XmlReaderOptions();
+            var expected = Tokens(xml, settings);
+            expected.FindAll(static token => token.StartsWith("StartElement ", StringComparison.Ordinal)).Count.Should().BePositive("a well-formed document has a document element");
+            for (var split = 1; split < xml.Length; split++)
+            {
+                TokensSplitAt(xml, split, settings).Should().Equal(expected, "the tokens must not depend on a split at byte {0}", split);
+            }
         }
 
         public static void MustThrow(string xml, XmlReaderOptions? options = null)

@@ -6,6 +6,17 @@ JSON is simple; XML is not. STJ shipped by cutting Newtonsoft's long tail. This 
 
 Normative citations: [XML 1.0 Fifth Edition](https://www.w3.org/TR/xml/), [XML 1.1 Second Edition](https://www.w3.org/TR/xml11/), [Namespaces in XML 1.0](https://www.w3.org/TR/xml-names/), [Namespaces in XML 1.1](https://www.w3.org/TR/xml-names11/). Implement those productions; do not invent a “Letter | NameChar” shorthand.
 
+## Authority
+
+1. **W3C XML.** XML 1.0 Fifth Edition, XML 1.1 Second Edition, Namespaces in XML 1.0 and 1.1, XML Schema Part 2 (datatypes). These win.
+2. **BCL in .NET 11.** `System.Xml.XmlReader`, `XmlWriter`, and `XmlException` are the living record of how .NET developers expect XML issues to be handled when the W3C documents are silent (limits, option names, UTF-8-only stacks, how an error is reported to the caller).
+3. **This spec.** It records the subset we implement and every deliberate departure. When it disagrees with (1), it is wrong and is corrected here. A departure from (1) or (2) is listed under [Departures](#departures) with the reason.
+
+Recorded corrections (so they are not silently reversed):
+
+- **End tags repeat the start tag's Name, prefix included.** An earlier draft of this page said prefixes were insignificant for start/end matching. That contradicted [XML 1.0 §3 WFC: Element Type Match](https://www.w3.org/TR/xml/#GIMatch). Namespaces in XML does not relax it. `<a:e xmlns:a="urn:u" xmlns:b="urn:u"></b:e>` is an error. Infoset equality of names is still `{local, namespace URI}`; the prefix rule is about the document text.
+- **A well-formedness error inside a token that has not finished in a non-final buffer is reported when that token can be completed.** `NeedMore` comes first. Example: `<a>&bogus;` split before `;` does not throw "Undefined entity." until the rest of the token arrives. XML does not define streaming buffers; this matches how a non-final `Utf8JsonReader` defers errors, and it is the only behavior that keeps split reads consistent.
+
 ## XML 1.0 and 1.1
 
 One tokenizer. A version flag. Not two reader types. Not a serializer type discriminator.
@@ -18,7 +29,7 @@ One tokenizer. A version flag. Not two reader types. Not a serializer type discr
 | Read | Declaration sets `Utf8XmlReader.Version` | Same |
 | Write | `XmlWriterOptions.Version` / `XmlSerializerOptions.XmlVersion`, default `Version10` | `Version11` emits `version="1.1"` |
 | Namespaces | NS 1.0. `xmlns=""` unbinds default. `xmlns:p=""` is an error. | NS 1.1. `xmlns:p=""` **unbinds** prefix `p`. Namespace names are IRIs. |
-| Line endings | `#xD#xA` and `#xD` → `#xA` | Also `#x85` (NEL) and `#x2028` (LS) → `#xA` |
+| Line endings | `#xD#xA` and `#xD` → `#xA` | Also `#xD#x85` (one line end), `#x85` (NEL) and `#x2028` (LS) → `#xA` |
 | Char | 1.0 Char. C0 other than TAB/LF/CR illegal as literals **and** NCRs. | All Unicode except `NUL`. **RestrictedChar** (remaining C0; C1 except NEL) **must** be numeric character references, never literals. Writer emits RestrictedChar as `&#xHH;`. |
 | Names | XML 1.0 5th ed `NameStartChar` / `NameChar` | XML 1.1 Name productions (superset of 1.0 5th ed) |
 
@@ -46,7 +57,7 @@ One tokenizer. A version flag. Not two reader types. Not a serializer type discr
 After parse, the infoset the rest of the stack sees is:
 
 - Text and attribute values **after** EOL normalization and (for attributes) attribute-value normalization.
-- Names as `{local, namespace URI}`; **prefixes are not significant** for equality or mapping.
+- Names as `{local, namespace URI}`; **prefixes are not significant** for equality or mapping. (They are significant in one place: an end tag must repeat the prefix of its start tag, which is a well-formedness rule about the document text, not about names.)
 - Empty element vs start+end is visible (`IsEmptyElement`).
 - Comments/PIs as tokens/nodes when not skipped.
 
@@ -57,7 +68,7 @@ After parse, the infoset the rest of the stack sees is:
 Before any other parse of a text/attribute/comment/PI/CDATA payload, on the decoded UTF-8 code-point stream:
 
 - **1.0** (§2.11): replace `#xD#xA` and remaining `#xD` with `#xA`.
-- **1.1** (§2.11): also replace `#x85` and `#x2028` with `#xA`.
+- **1.1** (§2.11): also replace `#xD#x85` (the pair is **one** line end), `#x85`, and `#x2028` with `#xA`. Text that holds nothing but these and other white space is white space: the replacement comes before `WhitespaceHandling` is applied.
 
 This changes text values, line numbers, and `LinePosition`.
 
@@ -169,7 +180,7 @@ maps to `[XmlAttribute] string Currency` + `[XmlText] decimal Amount`.
 ## Well-formedness constraints the reader enforces
 
 1. Single root element unless `AllowMultipleRoots` (fragments).
-2. Start/end tag local name + namespace URI match (prefix need not match).
+2. The Name in an end tag matches the start tag's, prefix included ([XML 1.0 §3](https://www.w3.org/TR/xml/#GIMatch), WFC: Element Type Match). `<a:e xmlns:a="urn:u" xmlns:b="urn:u"></b:e>` is an error although both prefixes are bound to one namespace.
 3. Attribute names unique per element by `{local, ns}` (`xmlns` / `xmlns:prefix` included).
 4. No `<` in attribute values (must be `&lt;`).
 5. Element and attribute names match the document version's `NameStartChar` / `NameChar`.

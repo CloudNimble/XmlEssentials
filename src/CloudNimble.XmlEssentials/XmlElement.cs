@@ -432,7 +432,7 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reconstructs this node as XML text.
+        /// Reconstructs this node as XML text. An attribute has no markup outside its element, so the result is empty for one.
         /// </summary>
         /// <returns>The XML markup.</returns>
         public string GetRawXml()

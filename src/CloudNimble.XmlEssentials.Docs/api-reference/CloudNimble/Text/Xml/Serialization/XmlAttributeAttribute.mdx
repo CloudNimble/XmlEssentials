@@ -1,6 +1,5 @@
 ---
 title: XmlAttributeAttribute
-description: "Maps a member to an XML attribute. Simple types only."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute']
@@ -20,15 +19,9 @@ keywords: ['XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttri
 CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
 ```
 
-## Summary
-
-Maps a member to an XML attribute. Simple types only.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates the attribute with the member name as the attribute name.
 
 #### Syntax
 
@@ -37,8 +30,6 @@ public XmlAttributeAttribute()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates the attribute.
 
 #### Syntax
 
@@ -50,11 +41,9 @@ public XmlAttributeAttribute(string attributeName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `attributeName` | `string` | The attribute local name. |
+| `attributeName` | `string` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates the attribute.
 
 #### Syntax
 
@@ -66,8 +55,8 @@ public XmlAttributeAttribute(string attributeName, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `attributeName` | `string` | The attribute local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `attributeName` | `string` | - |
+| `namespaceUri` | `string?` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -93,8 +82,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeName
 
-Gets or sets the attribute local name. When null or empty, the member name after the naming policy is used.
-
 #### Syntax
 
 ```csharp
@@ -106,8 +93,6 @@ public string AttributeName { get; set; }
 Type: `string?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
-
-Gets or sets the namespace URI of the attribute.
 
 #### Syntax
 

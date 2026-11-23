@@ -1,8 +1,6 @@
 using System;
 using System.Buffers;
-using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -55,16 +53,6 @@ namespace CloudNimble.Text.Xml
         internal const int OwnedFirstInterned = -5;
 
         /// <summary>
-        /// Binding start that names the <c>xml</c> namespace.
-        /// </summary>
-        internal const int OwnedXml = -2;
-
-        /// <summary>
-        /// Binding start that names the <c>xmlns</c> namespace.
-        /// </summary>
-        internal const int OwnedXmlns = -3;
-
-        /// <summary>
         /// Binding start that names the XML Schema instance namespace.
         /// </summary>
         internal const int OwnedXsi = -4;
@@ -97,31 +85,39 @@ namespace CloudNimble.Text.Xml
 
         private int _attributeCount;
         private int _attributeIndex;
-        private byte[]? _attributeDecoded;
+        private Span<byte> _attributeDecoded;
         private int _attributeDecodedLength;
-        private AttributeRecord[]? _attributes;
+        private Span<AttributeRecord> _attributes;
         private AttributeRecord8 _attributesInline;
         private int _currentNsLength;
         private byte[] _currentNsOwned;
         private int _currentNsStart;
         private int _decodedLength;
-        private byte[]? _decodedValue;
+        private Span<byte> _decodedValue;
         private int _depth;
         private long _documentBytesConsumedBase;
+        /// <summary>
+        /// Inline slots for the element-name and namespace-binding stacks. Documents shallower than this
+        /// allocate no heap arrays for those stacks.
+        /// </summary>
+        internal const int InlineSlots = 8;
+
         private int _elementCount;
-        private int[]? _elementNsLengths;
+        private Span<int> _elementNsLengths;
         private Int8Buffer _elementNsLengthsInline;
-        private int[]? _elementNsStarts;
+        private Span<int> _elementNsStarts;
         private Int8Buffer _elementNsStartsInline;
         private bool _elementNsStored;
         private byte[][]? _elementNsUris;
-        private int[]? _elementNameLengths;
+        private Span<int> _elementNameLengths;
         private Int8Buffer _elementNameLengthsInline;
-        private int[]? _elementNameStarts;
+        private Span<int> _elementNameStarts;
         private Int8Buffer _elementNameStartsInline;
-        private int[]? _elementPrefixLengths;
+        private Span<int> _elementPrefixLengths;
         private Int8Buffer _elementPrefixLengthsInline;
         private bool _finished;
+        private Span<byte> _scratch;
+        private int _scratchUsed;
         private bool _hasNamespaceAttribute;
         private bool _hasUnresolvedAttribute;
         private bool _hasXmlSpaceAttribute;
@@ -141,7 +137,7 @@ namespace CloudNimble.Text.Xml
         private readonly int _maxTextBytes;
         private int _nameLength;
         private int _nameStart;
-        private NamespaceBinding[]? _nsBindings;
+        private Span<NamespaceBinding> _nsBindings;
         private NamespaceBinding8 _nsBindingsInline;
         private int _nsCount;
         private int _nsDefaultIndex;
@@ -156,6 +152,7 @@ namespace CloudNimble.Text.Xml
         private byte[][]? _resumeLocalNames;
         private int _resumeNameCount;
         private byte[][]? _resumeNsUris;
+        private byte[][]? _resumePrefixes;
         private bool _seenRoot;
         private ReadOnlySequence<byte> _sequence;
         private byte[]? _sequenceCopy;
@@ -224,6 +221,11 @@ namespace CloudNimble.Text.Xml
         /// current block ends before the next two bytes.
         /// </remarks>
         internal readonly bool IsEndTagNext => (uint)(_pos + 1) < (uint)_span.Length && _span[_pos] is (byte)'<' && _span[_pos + 1] is (byte)'/';
+
+        /// <summary>
+        /// Gets how many bytes at the start of the scratch buffer the reader has written to.
+        /// </summary>
+        internal readonly int ScratchBytesUsed => _scratchUsed;
 
         /// <summary>
         /// Gets a value indicating whether this buffer is the last in a resume series.
@@ -336,13 +338,13 @@ namespace CloudNimble.Text.Xml
                 {
                     var a = CurrentAttribute();
                     return a.DecodedStart >= 0
-                        ? _attributeDecoded.AsSpan(a.DecodedStart, a.DecodedLength)
+                        ? _attributeDecoded.Slice(a.DecodedStart, a.DecodedLength)
                         : _span.Slice(a.ValueStart, a.ValueLength);
                 }
 
-                if (_valueIsEscaped && _decodedValue is { } buffer)
+                if (_valueIsEscaped)
                 {
-                    return buffer.AsSpan(0, _decodedLength);
+                    return _decodedValue[.._decodedLength];
                 }
 
                 return _span.Slice(_valueStart, _valueLength);
@@ -385,7 +387,65 @@ namespace CloudNimble.Text.Xml
         /// <param name="isFinalBlock">Whether this buffer is the last. Incomplete tokens throw when true.</param>
         /// <param name="state">Resume state from <see cref="CurrentState"/>, or default to start fresh.</param>
         public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlReaderState state)
-            : this(utf8Xml, sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock, state)
+            : this(utf8Xml, scratch: default, sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock, state)
+        {
+        }
+
+        /// <summary>
+        /// Reads a complete UTF-8 XML payload, using <paramref name="scratch"/> as working memory before allocating any.
+        /// </summary>
+        /// <param name="utf8Xml">The UTF-8 XML bytes. An optional BOM is consumed.</param>
+        /// <param name="scratch">
+        /// Memory the reader may overwrite for as long as it is in use. Its contents on entry do not matter.
+        /// It may come from <see langword="stackalloc"/>, a pooled array, or a field reused from one reader to the next.
+        /// </param>
+        /// <param name="options">Reader options. Pass <c>new XmlReaderOptions()</c> for documented defaults.</param>
+        /// <example>
+        /// <code>
+        /// Span&lt;byte&gt; scratch = stackalloc byte[1024];
+        /// var reader = new Utf8XmlReader(utf8Xml, scratch, new XmlReaderOptions());
+        /// while (reader.Read())
+        /// {
+        /// }
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// <para>
+        /// A reader needs memory of its own in four cases: a value that holds a character or entity reference,
+        /// or a line end other than LF, is decoded into a buffer; a start tag with more than eight attributes
+        /// needs a larger attribute table; so do more than eight namespace declarations in scope; and so do
+        /// elements nested more than eight deep. Without <paramref name="scratch"/> each of those is an array
+        /// allocated for this reader. With it, the reader takes the memory from <paramref name="scratch"/>
+        /// and allocates only once that is used up, so a buffer of any size is safe and a larger one saves more.
+        /// </para>
+        /// <para>
+        /// Copies of the reader share the buffer, as they share the arrays a reader without one allocates.
+        /// A copy may look ahead within the element the original is on and then be dropped, or the copy
+        /// may be the one that carries on. Do not advance two copies in turn, and do not go back to the
+        /// original once a copy has read past the end of the element the original is on.
+        /// </para>
+        /// </remarks>
+        public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, XmlReaderOptions options)
+            : this(utf8Xml, scratch, isFinalBlock: true, new XmlReaderState(options))
+        {
+        }
+
+        /// <summary>
+        /// Reads a UTF-8 XML payload, optionally resuming from <paramref name="state"/>, using
+        /// <paramref name="scratch"/> as working memory before allocating any.
+        /// </summary>
+        /// <param name="utf8Xml">The UTF-8 XML bytes.</param>
+        /// <param name="scratch">
+        /// Memory the reader may overwrite for as long as it is in use. Its contents on entry do not matter, so
+        /// the same buffer can be passed to the reader for each block of a document.
+        /// </param>
+        /// <param name="isFinalBlock">Whether this buffer is the last. Incomplete tokens throw when true.</param>
+        /// <param name="state">Resume state from <see cref="CurrentState"/>, or default to start fresh.</param>
+        /// <remarks>
+        /// See <see cref="Utf8XmlReader(ReadOnlySpan{byte}, Span{byte}, XmlReaderOptions)"/> for what the buffer is used for.
+        /// </remarks>
+        public Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, bool isFinalBlock, XmlReaderState state)
+            : this(utf8Xml, scratch, sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock, state)
         {
         }
 
@@ -418,18 +478,20 @@ namespace CloudNimble.Text.Xml
         {
             if (utf8Xml.IsSingleSegment)
             {
-                this = new Utf8XmlReader(utf8Xml.FirstSpan, isFinalBlock, state);
+                // One segment is read where it lies. The sequence is kept so that Position can be answered.
+                this = new Utf8XmlReader(utf8Xml.FirstSpan, scratch: default, sequenceCopy: null, utf8Xml, hasSequence: true, isFinalBlock, state);
                 return;
             }
 
             var copy = utf8Xml.ToArray();
-            this = new Utf8XmlReader(copy, copy, utf8Xml, hasSequence: true, isFinalBlock, state);
+            this = new Utf8XmlReader(copy, scratch: default, copy, utf8Xml, hasSequence: true, isFinalBlock, state);
         }
 
         /// <summary>
         /// Shared constructor used by the span and sequence overloads.
         /// </summary>
         /// <param name="utf8Xml">The UTF-8 buffer to tokenize. Multi-segment sequences are copied first.</param>
+        /// <param name="scratch">Working memory the reader uses before it allocates, or empty.</param>
         /// <param name="sequenceCopy">The owned copy of a multi-segment sequence, or null.</param>
         /// <param name="sequence">The original sequence, used only for <see cref="Position"/>.</param>
         /// <param name="hasSequence">True when the caller supplied a <see cref="ReadOnlySequence{T}"/>.</param>
@@ -438,12 +500,14 @@ namespace CloudNimble.Text.Xml
         /// <remarks>
         /// Applies <paramref name="state"/> then consumes an optional UTF-8 BOM at offset 0.
         /// </remarks>
-        internal Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, byte[]? sequenceCopy, ReadOnlySequence<byte> sequence, bool hasSequence, bool isFinalBlock, XmlReaderState state)
+        internal Utf8XmlReader(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, byte[]? sequenceCopy, ReadOnlySequence<byte> sequence, bool hasSequence, bool isFinalBlock, XmlReaderState state)
         {
             _attributeCount = 0;
             _attributeIndex = -1;
-            _attributes = null;
-            _attributeDecoded = null;
+            _attributes = default;
+            _attributeDecoded = default;
+            _scratch = scratch;
+            _scratchUsed = 0;
             _attributeDecodedLength = 0;
             // The inline slots hold no object references and each is written before it is read (a count or a
             // mask guards every read), so they are left as they are. Clearing them was most of the cost of
@@ -454,21 +518,21 @@ namespace CloudNimble.Text.Xml
             _currentNsOwned = XmlUtf8.Empty;
             _currentNsStart = -1;
             _decodedLength = 0;
-            _decodedValue = null;
+            _decodedValue = default;
             _depth = 0;
             _documentBytesConsumedBase = 0;
             _elementCount = 0;
-            _elementNsLengths = null;
+            _elementNsLengths = default;
             _elementNsLengthsInline = default;
-            _elementNsStarts = null;
+            _elementNsStarts = default;
             _elementNsStartsInline = default;
             _elementNsStored = false;
             _elementNsUris = null;
-            _elementNameLengths = null;
+            _elementNameLengths = default;
             Unsafe.SkipInit(out _elementNameLengthsInline);
-            _elementNameStarts = null;
+            _elementNameStarts = default;
             Unsafe.SkipInit(out _elementNameStartsInline);
-            _elementPrefixLengths = null;
+            _elementPrefixLengths = default;
             Unsafe.SkipInit(out _elementPrefixLengthsInline);
             _finished = false;
             _hasNamespaceAttribute = false;
@@ -490,7 +554,7 @@ namespace CloudNimble.Text.Xml
             _maxTextBytes = XmlLimits.Resolve(state.Options.MaxTextByteCount, XmlLimits.DefaultMaxTextByteCount);
             _nameLength = 0;
             _nameStart = 0;
-            _nsBindings = null;
+            _nsBindings = default;
             Unsafe.SkipInit(out _nsBindingsInline);
             _nsCount = 0;
             _nsDefaultIndex = NsIndexUnknown;
@@ -505,6 +569,7 @@ namespace CloudNimble.Text.Xml
             _resumeLocalNames = null;
             _resumeNameCount = 0;
             _resumeNsUris = null;
+            _resumePrefixes = null;
             _seenRoot = false;
             _sequence = sequence;
             _sequenceCopy = sequenceCopy;
@@ -558,7 +623,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The Boolean value.</returns>
         /// <exception cref="XmlException">The value is not <c>true</c>, <c>false</c>, <c>1</c>, or <c>0</c>.</exception>
-        public bool GetBoolean()
+        public readonly bool GetBoolean()
         {
             if (!XmlLexical.TryParseBoolean(ValueSpan, out var value))
             {
@@ -573,7 +638,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
-        public byte GetByte()
+        public readonly byte GetByte()
         {
             if (!TryGetByte(out var value))
             {
@@ -588,7 +653,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The decoded bytes.</returns>
         /// <exception cref="XmlException">The value is not valid Base64.</exception>
-        public byte[] GetBytesFromBase64()
+        public readonly byte[] GetBytesFromBase64()
         {
             if (!TryGetBytesFromBase64(out var value))
             {
@@ -603,7 +668,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The comment text, without the surrounding <c>&lt;!-- --&gt;</c> delimiters.</returns>
         /// <exception cref="XmlException">The current token is not a comment.</exception>
-        public string GetComment()
+        public readonly string GetComment()
         {
             if (TokenType != XmlTokenType.Comment)
             {
@@ -618,7 +683,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed date.</returns>
         /// <exception cref="XmlException">The value is not a valid <c>xs:date</c>.</exception>
-        public DateOnly GetDateOnly()
+        public readonly DateOnly GetDateOnly()
         {
             if (!TryGetDateOnly(out var value))
             {
@@ -633,7 +698,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed date and time.</returns>
         /// <exception cref="XmlException">The value is not a valid <c>xs:dateTime</c>.</exception>
-        public DateTime GetDateTime()
+        public readonly DateTime GetDateTime()
         {
             if (!TryGetDateTime(out var value))
             {
@@ -648,7 +713,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed date, time, and offset.</returns>
         /// <exception cref="XmlException">The value is not a valid <c>xs:dateTime</c>.</exception>
-        public DateTimeOffset GetDateTimeOffset()
+        public readonly DateTimeOffset GetDateTimeOffset()
         {
             if (!TryGetDateTimeOffset(out var value))
             {
@@ -663,7 +728,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The value is not a valid XSD decimal.</exception>
-        public decimal GetDecimal()
+        public readonly decimal GetDecimal()
         {
             if (!TryGetDecimal(out var value))
             {
@@ -678,7 +743,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The value is not a valid double.</exception>
-        public double GetDouble()
+        public readonly double GetDouble()
         {
             if (!TryGetDouble(out var value))
             {
@@ -693,7 +758,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed GUID.</returns>
         /// <exception cref="XmlException">The value is not a GUID in a supported format.</exception>
-        public Guid GetGuid()
+        public readonly Guid GetGuid()
         {
             if (!TryGetGuid(out var value))
             {
@@ -708,7 +773,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
-        public short GetInt16()
+        public readonly short GetInt16()
         {
             if (!TryGetInt16(out var value))
             {
@@ -723,7 +788,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
-        public int GetInt32()
+        public readonly int GetInt32()
         {
             if (!TryGetInt32(out var value))
             {
@@ -738,7 +803,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
-        public long GetInt64()
+        public readonly long GetInt64()
         {
             if (!TryGetInt64(out var value))
             {
@@ -784,7 +849,7 @@ namespace CloudNimble.Text.Xml
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
         [CLSCompliant(false)]
-        public sbyte GetSByte()
+        public readonly sbyte GetSByte()
         {
             if (!TryGetSByte(out var value))
             {
@@ -799,7 +864,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The value is not a valid float.</exception>
-        public float GetSingle()
+        public readonly float GetSingle()
         {
             if (!TryGetSingle(out var value))
             {
@@ -813,7 +878,7 @@ namespace CloudNimble.Text.Xml
         /// Reads the current token value as a UTF-16 string, after entity expansion.
         /// </summary>
         /// <returns>The decoded string. Never null; empty when the value is empty.</returns>
-        public string? GetString()
+        public readonly string? GetString()
         {
             return CurrentValueText();
         }
@@ -823,7 +888,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed time of day.</returns>
         /// <exception cref="XmlException">The value is not a valid <c>xs:time</c>.</exception>
-        public TimeOnly GetTimeOnly()
+        public readonly TimeOnly GetTimeOnly()
         {
             if (!TryGetTimeOnly(out var value))
             {
@@ -838,7 +903,7 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns>The parsed duration.</returns>
         /// <exception cref="XmlException">The value is not a duration that can be represented as <see cref="TimeSpan"/>.</exception>
-        public TimeSpan GetTimeSpan()
+        public readonly TimeSpan GetTimeSpan()
         {
             if (!TryGetTimeSpan(out var value))
             {
@@ -854,7 +919,7 @@ namespace CloudNimble.Text.Xml
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
         [CLSCompliant(false)]
-        public ushort GetUInt16()
+        public readonly ushort GetUInt16()
         {
             if (!TryGetUInt16(out var value))
             {
@@ -870,7 +935,7 @@ namespace CloudNimble.Text.Xml
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
         [CLSCompliant(false)]
-        public uint GetUInt32()
+        public readonly uint GetUInt32()
         {
             if (!TryGetUInt32(out var value))
             {
@@ -886,7 +951,7 @@ namespace CloudNimble.Text.Xml
         /// <returns>The parsed value.</returns>
         /// <exception cref="XmlException">The lexical form is not an XSD integer, or the value overflows.</exception>
         [CLSCompliant(false)]
-        public ulong GetUInt64()
+        public readonly ulong GetUInt64()
         {
             if (!TryGetUInt64(out var value))
             {
@@ -1025,6 +1090,13 @@ namespace CloudNimble.Text.Xml
             if (_depth > 0)
             {
                 return ReadElementContent();
+            }
+
+            if (_pos == 0 && _documentBytesConsumedBase == 0 && !_isFinalBlock && _span.Length is 1 or 2 && "\uFEFF"u8.StartsWith(_span))
+            {
+                // The first buffer ends inside what may be a byte order mark. Nothing can be read until the
+                // rest of it arrives.
+                return NeedMore(rewindToTokenStart: false);
             }
 
             while (true)

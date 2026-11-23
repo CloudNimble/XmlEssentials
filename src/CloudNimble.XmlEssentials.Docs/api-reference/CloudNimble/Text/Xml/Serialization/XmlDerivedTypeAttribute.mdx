@@ -1,6 +1,5 @@
 ---
 title: XmlDerivedTypeAttribute
-description: "Declares that *T* can appear where the annotated type is expected."
 icon: code-branch
 tag: "SEALED"
 keywords: ['XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute<T>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute']
@@ -20,19 +19,9 @@ keywords: ['XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDer
 CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute<T>
 ```
 
-## Summary
-
-Declares that *T* can appear where the annotated type is expected.
-
-## Type Parameters
-
-- `T` - The derived CLR type.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates the attribute with the derived type name as the discriminator.
 
 #### Syntax
 
@@ -41,8 +30,6 @@ public XmlDerivedTypeAttribute()
 ```
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
-
-Creates the attribute.
 
 #### Syntax
 
@@ -54,13 +41,11 @@ public XmlDerivedTypeAttribute(string typeDiscriminator)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `typeDiscriminator` | `string` | The element name or attribute value that selects this type. |
+| `typeDiscriminator` | `string` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
-
-Creates the attribute.
 
 #### Syntax
 
@@ -106,8 +91,6 @@ Type: `System.Type`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
 
-Gets the derived CLR type.
-
 #### Syntax
 
 ```csharp
@@ -122,8 +105,6 @@ Type: `System.Type`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
 
-Gets or sets the namespace URI of the discriminator element.
-
 #### Syntax
 
 ```csharp
@@ -137,8 +118,6 @@ Type: `string?`
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeDiscriminator <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute`</Note>
-
-Gets the discriminator (usually the element local name).
 
 #### Syntax
 

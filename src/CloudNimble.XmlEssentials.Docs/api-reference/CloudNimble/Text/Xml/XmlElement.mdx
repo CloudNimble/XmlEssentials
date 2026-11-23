@@ -1,6 +1,5 @@
 ---
 title: XmlElement
-description: "A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlElement', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', '# Related APIs', '- `XmlDocument`', '- `XmlValueKind`', '- `XmlTokenType`', '- `CloudNimble.Text.Xml.Nodes.XmlNode`']
@@ -20,10 +19,6 @@ keywords: ['XmlElement', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xm
 CloudNimble.Text.Xml.XmlElement
 ```
 
-## Summary
-
-A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`.
-
 ## Usage
 
 # Usage
@@ -41,12 +36,6 @@ foreach (var attr in root.EnumerateAttributes())
 ```
 
 `GetRawXml` reconstructs this node. `CloneNode` copies it into a mutable `XmlNode` tree.
-
-## Remarks
-
-Name lookups, enumeration, the numeric and Boolean getters, and [XmlElement.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlElement#writeto) do not allocate.
-Members that return a [String](https://learn.microsoft.com/dotnet/api/system.string), a `byte[]`, or an [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode)
-allocate only that result.
 
 ## Examples
 
@@ -123,8 +112,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeCount
 
-Gets the number of attributes on this element.
-
 #### Syntax
 
 ```csharp
@@ -136,8 +123,6 @@ public int AttributeCount { get; }
 Type: `int`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsEmptyElement
-
-Gets whether this element is empty (`<e/>`).
 
 #### Syntax
 
@@ -151,8 +136,6 @@ Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNil
 
-Gets whether this element carries `xsi:nil="true"`.
-
 #### Syntax
 
 ```csharp
@@ -164,8 +147,6 @@ public bool IsNil { get; }
 Type: `bool`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalName
-
-Gets the local name.
 
 #### Syntax
 
@@ -179,8 +160,6 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NamespaceUri
 
-Gets the namespace URI, or empty.
-
 #### Syntax
 
 ```csharp
@@ -192,8 +171,6 @@ public string NamespaceUri { get; }
 Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Prefix
-
-Gets the prefix, or empty.
 
 #### Syntax
 
@@ -207,8 +184,6 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TokenType
 
-Gets the token type corresponding to this cursor.
-
 #### Syntax
 
 ```csharp
@@ -220,8 +195,6 @@ public CloudNimble.Text.Xml.XmlTokenType TokenType { get; }
 Type: `CloudNimble.Text.Xml.XmlTokenType`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueKind
-
-Gets the value kind of this cursor.
 
 #### Syntax
 
@@ -237,8 +210,6 @@ Type: `CloudNimble.Text.Xml.XmlValueKind`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CloneNode
 
-Deep-clones this cursor into a mutable node.
-
 #### Syntax
 
 ```csharp
@@ -248,11 +219,8 @@ public CloudNimble.Text.Xml.Nodes.XmlNode CloneNode()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode`
-The mutable clone.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumerateAttributes
-
-Enumerates attributes on this element.
 
 #### Syntax
 
@@ -263,11 +231,8 @@ public CloudNimble.Text.Xml.XmlElement.AttributeEnumerator EnumerateAttributes()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement.AttributeEnumerator`
-An attribute enumerator.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumerateChildren
-
-Enumerates child nodes of this element.
 
 #### Syntax
 
@@ -278,7 +243,6 @@ public CloudNimble.Text.Xml.XmlElement.Enumerator EnumerateChildren()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement.Enumerator`
-A child enumerator.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
 
@@ -379,8 +343,6 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetAttribute
 
-Returns the named attribute.
-
 #### Syntax
 
 ```csharp
@@ -391,16 +353,13 @@ public CloudNimble.Text.Xml.XmlElement GetAttribute(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
+| `localName` | `string` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The attribute cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetAttribute
-
-Returns the named attribute in *namespaceUri*.
 
 #### Syntax
 
@@ -412,17 +371,14 @@ public CloudNimble.Text.Xml.XmlElement GetAttribute(string localName, string nam
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string` | The namespace URI. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The attribute cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBoolean
-
-Returns the current value as a boolean.
 
 #### Syntax
 
@@ -433,11 +389,8 @@ public bool GetBoolean()
 #### Returns
 
 Type: `bool`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBytesFromBase64
-
-Returns the current value as base64-decoded bytes.
 
 #### Syntax
 
@@ -448,11 +401,8 @@ public byte[] GetBytesFromBase64()
 #### Returns
 
 Type: `byte[]`
-The decoded bytes.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetChild
-
-Returns the named child element.
 
 #### Syntax
 
@@ -464,16 +414,13 @@ public CloudNimble.Text.Xml.XmlElement GetChild(string localName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
+| `localName` | `string` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The child cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetChild
-
-Returns the named child element in *namespaceUri*.
 
 #### Syntax
 
@@ -485,17 +432,14 @@ public CloudNimble.Text.Xml.XmlElement GetChild(string localName, string namespa
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string` | The namespace URI. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The child cursor.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateTime
-
-Returns the current value as a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime).
 
 #### Syntax
 
@@ -506,11 +450,8 @@ public System.DateTime GetDateTime()
 #### Returns
 
 Type: `System.DateTime`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDateTimeOffset
-
-Returns the current value as a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset).
 
 #### Syntax
 
@@ -521,11 +462,8 @@ public System.DateTimeOffset GetDateTimeOffset()
 #### Returns
 
 Type: `System.DateTimeOffset`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDecimal
-
-Returns the current value as a decimal.
 
 #### Syntax
 
@@ -536,11 +474,8 @@ public decimal GetDecimal()
 #### Returns
 
 Type: `decimal`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetDouble
-
-Returns the current value as a double.
 
 #### Syntax
 
@@ -551,11 +486,8 @@ public double GetDouble()
 #### Returns
 
 Type: `double`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetGuid
-
-Returns the current value as a [Guid](https://learn.microsoft.com/dotnet/api/system.guid).
 
 #### Syntax
 
@@ -566,7 +498,6 @@ public System.Guid GetGuid()
 #### Returns
 
 Type: `System.Guid`
-The parsed value.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
 
@@ -610,8 +541,6 @@ Type: `int`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInnerText
 
-Returns concatenated descendant text.
-
 #### Syntax
 
 ```csharp
@@ -621,11 +550,8 @@ public string GetInnerText()
 #### Returns
 
 Type: `string`
-The inner text.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt32
-
-Returns the current value as a 32-bit integer.
 
 #### Syntax
 
@@ -636,11 +562,8 @@ public int GetInt32()
 #### Returns
 
 Type: `int`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt64
-
-Returns the current value as a 64-bit integer.
 
 #### Syntax
 
@@ -651,11 +574,8 @@ public long GetInt64()
 #### Returns
 
 Type: `long`
-The parsed value.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetRawXml
-
-Reconstructs this node as XML text.
 
 #### Syntax
 
@@ -666,11 +586,8 @@ public string GetRawXml()
 #### Returns
 
 Type: `string`
-The XML markup.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetString
-
-Returns the current value as a string.
 
 #### Syntax
 
@@ -681,7 +598,6 @@ public string GetString()
 #### Returns
 
 Type: `string?`
-The string value, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this element is nil.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
 
@@ -762,8 +678,6 @@ Type: `string?`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetAttribute
 
-Attempts to get the named attribute.
-
 #### Syntax
 
 ```csharp
@@ -774,17 +688,14 @@ public bool TryGetAttribute(string localName, out CloudNimble.Text.Xml.XmlElemen
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns true, the attribute cursor. |
+| `localName` | `string` | - |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | - |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the attribute exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
-
-Attempts to get the named child element.
 
 #### Syntax
 
@@ -796,17 +707,14 @@ public bool TryGetChild(string localName, out CloudNimble.Text.Xml.XmlElement va
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns true, the child cursor. |
+| `localName` | `string` | - |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | - |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the child exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
-
-Attempts to get the named child element in *namespaceUri*.
 
 #### Syntax
 
@@ -818,18 +726,15 @@ public bool TryGetChild(string localName, string namespaceUri, out CloudNimble.T
 
 | Name | Type | Description |
 |------|------|-------------|
-| `localName` | `string` | The local name. |
-| `namespaceUri` | `string` | The namespace URI. |
-| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns true, the child cursor. |
+| `localName` | `string` | - |
+| `namespaceUri` | `string` | - |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | - |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the child exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteTo
-
-Writes this node to *writer*.
 
 #### Syntax
 
@@ -841,7 +746,7 @@ public void WriteTo(CloudNimble.Text.Xml.Utf8XmlWriter writer)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The destination writer. |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
 
 ## Related APIs
 

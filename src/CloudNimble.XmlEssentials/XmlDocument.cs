@@ -520,6 +520,8 @@ namespace CloudNimble.Text.Xml
                         case XmlTokenType.EndElement:
                             if (depth == 0)
                             {
+                                // ParseValue takes a reader wherever its caller left it, which may be on or
+                                // just before the end tag of an element this document never saw start.
                                 throw new XmlException("End tag without a matching start tag.");
                             }
 
@@ -541,6 +543,7 @@ namespace CloudNimble.Text.Xml
                 {
                     throw new XmlException("The document has no root element.");
                 }
+
             }
             finally
             {
@@ -705,12 +708,22 @@ namespace CloudNimble.Text.Xml
             var document = new XmlDocument(rented, length);
             try
             {
-                var reader = new Utf8XmlReader(rented.AsSpan(0, length), options.ToReaderOptions());
+                // A rented buffer is usually longer than what was asked for. The reader works in the part
+                // after the payload, and what it wrote there is cleared, because the buffer goes back to the
+                // shared pool with only the payload cleared.
+                var reader = new Utf8XmlReader(rented.AsSpan(0, length), rented.AsSpan(length), sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock: true, new XmlReaderState(options.ToReaderOptions()));
                 document.FillFromReader(ref reader, requireDocumentRoot: true);
+                if (reader.ScratchBytesUsed != 0)
+                {
+                    rented.AsSpan(length, reader.ScratchBytesUsed).Clear();
+                }
+
                 return document;
             }
             catch
             {
+                // The reader is gone by now, so everything after the payload is cleared.
+                rented.AsSpan(length).Clear();
                 document.Dispose();
                 throw;
             }

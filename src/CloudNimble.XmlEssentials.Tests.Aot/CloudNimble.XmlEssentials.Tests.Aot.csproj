@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<IsTestProject>false</IsTestProject>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net11.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>CloudNimble.XmlEssentials.Tests.Aot</RootNamespace>
+		<AssemblyName>CloudNimble.XmlEssentials.Tests.Aot</AssemblyName>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<PublishAot>true</PublishAot>
+		<Description>Native AOT smoke: source-generated context and XSD-generated types with reflection disabled.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<RuntimeHostConfigurationOption Include="CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault" Value="false" Trim="true" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials\CloudNimble.XmlEssentials.csproj" />
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false"
+		                  SetTargetFramework="TargetFramework=netstandard2.0"
+		                  GlobalPropertiesToRemove="PublishAot" />
+	</ItemGroup>
+
+	<Import Project="..\CloudNimble.XmlEssentials\build\XmlEssentials.props" />
+
+	<ItemGroup>
+		<AdditionalFiles Include="Schemas\order.xsd">
+			<XmlEssentialsNamespace>CloudNimble.XmlEssentials.Tests.Aot.Generated</XmlEssentialsNamespace>
+			<XmlEssentialsContext>OrderXmlContext</XmlEssentialsContext>
+		</AdditionalFiles>
+	</ItemGroup>
+
+</Project>

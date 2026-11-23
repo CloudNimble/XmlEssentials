@@ -149,17 +149,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Parse_Dtd_Throws()
         {
-            var threw = false;
-            try
-            {
-                XmlDocument.Parse("<!DOCTYPE e><e/>");
-            }
-            catch (XmlException)
-            {
-                threw = true;
-            }
-
-            threw.Should().BeTrue();
+            FluentActions.Invoking(() => XmlDocument.Parse("<!DOCTYPE e><e/>")).Should().ThrowExactly<XmlException>().WithMessage("DTD is not allowed.");
         }
 
         [TestMethod]

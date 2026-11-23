@@ -85,12 +85,15 @@ Also:
 
 **Collection:** `Microsoft.Testing.Extensions.CodeCoverage` on the test project.
 
-**Exact CI commands** (GitHub Actions matrix `net10.0` and `net11.0`):
+**Exact CI commands** (GitHub Actions, same process as McpEssentials: `pr-validation.yml`, `build-and-deploy.yml`, `publish-ci-build.yml`):
 
 ```bash
-dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml
+dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --no-build -f net10.0
+dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml
 dotnet run src/coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml
 ```
+
+net11.0 also runs `XmlAotPublishTests` (Native AOT publish + exact Person/Order XML). The workflows then publish the `xmlessentials` CLI sample. Version stamps, NuGet Trusted Publishing, and GitHub releases: [`.github/RELEASE.md`](../.github/RELEASE.md).
 
 (`dotnet run file.cs` is a .NET 10+ C# file-based app. **Not** Python. **Not** `dotnet test --settings`.)
 

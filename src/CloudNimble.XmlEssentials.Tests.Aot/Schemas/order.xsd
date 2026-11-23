@@ -1,0 +1,26 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:order" elementFormDefault="qualified">
+  <xs:simpleType name="Status">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Open"/>
+      <xs:enumeration value="Closed"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="Order">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Id" type="xs:string"/>
+        <xs:element name="Status" type="Status"/>
+        <xs:element name="Qty" type="xs:int" nillable="true"/>
+        <xs:element name="Line" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Sku" type="xs:string"/>
+              <xs:element name="Qty" type="xs:int"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="currency" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

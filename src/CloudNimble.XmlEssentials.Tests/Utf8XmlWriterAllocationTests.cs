@@ -12,6 +12,7 @@ namespace CloudNimble.XmlEssentials.Tests
     /// Heap-allocation checks for the <see cref="Utf8XmlWriter"/> hot path.
     /// </summary>
     [TestClass]
+    [DoNotParallelize]
     public class Utf8XmlWriterAllocationTests
     {
 

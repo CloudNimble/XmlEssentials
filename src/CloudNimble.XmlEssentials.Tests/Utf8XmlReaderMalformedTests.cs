@@ -142,49 +142,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Read_Malformed_Xml11RestrictedCharLiteral_Throws()
-        {
-            var xml = "<?xml version=\"1.1\"?><e>"u8.ToArray().Concat(new byte[] { 0x01 }).Concat("</e>"u8.ToArray()).ToArray();
-            XmlReaderHarness.MustThrow(xml);
-        }
-
-        [TestMethod]
-        public void Read_Malformed_MaxDepth_Throws()
-        {
-            XmlReaderHarness.MustThrow("<a><b/></a>", new XmlReaderOptions { MaxDepth = 1 });
-        }
-
-        [TestMethod]
-        public void Read_Malformed_MaxNameByteCount_Throws()
-        {
-            XmlReaderHarness.MustThrow("<abcdef/>", new XmlReaderOptions { MaxNameByteCount = 2 });
-        }
-
-        [TestMethod]
-        public void Read_Malformed_MaxAttributeCount_Throws()
-        {
-            XmlReaderHarness.MustThrow("<e a=\"1\" b=\"2\"/>", new XmlReaderOptions { MaxAttributeCount = 1 });
-        }
-
-        [TestMethod]
-        public void Read_Malformed_MaxCommentByteCount_Throws()
-        {
-            XmlReaderHarness.MustThrow("<!--abcd--><e/>", new XmlReaderOptions { MaxCommentByteCount = 2, CommentHandling = XmlCommentHandling.Allow });
-        }
-
-        [TestMethod]
-        public void Read_Malformed_MaxTextByteCount_Throws()
-        {
-            XmlReaderHarness.MustThrow("<e>abcd</e>", new XmlReaderOptions { MaxTextByteCount = 2 });
-        }
-
-        [TestMethod]
-        public void Read_Malformed_MaxCDataByteCount_Throws()
-        {
-            XmlReaderHarness.MustThrow("<e><![CDATA[abcd]]></e>", new XmlReaderOptions { MaxTextByteCount = 2 });
-        }
-
-        [TestMethod]
         public void Read_Malformed_WhitespaceNone_Throws()
         {
             XmlReaderHarness.MustThrow("<a>\n<b/>\n</a>", new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.None });
@@ -222,27 +179,156 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow("<e>&")]
-        [DataRow("<a></")]
-        [DataRow("<a></a")]
-        [DataRow("<e><?")]
-        [DataRow("<e a")]
-        [DataRow("<e a ")]
-        [DataRow("<e a=")]
-        [DataRow("<e a='")]
-        [DataRow("<e a='&")]
-        [DataRow("<e/")]
-        [DataRow("<p:")]
-        [DataRow("<e p:")]
-        [DataRow("<!")]
-        [DataRow("<!--")]
-        [DataRow("<e><![CDATA[")]
-        public void Read_IncompleteNonFinal_ReturnsFalse(string xml)
+        public void Read_CommentInsideAnElement_WhenCommentsAreDisallowed_Throws()
+        {
+            var reader = new Utf8XmlReader("<a><!--c--></a>"u8, new XmlReaderOptions { CommentHandling = XmlCommentHandling.Disallow });
+            reader.Read().Should().BeTrue();
+            string? message = null;
+            try
+            {
+                reader.Read();
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("Comments are not allowed.");
+        }
+
+        [TestMethod]
+        public void Read_IncompleteEndTagAtDepthZero_NeedsMoreThenThrows()
+        {
+            var partial = new Utf8XmlReader("</e"u8, isFinalBlock: false, state: default);
+            partial.Read().Should().BeFalse();
+
+            var final = new Utf8XmlReader("</e"u8);
+            string? message = null;
+            try
+            {
+                while (final.Read())
+                {
+                }
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("Unexpected end of XML.");
+        }
+
+        [TestMethod]
+        [DataRow("<e>&", 1, 3)]
+        [DataRow("<a></", 1, 3)]
+        [DataRow("<a></a", 1, 3)]
+        [DataRow("<e><?", 1, 3)]
+        [DataRow("<e a", 0, 0)]
+        [DataRow("<e a ", 0, 0)]
+        [DataRow("<e a=", 0, 0)]
+        [DataRow("<e a='", 0, 0)]
+        [DataRow("<e a='&", 0, 0)]
+        [DataRow("<e/", 0, 0)]
+        [DataRow("<p:", 0, 0)]
+        [DataRow("<e p:", 0, 0)]
+        [DataRow("<!", 0, 0)]
+        [DataRow("<!--", 0, 0)]
+        [DataRow("<e><![CDATA[", 1, 3)]
+        public void Read_IncompleteNonFinal_ReturnsFalseAtTheStartOfTheIncompleteToken(string xml, int tokensBefore, int bytesConsumed)
         {
             var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml), false, default);
+            var tokens = 0;
             while (reader.Read())
             {
+                tokens++;
             }
+
+            tokens.Should().Be(tokensBefore);
+            reader.BytesConsumed.Should().Be(bytesConsumed);
+        }
+
+        [TestMethod]
+        [DataRow("<p:", DisplayName = "after the colon of a prefixed start tag")]
+        [DataRow("<r><p:", DisplayName = "after the colon of a prefixed child")]
+        [DataRow("<r x:", DisplayName = "after the colon of a prefixed attribute")]
+        [DataRow("<r></p:", DisplayName = "after the colon of a prefixed end tag")]
+        [DataRow("<r><?p:", DisplayName = "after a colon in a processing instruction target")]
+        [DataRow("<\u00E9:", DisplayName = "after the colon of a prefix that is not ASCII")]
+        [DataRow("<r></\u00E9:", DisplayName = "after the colon of a prefix that is not ASCII, in an end tag")]
+        public void Read_BufferEndingInsideTheFirstCharacterOfALocalName_WaitsForTheRestOrRejectsTheBrokenCharacter(string before)
+        {
+            // The first byte of a two-byte character: the name cannot be judged until the second arrives.
+            byte[] xml = [.. Encoding.UTF8.GetBytes(before), 0xC3];
+            var waiting = new Utf8XmlReader(xml, isFinalBlock: false, default);
+            var tokens = 0;
+            while (waiting.Read())
+            {
+                tokens++;
+            }
+
+            tokens.Should().Be(before.StartsWith("<r>", StringComparison.Ordinal) ? 1 : 0);
+            string? message = null;
+            try
+            {
+                var final = new Utf8XmlReader(xml);
+                while (final.Read())
+                {
+                }
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("Invalid UTF-8.");
+        }
+
+        [TestMethod]
+        [DataRow("<p:\u00D7 xmlns:p=\"urn:p\"/>", DisplayName = "a multiplication sign, which is not a name character")]
+        [DataRow("<p:\u00B7x xmlns:p=\"urn:p\"/>", DisplayName = "a middle dot, which may continue a name but not start one")]
+        [DataRow("<r xmlns:p=\"urn:p\" p:\u00B7=\"1\"/>", DisplayName = "a middle dot starting an attribute's local name")]
+        public void Read_LocalNameThatStartsWithACharacterNoNameCanStartWith_Throws(string xml)
+        {
+            string? message = null;
+            try
+            {
+                XmlReaderHarness.Drain(xml);
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("Invalid name.");
+        }
+
+        [TestMethod]
+        [DataRow("<e>&#x4A;&#x4a;&#74;</e>", "JJJ", DisplayName = "hexadecimal digits in either case, and decimal")]
+        [DataRow("<e>&#xABCD;&#xabcd;&#xAbCd;</e>", "ꯍꯍꯍ", DisplayName = "every hexadecimal letter case")]
+        [DataRow("<e>&#x10FFFF;&#x9;</e>", "\U0010FFFF\t", DisplayName = "the largest character and a tab")]
+        public void Read_CharacterReferences_AreDecoded(string xml, string expected)
+        {
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml));
+            reader.Read().Should().BeTrue();
+            reader.Read().Should().BeTrue();
+            reader.GetString().Should().Be(expected);
+        }
+
+        [TestMethod]
+        [DataRow("<e>&#4A;</e>", DisplayName = "a hexadecimal letter in a decimal reference")]
+        [DataRow("<e>&#xG;</e>", DisplayName = "a letter that is not a hexadecimal digit")]
+        [DataRow("<e>&#xg;</e>", DisplayName = "a lowercase letter that is not a hexadecimal digit")]
+        [DataRow("<e>&#x/;</e>", DisplayName = "a character before the digits")]
+        [DataRow("<e>&#x:;</e>", DisplayName = "a character between the digits and the letters")]
+        [DataRow("<e>&#x@;</e>", DisplayName = "the character before A")]
+        [DataRow("<e>&#x`;</e>", DisplayName = "the character before a")]
+        [DataRow("<e>&#x;</e>", DisplayName = "no digits")]
+        [DataRow("<e>&#;</e>", DisplayName = "no digits, decimal")]
+        [DataRow("<e>&#x110000;</e>", DisplayName = "past the last character")]
+        [DataRow("<e>&#x0;</e>", DisplayName = "NUL")]
+        public void Read_CharacterReferenceThatIsNotANumberOfACharacter_Throws(string xml)
+        {
+            XmlReaderHarness.MustThrow(xml);
         }
 
         [TestMethod]

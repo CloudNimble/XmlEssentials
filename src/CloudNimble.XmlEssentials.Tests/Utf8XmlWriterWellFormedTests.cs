@@ -450,10 +450,10 @@ namespace CloudNimble.XmlEssentials.Tests
             var buffer = new ArrayBufferWriter<byte>();
             using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
             writer.WriteStartElement("e");
-            writer.BytesPending.Should().BeGreaterThan(0);
+            writer.BytesPending.Should().Be(2);
             writer.Flush();
             writer.BytesPending.Should().Be(0);
-            writer.BytesCommitted.Should().BeGreaterThan(0);
+            writer.BytesCommitted.Should().Be(2);
             writer.WriteEndElement();
         }
 

@@ -1,6 +1,5 @@
 ---
 title: XmlReferenceResolver
-description: "Maps objects to reference ids for one serialize or deserialize operation."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization', 'class']
@@ -18,10 +17,6 @@ keywords: ['XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization.XmlRefere
 CloudNimble.Text.Xml.Serialization.XmlReferenceResolver
 ```
 
-## Summary
-
-Maps objects to reference ids for one serialize or deserialize operation.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
@@ -38,8 +33,6 @@ public Object()
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AddReference <Badge color="orange">Abstract</Badge>
 
-Records *value* under *referenceId* for later resolve.
-
 #### Syntax
 
 ```csharp
@@ -50,8 +43,8 @@ public abstract void AddReference(string referenceId, object value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `referenceId` | `string` | The id. |
-| `value` | `object` | The object. |
+| `referenceId` | `string` | - |
+| `value` | `object` | - |
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -110,8 +103,6 @@ Type: `int`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetReference <Badge color="orange">Abstract</Badge>
 
-Returns the id for *value* and whether it was already seen.
-
 #### Syntax
 
 ```csharp
@@ -122,13 +113,12 @@ public abstract string GetReference(object value, out bool alreadyExists)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object` | The object. |
-| `alreadyExists` | `bool` | When this method returns, whether the object was already assigned an id. |
+| `value` | `object` | - |
+| `alreadyExists` | `bool` | - |
 
 #### Returns
 
 Type: `string`
-The id.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
 
@@ -181,8 +171,6 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ResolveReference <Badge color="orange">Abstract</Badge>
 
-Returns the object previously recorded under *referenceId*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
-
 #### Syntax
 
 ```csharp
@@ -193,12 +181,11 @@ public abstract object ResolveReference(string referenceId)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `referenceId` | `string` | The id. |
+| `referenceId` | `string` | - |
 
 #### Returns
 
 Type: `object?`
-The object, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

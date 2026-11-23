@@ -1,4 +1,7 @@
 using System;
+using System.Buffers;
+using System.Globalization;
+using System.IO;
 using System.Text;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
@@ -194,14 +197,14 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var nextLine = ((char)0x85).ToString();
             var lineSeparator = ((char)0x2028).ToString();
-            var value = "aé☃" + nextLine + "𝄞" + lineSeparator + "ü<é";
+            var value = "a\u00E9☃" + nextLine + "𝄞" + lineSeparator + "ü<\u00E9";
             var version10 = new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version10 };
             var version11 = new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version11 };
 
             XmlWriterHarness.ToXml(w => w.WriteElementString("e", value), version10)
-                .Should().Be("<e>" + "aé☃" + nextLine + "𝄞" + lineSeparator + "ü&lt;é</e>");
+                .Should().Be("<e>" + "a\u00E9☃" + nextLine + "𝄞" + lineSeparator + "ü&lt;\u00E9</e>");
             XmlWriterHarness.ToXml(w => w.WriteElementString("e", value), version11)
-                .Should().Be("<e>aé☃&#x85;𝄞&#x2028;ü&lt;é</e>");
+                .Should().Be("<e>a\u00E9☃&#x85;𝄞&#x2028;ü&lt;\u00E9</e>");
             XmlWriterHarness.ToXml(
                 w =>
                 {
@@ -209,7 +212,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     w.WriteAttributeString("a", value);
                     w.WriteEndElement();
                 },
-                version11).Should().Be("<e a=\"aé☃&#x85;𝄞&#x2028;ü&lt;é\"/>");
+                version11).Should().Be("<e a=\"a\u00E9☃&#x85;𝄞&#x2028;ü&lt;\u00E9\"/>");
         }
 
         [TestMethod]
@@ -339,6 +342,319 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             xml.Should().Be(expected.ToString());
+        }
+
+        [TestMethod]
+        public void Options_ReturnsTheOptionsTheWriterWasCreatedWith()
+        {
+            var options = new XmlWriterOptions { Indented = true, IndentSize = 3, MaxDepth = 7, OmitXmlDeclaration = true, Version = XmlVersion.Version11 };
+            using var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), options);
+            writer.Options.Should().Be(options);
+        }
+
+        [TestMethod]
+        [DataRow(10, DisplayName = "a value that fits the buffer the writer starts with")]
+        [DataRow(40_000, DisplayName = "a value larger than the buffer the writer starts with")]
+        [DataRow(300_000, DisplayName = "a value several times larger")]
+        public void Stream_ValuesOfAnySize_AreWrittenWhole(int length)
+        {
+            var text = new string('x', length) + "<&>" + new string('\u00E9', length);
+            var expected = "<r a=\"" + new string('x', length) + "&lt;&amp;>" + new string('\u00E9', length) + "\"><e>" + new string('x', length) + "&lt;&amp;>" + new string('\u00E9', length) + "</e><e>" + new string('x', length) + "&lt;&amp;>" + new string('\u00E9', length) + "</e></r>";
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8XmlWriter(stream, new XmlWriterOptions { OmitXmlDeclaration = true }))
+            {
+                writer.WriteStartElement("r");
+                writer.WriteAttributeString("a", text);
+                writer.WriteElementString("e", text);
+                writer.WriteStartElement("e");
+                writer.WriteStringValue(text);
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+            }
+
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void BufferWriter_ADocumentLargerThanOneBlock_IsWrittenWhole()
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            var expected = new StringBuilder("<r>");
+            using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+            {
+                writer.WriteStartElement("r");
+                for (var i = 0; i < 5000; i++)
+                {
+                    writer.WriteStartElement("item");
+                    writer.WriteAttributeString("id", i.ToString(CultureInfo.InvariantCulture));
+                    writer.WriteStringValue("value " + i);
+                    writer.WriteEndElement();
+                    expected.Append("<item id=\"").Append(i).Append("\">value ").Append(i).Append("</item>");
+                }
+
+                writer.WriteEndElement();
+            }
+
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be(expected.Append("</r>").ToString());
+        }
+
+        [TestMethod]
+        public void WriteNilElement_WhenTheSchemaInstanceNamespaceIsInScope_DoesNotDeclareItAgain()
+        {
+            const string xsi = "http://www.w3.org/2001/XMLSchema-instance";
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("xsi", "root", xsi);
+                writer.WriteNilElement("a");
+                writer.WriteStartElement("b");
+                writer.WriteNilElement("c");
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+            }).Should().Be("<xsi:root xmlns:xsi=\"" + xsi + "\"><a xsi:nil=\"true\"/><b><c xsi:nil=\"true\"/></b></xsi:root>");
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("root");
+                writer.WriteNilElement("a");
+                writer.WriteNilElement("b");
+                writer.WriteEndElement();
+            }).Should().Be("<root><a xmlns:xsi=\"" + xsi + "\" xsi:nil=\"true\"/><b xmlns:xsi=\"" + xsi + "\" xsi:nil=\"true\"/></root>");
+        }
+
+        [TestMethod]
+        public void DocumentLevel_CommentsAndProcessingInstructions_AreWrittenAroundTheRoot()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteComment("before");
+                writer.WriteProcessingInstruction("p", "one");
+                writer.WriteStartElement("r");
+                writer.WriteEndElement();
+                writer.WriteComment("after");
+                writer.WriteProcessingInstruction("q", null);
+            }).Should().Be("<!--before--><?p one?><r/><!--after--><?q?>");
+        }
+
+        [TestMethod]
+        public void Names_ThatStartInAsciiAndGoOnOutsideIt_AreWrittenWhole()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("abc\u00E9", "urn:n");
+                writer.WriteAttributeString("pr\u00E9", "nom\u00E9", "urn:a", "v");
+                writer.WriteStartElement("pr\u00E9", "local\u4E2D", "urn:a");
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+            }).Should().Be("<abc\u00E9 xmlns=\"urn:n\" xmlns:pr\u00E9=\"urn:a\" pr\u00E9:nom\u00E9=\"v\"><pr\u00E9:local\u4E2D/></abc\u00E9>");
+        }
+
+        [TestMethod]
+        public void TenAttributesInNamespaces_AreAllWrittenAndARepeatAmongThemIsRejected()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                for (var i = 0; i < 10; i++)
+                {
+                    writer.WriteAttributeString("p", "a" + i, "urn:p", i.ToString(CultureInfo.InvariantCulture));
+                }
+
+                writer.WriteEndElement();
+            }).Should().Be("<r xmlns:p=\"urn:p\" p:a0=\"0\" p:a1=\"1\" p:a2=\"2\" p:a3=\"3\" p:a4=\"4\" p:a5=\"5\" p:a6=\"6\" p:a7=\"7\" p:a8=\"8\" p:a9=\"9\"/>");
+            XmlWriterHarness.ThrownMessage(writer =>
+            {
+                writer.WriteStartElement("r");
+                for (var i = 0; i < 10; i++)
+                {
+                    writer.WriteAttributeString("p", "a" + i, "urn:p", "v");
+                }
+
+                writer.WriteAttributeString("p", "a9", "urn:p", "again");
+            }).Should().Be("Duplicate attribute.");
+        }
+
+        [TestMethod]
+        [DataRow("\n", DisplayName = "LF")]
+        [DataRow("\r\n", DisplayName = "CR LF")]
+        [DataRow("\r", DisplayName = "a line end of the caller's own")]
+        [DataRow(" | ", DisplayName = "any other text")]
+        public void Indented_UsesTheNewLineItIsGiven(string newLine)
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentSize = 1, NewLine = newLine };
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("a");
+                writer.WriteStartElement("b");
+                writer.WriteStartElement("c");
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+            }, options).Should().Be("<a>" + newLine + " <b>" + newLine + "  <c/>" + newLine + " </b>" + newLine + "</a>");
+        }
+
+        [TestMethod]
+        public void Indented_WithNoNewLineGiven_UsesTheEnvironmentOne()
+        {
+            foreach (var unset in new[] { null, "" })
+            {
+                var options = new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentSize = 2, NewLine = unset };
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement("a");
+                    writer.WriteStartElement("b");
+                    writer.WriteEndElement();
+                    writer.WriteEndElement();
+                }, options).Should().Be("<a>" + Environment.NewLine + "  <b/>" + Environment.NewLine + "</a>");
+            }
+        }
+
+        [TestMethod]
+        public void NamespaceGivenWithoutAPrefix_UsesAPrefixAlreadyBoundToIt()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("p", "r", "urn:p");
+                writer.WriteAttributeString("a", "urn:p", "1");
+                writer.WriteAttributeString("lang", XmlNamespaces.Xml, "en");
+                writer.WriteEndElement();
+            }).Should().Be("<p:r xmlns:p=\"urn:p\" p:a=\"1\" xml:lang=\"en\"/>");
+        }
+
+        [TestMethod]
+        public void NameTakingMethods_WriteNamesThatStartInAsciiAndGoOnOutsideIt()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r\u00E9");
+                writer.WriteAttributeString("a\u00E9", "1");
+                writer.WriteElementString("e\u00E9", "v");
+                writer.WriteEmptyElement("m\u00E9");
+                writer.WriteNilElement("n\u00E9");
+                writer.WriteElementNumber("i\u00E9", 5);
+                writer.WriteElementBoolean("b\u00E9", true);
+                writer.WriteProcessingInstruction("t\u00E9", "d");
+                writer.WriteEndElement();
+            }).Should().Be("<r\u00E9 a\u00E9=\"1\"><e\u00E9>v</e\u00E9><m\u00E9/><n\u00E9 xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><i\u00E9>5</i\u00E9><b\u00E9>true</b\u00E9><?t\u00E9 d?></r\u00E9>");
+        }
+
+        [TestMethod]
+        public void AttributeInTheXmlnsNamespace_GivenWithoutAPrefix_IsWrittenAsTheDeclarationItIs()
+        {
+            // The xmlns namespace holds namespace declarations and nothing else (Namespaces in XML, section 3),
+            // so an attribute x in it is the declaration xmlns:x.
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteAttributeString("x", XmlNamespaces.Xmlns, "urn:x");
+                writer.WriteEndElement();
+            }).Should().Be("<r xmlns:x=\"urn:x\"/>");
+        }
+
+        [TestMethod]
+        public void SeventeenAttributes_AreWrittenInOrder()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("e");
+                for (var i = 0; i < 17; i++)
+                {
+                    writer.WriteAttributeString("a" + i, "1");
+                }
+
+                writer.WriteEndElement();
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, MaxAttributeCount = 32 }).Should().Be("<e a0=\"1\" a1=\"1\" a2=\"1\" a3=\"1\" a4=\"1\" a5=\"1\" a6=\"1\" a7=\"1\" a8=\"1\" a9=\"1\" a10=\"1\" a11=\"1\" a12=\"1\" a13=\"1\" a14=\"1\" a15=\"1\" a16=\"1\"/>");
+        }
+
+        [TestMethod]
+        public void UnboundAttributeNamespace_UsesTheNextFreeNsPrefix()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("e");
+                writer.WriteNamespaceDeclaration("ns1", "urn:1");
+                writer.WriteAttributeString("a", "urn:2", "1");
+                writer.WriteEndElement();
+            }).Should().Be("<e xmlns:ns1=\"urn:1\" xmlns:ns2=\"urn:2\" ns2:a=\"1\"/>");
+        }
+
+        [TestMethod]
+        public void AttributeInADefaultOnlyNamespace_GetsAGeneratedPrefix()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("e");
+                writer.WriteDefaultNamespace("urn:d");
+                writer.WriteAttributeString("a", "urn:d", "1");
+                writer.WriteEndElement();
+            }).Should().Be("<e xmlns=\"urn:d\" xmlns:ns1=\"urn:d\" ns1:a=\"1\"/>");
+        }
+
+        [TestMethod]
+        public void LeafElement_InsideAnElement_IsWrittenBetweenTheTagsItIsGiven()
+        {
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteLeafStart("<a>"u8);
+                writer.WriteNumberValue(1);
+                writer.WriteLeafEnd("</a>"u8);
+                writer.WriteLeafStart("<b>"u8);
+                writer.WriteStringValue("x<y");
+                writer.WriteLeafEnd("</b>"u8);
+                writer.WriteEndElement();
+            }).Should().Be("<r><a>1</a><b>x&lt;y</b></r>");
+        }
+
+        [TestMethod]
+        public void LeafElement_OutsideAnyElement_IsRejected()
+        {
+            XmlWriterHarness.ThrownMessage(writer => writer.WriteLeafStart("<a>"u8)).Should().Be("A leaf element must be written inside an element.");
+            XmlWriterHarness.ThrownMessage(writer => writer.WriteLeafEnd("</a>"u8)).Should().Be("A leaf element must be written inside an element.");
+            XmlWriterHarness.ThrownMessage(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteEndElement();
+                writer.WriteLeafStart("<a>"u8);
+            }).Should().Be("A leaf element must be written inside an element.");
+        }
+
+        [TestMethod]
+        public void EmptyName_GivenAsUtf8_IsRejected()
+        {
+            XmlWriterHarness.ThrownMessage(writer => writer.WriteStartElement(""u8)).Should().Be("Name is empty.");
+            XmlWriterHarness.ThrownMessage(writer => writer.WriteStartElement("")).Should().Be("Name is empty.");
+        }
+
+        [TestMethod]
+        public void BufferWriter_ThatHandsBackNoMemory_IsReportedAsTooSmall()
+        {
+            FluentActions.Invoking(() =>
+            {
+                using var writer = new Utf8XmlWriter(new EmptyBufferWriter(), new XmlWriterOptions { OmitXmlDeclaration = true });
+                writer.WriteStartElement("e");
+                writer.WriteEndElement();
+            }).Should().ThrowExactly<XmlException>().WithMessage("The destination buffer is too small.");
+        }
+
+        [TestMethod]
+        public void SkipValidation_WritesANameThatIsNotAName_AsItIsGiven()
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true };
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("1 name that is no Name at all"u8);
+                writer.WriteEndElement();
+            }, options).Should().Be("<1 name that is no Name at all/>");
+            string? message = null;
+            try
+            {
+                XmlWriterHarness.ToXml(writer => writer.WriteStartElement("1 name that is no Name at all"u8));
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("Invalid XML name.");
         }
 
         #endregion

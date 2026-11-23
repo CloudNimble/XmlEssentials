@@ -1,6 +1,5 @@
 ---
 title: XmlCommentNode
-description: "A mutable comment node."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlCommentNode', 'CloudNimble.Text.Xml.Nodes.XmlCommentNode', 'CloudNimble.Text.Xml.Nodes', 'class', 'CloudNimble.Text.Xml.Nodes.XmlNode', '# Related APIs', '- `XmlCommentHandling`', '- `XmlDocument`', '- `XmlNode`']
@@ -19,10 +18,6 @@ keywords: ['XmlCommentNode', 'CloudNimble.Text.Xml.Nodes.XmlCommentNode', 'Cloud
 ```csharp
 CloudNimble.Text.Xml.Nodes.XmlCommentNode
 ```
-
-## Summary
-
-A mutable comment node.
 
 ## Usage
 
@@ -62,8 +57,6 @@ Comments containing `--` or ending in `-` throw on write. `XmlNode.Parse` discar
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates a comment node.
-
 #### Syntax
 
 ```csharp
@@ -74,7 +67,7 @@ public XmlCommentNode(string value = null)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `string?` | The comment text. |
+| `value` | `string?` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -102,8 +95,6 @@ public Object()
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
 
-Gets or sets the namespace URI, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when the node has none.
-
 #### Syntax
 
 ```csharp
@@ -118,8 +109,6 @@ Type: `string?`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
 
-Gets the parent node, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this node is unattached.
-
 #### Syntax
 
 ```csharp
@@ -131,8 +120,6 @@ public CloudNimble.Text.Xml.Nodes.XmlNode Parent { get; }
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Value
-
-Gets or sets the comment text.
 
 #### Syntax
 
@@ -159,8 +146,6 @@ Type: `CloudNimble.Text.Xml.XmlValueKind`
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueKind <Badge color="gray">Inherited</Badge> <Badge color="orange">Abstract</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
-
-Gets the node kind.
 
 #### Syntax
 
@@ -190,8 +175,6 @@ Type: `CloudNimble.Text.Xml.Nodes.XmlNode`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
 
-Returns a deep copy of this node, unattached from any parent.
-
 #### Syntax
 
 ```csharp
@@ -201,7 +184,6 @@ public abstract CloudNimble.Text.Xml.Nodes.XmlNode DeepClone()
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode`
-The clone.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -290,8 +272,6 @@ Type: `object`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
 
-Parses *xml* into a mutable tree whose root is the document element.
-
 #### Syntax
 
 ```csharp
@@ -302,18 +282,15 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode Parse(string xml)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
+| `xml` | `string` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root element node, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when the document is empty.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
-
-Parses UTF-8 XML into a mutable tree whose root is the document element.
 
 #### Syntax
 
@@ -325,18 +302,15 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode Parse(System.ReadOnlySpan<byte>
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root element node.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ParseValue <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
-
-Parses the current element from *reader* into a mutable tree.
 
 #### Syntax
 
@@ -348,12 +322,11 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode ParseValue(ref CloudNimble.Text
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | A reader positioned at or before a start tag. |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The element node.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
 
@@ -380,8 +353,6 @@ Type: `bool`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
 
-Sets the parent pointer.
-
 #### Syntax
 
 ```csharp
@@ -392,13 +363,11 @@ internal void SetParent(CloudNimble.Text.Xml.Nodes.XmlNode parent)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `parent` | `CloudNimble.Text.Xml.Nodes.XmlNode?` | The parent, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `parent` | `CloudNimble.Text.Xml.Nodes.XmlNode?` | - |
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="blue">Override</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
-
-Returns the XML markup for this node.
 
 #### Syntax
 
@@ -409,7 +378,6 @@ public override string ToString()
 #### Returns
 
 Type: `string`
-The markup.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -443,8 +411,6 @@ public override void WriteTo(CloudNimble.Text.Xml.Utf8XmlWriter writer)
 
 <Note>Inherited from `CloudNimble.Text.Xml.Nodes.XmlNode`</Note>
 
-Writes this node to *writer*.
-
 #### Syntax
 
 ```csharp
@@ -455,7 +421,7 @@ public abstract void WriteTo(CloudNimble.Text.Xml.Utf8XmlWriter writer)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The destination writer. |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
 
 ## Related APIs
 

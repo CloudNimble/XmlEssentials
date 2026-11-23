@@ -92,13 +92,28 @@ namespace CloudNimble.Text.Xml.Nodes
         /// Returns the XML markup for this node.
         /// </summary>
         /// <returns>The markup.</returns>
+        /// <exception cref="XmlException">The tree cannot be written as XML, for example a prefix with no namespace.</exception>
         public override string ToString()
         {
             var buffer = new ArrayBufferWriter<byte>();
-            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
-            WriteTo(writer);
-            writer.Flush();
-            return Encoding.UTF8.GetString(buffer.WrittenSpan);
+            var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            try
+            {
+                WriteTo(writer);
+                writer.Flush();
+                return Encoding.UTF8.GetString(buffer.WrittenSpan);
+            }
+            catch
+            {
+                // What was written is abandoned. Otherwise disposing the writer would report the elements
+                // this failure left open, in place of the failure itself.
+                writer.Reset();
+                throw;
+            }
+            finally
+            {
+                writer.Dispose();
+            }
         }
 
         #endregion

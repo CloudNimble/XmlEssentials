@@ -22,14 +22,72 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void EndTag_DifferentPrefixSameUri_Matches()
+        [DataRow("<a:e xmlns:a=\"urn:x\" xmlns:b=\"urn:x\"></b:e>", DisplayName = "another prefix bound to the same namespace")]
+        [DataRow("<a:e xmlns:a=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:b=\"http://www.w3.org/2001/XMLSchema-instance\"></b:e>", DisplayName = "another prefix bound to a namespace the reader knows")]
+        [DataRow("<e xmlns=\"urn:x\" xmlns:b=\"urn:x\"></b:e>", DisplayName = "a prefix where the start tag used the default namespace")]
+        [DataRow("<b:e xmlns=\"urn:x\" xmlns:b=\"urn:x\"></e>", DisplayName = "no prefix where the start tag had one")]
+        [DataRow("<a:r xmlns:a=\"urn:x\" xmlns:b=\"urn:x\"><a:e>1</b:e></a:r>", DisplayName = "a child element")]
+        public void EndTag_WithADifferentPrefixBoundToTheSameNamespace_IsRejected(string xml)
         {
-            var reader = new Utf8XmlReader("<a:e xmlns:a=\"urn:x\" xmlns:b=\"urn:x\"></b:e>"u8);
-            reader.Read().Should().BeTrue();
-            reader.Read().Should().BeTrue();
-            reader.TokenType.Should().Be(XmlTokenType.EndElement);
-            reader.LocalNameEquals("e").Should().BeTrue();
-            reader.NamespaceUriEquals("urn:x").Should().BeTrue();
+            // XML 1.0 section 3, WFC "Element Type Match": the Name in the end tag must match the start tag's.
+            string? message = null;
+            try
+            {
+                XmlReaderHarness.Drain(xml);
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("End tag does not match start tag.");
+        }
+
+        [TestMethod]
+        public void EndTag_WithADifferentPrefix_IsRejectedWhenTheStartTagWasInAnEarlierBuffer()
+        {
+            var xml = "<a:r xmlns:a=\"urn:x\" xmlns:b=\"urn:x\"><a:e>text</b:e></a:r>"u8.ToArray();
+            for (var split = 1; split < xml.Length; split++)
+            {
+                string? message = null;
+                try
+                {
+                    var first = new Utf8XmlReader(xml.AsSpan(0, split), isFinalBlock: false, new XmlReaderState(new XmlReaderOptions()));
+                    while (first.Read())
+                    {
+                    }
+
+                    var second = new Utf8XmlReader(xml.AsSpan((int)first.BytesConsumed), isFinalBlock: true, first.CurrentState);
+                    while (second.Read())
+                    {
+                    }
+                }
+                catch (XmlException ex)
+                {
+                    message = ex.Message;
+                }
+
+                message.Should().Be("End tag does not match start tag.", "a split at byte {0} must not hide the mismatch", split);
+            }
+        }
+
+        [TestMethod]
+        public void EndTag_WithTheSamePrefix_MatchesWhenTheStartTagWasInAnEarlierBuffer()
+        {
+            var xml = "<a:r xmlns:a=\"urn:x\" xmlns:b=\"urn:y\"><b:e>text</b:e><f/></a:r>"u8.ToArray();
+            var options = new XmlReaderOptions();
+            var expected = XmlReaderHarness.Tokens(xml, options);
+            expected.Should().Equal(
+                "StartElement a:r{urn:x} open @xmlns:a{http://www.w3.org/2000/xmlns/}=[urn:x] @xmlns:b{http://www.w3.org/2000/xmlns/}=[urn:y]",
+                "StartElement b:e{urn:y} open",
+                "Text :{} [text]",
+                "EndElement b:e{urn:y}",
+                "StartElement :f{} empty",
+                "EndElement a:r{urn:x}");
+            for (var split = 1; split < xml.Length; split++)
+            {
+                XmlReaderHarness.TokensSplitAt(xml, split, options).Should().Equal(expected, "the tokens must not depend on a split at byte {0}", split);
+            }
         }
 
         [TestMethod]
@@ -96,19 +154,6 @@ namespace CloudNimble.XmlEssentials.Tests
             reader.LocalNameEquals("a").Should().BeTrue();
             reader.NamespaceUriEquals("urn:a").Should().BeTrue();
             reader.CurrentDepth.Should().Be(0);
-        }
-
-        [TestMethod]
-        public void EndTagPrefixNeedNotMatch_WhenUriMatches()
-        {
-            var reader = new Utf8XmlReader("<p:e xmlns:p=\"urn:x\" xmlns:q=\"urn:x\"></q:e>"u8);
-            reader.Read();
-            reader.NamespaceUriEquals("urn:x").Should().BeTrue();
-            reader.Read();
-            reader.TokenType.Should().Be(XmlTokenType.EndElement);
-            reader.LocalNameEquals("e").Should().BeTrue();
-            reader.PrefixSpan.SequenceEqual("q"u8).Should().BeTrue();
-            reader.NamespaceUriEquals("urn:x").Should().BeTrue();
         }
 
         [TestMethod]

@@ -269,6 +269,25 @@ namespace CloudNimble.Text.Xml.Serialization
         internal abstract void ReadText(ReadOnlySpan<byte> utf8, object? instance, object?[]? values);
 
         /// <summary>
+        /// Creates the box this member's slot holds for as long as its values array is reused.
+        /// </summary>
+        /// <returns>The box, or null when the member holds its value as an ordinary object.</returns>
+        internal abstract object? CreateHeldBox();
+
+        /// <summary>
+        /// Holds a constructor parameter's default value in this member's slot.
+        /// </summary>
+        /// <param name="values">The held values, one slot per member.</param>
+        /// <param name="value">The default value, as reflection reports it.</param>
+        internal abstract void HoldDefault(object?[] values, object? value);
+
+        /// <summary>
+        /// Decides whether this member's values are held in a box that is reused from one object to the next.
+        /// </summary>
+        /// <param name="parameterTypes">The types of the constructor parameters this member fills, or empty when it is set after construction.</param>
+        internal abstract void UseHeldBox(ReadOnlySpan<Type> parameterTypes);
+
+        /// <summary>
         /// Assigns a held value on <paramref name="instance"/> after it was created through its constructor.
         /// </summary>
         /// <param name="instance">The instance.</param>

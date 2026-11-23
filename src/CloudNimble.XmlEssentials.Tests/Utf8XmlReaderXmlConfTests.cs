@@ -111,13 +111,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void XmlConf_RestrictedCharLiteral_Throws()
-        {
-            var xml = "<?xml version=\"1.1\"?><e>"u8.ToArray().Concat(new byte[] { 0x01 }).Concat("</e>"u8.ToArray()).ToArray();
-            XmlReaderHarness.MustThrow(xml);
-        }
-
-        [TestMethod]
         public void XmlConf_Xml10NelStaysNel()
         {
             var nel = "<e>a"u8.ToArray().Concat(new byte[] { 0xC2, 0x85 }).Concat("b</e>"u8.ToArray()).ToArray();

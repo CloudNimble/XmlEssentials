@@ -96,7 +96,7 @@ namespace CloudNimble.XmlEssentials.Tests
             foreach (var row in Cases)
             {
                 total++;
-                if (Classify(XmlFixtureDocumentTests.Read((string)row[1])) is null)
+                if (Classify((string)row[0], XmlFixtureDocumentTests.Read((string)row[1])) is null)
                 {
                     inSubset++;
                 }
@@ -126,10 +126,10 @@ namespace CloudNimble.XmlEssentials.Tests
                 error = ex.Message;
             }
 
-            var outside = Classify(xml);
+            var outside = Classify(id, xml);
             if (outside is not null)
             {
-                error.Should().BeOneOf(outside, "{0} uses a DTD or an encoding other than UTF-8", id);
+                error.Should().Be(outside, "{0} uses a DTD or an encoding other than UTF-8", id);
                 return;
             }
 
@@ -157,27 +157,50 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Private Methods
 
         /// <summary>
-        /// Returns the messages a suite document may be rejected with when it is outside the supported subset,
+        /// Returns the message a suite document is rejected with when it is outside the supported subset,
         /// or <see langword="null"/> when it is UTF-8 without a DTD and must be judged on well-formedness.
         /// </summary>
+        /// <param name="id">The test id.</param>
         /// <param name="xml">The document bytes.</param>
-        /// <returns>The allowed rejection messages, or <see langword="null"/>.</returns>
-        private static string[]? Classify(ReadOnlySpan<byte> xml)
+        /// <returns>The rejection message, or <see langword="null"/>.</returns>
+        private static string? Classify(string id, ReadOnlySpan<byte> xml)
         {
-            var declared = DeclaredEncoding(xml);
-            var foreignEncoding = declared is not null && declared is not ("utf-8" or "utf8");
-            if (System.Text.Unicode.Utf8.IsValid(xml) && xml.IndexOf("<!DOCTYPE"u8) < 0 && !foreignEncoding)
+            // The reader meets these in document order: the declaration, then the DTD, then the content.
+            var declarationEnd = xml.StartsWith("<?xml"u8) ? xml.IndexOf("?>"u8) : -1;
+            if (declarationEnd >= 0 && !System.Text.Unicode.Utf8.IsValid(xml[..declarationEnd]))
             {
-                return null;
+                // rmt-055 has a Latin-1 NEL in its declaration, which is not UTF-8, so the bytes are refused before the declaration is.
+                return "Invalid UTF-8.";
             }
 
-            return
-            [
-                "DTD is not allowed.",
-                "Invalid UTF-8.",
-                "The XML declaration is malformed.",
-                "XmlEssentials is UTF-8 only. Declared encoding '" + declared + "' is not supported.",
-            ];
+            var declared = DeclaredEncoding(xml);
+            if (declared is not null)
+            {
+                // EncName ::= [A-Za-z] ([A-Za-z0-9._] | '-')* (XML 1.0 production 81). The name was lower-cased.
+                var isEncName = declared.Length > 0 && declared[0] is >= 'a' and <= 'z';
+                foreach (var c in declared)
+                {
+                    isEncName &= c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '.' or '_' or '-';
+                }
+
+                if (!isEncName)
+                {
+                    return "The XML declaration is malformed.";
+                }
+
+                if (declared is not ("utf-8" or "utf8"))
+                {
+                    return "XmlEssentials is UTF-8 only. Declared encoding '" + declared + "' is not supported.";
+                }
+            }
+
+            if (xml.IndexOf("<!DOCTYPE"u8) >= 0)
+            {
+                // rmt-008 declares version 2.0, so its declaration is refused before its DTD is reached.
+                return id is "rmt-008" ? "The XML declaration is malformed." : "DTD is not allowed.";
+            }
+
+            return System.Text.Unicode.Utf8.IsValid(xml) ? null : "Invalid UTF-8.";
         }
 
         /// <summary>

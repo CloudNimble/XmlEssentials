@@ -33,6 +33,53 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
+        public void ReadAhead_DecodedParentAttribute_SurvivesAChildSkip()
+        {
+            var value = new ReadAheadItem { A = "x&y", C = new ReadAheadChild { B = "1&2" } };
+            var xml = XmlSerializer.Serialize(value, Bare);
+            xml.Should().Be("<ReadAheadItem A=\"x&amp;y\"><C B=\"1&amp;2\"/></ReadAheadItem>");
+            var read = XmlSerializer.Deserialize<ReadAheadItem>(xml, Bare)!;
+            read.A.Should().Be("x&y");
+            read.C!.B.Should().Be("1&2");
+            XmlSerializer.Serialize(read, Bare).Should().Be(xml);
+        }
+
+        [TestMethod]
+        public void ReadAhead_NineDecodedAttributesOnParentAndChild_KeepTheirValues()
+        {
+            var value = new ReadAheadItem
+            {
+                A = "x&y",
+                A1 = "1",
+                A2 = "2",
+                A3 = "3",
+                A4 = "4",
+                A5 = "5",
+                A6 = "6",
+                A7 = "7",
+                A8 = "8",
+                C = new ReadAheadChild
+                {
+                    B = "1&2",
+                    B1 = "1",
+                    B2 = "2",
+                    B3 = "3",
+                    B4 = "4",
+                    B5 = "5",
+                    B6 = "6",
+                    B7 = "7",
+                    B8 = "8",
+                },
+            };
+            var xml = XmlSerializer.Serialize(value, Bare);
+            xml.Should().Be("<ReadAheadItem A=\"x&amp;y\" A1=\"1\" A2=\"2\" A3=\"3\" A4=\"4\" A5=\"5\" A6=\"6\" A7=\"7\" A8=\"8\"><C B=\"1&amp;2\" B1=\"1\" B2=\"2\" B3=\"3\" B4=\"4\" B5=\"5\" B6=\"6\" B7=\"7\" B8=\"8\"/></ReadAheadItem>");
+            var read = XmlSerializer.Deserialize<ReadAheadItem>(xml, Bare)!;
+            read.A.Should().Be("x&y");
+            read.C!.B.Should().Be("1&2");
+            XmlSerializer.Serialize(read, Bare).Should().Be(xml);
+        }
+
+        [TestMethod]
         public void Person_RoundTripsAsChildElements()
         {
             var person = new Person { Name = "Ada", Age = 36 };
@@ -1394,6 +1441,15 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var options = new XmlSerializerOptions { RespectRequiredConstructorParameters = false };
             XmlSerializer.Deserialize<CtorBox>("<CtorBox/>", options)!.Value.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void PersonRecord_MissingValueTypeParameter_IsZeroWhenRequiredConstructorParametersAreIgnored()
+        {
+            var options = new XmlSerializerOptions { RespectRequiredConstructorParameters = false };
+            XmlSerializer.Deserialize<PersonRecord>("<PersonRecord><Name>Ada</Name><Age>36</Age></PersonRecord>", options).Should().Be(new PersonRecord("Ada", 36));
+            XmlSerializer.Deserialize<PersonRecord>("<PersonRecord><Name>Bo</Name></PersonRecord>", options).Should().Be(new PersonRecord("Bo", 0));
+            XmlSerializer.Deserialize<PersonRecord>("<PersonRecord><Age>7</Age></PersonRecord>", options).Should().Be(new PersonRecord(null!, 7));
         }
 
         [TestMethod]

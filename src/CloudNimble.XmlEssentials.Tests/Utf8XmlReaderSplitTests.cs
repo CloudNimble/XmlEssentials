@@ -25,7 +25,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<r a=\"x&amp;y\">A&amp;B \u00A9 \u201Cquoted\u201D\r\nnext&#x20;line\rend \u00E9&lt;<![CDATA[\u00A9&\r\n\u201C]]></r>", DisplayName = "references and line ends between multi-byte characters")]
         [DataRow("<?xml version=\"1.1\"?><r a=\"x&amp;y\">A&amp;B \u00A9 \u201Cquoted\u201D a\u0085b\u2028c\r\nnext&#x20;line\rend \u00E9&lt;<![CDATA[\u00A9&\r\n\u201C\u0085]]></r>", DisplayName = "XML 1.1 references, NEL, and LS between multi-byte characters")]
         [DataRow("<r xmlns=\"urn:a\"><x xmlns=\"urn:b\"><y xmlns=\"\"><z/></y><w>1</w></x><v>2</v></r>", DisplayName = "nested default namespaces")]
-        [DataRow("<a:r xmlns:a=\"urn:u\" xmlns:b=\"urn:u\"><a:e>1</b:e><b:f a:k=\"v\" b:j=\"w\"/></b:r>", DisplayName = "two prefixes on one namespace")]
+        [DataRow("<a:r xmlns:a=\"urn:u\" xmlns:b=\"urn:u\"><a:e>1</a:e><b:f a:k=\"v\" b:j=\"w\"/></a:r>", DisplayName = "two prefixes on one namespace")]
         [DataRow("<r xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><e xsi:nil=\"true\"/><f xml:lang=\"en\" xml:space=\"preserve\"> x </f></r>", DisplayName = "xsi and xml prefixes")]
         [DataRow("<r a=\"l1&#10;l2&#9;t\" b='q\"q'>a\rb\r\nc&#13;d&#x1F600;]]&gt;</r>", DisplayName = "character references and line ends")]
         [DataRow("<?xml version=\"1.1\"?><r xmlns:p=\"urn:p\" xmlns:q=\"urn:q\"><a xmlns:p=\"\"><b/></a><p:d/><q:c>&#x1;</q:c></r>", DisplayName = "XML 1.1 prefix undeclaration and restricted character")]
@@ -35,7 +35,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("<r> <c> </c> <d><e/> </d> <f> <g/></f> <h> </h></r>", DisplayName = "whitespace-only leaves next to indentation")]
         [DataRow("<a><b><c><d><e><f><g><h><i><j><k><l><m><n><o><p><q><r><s><t> x <u/> </t></s></r></q></p></o></n></m></l></k></j></i></h></g></f></e></d></c></b></a>", DisplayName = "twenty levels")]
         [DataRow("<a><b><c><d><e><f><g><h><i><j><k><l><m><n><o><p><q><r><s><t><z:u xmlns:z=\"urn:z\"><v/></z:u><w>1</w></t></s></r></q></p></o></n></m></l></k></j></i></h></g></f></e></d></c></b></a>", DisplayName = "first namespace at depth twenty-one")]
-        [DataRow("<a:e xmlns:a=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:b=\"http://www.w3.org/2001/XMLSchema-instance\"><a:f>1</b:f></b:e>", DisplayName = "two prefixes on a well-known namespace")]
+        [DataRow("<a:e xmlns:a=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:b=\"http://www.w3.org/2001/XMLSchema-instance\"><a:f>1</a:f><b:g/></a:e>", DisplayName = "two prefixes on a well-known namespace")]
         [DataRow("<r a=\"é☃\" b='x\"y'>aé☃𝄞z é<c d=\"1\" e='2'/>ü</r>", DisplayName = "multi-byte text and attribute values")]
         [DataRow("<?xml version=\"1.1\"?><e a=\"é☃ü\" b='ü'>é☃ü<c d=\"é\"/>ü</e>", DisplayName = "XML 1.1 multi-byte text and attribute values")]
         [DataRow("<p:r xmlns:p=\"urn:1\" xmlns:q=\"urn:q\"><p:a p:x=\"1\" q:x=\"2\"><p:b xmlns:p=\"urn:2\" p:x=\"3\"/><p:c p:x=\"4\"/></p:a><xml:d xml:lang=\"en\"/></p:r>", DisplayName = "repeated and shadowed prefixes")]
@@ -45,7 +45,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var bytes = Encoding.UTF8.GetBytes(xml);
             var options = new XmlReaderOptions { CommentHandling = XmlCommentHandling.Allow };
             var expected = XmlReaderHarness.Tokens(bytes, options);
-            expected.Should().NotBeEmpty();
+            expected.FindAll(static token => token.StartsWith("StartElement ", System.StringComparison.Ordinal)).Count.Should().BePositive("each of these documents has a document element");
             for (var split = 1; split < bytes.Length; split++)
             {
                 var actual = XmlReaderHarness.TokensSplitAt(bytes, split, options);

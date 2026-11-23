@@ -1,6 +1,5 @@
 ---
 title: DefaultXmlTypeInfoResolver
-description: "Resolves type info from the converters of an [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions): its [XmlSerializerOptions.Conv..."
 icon: lock
 tag: "SEALED"
 keywords: ['DefaultXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver']
@@ -18,11 +17,6 @@ keywords: ['DefaultXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.Def
 CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver
 ```
 
-## Summary
-
-Resolves type info from the converters of an [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions): its
-[XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters), [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) on the type, and the built-in converters.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
@@ -38,8 +32,6 @@ public Object()
 ## Properties
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Instance
-
-Gets the shared resolver.
 
 #### Syntax
 
@@ -140,12 +132,6 @@ public CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(System.Type ty
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?`
-
-#### Exceptions
-
-| Exception | Description |
-|-----------|-------------|
-| `InvalidOperationException` | The converter found for *type* does not convert exactly that type. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
 

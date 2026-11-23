@@ -50,7 +50,7 @@ namespace CloudNimble.Text.Xml.Serialization
             state.Instance = binding.CreateObject?.Invoke();
             if (state.Instance is null)
             {
-                state.Values = new object?[binding.SlotCount];
+                state.Values = binding.RentValues();
                 state.Builders = state.Values;
             }
 
@@ -68,6 +68,12 @@ namespace CloudNimble.Text.Xml.Serialization
                     if (!reader.IsEmptyElement)
                     {
                         reader.Skip();
+                    }
+
+                    if (state.Values is { } unused)
+                    {
+                        // A reference stands for an object that was read earlier, so the values array was not needed.
+                        binding.ReturnValues(unused);
                     }
 
                     return resolved;
@@ -114,6 +120,7 @@ namespace CloudNimble.Text.Xml.Serialization
             if (instance is null)
             {
                 instance = Construct(binding, state.Values!, seen, options);
+                binding.ReturnValues(state.Values!);
                 if (referenceId is not null)
                 {
                     XmlReferenceScope.Current?.AddReference(referenceId, instance);
@@ -275,7 +282,15 @@ namespace CloudNimble.Text.Xml.Serialization
                     throw new XmlException($"The required constructor parameter '{properties[map[i]].Info.Name.LocalName}' is missing.");
                 }
 
-                values[i] = binding.ParameterDefaults[i];
+                if (map[i] >= 0 && source == i)
+                {
+                    // The member's own slot may hold a box that is reused, so the default is written into it.
+                    properties[map[i]].HoldDefault(values, binding.ParameterDefaults[i]);
+                }
+                else
+                {
+                    values[i] = binding.ParameterDefaults[i];
+                }
             }
 
             var instance = binding.Constructor!.Invoke(values.AsSpan(0, map.Length));

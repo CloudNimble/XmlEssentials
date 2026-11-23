@@ -13,6 +13,7 @@ namespace CloudNimble.XmlEssentials.Tests
     /// Heap-allocation checks for <see cref="XmlDocument"/> and <see cref="XmlElement"/>.
     /// </summary>
     [TestClass]
+    [DoNotParallelize]
     public class XmlDocumentAllocationTests
     {
 
@@ -56,7 +57,13 @@ namespace CloudNimble.XmlEssentials.Tests
             var before = GC.GetAllocatedBytesForCurrentThread();
             ParseAndDispose(Catalog);
             var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-            allocated.Should().BeGreaterThan(0).And.BeLessThanOrEqualTo(128);
+            var empty = "<e/>"u8.ToArray();
+            ParseAndDispose(empty);
+            ParseAndDispose(empty);
+            before = GC.GetAllocatedBytesForCurrentThread();
+            ParseAndDispose(empty);
+            var documentOnly = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(documentOnly, "a document of 200 items must cost what a document of one element costs: the object itself");
         }
 
         [TestMethod]
@@ -65,12 +72,12 @@ namespace CloudNimble.XmlEssentials.Tests
             using var document = XmlDocument.Parse(
                 "<r><i>12</i><l>34</l><d>1.5</d><m>2.5</m><b>true</b><t>2020-01-02T03:04:05Z</t>"
                 + "<g>00112233-4455-6677-8899-aabbccddeeff</g><x>1<y/>2</x></r>");
-            TypedGetters(document).Should().Be(TypedGetters(document));
+            TypedGetters(document).Should().Be(12 + 34 + 1.5 + 2.5 + 1 + 2020 + 2020 + 100 + 12);
             var before = GC.GetAllocatedBytesForCurrentThread();
             var sum = TypedGetters(document);
             var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
             allocated.Should().Be(0);
-            sum.Should().Be(12 + 34 + 1.5 + 2.5 + 1 + 2020 + 2020 + 12);
+            sum.Should().Be(12 + 34 + 1.5 + 2.5 + 1 + 2020 + 2020 + 100 + 12);
         }
 
         [TestMethod]
@@ -103,6 +110,52 @@ namespace CloudNimble.XmlEssentials.Tests
             var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
             allocated.Should().Be(0);
             buffer.WrittenSpan.SequenceEqual(Catalog).Should().BeTrue();
+        }
+
+        [TestMethod]
+        [DataRow("document.xml", DisplayName = "WordprocessingML: nine levels, eleven namespaces, twelve attributes")]
+        [DataRow("libreoffice_document.fodt", DisplayName = "OpenDocument: 38 attributes and 36 namespaces on one tag")]
+        [DataRow("rpm_primary.xml", DisplayName = "RPM metadata: decoded text")]
+        public void Parse_RealDocument_AllocatesOnlyTheDocument(string fixture)
+        {
+            var xml = System.IO.File.ReadAllBytes(System.IO.Path.Combine(AppContext.BaseDirectory, "Fixtures", "quick-xml", fixture));
+            var options = new XmlDocumentOptions
+            {
+                CommentHandling = XmlCommentHandling.Allow,
+                WhitespaceHandling = XmlWhitespaceHandling.Significant,
+            };
+            var empty = "<e/>"u8.ToArray();
+            for (var i = 0; i < 3; i++)
+            {
+                XmlDocument.Parse(xml, options).Dispose();
+                XmlDocument.Parse(empty, options).Dispose();
+            }
+
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            XmlDocument.Parse(empty, options).Dispose();
+            var documentOnly = GC.GetAllocatedBytesForCurrentThread() - before;
+            before = GC.GetAllocatedBytesForCurrentThread();
+            XmlDocument.Parse(xml, options).Dispose();
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            documentOnly.Should().BeGreaterThan(0);
+            allocated.Should().Be(documentOnly);
+        }
+
+        [TestMethod]
+        public void Parse_DecodedValues_AreClearedFromThePooledBufferTheyWereDecodedIn()
+        {
+            var secret = "<r a=\"SECRET&amp;ATTRIBUTE\">SECRET&amp;TEXT</r>"u8.ToArray();
+            var pool = ArrayPool<byte>.Shared;
+            XmlDocument.Parse(secret).Dispose();
+            var rented = pool.Rent(secret.Length);
+            try
+            {
+                rented.AsSpan().IndexOf("SECRET"u8).Should().Be(-1);
+            }
+            finally
+            {
+                pool.Return(rented);
+            }
         }
 
         [TestMethod]
@@ -187,7 +240,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 + (root.GetChild("b").GetBoolean() ? 1 : 0)
                 + root.GetChild("t").GetDateTime().Year
                 + root.GetChild("t").GetDateTimeOffset().Year
-                + (root.GetChild("g").GetGuid() == Guid.Empty ? 0 : 0)
+                + (root.GetChild("g").GetGuid() == new Guid(0x00112233, 0x4455, 0x6677, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff) ? 100 : 0)
                 + root.GetChild("x").GetInt32();
         }
 

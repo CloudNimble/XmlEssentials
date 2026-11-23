@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Unicode;
 
@@ -22,46 +23,10 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         internal void AdvanceChar()
         {
-            var b = _span[_pos];
-            if (b is (byte)'\r')
+            var lineEnd = _span[_pos] is (byte)'\n' ? 1 : LineEndToReplace(_pos, _span.Length);
+            if (lineEnd > 0)
             {
-                _pos++;
-                if (_pos < _span.Length && _span[_pos] is (byte)'\n')
-                {
-                    _pos++;
-                }
-
-                _lineNumber++;
-                _lineStart = _pos;
-                return;
-            }
-
-            if (b is (byte)'\n')
-            {
-                _pos++;
-                _lineNumber++;
-                _lineStart = _pos;
-                return;
-            }
-
-            if (_version is XmlVersion.Version11
-                && b is 0xC2
-                && _pos + 1 < _span.Length
-                && _span[_pos + 1] is 0x85)
-            {
-                _pos += 2;
-                _lineNumber++;
-                _lineStart = _pos;
-                return;
-            }
-
-            if (_version is XmlVersion.Version11
-                && b is 0xE2
-                && _pos + 2 < _span.Length
-                && _span[_pos + 1] is 0x80
-                && _span[_pos + 2] is 0xA8)
-            {
-                _pos += 3;
+                _pos += lineEnd;
                 _lineNumber++;
                 _lineStart = _pos;
                 return;
@@ -122,6 +87,63 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Copies the text that has been scanned but not yet copied into the decode buffer, followed by what
+        /// replaces the reference or line end after it.
+        /// </summary>
+        /// <param name="rawStart">Offset of the first input byte not yet copied.</param>
+        /// <param name="rawEnd">Offset just past the last input byte to copy as it is.</param>
+        /// <param name="replacement">The bytes that stand for what follows the run, or empty at the end of the text.</param>
+        /// <param name="written">The number of bytes in the decode buffer, updated.</param>
+        /// <remarks>
+        /// <see cref="BeginTextDecode"/> sized the buffer for the whole token, and neither a reference nor a
+        /// line end is ever replaced by something longer, so there is always room.
+        /// </remarks>
+        internal void AppendDecodedText(int rawStart, int rawEnd, scoped ReadOnlySpan<byte> replacement, ref int written)
+        {
+            var run = rawEnd - rawStart;
+            var destination = _decodedValue[written..];
+            _span.Slice(rawStart, run).CopyTo(destination);
+            replacement.CopyTo(destination[run..]);
+            written += run + replacement.Length;
+        }
+
+        /// <summary>
+        /// Readies the decode buffer for a text token whose first reference or replaced line end is at the
+        /// current position.
+        /// </summary>
+        /// <param name="start">Offset of the first byte of the text.</param>
+        /// <param name="written">Set to zero when decoding can start.</param>
+        /// <returns>
+        /// <see langword="false"/> when the text does not end in this buffer and more data may arrive. The
+        /// whole token is read again from the next buffer, so nothing is decoded or reserved for it now.
+        /// </returns>
+        /// <exception cref="XmlException">The text is longer than <see cref="XmlReaderOptions.MaxTextByteCount"/>.</exception>
+        internal bool BeginTextDecode(int start, ref int written)
+        {
+            // Text cannot hold '<', so the next one is where this token ends.
+            var rest = _span[_pos..].IndexOf((byte)'<');
+            if (rest < 0)
+            {
+                if (!_isFinalBlock)
+                {
+                    return false;
+                }
+
+                rest = _span.Length - _pos;
+            }
+
+            var length = _pos + rest - start;
+            if (length > _maxTextBytes)
+            {
+                throw TextTooLong();
+            }
+
+            EnsureDecodedCapacity(length);
+            written = 0;
+            return true;
+        }
+
+        /// <summary>
         /// Restores parse progress from <paramref name="snapshot"/>.
         /// </summary>
         /// <param name="snapshot">The snapshot to apply, or null to leave the reader at the start of a document.</param>
@@ -140,12 +162,14 @@ namespace CloudNimble.Text.Xml
             _elementCount = snapshot.ElementLocalNames.Length;
             _resumeNameCount = snapshot.ElementLocalNames.Length;
             _resumeLocalNames = new byte[snapshot.ElementLocalNames.Length][];
+            _resumePrefixes = new byte[snapshot.ElementLocalNames.Length][];
             _resumeNsUris = new byte[snapshot.ElementLocalNames.Length][];
             _nsCount = 0;
-            _nsBindings = null;
+            _nsBindings = default;
             for (var i = 0; i < snapshot.ElementLocalNames.Length; i++)
             {
                 _resumeLocalNames[i] = Encoding.UTF8.GetBytes(snapshot.ElementLocalNames[i]);
+                _resumePrefixes[i] = Encoding.UTF8.GetBytes(snapshot.ElementPrefixes[i]);
                 _resumeNsUris[i] = InternUri(Encoding.UTF8.GetBytes(snapshot.ElementNamespaceUris[i]));
                 _elementCount = i;
                 EnsureElementCapacity();
@@ -189,6 +213,7 @@ namespace CloudNimble.Text.Xml
                 Depth = _depth,
                 DocumentBytesConsumed = _documentBytesConsumedBase + _pos,
                 ElementLocalNames = MaterializeElementNames(),
+                ElementPrefixes = MaterializeElementPrefixes(),
                 ElementFlags = MaterializeElementFlags(),
                 ElementNamespaceUris = MaterializeElementNamespaces(),
                 Finished = _finished,
@@ -220,7 +245,7 @@ namespace CloudNimble.Text.Xml
                 return _attributesInline[_attributeIndex];
             }
 
-            return _attributes![_attributeIndex];
+            return _attributes[_attributeIndex];
         }
 
         /// <summary>
@@ -271,11 +296,11 @@ namespace CloudNimble.Text.Xml
         /// <param name="escaped">True when the result differs from the raw slice.</param>
         /// <param name="decodedStart">Offset of the decoded value in the returned buffer.</param>
         /// <param name="decodedLength">Byte length of the decoded value, or <paramref name="length"/> when no decode ran.</param>
-        /// <returns>A decoded buffer, or null when the raw slice is already the value.</returns>
+        /// <returns><see langword="true"/> when the value was decoded; <see langword="false"/> when the raw slice is already the value.</returns>
         /// <remarks>
         /// TAB, LF, and CR become SPACE after end-of-line handling, per attribute-value normalization.
         /// </remarks>
-        internal byte[]? DecodeAttributeValue(int start, int length, out bool escaped, out int decodedStart, out int decodedLength)
+        internal bool DecodeAttributeValue(int start, int length, out bool escaped, out int decodedStart, out int decodedLength)
         {
             escaped = false;
             decodedStart = 0;
@@ -284,7 +309,7 @@ namespace CloudNimble.Text.Xml
             var xml11Eol = _version is XmlVersion.Version11 && ContainsXml11LineEnding(slice);
             if (slice.IndexOfAny(XmlChars.AttrDecodeTriggers) < 0 && !xml11Eol)
             {
-                return null;
+                return false;
             }
 
             var savedPos = _pos;
@@ -306,43 +331,14 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
-                if (_span[i] is (byte)'\t' or (byte)'\n' or (byte)'\r')
+                var lineEnd = LineEndToReplace(i, start + length);
+                if (lineEnd > 0 || _span[i] is (byte)'\t' or (byte)'\n')
                 {
+                    // A line end is one LF after end-of-line handling, and normalization makes that one space.
                     destination[written] = (byte)' ';
                     written++;
                     escaped = true;
-                    if (_span[i] is (byte)'\r' && i + 1 < start + length && _span[i + 1] is (byte)'\n')
-                    {
-                        i += 2;
-                        continue;
-                    }
-
-                    i++;
-                    continue;
-                }
-
-                if (_version is XmlVersion.Version11
-                    && _span[i] is 0xC2
-                    && i + 1 < start + length
-                    && _span[i + 1] is 0x85)
-                {
-                    destination[written] = (byte)' ';
-                    written++;
-                    escaped = true;
-                    i += 2;
-                    continue;
-                }
-
-                if (_version is XmlVersion.Version11
-                    && _span[i] is 0xE2
-                    && i + 2 < start + length
-                    && _span[i + 1] is 0x80
-                    && _span[i + 2] is 0xA8)
-                {
-                    destination[written] = (byte)' ';
-                    written++;
-                    escaped = true;
-                    i += 3;
+                    i += Math.Max(lineEnd, 1);
                     continue;
                 }
 
@@ -356,7 +352,7 @@ namespace CloudNimble.Text.Xml
             decodedLength = written;
             decodedStart = _attributeDecodedLength;
             _attributeDecodedLength += written;
-            return _attributeDecoded;
+            return true;
         }
 
         /// <summary>
@@ -371,15 +367,14 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         internal Span<byte> RentAttributeDecodeSpace(int length)
         {
-            if (_attributeDecoded is null || _attributeDecodedLength + length > _attributeDecoded.Length)
+            if (_attributeDecodedLength + length > _attributeDecoded.Length)
             {
                 // Earlier attributes of this start tag keep their offsets, so what they decoded moves with them.
-                var grown = new byte[Math.Max(Math.Max(256, _attributeDecodedLength + length), (_attributeDecoded?.Length ?? 0) * 2)];
-                _attributeDecoded.AsSpan(0, _attributeDecodedLength).CopyTo(grown);
-                _attributeDecoded = grown;
+                var size = Math.Max(Math.Max(256, _attributeDecodedLength + length), _attributeDecoded.Length * 2);
+                _attributeDecoded = Grow<byte>(_attributeDecoded, _attributeDecodedLength, size);
             }
 
-            return _attributeDecoded.AsSpan(_attributeDecodedLength, length);
+            return _attributeDecoded.Slice(_attributeDecodedLength, length);
         }
 
         /// <summary>
@@ -522,88 +517,40 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Normalizes line ends, and expands references when asked to, into <c>_decodedValue</c>. A value that
-        /// needs neither stays in the input.
+        /// Normalizes line ends into <c>_decodedValue</c>. A value that has none to replace stays in the input.
         /// </summary>
-        /// <param name="start">Byte offset of the raw text in the current buffer.</param>
-        /// <param name="length">UTF-8 byte length of the raw text.</param>
-        /// <param name="expandReferences">
-        /// <see langword="true"/> for text; <see langword="false"/> for CDATA, comments, and processing
-        /// instructions, where <c>&amp;</c> is an ordinary character.
-        /// </param>
-        internal void DecodeValueSpan(int start, int length, bool expandReferences)
+        /// <param name="start">Byte offset of the raw value in the current buffer.</param>
+        /// <param name="length">UTF-8 byte length of the raw value.</param>
+        /// <remarks>
+        /// For CDATA sections, comments, and processing instructions, where <c>&amp;</c> is an ordinary
+        /// character. Text is decoded by <see cref="ReadText"/> as it is scanned.
+        /// </remarks>
+        internal void DecodeValueSpan(int start, int length)
         {
-            var slice = _span.Slice(start, length);
-            var needsEol = slice.IndexOf((byte)'\r') >= 0 || (_version is XmlVersion.Version11 && ContainsXml11LineEnding(slice));
-            if ((!expandReferences || slice.IndexOf((byte)'&') < 0) && !needsEol)
+            var end = start + length;
+            var stops = _version is XmlVersion.Version11 ? XmlChars.DecodeStops11 : XmlChars.DecodeStops10;
+            var i = start + FirstLineEndToReplace(start, end, stops);
+            if (i == end)
             {
                 _valueIsEscaped = false;
                 return;
             }
 
             EnsureDecodedCapacity(length);
-            var written = 0;
-            var i = 0;
-            Span<byte> entityScratch = stackalloc byte[8];
-            var stops = _version is XmlVersion.Version11 ? XmlChars.DecodeStops11 : XmlChars.DecodeStops10;
-            while (i < slice.Length)
+            var destination = _decodedValue;
+            _span[start..i].CopyTo(destination);
+            var written = i - start;
+            while (i < end)
             {
-                // Everything up to the next reference or line end is copied as it is, in one piece.
-                var run = slice[i..].IndexOfAny(stops);
-                if (run != 0)
-                {
-                    run = run < 0 ? slice.Length - i : run;
-                    slice.Slice(i, run).CopyTo(_decodedValue.AsSpan(written));
-                    written += run;
-                    i += run;
-                    continue;
-                }
-
-                if (expandReferences && slice[i] is (byte)'&')
-                {
-                    var saved = _pos;
-                    _pos = start + i;
-                    // ReadText already consumed this reference once, so it is complete and legal.
-                    DecodeEntity(entityScratch, out var entityWritten);
-                    entityScratch[..entityWritten].CopyTo(_decodedValue.AsSpan(written));
-                    written += entityWritten;
-                    i = _pos - start;
-                    _pos = saved;
-                    continue;
-                }
-
-                if (slice[i] is (byte)'\r')
-                {
-                    _decodedValue![written] = (byte)'\n';
-                    written++;
-                    i++;
-                    if (i < slice.Length && slice[i] is (byte)'\n')
-                    {
-                        i++;
-                    }
-
-                    continue;
-                }
-
-                if (_version is XmlVersion.Version11 && slice[i] is 0xC2 && i + 1 < slice.Length && slice[i + 1] is 0x85)
-                {
-                    _decodedValue![written] = (byte)'\n';
-                    written++;
-                    i += 2;
-                    continue;
-                }
-
-                if (_version is XmlVersion.Version11 && slice[i] is 0xE2 && i + 2 < slice.Length && slice[i + 1] is 0x80 && slice[i + 2] is 0xA8)
-                {
-                    _decodedValue![written] = (byte)'\n';
-                    written++;
-                    i += 3;
-                    continue;
-                }
-
-                _decodedValue![written] = slice[i];
+                destination[written] = (byte)'\n';
                 written++;
-                i++;
+                i += LineEndToReplace(i, end);
+
+                // Everything up to the next line end is copied as it is, in one piece.
+                var run = FirstLineEndToReplace(i, end, stops);
+                _span.Slice(i, run).CopyTo(destination[written..]);
+                written += run;
+                i += run;
             }
 
             _decodedLength = written;
@@ -645,12 +592,12 @@ namespace CloudNimble.Text.Xml
                 return _resumeLocalNames[index];
             }
 
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 return _span.Slice(_elementNameStartsInline[index], _elementNameLengthsInline[index]);
             }
 
-            return _span.Slice(_elementNameStarts![index], _elementNameLengths![index]);
+            return _span.Slice(_elementNameStarts[index], _elementNameLengths[index]);
         }
 
         /// <summary>
@@ -695,13 +642,29 @@ namespace CloudNimble.Text.Xml
         /// <param name="needed">The required capacity.</param>
         internal void EnsureDecodedCapacity(int needed)
         {
-            if (_decodedValue is not null && _decodedValue.Length >= needed)
+            if (_decodedValue.Length >= needed)
             {
                 return;
             }
 
             // At least double, so values that keep getting longer cost a logarithmic number of buffers.
-            _decodedValue = new byte[Math.Max(needed, (_decodedValue?.Length ?? 0) * 2)];
+            _decodedValue = Grow<byte>(default, 0, Math.Max(needed, _decodedValue.Length * 2));
+        }
+
+        /// <summary>
+        /// Makes sure the owned-URI stack has a slot for <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The element-stack index.</param>
+        /// <remarks>
+        /// Only an element whose namespace URI is not in the current buffer, because it was decoded or came
+        /// from an earlier block, uses a slot, so most readers never allocate this stack.
+        /// </remarks>
+        internal void EnsureElementNsUriCapacity(int index)
+        {
+            if (_elementNsUris is null || index >= _elementNsUris.Length)
+            {
+                Array.Resize(ref _elementNsUris, Math.Max(InlineSlots, (index + 1) * 2));
+            }
         }
 
         /// <summary>
@@ -709,23 +672,23 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal void EnsureElementCapacity()
         {
-            if (_elementCount < 8)
+            if (_elementCount < InlineSlots)
             {
                 return;
             }
 
-            if (_elementNameStarts is not null && _elementCount < _elementNameStarts.Length)
+            if (!_elementNameStarts.IsEmpty && _elementCount < _elementNameStarts.Length)
             {
                 return;
             }
 
-            var n = _elementNameStarts is null ? 16 : _elementNameStarts.Length * 2;
-            Array.Resize(ref _elementNameStarts, n);
-            Array.Resize(ref _elementNameLengths, n);
-            Array.Resize(ref _elementPrefixLengths, n);
-            if (n == 16)
+            var n = _elementNameStarts.IsEmpty ? InlineSlots * 2 : _elementNameStarts.Length * 2;
+            _elementNameStarts = Grow<int>(_elementNameStarts, _elementNameStarts.Length, n);
+            _elementNameLengths = Grow<int>(_elementNameLengths, _elementNameLengths.Length, n);
+            _elementPrefixLengths = Grow<int>(_elementPrefixLengths, _elementPrefixLengths.Length, n);
+            if (n == InlineSlots * 2)
             {
-                for (var i = 0; i < 8; i++)
+                for (var i = 0; i < InlineSlots; i++)
                 {
                     _elementNameStarts[i] = _elementNameStartsInline[i];
                     _elementNameLengths[i] = _elementNameLengthsInline[i];
@@ -743,6 +706,123 @@ namespace CloudNimble.Text.Xml
         {
             var linePosition = _pos - _lineStart + 1;
             return new XmlException(message, _documentBytesConsumedBase + _pos, _lineNumber, linePosition, path: null);
+        }
+
+        /// <summary>
+        /// Returns how far the first line end that has to be replaced is from <paramref name="from"/>.
+        /// </summary>
+        /// <param name="from">Offset to search from.</param>
+        /// <param name="end">Offset just past the value.</param>
+        /// <param name="stops">The bytes a replaced line end can start with in this XML version.</param>
+        /// <returns>The distance in bytes, or the distance to <paramref name="end"/> when there is none.</returns>
+        internal readonly int FirstLineEndToReplace(int from, int end, SearchValues<byte> stops)
+        {
+            var i = from;
+            while (i < end)
+            {
+                var next = _span[i..end].IndexOfAny(stops);
+                if (next < 0)
+                {
+                    break;
+                }
+
+                i += next;
+                if (LineEndToReplace(i, end) > 0)
+                {
+                    return i - from;
+                }
+
+                // The lead byte of some other character.
+                i++;
+            }
+
+            return end - from;
+        }
+
+        /// <summary>
+        /// Returns the length of the line end at <paramref name="index"/> that end-of-line handling replaces
+        /// with a single LF.
+        /// </summary>
+        /// <param name="index">Offset of the byte to look at.</param>
+        /// <param name="end">Offset just past the bytes that may be read.</param>
+        /// <returns>
+        /// The number of bytes to replace, or zero when the byte does not start such a line end. LF alone is
+        /// already normalized and returns zero.
+        /// </returns>
+        /// <remarks>
+        /// XML 1.0 section 2.11 replaces CR LF and a lone CR. XML 1.1 section 2.11 also replaces CR NEL
+        /// (as one line end), NEL (U+0085), and LS (U+2028).
+        /// </remarks>
+        internal readonly int LineEndToReplace(int index, int end)
+        {
+            var b = _span[index];
+            if (b is (byte)'\r')
+            {
+                if (index + 1 < end && _span[index + 1] is (byte)'\n')
+                {
+                    return 2;
+                }
+
+                if (_version is XmlVersion.Version11 && index + 2 < end && _span[index + 1] is 0xC2 && _span[index + 2] is 0x85)
+                {
+                    return 3;
+                }
+
+                return 1;
+            }
+
+            if (_version is XmlVersion.Version10)
+            {
+                return 0;
+            }
+
+            if (b is 0xC2 && index + 1 < end && _span[index + 1] is 0x85)
+            {
+                return 2;
+            }
+
+            if (b is 0xE2 && index + 2 < end && _span[index + 1] is 0x80 && _span[index + 2] is 0xA8)
+            {
+                return 3;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns memory for <paramref name="count"/> items, taken from the caller's scratch buffer while it
+        /// lasts and allocated after that, holding the first <paramref name="keep"/> items of <paramref name="old"/>.
+        /// </summary>
+        /// <typeparam name="T">The item type.</typeparam>
+        /// <param name="old">The memory being replaced, or empty.</param>
+        /// <param name="keep">The number of items to carry over.</param>
+        /// <param name="count">The number of items needed.</param>
+        /// <returns>The new memory. Items after the first <paramref name="keep"/> are zero.</returns>
+        /// <remarks>
+        /// Memory taken from the scratch buffer is never given back: a stack or buffer that grows leaves the
+        /// part it outgrew unused. Each one at least doubles, so that waste is less than what is in use.
+        /// </remarks>
+        internal Span<T> Grow<T>(scoped ReadOnlySpan<T> old, int keep, int count)
+            where T : unmanaged
+        {
+            Span<T> grown;
+            // Rounded up to eight bytes from the start of the scratch span. That start is the payload
+            // length, so this is packing, not a guaranteed natural alignment of T.
+            var offset = (_scratchUsed + 7) & ~7;
+            var size = (long)Unsafe.SizeOf<T>() * count;
+            if (size <= _scratch.Length - offset)
+            {
+                grown = MemoryMarshal.Cast<byte, T>(_scratch.Slice(offset, (int)size));
+                grown[keep..].Clear();
+                _scratchUsed = offset + (int)size;
+            }
+            else
+            {
+                grown = new T[count];
+            }
+
+            old[..keep].CopyTo(grown);
+            return grown;
         }
 
         /// <summary>
@@ -795,7 +875,7 @@ namespace CloudNimble.Text.Xml
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly int ElementSlot(int index)
         {
-            return index < 8 ? _elementPrefixLengthsInline[index] : _elementPrefixLengths![index];
+            return index < InlineSlots ? _elementPrefixLengthsInline[index] : _elementPrefixLengths[index];
         }
 
         /// <summary>
@@ -806,13 +886,13 @@ namespace CloudNimble.Text.Xml
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetElementSlot(int index, int value)
         {
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 _elementPrefixLengthsInline[index] = value;
             }
             else
             {
-                _elementPrefixLengths![index] = value;
+                _elementPrefixLengths[index] = value;
             }
         }
 
@@ -875,6 +955,43 @@ namespace CloudNimble.Text.Xml
             }
 
             return flags;
+        }
+
+        /// <summary>
+        /// Returns the prefix the in-progress element at <paramref name="index"/> was started with.
+        /// </summary>
+        /// <param name="index">The element-stack index.</param>
+        /// <returns>UTF-8 prefix bytes from the current buffer or a resume copy, or empty.</returns>
+        internal readonly ReadOnlySpan<byte> ElementPrefix(int index)
+        {
+            if (index < _resumeNameCount && _resumePrefixes is not null)
+            {
+                return _resumePrefixes[index];
+            }
+
+            var prefixLength = ElementSlot(index) & ElementPrefixLengthMask;
+            if (prefixLength == 0)
+            {
+                return [];
+            }
+
+            var localStart = index < InlineSlots ? _elementNameStartsInline[index] : _elementNameStarts[index];
+            return _span.Slice(localStart - prefixLength - 1, prefixLength);
+        }
+
+        /// <summary>
+        /// Copies the prefixes of in-progress elements to independent strings for a snapshot.
+        /// </summary>
+        /// <returns>One string per open element.</returns>
+        internal readonly string[] MaterializeElementPrefixes()
+        {
+            var prefixes = new string[_elementCount];
+            for (var i = 0; i < _elementCount; i++)
+            {
+                prefixes[i] = Encoding.UTF8.GetString(ElementPrefix(i));
+            }
+
+            return prefixes;
         }
 
         /// <summary>
@@ -1072,7 +1189,7 @@ namespace CloudNimble.Text.Xml
 
             var valueLength = _pos - valueStart;
             _pos++;
-            byte[]? decoded = null;
+            var decoded = false;
             var escaped = false;
             var decodedStart = 0;
             var decodedLength = valueLength;
@@ -1083,7 +1200,7 @@ namespace CloudNimble.Text.Xml
 
             var record = new AttributeRecord
             {
-                DecodedStart = decoded is null ? -1 : decodedStart,
+                DecodedStart = decoded ? decodedStart : -1,
                 DecodedLength = decodedLength,
                 NameLength = nameLength,
                 NameStart = nameStart,
@@ -1099,9 +1216,9 @@ namespace CloudNimble.Text.Xml
             }
             else
             {
-                if (_attributes is null)
+                if (_attributes.IsEmpty)
                 {
-                    _attributes = new AttributeRecord[16];
+                    _attributes = Grow<AttributeRecord>(default, 0, 16);
                     for (var i = 0; i < 8; i++)
                     {
                         _attributes[i] = _attributesInline[i];
@@ -1109,7 +1226,7 @@ namespace CloudNimble.Text.Xml
                 }
                 else if (_attributeCount == _attributes.Length)
                 {
-                    Array.Resize(ref _attributes, _attributes.Length * 2);
+                    _attributes = Grow<AttributeRecord>(_attributes, _attributeCount, _attributes.Length * 2);
                 }
 
                 _attributes[_attributeCount] = record;
@@ -1140,7 +1257,7 @@ namespace CloudNimble.Text.Xml
                         throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
                     }
 
-                    DecodeValueSpan(start, _valueLength, expandReferences: false);
+                    DecodeValueSpan(start, _valueLength);
                     _nameLength = 0;
                     _prefixLength = 0;
                     if (_elementCount > 0)
@@ -1199,7 +1316,7 @@ namespace CloudNimble.Text.Xml
                         throw Error($"{nameof(XmlReaderOptions.MaxCommentByteCount)} exceeded ({_maxCommentBytes}).");
                     }
 
-                    DecodeValueSpan(start, _valueLength, expandReferences: false);
+                    DecodeValueSpan(start, _valueLength);
                     _nameLength = 0;
                     _prefixLength = 0;
                     _tokenType = XmlTokenType.Comment;
@@ -1361,17 +1478,18 @@ namespace CloudNimble.Text.Xml
                     throw Error("End tag does not match start tag.");
                 }
 
-                // The local names match but the tag did not repeat the start tag's bytes: the prefix
-                // differs, or the start tag came from a resume snapshot. Either way the end tag is only
-                // valid if its own prefix resolves to the element's namespace.
+                // The local names match but the tag was not compared with the start tag's bytes, because
+                // the start tag came from a resume snapshot or the prefix differs. The Name in an end tag
+                // must match the start tag's (XML 1.0 section 3, WFC: Element Type Match), and the prefix
+                // is part of the Name: a different prefix is an error even when it is bound to the same
+                // namespace.
                 var prefix = prefixLength > 0 ? _span.Slice(nameStart, prefixLength) : [];
-                var endNs = ResolveElementNamespace(prefix);
-                if (!ElementNamespace(index).SequenceEqual(endNs))
+                if (!ElementPrefix(index).SequenceEqual(prefix))
                 {
                     throw Error("End tag does not match start tag.");
                 }
 
-                SetCurrentNamespace(endNs);
+                SetCurrentNamespace(ElementNamespace(index));
             }
 
             PopNamespaceScope(_depth);
@@ -1616,7 +1734,7 @@ namespace CloudNimble.Text.Xml
                         return true;
                     }
 
-                    DecodeValueSpan(valueStart, _valueLength, expandReferences: false);
+                    DecodeValueSpan(valueStart, _valueLength);
                     _xmlDeclarationAllowed = false;
                     _tokenType = XmlTokenType.ProcessingInstruction;
                     _nameStart = targetStart;
@@ -1735,7 +1853,7 @@ namespace CloudNimble.Text.Xml
             {
                 var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
                 EnsureElementCapacity();
-                if (_elementCount < 8)
+                if (_elementCount < InlineSlots)
                 {
                     _elementNameStartsInline[_elementCount] = nameStart + localAdj;
                     _elementNameLengthsInline[_elementCount] = nameLength - localAdj;
@@ -1743,9 +1861,9 @@ namespace CloudNimble.Text.Xml
                 }
                 else
                 {
-                    _elementNameStarts![_elementCount] = nameStart + localAdj;
-                    _elementNameLengths![_elementCount] = nameLength - localAdj;
-                    _elementPrefixLengths![_elementCount] = prefixLength | spaceFlag;
+                    _elementNameStarts[_elementCount] = nameStart + localAdj;
+                    _elementNameLengths[_elementCount] = nameLength - localAdj;
+                    _elementPrefixLengths[_elementCount] = prefixLength | spaceFlag;
                 }
 
                 _elementCount++;
@@ -1770,8 +1888,13 @@ namespace CloudNimble.Text.Xml
         internal bool ReadText()
         {
             var start = _pos;
+
+            // The value stays in the input until a reference or a line end has to be replaced. From then
+            // on it is built in the decode buffer: rawStart is the first input byte not yet copied there,
+            // and decodedWritten is how much of the buffer is filled.
+            var rawStart = start;
+            var decodedWritten = -1;
             var hasNonWs = false;
-            var needsDecode = false;
             var stops = _version is XmlVersion.Version11 ? XmlChars.TextStops11 : XmlChars.TextStops10;
             Span<byte> entityScratch = stackalloc byte[8];
 
@@ -1829,7 +1952,6 @@ namespace CloudNimble.Text.Xml
                     while (_pos < _span.Length)
                     {
                         hasNonWs = true;
-                        needsDecode = true;
                         AdvanceChar();
                     }
 
@@ -1849,12 +1971,36 @@ namespace CloudNimble.Text.Xml
                 if (_span[_pos] is (byte)'&')
                 {
                     hasNonWs = true;
-                    needsDecode = true;
-                    if (!DecodeEntity(entityScratch, out _))
+                    if (decodedWritten < 0 && !BeginTextDecode(start, ref decodedWritten))
                     {
                         return NeedMore();
                     }
 
+                    var referenceStart = _pos;
+                    if (!DecodeEntity(entityScratch, out var entityWritten))
+                    {
+                        return NeedMore();
+                    }
+
+                    AppendDecodedText(rawStart, referenceStart, entityScratch[..entityWritten], ref decodedWritten);
+                    rawStart = _pos;
+                    continue;
+                }
+
+                var lineEnd = LineEndToReplace(_pos, _span.Length);
+                if (lineEnd > 0)
+                {
+                    // CR, CR LF and, in XML 1.1, CR NEL, NEL and LS all become one LF (section 2.11).
+                    if (decodedWritten < 0 && !BeginTextDecode(start, ref decodedWritten))
+                    {
+                        return NeedMore();
+                    }
+
+                    AppendDecodedText(rawStart, _pos, "\n"u8, ref decodedWritten);
+                    _pos += lineEnd;
+                    _lineNumber++;
+                    _lineStart = _pos;
+                    rawStart = _pos;
                     continue;
                 }
 
@@ -1876,9 +2022,8 @@ namespace CloudNimble.Text.Xml
                     hasNonWs = true;
                 }
 
-                // LF is already the normalized line end. Anything else that stops the ASCII run
-                // (CR, an XML 1.1 line end, a multi-byte character) may need DecodeValueSpan.
-                needsDecode |= _span[_pos] is not (byte)'\n';
+                // What is left is LF, which is already the normalized line end, or a character the run
+                // check would not pass.
                 AdvanceChar();
             }
 
@@ -1891,12 +2036,14 @@ namespace CloudNimble.Text.Xml
             _valueLength = _pos - start;
             if (_valueLength > _maxTextBytes)
             {
-                throw Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
+                throw TextTooLong();
             }
 
-            if (needsDecode)
+            if (decodedWritten >= 0)
             {
-                DecodeValueSpan(start, _valueLength, expandReferences: true);
+                AppendDecodedText(rawStart, _pos, default, ref decodedWritten);
+                _decodedLength = decodedWritten;
+                _valueIsEscaped = true;
             }
             else
             {
@@ -1973,11 +2120,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Consumes a UTF-8 BOM at offset 0 when present.
+        /// Consumes a UTF-8 byte order mark when the buffer is the start of the document and begins with one.
         /// </summary>
+        /// <remarks>
+        /// Only the first three bytes of a document can be a byte order mark. In a later buffer the same
+        /// bytes are the character U+FEFF and are content.
+        /// </remarks>
         internal void SkipBomIfAtStart()
         {
-            if (_span.Length >= 3 && _span[0] is 0xEF && _span[1] is 0xBB && _span[2] is 0xBF)
+            if (_documentBytesConsumedBase == 0 && _span.Length >= 3 && _span[0] is 0xEF && _span[1] is 0xBB && _span[2] is 0xBF)
             {
                 _pos = 3;
                 _lineStart = 3;
@@ -2016,7 +2167,8 @@ namespace CloudNimble.Text.Xml
         /// <param name="prefixLength">When this method returns true, the prefix byte length, or 0.</param>
         /// <returns><see langword="true"/> if the buffer holds that local name followed by a name terminator.</returns>
         /// <remarks>
-        /// Handles <c>&lt;/local&gt;</c> and <c>&lt;/prefix:local&gt;</c>. Does not advance <c>_pos</c> on failure.
+        /// Handles <c>&lt;/local&gt;</c> and <c>&lt;/prefix:local&gt;</c>. Does not advance <c>_pos</c> on failure. The caller
+        /// has checked that an element is open.
         /// </remarks>
         internal bool TryMatchEndName(out int nameStart, out int nameLength, out int prefixLength)
         {
@@ -2067,6 +2219,15 @@ namespace CloudNimble.Text.Xml
             nameLength = after - nameStart;
             _pos = after;
             return true;
+        }
+
+        /// <summary>
+        /// Creates the error for a text node longer than <see cref="XmlReaderOptions.MaxTextByteCount"/>.
+        /// </summary>
+        /// <returns>The exception to throw.</returns>
+        internal readonly XmlException TextTooLong()
+        {
+            return Error($"{nameof(XmlReaderOptions.MaxTextByteCount)} exceeded ({_maxTextBytes}).");
         }
 
         /// <summary>
@@ -2184,7 +2345,7 @@ namespace CloudNimble.Text.Xml
             int localStart;
             int localLength;
             int startPrefixLength;
-            if (index < 8)
+            if (index < InlineSlots)
             {
                 localStart = _elementNameStartsInline[index];
                 localLength = _elementNameLengthsInline[index];
@@ -2192,9 +2353,9 @@ namespace CloudNimble.Text.Xml
             }
             else
             {
-                localStart = _elementNameStarts![index];
-                localLength = _elementNameLengths![index];
-                startPrefixLength = _elementPrefixLengths![index] & ElementPrefixLengthMask;
+                localStart = _elementNameStarts[index];
+                localLength = _elementNameLengths[index];
+                startPrefixLength = _elementPrefixLengths[index] & ElementPrefixLengthMask;
             }
 
             var prefixAdj = startPrefixLength > 0 ? startPrefixLength + 1 : 0;
@@ -2220,17 +2381,6 @@ namespace CloudNimble.Text.Xml
             prefixLength = startPrefixLength;
             _pos = after;
             return true;
-        }
-
-        /// <summary>
-        /// Matches an unprefixed end tag against the current element's local name without a full name scan.
-        /// </summary>
-        /// <param name="nameStart">When this method returns true, the byte offset of the local name.</param>
-        /// <param name="nameLength">When this method returns true, the local-name byte length.</param>
-        /// <returns><see langword="true"/> if the buffer holds that local name followed by a name terminator.</returns>
-        internal bool TryMatchUnprefixedEndName(out int nameStart, out int nameLength)
-        {
-            return TryMatchEndName(out nameStart, out nameLength, out _);
         }
 
         /// <summary>

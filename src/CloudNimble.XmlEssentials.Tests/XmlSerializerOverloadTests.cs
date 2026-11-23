@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Nodes;
 using CloudNimble.Text.Xml.Serialization;
+using CloudNimble.XmlEssentials.Tests.POCOs;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -349,6 +350,39 @@ namespace CloudNimble.XmlEssentials.Tests
                 .Which.ParamName.Should().Be("utf8Xml");
             (await FluentActions.Awaiting(() => XmlSerializer.DeserializeAsync(new Pipe().Reader, (XmlTypeInfo<int>)null!).AsTask()).Should().ThrowExactlyAsync<ArgumentNullException>())
                 .Which.ParamName.Should().Be("xmlTypeInfo");
+        }
+
+        [TestMethod]
+        public void ObjectGraph_ThroughADocumentAnElementAndANode_RoundTrips()
+        {
+            var order = new SampleOrder
+            {
+                Id = "A-1",
+                Customer = new PersonRecord("Ada", 36),
+                Lines = [new SampleRecord(1, 2L, 0.5, true, DayOfWeek.Friday, Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e")), new SampleRecord(3, 4L, 1.5, false, DayOfWeek.Monday, Guid.Empty)],
+            };
+            const string expected =
+                "<SampleOrder><Id>A-1</Id><Customer><Name>Ada</Name><Age>36</Age></Customer>"
+                + "<Lines><Count>1</Count><Total>2</Total><Ratio>0.5</Ratio><Flagged>true</Flagged><Day>Friday</Day><Id>0f8fad5b-d9cb-469f-a165-70867728950e</Id></Lines>"
+                + "<Lines><Count>3</Count><Total>4</Total><Ratio>1.5</Ratio><Flagged>false</Flagged><Day>Monday</Day><Id>00000000-0000-0000-0000-000000000000</Id></Lines></SampleOrder>";
+
+            using var document = XmlSerializer.SerializeToDocument(order);
+            document.RootElement.GetRawXml().Should().Be(expected);
+            Same(XmlSerializer.Deserialize<SampleOrder>(document)!, order);
+
+            var element = XmlSerializer.SerializeToElement(order);
+            element.GetRawXml().Should().Be(expected);
+            Same(XmlSerializer.Deserialize<SampleOrder>(element)!, order);
+
+            var node = XmlSerializer.SerializeToNode(order)!;
+            node.ToString().Should().Be(expected);
+            Same(XmlSerializer.Deserialize<SampleOrder>(node)!, order);
+
+            static void Same<T>(T read, T written)
+            {
+                XmlSerializer.Serialize(read, new XmlSerializerOptions { OmitXmlDeclaration = true })
+                    .Should().Be(XmlSerializer.Serialize(written, new XmlSerializerOptions { OmitXmlDeclaration = true }));
+            }
         }
 
         #endregion

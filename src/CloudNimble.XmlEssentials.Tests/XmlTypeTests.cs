@@ -115,20 +115,6 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlChars.IsAsciiNcNameChar((byte)'-').Should().BeTrue();
             XmlChars.IsAsciiNcNameChar((byte)':').Should().BeFalse();
             XmlChars.IsAsciiNcNameChar((byte)'/').Should().BeFalse();
-            foreach (var cp in new[]
-                     {
-                         (int)':', 'A', 'Z', '_', 'a', 'z',
-                         0xBF, 0xC0, 0xD6, 0xD7, 0xD8, 0xF6, 0xF7, 0xF8, 0x2FF, 0x300,
-                         0x36F, 0x370, 0x37D, 0x37E, 0x37F, 0x1FFF, 0x200B, 0x200C, 0x200D, 0x200E,
-                         0x206F, 0x2070, 0x218F, 0x2190, 0x2BFF, 0x2C00, 0x2FEF, 0x2FF0,
-                         0x3000, 0x3001, 0xD7FF, 0xD800, 0xF8FF, 0xF900, 0xFDCF, 0xFDD0,
-                         0xFDEF, 0xFDF0, 0xFFFD, 0xFFFE, 0x10000, 0xEFFFF, 0xF0000,
-                     })
-            {
-                _ = XmlChars.IsNameStartChar(cp, XmlVersion.Version10);
-                _ = XmlChars.IsNameStartChar(cp, XmlVersion.Version11);
-            }
-
             XmlChars.IsNameChar('.', XmlVersion.Version10).Should().BeTrue();
             XmlChars.IsNameChar('0', XmlVersion.Version10).Should().BeTrue();
             XmlChars.IsNameChar('9', XmlVersion.Version10).Should().BeTrue();
@@ -237,10 +223,10 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void XmlNamespacesAndAttributes_HaveExpectedValues()
         {
-            XmlNamespaces.Xml.Should().NotBeNullOrWhiteSpace();
-            XmlNamespaces.Xmlns.Should().NotBeNullOrWhiteSpace();
-            XmlNamespaces.Xsi.Should().NotBeNullOrWhiteSpace();
-            XmlNamespaces.Xsd.Should().NotBeNullOrWhiteSpace();
+            XmlNamespaces.Xml.Should().Be("http://www.w3.org/XML/1998/namespace");
+            XmlNamespaces.Xmlns.Should().Be("http://www.w3.org/2000/xmlns/");
+            XmlNamespaces.Xsi.Should().Be("http://www.w3.org/2001/XMLSchema-instance");
+            XmlNamespaces.Xsd.Should().Be("http://www.w3.org/2001/XMLSchema");
             XmlAttributes.Nil.Should().Be("nil");
             XmlAttributes.Type.Should().Be("type");
 
@@ -254,16 +240,9 @@ namespace CloudNimble.XmlEssentials.Tests
             options.MaxDocumentByteCount = 4;
             options.MaxNameByteCount = 5;
             options.MaxTextByteCount = 6;
-            options.AllowMultipleRoots.Should().BeTrue();
-            options.MaxAttributeCount.Should().Be(1);
-            options.MaxCommentByteCount.Should().Be(2);
-            options.MaxDepth.Should().Be(3);
-            options.MaxDocumentByteCount.Should().Be(4);
-            options.MaxNameByteCount.Should().Be(5);
-            options.MaxTextByteCount.Should().Be(6);
 
             var state = new XmlReaderState(options);
-            state.Options.MaxDepth.Should().Be(3);
+            state.Options.Should().Be(options);
         }
 
         #endregion

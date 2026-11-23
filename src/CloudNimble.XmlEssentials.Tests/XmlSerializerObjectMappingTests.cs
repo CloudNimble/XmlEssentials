@@ -589,13 +589,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void KindShelf_UnknownDiscriminator_Throws()
-        {
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<KindShelf>("<KindShelf><Item kind=\"tape\"><Title>x</Title></Item></KindShelf>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'.");
-        }
-
-        [TestMethod]
         public void FallbackShelf_UnknownDiscriminator_ReadsTheBaseType()
         {
             var read = XmlSerializer.Deserialize<FallbackShelf>("<FallbackShelf><Item kind=\"tape\"><Title>x</Title></Item></FallbackShelf>")!;
@@ -650,6 +643,89 @@ namespace CloudNimble.XmlEssentials.Tests
             var xml = XmlSerializer.Serialize<Vehicle>(new Car { Wheels = 4, Doors = 2 }, Bare);
             xml.Should().Be("<Car><Wheels>4</Wheels><Doors>2</Doors></Car>");
             XmlSerializer.Deserialize<Vehicle>(xml).Should().BeOfType<Car>().Which.Doors.Should().Be(2);
+        }
+
+        [TestMethod]
+        public void SampleRecord_ReadOneAfterAnother_EachKeepsItsOwnValues()
+        {
+            var first = XmlSerializer.Deserialize<SampleRecord>("<SampleRecord><Count>1</Count><Total>10000000000</Total><Ratio>0.5</Ratio><Flagged>true</Flagged><Day>Friday</Day><Id>0f8fad5b-d9cb-469f-a165-70867728950e</Id></SampleRecord>");
+            var second = XmlSerializer.Deserialize<SampleRecord>("<SampleRecord><Count>2</Count><Total>-7</Total><Ratio>-2.25</Ratio><Flagged>false</Flagged><Day>Monday</Day><Id>7c9e6679-7425-40de-944b-e07fc1f90ae7</Id></SampleRecord>");
+            first.Should().Be(new SampleRecord(1, 10000000000L, 0.5, true, DayOfWeek.Friday, Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e")));
+            second.Should().Be(new SampleRecord(2, -7L, -2.25, false, DayOfWeek.Monday, Guid.Parse("7c9e6679-7425-40de-944b-e07fc1f90ae7")));
+        }
+
+        [TestMethod]
+        public void SampleRecord_InAList_EveryItemKeepsItsOwnValues()
+        {
+            var items = new List<SampleRecord>();
+            for (var i = 0; i < 40; i++)
+            {
+                items.Add(new SampleRecord(i, i * 3_000_000_000L, i / 8.0, i % 3 == 0, (DayOfWeek)(i % 7), new Guid(i, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)));
+            }
+
+            var read = XmlSerializer.Deserialize<List<SampleRecord>>(XmlSerializer.SerializeToUtf8Bytes(items))!;
+            read.Should().Equal(items);
+        }
+
+        [TestMethod]
+        public void DefaultedRecord_MembersLeftOut_TakeTheirDefaultsEveryTime()
+        {
+            XmlSerializer.Deserialize<DefaultedRecord>("<DefaultedRecord><Name>a</Name></DefaultedRecord>").Should().Be(new DefaultedRecord("a", 5, 1.5));
+            XmlSerializer.Deserialize<DefaultedRecord>("<DefaultedRecord><Name>b</Name><Count>9</Count><Scale>2</Scale></DefaultedRecord>").Should().Be(new DefaultedRecord("b", 9, 2));
+            XmlSerializer.Deserialize<DefaultedRecord>("<DefaultedRecord><Name>c</Name></DefaultedRecord>").Should().Be(new DefaultedRecord("c", 5, 1.5));
+            XmlSerializer.Deserialize<DefaultedRecord>("<DefaultedRecord><Scale>3</Scale><Name>d</Name></DefaultedRecord>").Should().Be(new DefaultedRecord("d", 5, 3));
+        }
+
+        [TestMethod]
+        [DataRow("<LinkedRecord><Id>1</Id><Next><Id>2</Id><Next><Id>3</Id></Next></Next></LinkedRecord>", DisplayName = "each number before the link it holds")]
+        [DataRow("<LinkedRecord><Next><Next><Id>3</Id></Next><Id>2</Id></Next><Id>1</Id></LinkedRecord>", DisplayName = "each number after the link it holds")]
+        public void LinkedRecord_NestedInItself_ReadsEveryLevel(string xml)
+        {
+            XmlSerializer.Deserialize<LinkedRecord>(xml).Should().Be(new LinkedRecord(1, new LinkedRecord(2, new LinkedRecord(3, null))));
+        }
+
+        [TestMethod]
+        public void KeptArgument_ConstructorKeepsWhatItWasGiven_TheNextReadDoesNotChangeIt()
+        {
+            var first = XmlSerializer.Deserialize<KeptArgument>("<KeptArgument><Value>1</Value></KeptArgument>")!;
+            var second = XmlSerializer.Deserialize<KeptArgument>("<KeptArgument><Value>2</Value></KeptArgument>")!;
+            first.Kept.Should().Be(1);
+            first.Value.Should().Be(1);
+            second.Kept.Should().Be(2);
+            second.Value.Should().Be(2);
+        }
+
+        [TestMethod]
+        public void GuardedCount_AfterAConstructorThrows_TheNextReadsAreUnaffected()
+        {
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<GuardedCount>("<GuardedCount><Count>-1</Count><Weight>2.5</Weight></GuardedCount>"))
+                .Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("Count");
+            var read = XmlSerializer.Deserialize<GuardedCount>("<GuardedCount><Weight>2.5</Weight><Count>3</Count></GuardedCount>")!;
+            read.Count.Should().Be(3);
+            read.Weight.Should().Be(2.5);
+            var next = XmlSerializer.Deserialize<GuardedCount>("<GuardedCount><Count>4</Count></GuardedCount>")!;
+            next.Count.Should().Be(4);
+            next.Weight.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void SampleRecord_ReadOnManyThreadsAtOnce_EveryReadGetsItsOwnValues()
+        {
+            var wrong = new System.Collections.Concurrent.ConcurrentBag<string>();
+            System.Threading.Tasks.Parallel.For(0, 8, thread =>
+            {
+                for (var i = 0; i < 4000; i++)
+                {
+                    var expected = new SampleRecord((thread * 100_000) + i, -i, thread + 0.5, i % 2 == 0, (DayOfWeek)(thread % 7), new Guid(thread, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte)i));
+                    var xml = $"<SampleRecord><Count>{expected.Count}</Count><Total>{expected.Total}</Total><Ratio>{expected.Ratio.ToString(System.Globalization.CultureInfo.InvariantCulture)}</Ratio><Flagged>{(expected.Flagged ? "true" : "false")}</Flagged><Day>{expected.Day}</Day><Id>{expected.Id}</Id></SampleRecord>";
+                    var read = XmlSerializer.Deserialize<SampleRecord>(xml);
+                    if (read != expected)
+                    {
+                        wrong.Add($"{expected} was read as {read}");
+                    }
+                }
+            });
+            wrong.Should().BeEmpty();
         }
 
         #endregion

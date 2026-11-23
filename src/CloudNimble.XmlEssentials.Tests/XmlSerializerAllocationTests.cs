@@ -17,6 +17,7 @@ namespace CloudNimble.XmlEssentials.Tests
     /// Heap-allocation checks for <see cref="XmlSerializer"/>, and the contract of the pooled buffer it writes to.
     /// </summary>
     [TestClass]
+    [DoNotParallelize]
     public class XmlSerializerAllocationTests
     {
 
@@ -247,6 +248,77 @@ namespace CloudNimble.XmlEssentials.Tests
             var expected = GC.GetAllocatedBytesForCurrentThread() - before;
             allocated.Should().Be(expected);
             read.Currency.Should().Be("USD");
+            read.Amount.Should().Be(same.Amount);
+        }
+
+        [TestMethod]
+        [DataRow("<String>Fish &amp; chips at the corner shop</String>", "Fish & chips at the corner shop", DisplayName = "a reference")]
+        [DataRow("<String>one\r\ntwo\rthree</String>", "one\ntwo\nthree", DisplayName = "line ends")]
+        [DataRow("<String>&lt;a href=&quot;x&quot;&gt;a link that is rather longer than the others, to be decoded into a larger buffer&lt;/a&gt;</String>", "<a href=\"x\">a link that is rather longer than the others, to be decoded into a larger buffer</a>", DisplayName = "many references")]
+        public void Deserialize_StringThatNeedsDecoding_AllocatesOnlyTheString(string document, string expected)
+        {
+            var xml = Encoding.UTF8.GetBytes(document);
+            Read<string>(xml);
+            Read<string>(xml);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var read = Read<string>(xml);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            before = GC.GetAllocatedBytesForCurrentThread();
+            var same = new string('x', expected.Length);
+            var size = GC.GetAllocatedBytesForCurrentThread() - before;
+            read.Should().Be(expected);
+            same.Length.Should().Be(expected.Length);
+            allocated.Should().Be(size);
+        }
+
+        [TestMethod]
+        public void Deserialize_RecordOfValueTypes_AllocatesOnlyTheRecord()
+        {
+            var xml = "<SampleRecord><Count>1</Count><Total>10000000000</Total><Ratio>0.5</Ratio><Flagged>true</Flagged><Day>Friday</Day><Id>0f8fad5b-d9cb-469f-a165-70867728950e</Id></SampleRecord>"u8.ToArray();
+            var id = Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e");
+            Read<SampleRecord>(xml);
+            Read<SampleRecord>(xml);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var read = Read<SampleRecord>(xml);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            before = GC.GetAllocatedBytesForCurrentThread();
+            var same = new SampleRecord(1, 10000000000L, 0.5, true, DayOfWeek.Friday, id);
+            var expected = GC.GetAllocatedBytesForCurrentThread() - before;
+            read.Should().Be(same);
+            allocated.Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void Deserialize_RecordWithAString_AllocatesOnlyTheRecordAndItsString()
+        {
+            var xml = "<PersonRecord><Name>Ada</Name><Age>36</Age></PersonRecord>"u8.ToArray();
+            Read<PersonRecord>(xml);
+            Read<PersonRecord>(xml);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var read = Read<PersonRecord>(xml);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            before = GC.GetAllocatedBytesForCurrentThread();
+            var same = new PersonRecord(new string('x', 3), 36);
+            var expected = GC.GetAllocatedBytesForCurrentThread() - before;
+            read.Should().Be(new PersonRecord("Ada", 36));
+            same.Age.Should().Be(36);
+            allocated.Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void Deserialize_AttributeThatNeedsDecoding_AllocatesOnlyTheObjectAndItsString()
+        {
+            var xml = "<Price Currency=\"U&amp;D\">19.99</Price>"u8.ToArray();
+            Read<Price>(xml);
+            Read<Price>(xml);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var read = Read<Price>(xml)!;
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            before = GC.GetAllocatedBytesForCurrentThread();
+            var same = new Price { Currency = new string('x', 3), Amount = 19.99m };
+            var expected = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(expected);
+            read.Currency.Should().Be("U&D");
             read.Amount.Should().Be(same.Amount);
         }
 

@@ -1,6 +1,5 @@
 ---
 title: XmlArrayItemAttribute
-description: "Sets the element name of collection items of type *T*."
 icon: code-branch
 tag: "SEALED"
 keywords: ['XmlArrayItemAttribute', 'CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute<T>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute']
@@ -20,20 +19,10 @@ keywords: ['XmlArrayItemAttribute', 'CloudNimble.Text.Xml.Serialization.XmlArray
 CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute<T>
 ```
 
-## Summary
-
-Sets the element name of collection items of type *T*.
-
-## Type Parameters
-
-- `T` - The CLR item type.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute with the default item name.
-
 #### Syntax
 
 ```csharp
@@ -42,8 +31,6 @@ public XmlArrayItemAttribute()
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute.
-
 #### Syntax
 
 ```csharp
@@ -54,13 +41,11 @@ public XmlArrayItemAttribute(string elementName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `elementName` | `string` | The item element local name. |
+| `elementName` | `string` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute`</Note>
-
-Creates the attribute with the default item name.
 
 #### Syntax
 
@@ -72,8 +57,6 @@ public XmlArrayItemAttribute()
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute`</Note>
 
-Creates the attribute.
-
 #### Syntax
 
 ```csharp
@@ -84,7 +67,7 @@ public XmlArrayItemAttribute(string elementName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `elementName` | `string` | The item element local name. |
+| `elementName` | `string` | - |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -112,8 +95,6 @@ public Object()
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute`</Note>
 
-Gets or sets the item element local name. When null or empty, the item CLR type name is used for a wrapped collection, or the member name when unwrapped.
-
 #### Syntax
 
 ```csharp
@@ -127,8 +108,6 @@ Type: `string?`
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace <Badge color="gray">Inherited</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute`</Note>
-
-Gets or sets the namespace URI of the item.
 
 #### Syntax
 
@@ -155,8 +134,6 @@ Type: `System.Type`
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Type <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute`</Note>
-
-Gets the CLR item type for this element name, or null when the collection element type is used.
 
 #### Syntax
 

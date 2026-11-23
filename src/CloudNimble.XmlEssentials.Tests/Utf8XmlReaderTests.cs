@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
@@ -105,7 +106,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var reader = new Utf8XmlReader("<e>hi</e>"u8);
             reader.Read();
             reader.CurrentDepth.Should().Be(1);
-            reader.BytesConsumed.Should().BeGreaterThan(0);
+            reader.BytesConsumed.Should().Be(3);
             reader.IsFinalBlock.Should().BeTrue();
             reader.HasValueSequence.Should().BeFalse();
             reader.NamespaceUriSpan.IsEmpty.Should().BeTrue();
@@ -114,8 +115,10 @@ namespace CloudNimble.XmlEssentials.Tests
             reader.Read();
             Span<byte> utf8 = stackalloc byte[8];
             reader.CopyString(utf8[..2]).Should().Be(2);
+            utf8[..2].SequenceEqual("hi"u8).Should().BeTrue();
             Span<char> chars = stackalloc char[8];
             reader.CopyString(chars).Should().Be(2);
+            new string(chars[..2]).Should().Be("hi");
         }
 
         [TestMethod]
@@ -158,20 +161,20 @@ namespace CloudNimble.XmlEssentials.Tests
             OnText("<e>7</e>").GetByte().Should().Be(7);
             OnText("<e>AQID</e>").GetBytesFromBase64().Should().Equal(1, 2, 3);
             OnText("<e>2020-01-02</e>").GetDateOnly().Should().Be(new DateOnly(2020, 1, 2));
-            OnText("<e>2020-01-02T03:04:05</e>").GetDateTime().Year.Should().Be(2020);
-            OnText("<e>2020-01-02T03:04:05Z</e>").GetDateTimeOffset().Offset.Should().Be(TimeSpan.Zero);
+            OnText("<e>2020-01-02T03:04:05</e>").GetDateTime().Should().Be(new DateTime(2020, 1, 2, 3, 4, 5));
+            OnText("<e>2020-01-02T03:04:05Z</e>").GetDateTimeOffset().Should().Be(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero));
             OnText("<e>1.5</e>").GetDecimal().Should().Be(1.5m);
             double.IsPositiveInfinity(OnText("<e>INF</e>").GetDouble()).Should().BeTrue();
             double.IsNegativeInfinity(OnText("<e>-INF</e>").GetDouble()).Should().BeTrue();
             double.IsNaN(OnText("<e>NaN</e>").GetDouble()).Should().BeTrue();
             OnText("<e>1.25</e>").GetDouble().Should().Be(1.25);
-            OnText("<e>aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee</e>").GetGuid().Should().NotBe(Guid.Empty);
+            OnText("<e>aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee</e>").GetGuid().Should().Be(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
             OnText("<e>-2</e>").GetInt16().Should().Be(-2);
             OnText("<e>3</e>").GetInt32().Should().Be(3);
             OnText("<e>4</e>").GetInt64().Should().Be(4);
             OnText("<e>-5</e>").GetSByte().Should().Be(-5);
             OnText("<e>1.5</e>").GetSingle().Should().Be(1.5f);
-            OnText("<e>03:04:05</e>").GetTimeOnly().Hour.Should().Be(3);
+            OnText("<e>03:04:05</e>").GetTimeOnly().Should().Be(new TimeOnly(3, 4, 5));
             OnText("<e>PT1S</e>").GetTimeSpan().Should().Be(TimeSpan.FromSeconds(1));
             OnText("<e>6</e>").GetUInt16().Should().Be(6);
             OnText("<e>7</e>").GetUInt32().Should().Be(7u);
@@ -236,10 +239,16 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Read_MaxLimits_ZeroMeansDefault()
+        [DataRow(64, 1000, 1024, 1_048_576, null, DisplayName = "everything at its default limit")]
+        [DataRow(65, 1, 1, 1, "MaxDepth exceeded (64).", DisplayName = "one level too deep")]
+        [DataRow(1, 1001, 1, 1, "MaxAttributeCount exceeded (1000).", DisplayName = "one attribute too many")]
+        [DataRow(1, 1, 1025, 1, "MaxNameByteCount exceeded (1024).", DisplayName = "a name one byte too long")]
+        [DataRow(1, 1, 1, 1_048_577, "MaxCommentByteCount exceeded (1048576).", DisplayName = "a comment one byte too long")]
+        public void Read_LimitsLeftAtZero_AreTheDocumentedDefaults(int depth, int attributes, int nameBytes, int commentBytes, string? expectedMessage)
         {
             var options = new XmlReaderOptions
             {
+                CommentHandling = XmlCommentHandling.Allow,
                 MaxDepth = 0,
                 MaxAttributeCount = 0,
                 MaxNameByteCount = 0,
@@ -247,12 +256,45 @@ namespace CloudNimble.XmlEssentials.Tests
                 MaxTextByteCount = 0,
                 MaxDocumentByteCount = 0,
             };
-            var reader = new Utf8XmlReader("<a b=\"1\"><!--c--><b>text</b></a>"u8, options);
-            while (reader.Read())
+            var xml = new StringBuilder();
+            var name = new string('n', nameBytes);
+            for (var i = 1; i < depth; i++)
             {
+                xml.Append("<d>");
             }
 
-            reader.TokenType.Should().Be(XmlTokenType.None);
+            xml.Append('<').Append(name);
+            for (var i = 0; i < attributes; i++)
+            {
+                xml.Append(" a").Append(i).Append("=\"\"");
+            }
+
+            xml.Append("><!--").Append('c', commentBytes).Append("--></").Append(name).Append('>');
+            for (var i = 1; i < depth; i++)
+            {
+                xml.Append("</d>");
+            }
+
+            string? message = null;
+            var tokens = 0;
+            try
+            {
+                var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml.ToString()), options);
+                while (reader.Read())
+                {
+                    tokens++;
+                }
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be(expectedMessage);
+            if (expectedMessage is null)
+            {
+                tokens.Should().Be((2 * depth) + 1);
+            }
         }
 
         [TestMethod]
@@ -265,7 +307,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 {
                 }
             };
-            act.Should().Throw<XmlException>().WithMessage("*MaxDepth*");
+            act.Should().Throw<XmlException>().WithMessage("MaxDepth exceeded (1).");
         }
 
         [TestMethod]
@@ -276,7 +318,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 var reader = new Utf8XmlReader("<abcdef/>"u8, new XmlReaderOptions { MaxNameByteCount = 2 });
                 reader.Read();
             };
-            act.Should().Throw<XmlException>().WithMessage("*MaxNameByteCount*");
+            act.Should().Throw<XmlException>().WithMessage("MaxNameByteCount exceeded (2).");
         }
 
         [TestMethod]
@@ -302,7 +344,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 {
                 }
             };
-            act.Should().Throw<XmlException>().WithMessage("*root*");
+            act.Should().Throw<XmlException>().WithMessage("Multiple root elements are not allowed.");
         }
 
         [TestMethod]
@@ -327,30 +369,35 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_RejectsDoctype()
         {
             var act = () => Drain("<!DOCTYPE e><e/>");
-            act.Should().Throw<XmlException>().WithMessage("*DTD*");
+            act.Should().Throw<XmlException>().WithMessage("DTD is not allowed.");
         }
 
         [TestMethod]
         public void Read_RejectsNonUtf8Encoding()
         {
             var act = () => Drain("<?xml version=\"1.0\" encoding=\"utf-16\"?><e/>");
-            act.Should().Throw<XmlException>().WithMessage("*utf-16*");
+            act.Should().Throw<XmlException>().WithMessage("XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.");
         }
 
         [TestMethod]
         public void Read_RejectsUndefinedEntity()
         {
             var act = () => Drain("<e>&foo;</e>");
-            act.Should().Throw<XmlException>().WithMessage("*entity*");
+            act.Should().Throw<XmlException>().WithMessage("Undefined entity.");
         }
 
         [TestMethod]
         public void Read_SequenceConstructor()
         {
             var bytes = "<e/>"u8.ToArray();
-            var reader = new Utf8XmlReader(new ReadOnlySequence<byte>(bytes));
+            var sequence = new ReadOnlySequence<byte>(bytes);
+            var reader = new Utf8XmlReader(sequence);
             reader.Read().Should().BeTrue();
-            _ = reader.Position;
+            reader.BytesConsumed.Should().Be(4);
+            reader.Position.Should().Be(sequence.GetPosition(reader.BytesConsumed));
+            var overSpan = new Utf8XmlReader(bytes);
+            overSpan.Read().Should().BeTrue();
+            overSpan.Position.Should().Be(default(SequencePosition));
         }
 
         [TestMethod]
@@ -439,7 +486,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_RejectsDuplicateAttribute()
         {
             var act = () => Drain("<e a=\"1\" a=\"2\"/>");
-            act.Should().Throw<XmlException>().WithMessage("*Duplicate*");
+            act.Should().Throw<XmlException>().WithMessage("Duplicate attribute.");
         }
 
         [TestMethod]
@@ -450,7 +497,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 var reader = new Utf8XmlReader([(byte)'<', (byte)'e', 0xFF, (byte)'/', (byte)'>']);
                 reader.Read();
             };
-            act.Should().Throw<XmlException>().WithMessage("*UTF-8*");
+            act.Should().Throw<XmlException>().WithMessage("Invalid UTF-8.");
         }
 
         [TestMethod]
@@ -463,7 +510,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 {
                 }
             };
-            act.Should().Throw<XmlException>().WithMessage("*NUL*");
+            act.Should().Throw<XmlException>().WithMessage("NUL is not allowed.");
         }
 
         [TestMethod]
@@ -494,42 +541,42 @@ namespace CloudNimble.XmlEssentials.Tests
                 {
                 }
             };
-            act.Should().Throw<XmlException>().WithMessage("*RestrictedChar*");
+            act.Should().Throw<XmlException>().WithMessage("XML 1.1 RestrictedChar must be a character reference.");
         }
 
         [TestMethod]
         public void Read_MaxAttributeCountExceeded()
         {
             var act = () => Drain("<e a=\"1\" b=\"2\"/>", new XmlReaderOptions { MaxAttributeCount = 1 });
-            act.Should().Throw<XmlException>().WithMessage("*MaxAttributeCount*");
+            act.Should().Throw<XmlException>().WithMessage("MaxAttributeCount exceeded (1).");
         }
 
         [TestMethod]
         public void Read_MaxCommentByteCountExceeded()
         {
             var act = () => Drain("<!--abcd--><e/>", new XmlReaderOptions { MaxCommentByteCount = 2, CommentHandling = XmlCommentHandling.Allow });
-            act.Should().Throw<XmlException>().WithMessage("*MaxCommentByteCount*");
+            act.Should().Throw<XmlException>().WithMessage("MaxCommentByteCount exceeded (2).");
         }
 
         [TestMethod]
         public void Read_MaxTextByteCountExceeded()
         {
             var act = () => Drain("<e>abcd</e>", new XmlReaderOptions { MaxTextByteCount = 2 });
-            act.Should().Throw<XmlException>().WithMessage("*MaxTextByteCount*");
+            act.Should().Throw<XmlException>().WithMessage("MaxTextByteCount exceeded (2).");
         }
 
         [TestMethod]
         public void Read_CommentContainsDoubleHyphen()
         {
             var act = () => Drain("<!-- a -- b --><e/>", new XmlReaderOptions { CommentHandling = XmlCommentHandling.Allow });
-            act.Should().Throw<XmlException>().WithMessage("*--*");
+            act.Should().Throw<XmlException>().WithMessage("Comments must not contain '--'.");
         }
 
         [TestMethod]
         public void Read_MultipleColonsInName()
         {
             var act = () => Drain("<a:b:c/>");
-            act.Should().Throw<XmlException>().WithMessage("*colon*");
+            act.Should().Throw<XmlException>().WithMessage("Multiple colons in name.");
         }
 
         [TestMethod]
@@ -556,7 +603,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_EmptyDocument_ThrowsWithoutRoot()
         {
             var act = () => Drain("");
-            act.Should().Throw<XmlException>().WithMessage("*root*");
+            act.Should().Throw<XmlException>().WithMessage("Document does not have a root element.");
         }
 
         [TestMethod]
@@ -571,7 +618,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_IncompleteFinalBlockThrows()
         {
             var act = () => Drain("<e");
-            act.Should().Throw<XmlException>().WithMessage("*end*");
+            act.Should().Throw<XmlException>().WithMessage("Unexpected end of XML.");
         }
 
         [TestMethod]
@@ -585,15 +632,15 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_DtdVariants()
         {
             var doctype = () => Drain("<!DOCTYPE e><e/>");
-            doctype.Should().Throw<XmlException>().WithMessage("*DTD*");
+            doctype.Should().Throw<XmlException>().WithMessage("DTD is not allowed.");
             var entity = () => Drain("<!ENTITY e \"x\"><e/>");
-            entity.Should().Throw<XmlException>().WithMessage("*DTD*");
+            entity.Should().Throw<XmlException>().WithMessage("DTD is not allowed.");
             var element = () => Drain("<!ELEMENT e EMPTY><e/>");
-            element.Should().Throw<XmlException>().WithMessage("*DTD*");
+            element.Should().Throw<XmlException>().WithMessage("DTD is not allowed.");
             var attlist = () => Drain("<!ATTLIST e a CDATA #IMPLIED><e/>");
-            attlist.Should().Throw<XmlException>().WithMessage("*DTD*");
+            attlist.Should().Throw<XmlException>().WithMessage("DTD is not allowed.");
             var notation = () => Drain("<!NOTATION n SYSTEM \"x\"><e/>");
-            notation.Should().Throw<XmlException>().WithMessage("*DTD*");
+            notation.Should().Throw<XmlException>().WithMessage("DTD is not allowed.");
         }
 
         [TestMethod]
@@ -620,15 +667,19 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Read_NineAttributes_ResizesBuffer()
+        public void Read_NineAttributes_AreAllReported()
         {
             var xml = "<e a1=\"1\" a2=\"2\" a3=\"3\" a4=\"4\" a5=\"5\" a6=\"6\" a7=\"7\" a8=\"8\" a9=\"9\"/>";
             var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml));
             reader.Read();
             reader.AttributeCount.Should().Be(9);
+            var attributes = new List<string>();
             while (reader.MoveToNextAttribute())
             {
+                attributes.Add(Encoding.UTF8.GetString(reader.LocalNameSpan) + "=" + reader.GetString());
             }
+
+            attributes.Should().Equal("a1=1", "a2=2", "a3=3", "a4=4", "a5=5", "a6=6", "a7=7", "a8=8", "a9=9");
 
             reader.MoveToElement();
             reader.TokenType.Should().Be(XmlTokenType.StartElement);
@@ -717,10 +768,10 @@ namespace CloudNimble.XmlEssentials.Tests
             var reader = new Utf8XmlReader(sequence);
             reader.Read().Should().BeTrue();
             reader.LocalNameEquals("e").Should().BeTrue();
-            _ = reader.Position;
+            reader.Position.Should().Be(sequence.GetPosition(reader.BytesConsumed));
             reader.HasValueSequence.Should().BeFalse();
             reader.ValueSequence.IsEmpty.Should().BeTrue();
-            reader.TokenStartIndex.Should().BeGreaterThanOrEqualTo(0);
+            reader.TokenStartIndex.Should().Be(0);
         }
 
         [TestMethod]
@@ -807,8 +858,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_EncodingUtf8Aliases()
         {
-            Drain("<?xml version=\"1.0\" encoding=\"UTF-8\"?><e/>");
-            Drain("<?xml version=\"1.0\" encoding='utf8'?><e/>");
+            XmlReaderHarness.Tokens("<?xml version=\"1.0\" encoding=\"UTF-8\"?><e/>"u8, new XmlReaderOptions()).Should().Equal("XmlDeclaration :xml{} [version=\"1.0\" encoding=\"UTF-8\"]", "StartElement :e{} empty");
+            XmlReaderHarness.Tokens("<?xml version=\"1.0\" encoding='utf8'?><e/>"u8, new XmlReaderOptions()).Should().Equal("XmlDeclaration :xml{} [version=\"1.0\" encoding='utf8']", "StartElement :e{} empty");
         }
 
         [TestMethod]
@@ -840,14 +891,14 @@ namespace CloudNimble.XmlEssentials.Tests
             var comment = () => Drain("<!--c");
             comment.Should().Throw<XmlException>();
             var cdataLimit = () => Drain("<e><![CDATA[abcd]]></e>", new XmlReaderOptions { MaxTextByteCount = 2 });
-            cdataLimit.Should().Throw<XmlException>().WithMessage("*MaxTextByteCount*");
+            cdataLimit.Should().Throw<XmlException>().WithMessage("MaxTextByteCount exceeded (2).");
         }
 
         [TestMethod]
         public void Read_UnexpectedEndInsideElement()
         {
             var act = () => Drain("<a><b></b>");
-            act.Should().Throw<XmlException>().WithMessage("*end*");
+            act.Should().Throw<XmlException>().WithMessage("Unexpected end of XML.");
         }
 
         [TestMethod]

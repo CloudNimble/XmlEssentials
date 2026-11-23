@@ -1,6 +1,5 @@
 ---
 title: XmlSerializerContext
-description: "Base class for source-generated serialization metadata. Analogous to `JsonSerializerContext`."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver']
@@ -18,10 +17,6 @@ keywords: ['XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlSerial
 CloudNimble.Text.Xml.Serialization.XmlSerializerContext
 ```
 
-## Summary
-
-Base class for source-generated serialization metadata. Analogous to `JsonSerializerContext`.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
@@ -37,8 +32,6 @@ public Object()
 ## Properties
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Options
-
-Gets the options bound to this context. Their [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) is this context.
 
 #### Syntax
 
@@ -123,8 +116,6 @@ Type: `System.Type`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo <Badge color="orange">Abstract</Badge>
 
-Returns type info for *type*.
-
 #### Syntax
 
 ```csharp
@@ -135,12 +126,11 @@ public abstract CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(Syste
 
 | Name | Type | Description |
 |------|------|-------------|
-| `type` | `System.Type` | The CLR type. |
+| `type` | `System.Type` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?`
-The type info, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this context does not know the type.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
 

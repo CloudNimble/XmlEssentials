@@ -1,6 +1,5 @@
 ---
 title: XmlReferenceHandler
-description: "Creates resolvers that track object identity across a serialize or deserialize operation."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization', 'class']
@@ -18,10 +17,6 @@ keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferen
 CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
 ```
 
-## Summary
-
-Creates resolvers that track object identity across a serialize or deserialize operation.
-
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
@@ -38,8 +33,6 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreCycles
 
-Gets a handler that omits already-seen objects as empty nillable elements.
-
 #### Syntax
 
 ```csharp
@@ -51,9 +44,6 @@ public static CloudNimble.Text.Xml.Serialization.XmlReferenceHandler IgnoreCycle
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Preserve
-
-Gets a handler that writes `id` / `ref` attributes in
-`urn:CloudNimble.Text.Xml:refs`.
 
 #### Syntax
 
@@ -69,8 +59,6 @@ Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateResolver <Badge color="orange">Abstract</Badge>
 
-Creates a resolver for one serialize or deserialize operation.
-
 #### Syntax
 
 ```csharp
@@ -80,7 +68,6 @@ public abstract CloudNimble.Text.Xml.Serialization.XmlReferenceResolver CreateRe
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceResolver`
-A new resolver.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

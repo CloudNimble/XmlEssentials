@@ -334,7 +334,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Reader_EndTags_MatchStartTagBytes()
         {
-            Drain("<p:a xmlns:p=\"u\" xmlns:q=\"u\"><p:b>1</p:b ><p:c>2</q:c><q:d/></p:a>").Should().Be(9);
+            Drain("<p:a xmlns:p=\"u\" xmlns:q=\"u\"><p:b>1</p:b ><p:c>2</p:c ><q:d/></p:a>").Should().Be(9);
             Drain("<ab><abc>1</abc><a>2</a></ab>").Should().Be(8);
             var deep = new StringBuilder();
             for (var i = 0; i < 10; i++)
@@ -348,7 +348,7 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             Drain(deep.ToString()).Should().Be(20);
-            foreach (var malformed in new[] { "<p:a xmlns:p=\"u\"></p:ab>", "<p:a xmlns:p=\"u\"></p:a", "<ab></a>", "<a></ab>", "<p:a xmlns:p=\"u\" xmlns:q=\"v\"></q:a>", "<é></éa>" })
+            foreach (var malformed in new[] { "<p:a xmlns:p=\"u\"></p:ab>", "<p:a xmlns:p=\"u\"></p:a", "<ab></a>", "<a></ab>", "<p:a xmlns:p=\"u\" xmlns:q=\"v\"></q:a>", "<p:a xmlns:p=\"u\" xmlns:q=\"u\"><p:c>2</q:c></p:a>", "<é></éa>" })
             {
                 var threw = false;
                 try

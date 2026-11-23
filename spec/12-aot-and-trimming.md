@@ -12,7 +12,8 @@ On `CloudNimble.XmlEssentials.csproj`:
 - Reflection overloads: `[RequiresDynamicCode]`, `[RequiresUnreferencedCode]`.
 - Context overloads: **no** AOT warning.
 - Feature switch `IsReflectionEnabledByDefault` trims the reflection resolver.
-- Test asset: `CloudNimble.XmlEssentials.Tests.Aot` (or a folder under Tests) published with `PublishAot=true`, `InvariantGlobalization` optional, smoke-tests serialize/deserialize via context. This is [PR 8](22-pr-plan.md#pr-8-aot--trimming-tests).
+- Test asset: `CloudNimble.XmlEssentials.Tests.Aot`, published with `PublishAot=true`, `InvariantGlobalization=true`, `IsReflectionEnabledByDefault=false`. Smoke-tests a source-generated `Person`, an XSD-generated `Order`, and a `Utf8XmlReader` walk. CI job `aot` publishes and runs it. This is [PR 8](22-pr-plan.md#pr-8-aot--trimming-tests).
+- Sample: `CloudNimble.XmlEssentials.Samples.Cli` (`xmlessentials`) uses McMaster.Extensions.CommandLineUtils (builder API) and the same generated-context path. `PublishAot=true`.
 
 Do not reference `System.Xml.Serialization` or `System.Xml.Schema` from the runtime library — that would drag AOT warnings back in. The assembly-ref test in [packaging](13-repo-and-packaging.md#forbidden-references-ci-test) is the gate (`System.Xml*` and `System.Private.Xml`).
 

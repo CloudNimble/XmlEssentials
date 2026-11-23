@@ -1,6 +1,5 @@
 ---
 title: XmlSerializer
-description: "Serializes CLR values to UTF-8 XML and back. Analogous to `JsonSerializer`."
 icon: bolt
 tag: "STATIC"
 keywords: ['XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml', 'class']
@@ -18,23 +17,9 @@ keywords: ['XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.T
 CloudNimble.Text.Xml.XmlSerializer
 ```
 
-## Summary
-
-Serializes CLR values to UTF-8 XML and back. Analogous to `JsonSerializer`.
-
-## Remarks
-
-Every overload resolves an [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) and then goes through one of the internal
-`Read` or `Write` methods in this file. All reading is done by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) and
-all writing by [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter).
-
 ## Properties
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsReflectionEnabledByDefault
-
-Gets whether options with no [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) fall back to
-[DefaultXmlTypeInfoResolver](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver). It is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) unless the
-`CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault` switch is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 #### Syntax
 
@@ -50,8 +35,6 @@ Type: `bool`
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
 
-Deserializes XML text as *TValue*.
-
 #### Syntax
 
 ```csharp
@@ -62,21 +45,14 @@ public static TValue Deserialize<TValue>(string xml, CloudNimble.Text.Xml.XmlSer
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `xml` | `string` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes XML text as *TValue*.
 
 #### Syntax
 
@@ -88,21 +64,14 @@ public static TValue Deserialize<TValue>(string xml, CloudNimble.Text.Xml.Serial
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `xml` | `string` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes XML text as *TValue*.
 
 #### Syntax
 
@@ -114,21 +83,14 @@ public static TValue Deserialize<TValue>(string xml, CloudNimble.Text.Xml.Serial
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `xml` | `string` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes XML text as *returnType*.
 
 #### Syntax
 
@@ -140,18 +102,15 @@ public static object Deserialize(string xml, System.Type returnType, CloudNimble
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `xml` | `string` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes XML text as *returnType*.
 
 #### Syntax
 
@@ -163,18 +122,15 @@ public static object Deserialize(string xml, System.Type returnType, CloudNimble
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `xml` | `string` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-16 XML text as *TValue*.
 
 #### Syntax
 
@@ -186,21 +142,14 @@ public static TValue Deserialize<TValue>(System.ReadOnlySpan<char> xml, CloudNim
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `xml` | `System.ReadOnlySpan<char>` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-16 XML text as *TValue*.
 
 #### Syntax
 
@@ -212,21 +161,14 @@ public static TValue Deserialize<TValue>(System.ReadOnlySpan<char> xml, CloudNim
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `xml` | `System.ReadOnlySpan<char>` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-16 XML text as *TValue*.
 
 #### Syntax
 
@@ -238,21 +180,14 @@ public static TValue Deserialize<TValue>(System.ReadOnlySpan<char> xml, CloudNim
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `xml` | `System.ReadOnlySpan<char>` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-16 XML text as *returnType*.
 
 #### Syntax
 
@@ -264,18 +199,15 @@ public static object Deserialize(System.ReadOnlySpan<char> xml, System.Type retu
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `xml` | `System.ReadOnlySpan<char>` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-16 XML text as *returnType*.
 
 #### Syntax
 
@@ -287,18 +219,15 @@ public static object Deserialize(System.ReadOnlySpan<char> xml, System.Type retu
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `xml` | `System.ReadOnlySpan<char>` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-8 XML as *TValue*.
 
 #### Syntax
 
@@ -310,21 +239,14 @@ public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Xml, Clou
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-8 XML as *TValue*.
 
 #### Syntax
 
@@ -336,21 +258,14 @@ public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Xml, Clou
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-8 XML as *TValue*.
 
 #### Syntax
 
@@ -362,21 +277,14 @@ public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Xml, Clou
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-8 XML as *returnType*.
 
 #### Syntax
 
@@ -388,18 +296,15 @@ public static object Deserialize(System.ReadOnlySpan<byte> utf8Xml, System.Type 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes UTF-8 XML as *returnType*.
 
 #### Syntax
 
@@ -411,18 +316,15 @@ public static object Deserialize(System.ReadOnlySpan<byte> utf8Xml, System.Type 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 sequence as *TValue*.
 
 #### Syntax
 
@@ -434,21 +336,14 @@ public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> u
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 sequence as *TValue*.
 
 #### Syntax
 
@@ -460,21 +355,14 @@ public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> u
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 sequence as *TValue*.
 
 #### Syntax
 
@@ -486,21 +374,14 @@ public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> u
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 sequence as *returnType*.
 
 #### Syntax
 
@@ -512,18 +393,15 @@ public static object Deserialize(System.Buffers.ReadOnlySequence<byte> utf8Xml, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 sequence as *returnType*.
 
 #### Syntax
 
@@ -535,18 +413,15 @@ public static object Deserialize(System.Buffers.ReadOnlySequence<byte> utf8Xml, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 XML. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the next element of *reader* as *TValue*.
 
 #### Syntax
 
@@ -558,21 +433,14 @@ public static TValue Deserialize<TValue>(ref CloudNimble.Text.Xml.Utf8XmlReader 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on or before the start tag of the value. It is left on the end of that element. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the next element of *reader* as *TValue*.
 
 #### Syntax
 
@@ -584,21 +452,14 @@ public static TValue Deserialize<TValue>(ref CloudNimble.Text.Xml.Utf8XmlReader 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on or before the start tag of the value. It is left on the end of that element. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the next element of *reader* as *TValue*.
 
 #### Syntax
 
@@ -610,21 +471,14 @@ public static TValue Deserialize<TValue>(ref CloudNimble.Text.Xml.Utf8XmlReader 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on or before the start tag of the value. It is left on the end of that element. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the next element of *reader* as *returnType*.
 
 #### Syntax
 
@@ -636,18 +490,15 @@ public static object Deserialize(ref CloudNimble.Text.Xml.Utf8XmlReader reader, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on or before the start tag of the value. It is left on the end of that element. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the next element of *reader* as *returnType*.
 
 #### Syntax
 
@@ -659,18 +510,15 @@ public static object Deserialize(ref CloudNimble.Text.Xml.Utf8XmlReader reader, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on or before the start tag of the value. It is left on the end of that element. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 stream as *TValue*.
 
 #### Syntax
 
@@ -682,21 +530,14 @@ public static TValue Deserialize<TValue>(System.IO.Stream utf8Xml, CloudNimble.T
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 stream as *TValue*.
 
 #### Syntax
 
@@ -708,21 +549,14 @@ public static TValue Deserialize<TValue>(System.IO.Stream utf8Xml, CloudNimble.T
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 stream as *TValue*.
 
 #### Syntax
 
@@ -734,21 +568,14 @@ public static TValue Deserialize<TValue>(System.IO.Stream utf8Xml, CloudNimble.T
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 stream as *returnType*.
 
 #### Syntax
 
@@ -760,18 +587,15 @@ public static object Deserialize(System.IO.Stream utf8Xml, System.Type returnTyp
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes a UTF-8 stream as *returnType*.
 
 #### Syntax
 
@@ -783,18 +607,15 @@ public static object Deserialize(System.IO.Stream utf8Xml, System.Type returnTyp
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the root element of *document* as *TValue*.
 
 #### Syntax
 
@@ -806,21 +627,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.XmlDocument docume
 
 | Name | Type | Description |
 |------|------|-------------|
-| `document` | `CloudNimble.Text.Xml.XmlDocument` | The document. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `document` | `CloudNimble.Text.Xml.XmlDocument` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the root element of *document* as *TValue*.
 
 #### Syntax
 
@@ -832,21 +646,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.XmlDocument docume
 
 | Name | Type | Description |
 |------|------|-------------|
-| `document` | `CloudNimble.Text.Xml.XmlDocument` | The document. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `document` | `CloudNimble.Text.Xml.XmlDocument` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the root element of *document* as *TValue*.
 
 #### Syntax
 
@@ -858,21 +665,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.XmlDocument docume
 
 | Name | Type | Description |
 |------|------|-------------|
-| `document` | `CloudNimble.Text.Xml.XmlDocument` | The document. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `document` | `CloudNimble.Text.Xml.XmlDocument` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the root element of *document* as *returnType*.
 
 #### Syntax
 
@@ -884,18 +684,15 @@ public static object Deserialize(CloudNimble.Text.Xml.XmlDocument document, Syst
 
 | Name | Type | Description |
 |------|------|-------------|
-| `document` | `CloudNimble.Text.Xml.XmlDocument` | The document. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `document` | `CloudNimble.Text.Xml.XmlDocument` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes the root element of *document* as *returnType*.
 
 #### Syntax
 
@@ -907,18 +704,15 @@ public static object Deserialize(CloudNimble.Text.Xml.XmlDocument document, Syst
 
 | Name | Type | Description |
 |------|------|-------------|
-| `document` | `CloudNimble.Text.Xml.XmlDocument` | The document. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `document` | `CloudNimble.Text.Xml.XmlDocument` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *element* as *TValue*.
 
 #### Syntax
 
@@ -930,21 +724,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.XmlElement element
 
 | Name | Type | Description |
 |------|------|-------------|
-| `element` | `CloudNimble.Text.Xml.XmlElement` | The element. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `element` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *element* as *TValue*.
 
 #### Syntax
 
@@ -956,21 +743,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.XmlElement element
 
 | Name | Type | Description |
 |------|------|-------------|
-| `element` | `CloudNimble.Text.Xml.XmlElement` | The element. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `element` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *element* as *TValue*.
 
 #### Syntax
 
@@ -982,21 +762,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.XmlElement element
 
 | Name | Type | Description |
 |------|------|-------------|
-| `element` | `CloudNimble.Text.Xml.XmlElement` | The element. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `element` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *element* as *returnType*.
 
 #### Syntax
 
@@ -1008,18 +781,15 @@ public static object Deserialize(CloudNimble.Text.Xml.XmlElement element, System
 
 | Name | Type | Description |
 |------|------|-------------|
-| `element` | `CloudNimble.Text.Xml.XmlElement` | The element. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `element` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *element* as *returnType*.
 
 #### Syntax
 
@@ -1031,18 +801,15 @@ public static object Deserialize(CloudNimble.Text.Xml.XmlElement element, System
 
 | Name | Type | Description |
 |------|------|-------------|
-| `element` | `CloudNimble.Text.Xml.XmlElement` | The element. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `element` | `CloudNimble.Text.Xml.XmlElement` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *node* as *TValue*.
 
 #### Syntax
 
@@ -1054,21 +821,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.Nodes.XmlNode node
 
 | Name | Type | Description |
 |------|------|-------------|
-| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | The node. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *node* as *TValue*.
 
 #### Syntax
 
@@ -1080,21 +840,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.Nodes.XmlNode node
 
 | Name | Type | Description |
 |------|------|-------------|
-| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | The node. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *node* as *TValue*.
 
 #### Syntax
 
@@ -1106,21 +859,14 @@ public static TValue Deserialize<TValue>(CloudNimble.Text.Xml.Nodes.XmlNode node
 
 | Name | Type | Description |
 |------|------|-------------|
-| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | The node. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `TValue?`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *node* as *returnType*.
 
 #### Syntax
 
@@ -1132,18 +878,15 @@ public static object Deserialize(CloudNimble.Text.Xml.Nodes.XmlNode node, System
 
 | Name | Type | Description |
 |------|------|-------------|
-| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | The node. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
-
-Deserializes *node* as *returnType*.
 
 #### Syntax
 
@@ -1155,18 +898,15 @@ public static object Deserialize(CloudNimble.Text.Xml.Nodes.XmlNode node, System
 
 | Name | Type | Description |
 |------|------|-------------|
-| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | The node. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `node` | `CloudNimble.Text.Xml.Nodes.XmlNode` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `object?`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a UTF-8 stream without blocking on it as *TValue*.
 
 #### Syntax
 
@@ -1178,22 +918,15 @@ public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<TValue?>`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a UTF-8 stream without blocking on it as *TValue*.
 
 #### Syntax
 
@@ -1205,22 +938,15 @@ public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<TValue?>`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a UTF-8 stream without blocking on it as *TValue*.
 
 #### Syntax
 
@@ -1232,22 +958,15 @@ public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<TValue?>`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a UTF-8 stream without blocking on it as *returnType*.
 
 #### Syntax
 
@@ -1259,19 +978,16 @@ public static System.Threading.Tasks.ValueTask<object> DeserializeAsync(System.I
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `returnType` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `returnType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<object?>`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a UTF-8 stream without blocking on it as *returnType*.
 
 #### Syntax
 
@@ -1283,19 +999,16 @@ public static System.Threading.Tasks.ValueTask<object> DeserializeAsync(System.I
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read to its end. |
-| `returnType` | `System.Type` | The CLR type. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `returnType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<object?>`
-The value.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a pipe, read to its end, as *TValue*.
 
 #### Syntax
 
@@ -1307,22 +1020,15 @@ public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Pipelines.PipeReader` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<TValue?>`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsync
-
-Deserializes a pipe, read to its end, as *TValue*.
 
 #### Syntax
 
@@ -1334,22 +1040,15 @@ public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Pipelines.PipeReader` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.ValueTask<TValue?>`
-The value.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
-
-Reads each child of the document element in *utf8Xml* as a *TValue*.
 
 #### Syntax
 
@@ -1361,22 +1060,15 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Collections.Generic.IAsyncEnumerable<TValue?>`
-The values.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
-
-Reads successive values of *TValue* from *utf8Xml*.
 
 #### Syntax
 
@@ -1388,23 +1080,16 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
-| `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each document in the stream is a value; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each child of the document element is a value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `topLevelValues` | `bool` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Collections.Generic.IAsyncEnumerable<TValue?>`
-The values.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
-
-Reads each child of the document element in *utf8Xml* as a *TValue*.
 
 #### Syntax
 
@@ -1416,22 +1101,15 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Collections.Generic.IAsyncEnumerable<TValue?>`
-The values.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
-
-Reads successive values of *TValue* from *utf8Xml*.
 
 #### Syntax
 
@@ -1443,30 +1121,16 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream, read as values are requested. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each document in the stream is a value; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each child of the document element is a value. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `topLevelValues` | `bool` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Collections.Generic.IAsyncEnumerable<TValue?>`
-The values.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
-#### Remarks
-
-Values are returned as the stream delivers them. Each read from the stream is followed by every
-value that is now complete, so the buffer holds one read plus at most one unfinished value, not the
-whole stream. A malformed document fails when the bad part is reached; values before it have
-already been returned.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
-
-Reads successive values of *TValue* from *utf8Xml*.
 
 #### Syntax
 
@@ -1478,23 +1142,16 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader, read as values are requested. |
-| `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each document in the pipe is a value; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each child of the document element is a value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Pipelines.PipeReader` | - |
+| `topLevelValues` | `bool` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Collections.Generic.IAsyncEnumerable<TValue?>`
-The values.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeserializeAsyncEnumerable
-
-Reads each child of the document element in *utf8Xml* as a *TValue*.
 
 #### Syntax
 
@@ -1506,22 +1163,15 @@ public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsy
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader, read as values are requested. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Pipelines.PipeReader` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Collections.Generic.IAsyncEnumerable<TValue?>`
-The values.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to an XML string.
 
 #### Syntax
 
@@ -1533,21 +1183,14 @@ public static string Serialize<TValue>(TValue value, CloudNimble.Text.Xml.XmlSer
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `string`
-The XML document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to an XML string.
 
 #### Syntax
 
@@ -1559,21 +1202,14 @@ public static string Serialize<TValue>(TValue value, CloudNimble.Text.Xml.Serial
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `string`
-The XML document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to an XML string.
 
 #### Syntax
 
@@ -1585,21 +1221,14 @@ public static string Serialize<TValue>(TValue value, CloudNimble.Text.Xml.Serial
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `string`
-The XML document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* as *inputType* to an XML string.
 
 #### Syntax
 
@@ -1611,18 +1240,15 @@ public static string Serialize(object value, System.Type inputType, CloudNimble.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `string`
-The XML document.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* as *inputType* to an XML string.
 
 #### Syntax
 
@@ -1634,18 +1260,15 @@ public static string Serialize(object value, System.Type inputType, CloudNimble.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `string`
-The XML document.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Writes *value* to *writer* as one element.
 
 #### Syntax
 
@@ -1657,17 +1280,11 @@ public static void Serialize<TValue>(CloudNimble.Text.Xml.Utf8XmlWriter writer, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. It is not flushed. |
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Writes *value* to *writer* as one element.
 
 #### Syntax
 
@@ -1679,17 +1296,11 @@ public static void Serialize<TValue>(CloudNimble.Text.Xml.Utf8XmlWriter writer, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. It is not flushed. |
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Writes *value* to *writer* as one element.
 
 #### Syntax
 
@@ -1701,17 +1312,11 @@ public static void Serialize<TValue>(CloudNimble.Text.Xml.Utf8XmlWriter writer, 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. It is not flushed. |
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Writes *value* as *inputType* to *writer* as one element.
 
 #### Syntax
 
@@ -1723,14 +1328,12 @@ public static void Serialize(CloudNimble.Text.Xml.Utf8XmlWriter writer, object v
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. It is not flushed. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Writes *value* as *inputType* to *writer* as one element.
 
 #### Syntax
 
@@ -1742,14 +1345,12 @@ public static void Serialize(CloudNimble.Text.Xml.Utf8XmlWriter writer, object v
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. It is not flushed. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *utf8Xml*.
 
 #### Syntax
 
@@ -1761,17 +1362,11 @@ public static void Serialize<TValue>(System.IO.Stream utf8Xml, TValue value, Clo
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *utf8Xml*.
 
 #### Syntax
 
@@ -1783,17 +1378,11 @@ public static void Serialize<TValue>(System.IO.Stream utf8Xml, TValue value, Clo
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *utf8Xml*.
 
 #### Syntax
 
@@ -1805,17 +1394,11 @@ public static void Serialize<TValue>(System.IO.Stream utf8Xml, TValue value, Clo
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* as *inputType* to *utf8Xml*.
 
 #### Syntax
 
@@ -1827,14 +1410,12 @@ public static void Serialize(System.IO.Stream utf8Xml, object value, System.Type
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* as *inputType* to *utf8Xml*.
 
 #### Syntax
 
@@ -1846,14 +1427,12 @@ public static void Serialize(System.IO.Stream utf8Xml, object value, System.Type
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *bufferWriter*.
 
 #### Syntax
 
@@ -1865,17 +1444,11 @@ public static void Serialize<TValue>(System.Buffers.IBufferWriter<byte> bufferWr
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The destination. |
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *bufferWriter*.
 
 #### Syntax
 
@@ -1887,17 +1460,11 @@ public static void Serialize<TValue>(System.Buffers.IBufferWriter<byte> bufferWr
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The destination. |
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* to *bufferWriter*.
 
 #### Syntax
 
@@ -1909,17 +1476,11 @@ public static void Serialize<TValue>(System.Buffers.IBufferWriter<byte> bufferWr
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The destination. |
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* as *inputType* to *bufferWriter*.
 
 #### Syntax
 
@@ -1931,14 +1492,12 @@ public static void Serialize(System.Buffers.IBufferWriter<byte> bufferWriter, ob
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The destination. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Serialize
-
-Serializes *value* as *inputType* to *bufferWriter*.
 
 #### Syntax
 
@@ -1950,14 +1509,12 @@ public static void Serialize(System.Buffers.IBufferWriter<byte> bufferWriter, ob
 
 | Name | Type | Description |
 |------|------|-------------|
-| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | The destination. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `bufferWriter` | `System.Buffers.IBufferWriter<byte>` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
-
-Serializes *value* to *utf8Xml* without blocking on the stream.
 
 #### Syntax
 
@@ -1969,23 +1526,16 @@ public static System.Threading.Tasks.Task SerializeAsync<TValue>(System.IO.Strea
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the document has been written.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
-
-Serializes *value* to *utf8Xml* without blocking on the stream.
 
 #### Syntax
 
@@ -1997,23 +1547,16 @@ public static System.Threading.Tasks.Task SerializeAsync<TValue>(System.IO.Strea
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the document has been written.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
-
-Serializes *value* to *utf8Xml* without blocking on the stream.
 
 #### Syntax
 
@@ -2025,23 +1568,16 @@ public static System.Threading.Tasks.Task SerializeAsync<TValue>(System.IO.Strea
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the document has been written.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
-
-Serializes *value* as *inputType* to *utf8Xml* without blocking on the stream.
 
 #### Syntax
 
@@ -2053,20 +1589,17 @@ public static System.Threading.Tasks.Task SerializeAsync(System.IO.Stream utf8Xm
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the document has been written.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
-
-Serializes *value* as *inputType* to *utf8Xml* without blocking on the stream.
 
 #### Syntax
 
@@ -2078,20 +1611,17 @@ public static System.Threading.Tasks.Task SerializeAsync(System.IO.Stream utf8Xm
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the document has been written.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsync
-
-Serializes *value* to *utf8Xml* and flushes the pipe.
 
 #### Syntax
 
@@ -2103,28 +1633,16 @@ public static System.Threading.Tasks.Task SerializeAsync<TValue>(System.IO.Pipel
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeWriter` | The pipe writer. |
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Pipelines.PipeWriter` | - |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the pipe has been flushed.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
-#### Remarks
-
-To write to a pipe without flushing it, pass the [PipeWriter](https://learn.microsoft.com/dotnet/api/system.io.pipelines.pipewriter) to the
-[IBufferWriter`1](https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1) overload of `Serialize`.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsyncEnumerable
-
-Serializes *values* as the children of one `ArrayOf*` document element.
 
 #### Syntax
 
@@ -2136,23 +1654,16 @@ public static System.Threading.Tasks.Task SerializeAsyncEnumerable<TValue>(Syste
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | The values. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the document has been written.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsyncEnumerable
-
-Serializes *values* as they arrive.
 
 #### Syntax
 
@@ -2164,24 +1675,17 @@ public static System.Threading.Tasks.Task SerializeAsyncEnumerable<TValue>(Syste
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | The values. |
-| `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each value is its own document; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), values are the children of one `ArrayOf*` document element. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | - |
+| `topLevelValues` | `bool` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when every value has been written.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsyncEnumerable
-
-Serializes *values* as they arrive.
 
 #### Syntax
 
@@ -2193,30 +1697,17 @@ public static System.Threading.Tasks.Task SerializeAsyncEnumerable<TValue>(Syste
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The destination stream. |
-| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | The values. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
-| `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each value is its own document; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), values are the children of one `ArrayOf*` document element. |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Stream` | - |
+| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
+| `topLevelValues` | `bool` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when every value has been written.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
-
-#### Remarks
-
-The stream is written to between values, never while one value is half written, unless a single
-value is larger than the writer's buffer. If a value fails to serialize, what was buffered is
-dropped; values already written to the stream stay there.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeAsyncEnumerable
-
-Serializes *values* to a pipe as they arrive, then flushes the pipe.
 
 #### Syntax
 
@@ -2228,24 +1719,17 @@ public static System.Threading.Tasks.Task SerializeAsyncEnumerable<TValue>(Syste
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeWriter` | The pipe writer. |
-| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | The values. |
-| `topLevelValues` | `bool` | When [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), each value is its own document; when [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), values are the children of one `ArrayOf*` document element. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
-| `cancellationToken` | `System.Threading.CancellationToken` | The cancellation token. |
+| `utf8Xml` | `System.IO.Pipelines.PipeWriter` | - |
+| `values` | `System.Collections.Generic.IAsyncEnumerable<TValue>` | - |
+| `topLevelValues` | `bool` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
+| `cancellationToken` | `System.Threading.CancellationToken` | - |
 
 #### Returns
 
 Type: `System.Threading.Tasks.Task`
-A task that completes when the pipe has been flushed.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToDocument
-
-Serializes *value* to a document.
 
 #### Syntax
 
@@ -2257,21 +1741,14 @@ public static CloudNimble.Text.Xml.XmlDocument SerializeToDocument<TValue>(TValu
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-The document. The caller disposes it.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToDocument
-
-Serializes *value* to a document.
 
 #### Syntax
 
@@ -2283,21 +1760,14 @@ public static CloudNimble.Text.Xml.XmlDocument SerializeToDocument<TValue>(TValu
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-The document. The caller disposes it.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToDocument
-
-Serializes *value* to a document.
 
 #### Syntax
 
@@ -2309,21 +1779,14 @@ public static CloudNimble.Text.Xml.XmlDocument SerializeToDocument<TValue>(TValu
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-The document. The caller disposes it.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToDocument
-
-Serializes *value* as *inputType* to a document.
 
 #### Syntax
 
@@ -2335,18 +1798,15 @@ public static CloudNimble.Text.Xml.XmlDocument SerializeToDocument(object value,
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-The document. The caller disposes it.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToDocument
-
-Serializes *value* as *inputType* to a document.
 
 #### Syntax
 
@@ -2358,18 +1818,15 @@ public static CloudNimble.Text.Xml.XmlDocument SerializeToDocument(object value,
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-The document. The caller disposes it.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToElement
-
-Serializes *value* to an element.
 
 #### Syntax
 
@@ -2381,21 +1838,14 @@ public static CloudNimble.Text.Xml.XmlElement SerializeToElement<TValue>(TValue 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The root element of a new document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToElement
-
-Serializes *value* to an element.
 
 #### Syntax
 
@@ -2407,21 +1857,14 @@ public static CloudNimble.Text.Xml.XmlElement SerializeToElement<TValue>(TValue 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The root element of a new document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToElement
-
-Serializes *value* to an element.
 
 #### Syntax
 
@@ -2433,21 +1876,14 @@ public static CloudNimble.Text.Xml.XmlElement SerializeToElement<TValue>(TValue 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The root element of a new document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToElement
-
-Serializes *value* as *inputType* to an element.
 
 #### Syntax
 
@@ -2459,18 +1895,15 @@ public static CloudNimble.Text.Xml.XmlElement SerializeToElement(object value, S
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The root element of a new document.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToElement
-
-Serializes *value* as *inputType* to an element.
 
 #### Syntax
 
@@ -2482,18 +1915,15 @@ public static CloudNimble.Text.Xml.XmlElement SerializeToElement(object value, S
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlElement`
-The root element of a new document.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToNode
-
-Serializes *value* to a mutable node.
 
 #### Syntax
 
@@ -2505,21 +1935,14 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode SerializeToNode<TValue>(TValue 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root node.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToNode
-
-Serializes *value* to a mutable node.
 
 #### Syntax
 
@@ -2531,21 +1954,14 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode SerializeToNode<TValue>(TValue 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root node.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToNode
-
-Serializes *value* to a mutable node.
 
 #### Syntax
 
@@ -2557,21 +1973,14 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode SerializeToNode<TValue>(TValue 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root node.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToNode
-
-Serializes *value* as *inputType* to a mutable node.
 
 #### Syntax
 
@@ -2583,18 +1992,15 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode SerializeToNode(object value, S
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root node.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToNode
-
-Serializes *value* as *inputType* to a mutable node.
 
 #### Syntax
 
@@ -2606,18 +2012,15 @@ public static CloudNimble.Text.Xml.Nodes.XmlNode SerializeToNode(object value, S
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlNode?`
-The root node.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToUtf8Bytes
-
-Serializes *value* to UTF-8 bytes.
 
 #### Syntax
 
@@ -2629,21 +2032,14 @@ public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, CloudNimble.Text
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `TValue` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `byte[]`
-The UTF-8 document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToUtf8Bytes
-
-Serializes *value* to UTF-8 bytes.
 
 #### Syntax
 
@@ -2655,21 +2051,14 @@ public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, CloudNimble.Text
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The type info. |
+| `value` | `TValue` | - |
+| `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | - |
 
 #### Returns
 
 Type: `byte[]`
-The UTF-8 document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToUtf8Bytes
-
-Serializes *value* to UTF-8 bytes.
 
 #### Syntax
 
@@ -2681,21 +2070,14 @@ public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, CloudNimble.Text
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `TValue` | The value. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `TValue` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `byte[]`
-The UTF-8 document.
-
-#### Type Parameters
-
-- `TValue` - The CLR type.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToUtf8Bytes
-
-Serializes *value* as *inputType* to UTF-8 bytes.
 
 #### Syntax
 
@@ -2707,18 +2089,15 @@ public static byte[] SerializeToUtf8Bytes(object value, System.Type inputType, C
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | - |
 
 #### Returns
 
 Type: `byte[]`
-The UTF-8 document.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SerializeToUtf8Bytes
-
-Serializes *value* as *inputType* to UTF-8 bytes.
 
 #### Syntax
 
@@ -2730,12 +2109,11 @@ public static byte[] SerializeToUtf8Bytes(object value, System.Type inputType, C
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object?` | The value. |
-| `inputType` | `System.Type` | The CLR type to serialize *value* as. |
-| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | The serializer context. |
+| `value` | `object?` | - |
+| `inputType` | `System.Type` | - |
+| `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | - |
 
 #### Returns
 
 Type: `byte[]`
-The UTF-8 document.
 
