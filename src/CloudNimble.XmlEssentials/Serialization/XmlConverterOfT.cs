@@ -54,6 +54,17 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Reads a value from already-decoded UTF-8 lexical form (simple content).
+        /// </summary>
+        /// <param name="utf8">The UTF-8 lexical form.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The value.</returns>
+        public virtual T? ReadLexical(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
+        {
+            throw new InvalidOperationException($"Converter '{GetType()}' does not support simple content.");
+        }
+
+        /// <summary>
         /// Writes a value of type <typeparamref name="T"/> as element content.
         /// </summary>
         /// <param name="writer">The writer, inside a start tag.</param>
@@ -80,7 +91,17 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal sealed override XmlTypeInfo? CreateTypeInfo(Type typeToConvert, XmlSerializerOptions options)
         {
-            return typeToConvert == typeof(T) ? new XmlConverterTypeInfo<T>(this, options) : null;
+            return typeToConvert == typeof(T) ? CreateTypeInfo(options) : null;
+        }
+
+        /// <summary>
+        /// Creates type info for <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The type info.</returns>
+        private protected virtual XmlTypeInfo CreateTypeInfo(XmlSerializerOptions options)
+        {
+            return new XmlConverterTypeInfo<T>(this, options);
         }
 
         /// <inheritdoc />

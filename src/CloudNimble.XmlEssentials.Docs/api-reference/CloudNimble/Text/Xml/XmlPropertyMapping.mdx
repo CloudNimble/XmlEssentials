@@ -1,0 +1,42 @@
+---
+title: XmlPropertyMapping
+description: "How an unannotated property or field is mapped: child element or XML attribute."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlPropertyMapping', 'CloudNimble.Text.Xml.XmlPropertyMapping', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.XmlPropertyMapping
+```
+
+## Summary
+
+How an unannotated property or field is mapped: child element or XML attribute.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `Element` | 0 | Write the member as a child element. This is the default. |
+| `Attribute` | 1 | Write unannotated simple members as XML attributes. Nested objects stay child elements, and their
+unannotated simple members are also attributes (the option applies at every type). Collections stay
+child elements. Per-member `[XmlElement]`, `[XmlAttribute]`, or `[XmlText]` still wins. |
+
+## Related APIs
+
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
+

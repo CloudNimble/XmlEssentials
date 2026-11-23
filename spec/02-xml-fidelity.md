@@ -214,7 +214,7 @@ Authority: [XML Schema Part 2: Datatypes, Second Edition](https://www.w3.org/TR/
 | `DateTimeOffset` | `dateTime` | offset or `Z` | Same form. No zone takes the local offset at that instant (as `XmlConvert.ToDateTimeOffset` does). |
 | `DateOnly` | `date` | `yyyy-MM-dd` | `YYYY-MM-DD` with an optional zone, which is validated and dropped. |
 | `TimeOnly` | `time` | `xs:time` | `hh:mm:ss[.f+]` with an optional zone, which is validated and dropped. |
-| `TimeSpan` | `duration` | `xs:duration` (`PT1H2M3S`, …) | `[-]P[nD][T[nH][nM][n[.n]S]]`: at least one component, in that order, at least one after `T`, a fraction only on seconds. |
+| `TimeSpan` | `duration` | `xs:duration` (`PT1H2M3S`, …): parts that are zero are left out, zero is `PT0S`, and a fraction of a second has up to seven digits with no trailing zeros, so every tick is written (`PT1.5S`, `PT0.0000001S`) | `[-]P[nD][T[nH][nM][n[.n]S]]`: at least one component, in that order, at least one after `T`, a fraction only on seconds. |
 | `Guid` | (none) | .NET `"D"` | `"D"`, `"N"`, `"B"`, `"P"`. Not an XSD type. |
 | `byte[]` | `base64Binary` | Base64 | Base64; whitespace between groups is allowed. Empty is an empty array. |
 

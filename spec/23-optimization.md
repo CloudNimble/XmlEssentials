@@ -183,35 +183,35 @@ Each library reads the document it wrote. BCL is a cached `System.Xml.Serializat
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| Bcl_WriteDateTime | WriteDateTime | 386 ns | 1.00 | 7784 B | 1.00 |
-| XmlEssentials_WriteDateTime | WriteDateTime | 106 ns | 0.28 | 104 B | 0.01 |
-| Bcl_WriteEnum | WriteEnum | 382 ns | 1.00 | 7744 B | 1.00 |
-| XmlEssentials_WriteEnum | WriteEnum | 65 ns | 0.17 | 96 B | 0.01 |
-| Bcl_WriteInt32 | WriteInt32 | 353 ns | 1.00 | 7728 B | 1.000 |
-| Stj_WriteInt32 | WriteInt32 | 32 ns | 0.09 | 32 B | 0.004 |
-| XmlEssentials_WriteInt32 | WriteInt32 | 59 ns | 0.17 | 88 B | 0.011 |
-| Bcl_WriteInt32Buffer | WriteInt32Buffer | 331 ns | 1.00 | 7648 B | 1.00 |
-| XmlEssentials_WriteInt32Buffer | WriteInt32Buffer | 51 ns | 0.15 | 0 B | 0.00 |
-| Bcl_WriteInt32String | WriteInt32String | 357 ns | 1.00 | 7784 B | 1.000 |
+| Bcl_WriteDateTime | WriteDateTime | 340 ns | 1.00 | 7784 B | 1.00 |
+| XmlEssentials_WriteDateTime | WriteDateTime | 68 ns | 0.20 | 104 B | 0.01 |
+| Bcl_WriteEnum | WriteEnum | 358 ns | 1.00 | 7744 B | 1.00 |
+| XmlEssentials_WriteEnum | WriteEnum | 63 ns | 0.18 | 96 B | 0.01 |
+| Bcl_WriteInt32 | WriteInt32 | 319 ns | 1.00 | 7728 B | 1.000 |
+| Stj_WriteInt32 | WriteInt32 | 31 ns | 0.10 | 32 B | 0.004 |
+| XmlEssentials_WriteInt32 | WriteInt32 | 58 ns | 0.18 | 88 B | 0.011 |
+| Bcl_WriteInt32Buffer | WriteInt32Buffer | 324 ns | 1.00 | 7648 B | 1.00 |
+| XmlEssentials_WriteInt32Buffer | WriteInt32Buffer | 49 ns | 0.15 | 0 B | 0.00 |
+| Bcl_WriteInt32String | WriteInt32String | 353 ns | 1.00 | 7784 B | 1.000 |
 | Stj_WriteInt32String | WriteInt32String | 34 ns | 0.10 | 32 B | 0.004 |
-| XmlEssentials_WriteInt32String | WriteInt32String | 68 ns | 0.19 | 144 B | 0.018 |
-| Bcl_WriteNullable | WriteNullable | 587 ns | 1.00 | 8024 B | 1.00 |
-| XmlEssentials_WriteNullable | WriteNullable | 78 ns | 0.13 | 144 B | 0.02 |
-| Bcl_WriteString | WriteString | 357 ns | 1.00 | 7888 B | 1.00 |
-| Stj_WriteString | WriteString | 69 ns | 0.19 | 80 B | 0.01 |
-| XmlEssentials_WriteString | WriteString | 92 ns | 0.26 | 128 B | 0.02 |
-| Bcl_ReadDateTime | ReadDateTime | 1153 ns | 1.00 | 6040 B | 1.00 |
-| XmlEssentials_ReadDateTime | ReadDateTime | 80 ns | 0.07 | 0 B | 0.00 |
-| Bcl_ReadEnum | ReadEnum | 869 ns | 1.00 | 4480 B | 1.00 |
-| XmlEssentials_ReadEnum | ReadEnum | 67 ns | 0.08 | 0 B | 0.00 |
-| Bcl_ReadInt32 | ReadInt32 | 1087 ns | 1.00 | 5968 B | 1.00 |
+| XmlEssentials_WriteInt32String | WriteInt32String | 66 ns | 0.19 | 144 B | 0.018 |
+| Bcl_WriteNullable | WriteNullable | 595 ns | 1.00 | 8024 B | 1.00 |
+| XmlEssentials_WriteNullable | WriteNullable | 86 ns | 0.14 | 144 B | 0.02 |
+| Bcl_WriteString | WriteString | 336 ns | 1.00 | 7888 B | 1.00 |
+| Stj_WriteString | WriteString | 71 ns | 0.21 | 80 B | 0.01 |
+| XmlEssentials_WriteString | WriteString | 88 ns | 0.26 | 128 B | 0.02 |
+| Bcl_ReadDateTime | ReadDateTime | 1086 ns | 1.00 | 6040 B | 1.00 |
+| XmlEssentials_ReadDateTime | ReadDateTime | 66 ns | 0.06 | 0 B | 0.00 |
+| Bcl_ReadEnum | ReadEnum | 819 ns | 1.00 | 4480 B | 1.00 |
+| XmlEssentials_ReadEnum | ReadEnum | 60 ns | 0.07 | 0 B | 0.00 |
+| Bcl_ReadInt32 | ReadInt32 | 1031 ns | 1.00 | 6048 B | 1.00 |
 | Stj_ReadInt32 | ReadInt32 | 25 ns | 0.02 | 0 B | 0.00 |
-| XmlEssentials_ReadInt32 | ReadInt32 | 64 ns | 0.06 | 0 B | 0.00 |
-| Bcl_ReadInt32Stream | ReadInt32Stream | 1088 ns | 1.00 | 5968 B | 1.00 |
-| XmlEssentials_ReadInt32Stream | ReadInt32Stream | 70 ns | 0.06 | 0 B | 0.00 |
-| Bcl_ReadString | ReadString | 1246 ns | 1.00 | 6120 B | 1.00 |
-| Stj_ReadString | ReadString | 79 ns | 0.06 | 96 B | 0.02 |
-| XmlEssentials_ReadString | ReadString | 190 ns | 0.15 | 168 B | 0.03 |
+| XmlEssentials_ReadInt32 | ReadInt32 | 59 ns | 0.06 | 0 B | 0.00 |
+| Bcl_ReadInt32Stream | ReadInt32Stream | 1055 ns | 1.00 | 6048 B | 1.00 |
+| XmlEssentials_ReadInt32Stream | ReadInt32Stream | 63 ns | 0.06 | 0 B | 0.00 |
+| Bcl_ReadString | ReadString | 1193 ns | 1.00 | 6200 B | 1.00 |
+| Stj_ReadString | ReadString | 75 ns | 0.06 | 96 B | 0.02 |
+| XmlEssentials_ReadString | ReadString | 168 ns | 0.14 | 168 B | 0.03 |
 
 - Every write row allocates only what it returns (the array or the string); `WriteInt32Buffer` writes into the caller's buffer and is 0 B. Pinned by `XmlSerializerAllocationTests` (`Serialize_ToBufferWriter_DoesNotAllocate`, `Serialize_Enum_ToBufferWriter_DoesNotAllocate`, `Serialize_ToUtf8Bytes_AllocatesOnlyTheResult`).
 - The 0 B read rows are pinned by `Deserialize_FromUtf8_DoesNotAllocate`, `Deserialize_FromStream_DoesNotAllocate`, `Deserialize_DateTime_FromUtf8_DoesNotAllocate`, and `Deserialize_Enum_FromUtf8_DoesNotAllocate`. `ReadString` allocates the string it returns.
@@ -224,15 +224,15 @@ Same value, `<Int32>12345</Int32>`, with and without the 38-byte XML declaration
 
 | Method | Category | Mean | Allocated |
 | --- | --- | --- | --- |
-| Reader_Declared | ReadInt32Parts | 45 ns | 0 B |
-| Reader_Plain | ReadInt32Parts | 40 ns | 0 B |
-| Serializer_Declared | ReadInt32Parts | 66 ns | 0 B |
-| Serializer_Plain | ReadInt32Parts | 62 ns | 0 B |
-| Serializer_Plain_TypeInfo | ReadInt32Parts | 53 ns | 0 B |
+| Reader_Declared | ReadInt32Parts | 44 ns | 0 B |
+| Reader_Plain | ReadInt32Parts | 41 ns | 0 B |
+| Serializer_Declared | ReadInt32Parts | 58 ns | 0 B |
+| Serializer_Plain | ReadInt32Parts | 55 ns | 0 B |
+| Serializer_Plain_TypeInfo | ReadInt32Parts | 47 ns | 0 B |
 
 Before the three reader changes below: `Reader_Plain` 57 ns, `Reader_Declared` 121 ns, `Serializer_Plain_TypeInfo` 67 ns, `Serializer_Plain` 78 ns, `Serializer_Declared` 146 ns. A single declared read went from 146 ns to 68 ns.
 
-- **The serializer adds about 14 ns to the tokenizer** (58 against 44) and resolving type info from options adds about 10 ns more.
+- **The serializer adds about 6 ns to the tokenizer** (47 against 41) and resolving type info from options adds about 8 ns more.
 - **The declaration cost 65 ns and now costs 5 ns.** `ReadPiOrDeclaration` validated the data of a processing instruction one character at a time; a sampling profile had it at 33% of the declared read. Two steps fixed it. It finds `?>` with one search and checks the run against `XmlChars.PlainAsciiChars` with another (65 ns to 22 ns). And the declaration `Utf8XmlWriter` writes, `<?xml version="1.0" encoding="utf-8"?>`, is recognized with one comparison before any parsing (22 ns to 5 ns); every other spelling takes the general path. `System.Xml` does the same with one `StartsWith`.
 - **Constructing the reader cost 34 ns and now costs 17 ns.** It was clearing its inline slots. Leaving out the clearing of only the eight small stacks saved 7 ns, which showed that the clearing was the cost and not the size. The slots are guarded by counts and a mask, so they need no clearing, but a slot holding an object reference must be cleared for the collector. So `AttributeRecord` and `NamespaceBinding` no longer hold references: a decoded attribute value is an offset into the one buffer the start tag's attributes share (which now keeps its contents when it grows), and an owned prefix or URI is a negative start that `Utf8XmlReader.Owned` resolves to a well-known namespace or an interned array. The reader went from 1320 to 1064 bytes. Two stacks are still cleared, the element-namespace ones: a slot there is written only once a namespace is in scope and is read as "no namespace" before that. Two earlier attempts were reverted: `this = default` (45 ns, it builds a temporary and copies it) and leaving the fields to the compiler's automatic defaults (no change).
 - What `System.Text.Json` does differently, from its source: `Utf8JsonReader` holds a span, a few counters, its options, and a `BitStack`, so there is nothing to clear, and a JSON number is one token where `<Int32>1</Int32>` is three. 25 ns is not reachable for XML; the tokenizer alone is 44 ns here.
@@ -243,19 +243,19 @@ BCL has no streaming call, so its baseline is a cached `XmlSerializer` over `int
 
 | Method | Category | Mean | Ratio | Allocated | Alloc ratio |
 | --- | --- | --- | --- | --- | --- |
-| Bcl_ReadArray | ReadSequence | 42401 ns | 1.00 | 61152 B | 1.00 |
-| Stj_ReadSequence | ReadSequence | 28212 ns | 0.67 | 8968 B | 0.15 |
-| XmlEssentials_ReadSequence | ReadSequence | 39554 ns | 0.93 | 9552 B | 0.16 |
-| Bcl_WriteArray | WriteSequence | 33597 ns | 1.00 | 30408 B | 1.00 |
-| Stj_WriteSequence | WriteSequence | 13563 ns | 0.40 | 376 B | 0.01 |
-| XmlEssentials_WriteSequence | WriteSequence | 29392 ns | 0.87 | 928 B | 0.03 |
+| Bcl_ReadArray | ReadSequence | 41141 ns | 1.00 | 61152 B | 1.00 |
+| Stj_ReadSequence | ReadSequence | 28082 ns | 0.68 | 8968 B | 0.15 |
+| XmlEssentials_ReadSequence | ReadSequence | 32339 ns | 0.79 | 9552 B | 0.16 |
+| Bcl_WriteArray | WriteSequence | 32844 ns | 1.00 | 30408 B | 1.00 |
+| Stj_WriteSequence | WriteSequence | 13910 ns | 0.42 | 376 B | 0.01 |
+| XmlEssentials_WriteSequence | WriteSequence | 21257 ns | 0.65 | 928 B | 0.03 |
 
-- **Both rows are under BCL: 0.93 reading and 0.87 writing.** They were level with it (0.98 to 1.07) until the fixed cost of a small element was cut; see "The fixed cost of a small element" below.
+- **Both rows are under BCL: 0.79 reading and 0.65 writing.** They were level with it (0.98 to 1.07) until the fixed cost of a small element was cut, see "The fixed cost of a small element" below, and 0.93 to 0.98 and 0.85 until a scalar element was read and written as a leaf, see "Second pass: the element itself".
 - `ReadSequence` history: 221981 ns and 545561 B (5.40 of BCL) when streaming first shipped, with a reader state captured and two readers built per value; 65638 ns (1.60) with one state per buffer and every value tokenized twice; 51849 ns (1.26) with one pass and the reader copied after each value; about 43000 ns (1.00 to 1.05) now.
 - How it reads in one pass. The built-in value converters have an internal `TryRead` that returns `false` when the reader's block ends before the element does, instead of throwing. A converter that cannot stop part way gets a read-ahead: the element is skipped first, then read from a copy of the reader, which is what `System.Text.Json` does for converters that cannot resume. `Utf8XmlReader.TrySkip` now puts the reader back on the start tag when it returns `false`, as `Utf8JsonReader.TrySkip` does.
 - How it resumes without a copy per value. `Utf8JsonReader` is small enough to checkpoint by assignment; ours is 1064 bytes and holds references, so each copy goes through the write-barrier block move. A profile had that copy as the largest single cost. But the same elements are open and the same namespaces are in scope before every child of the document element, so the state is captured once, at the document element's start tag, and moved to where the last complete value ended (`XmlReaderStateSnapshot.At`). That costs three numbers per value.
-- Where the 43 µs goes, measured apart: 22 µs in the tokenizer (three tokens per value), 11 µs in the asynchronous iterator itself (a bare iterator of 1,000 integers costs that; STJ pays it too, the BCL array call does not), 1 µs in stream reads, the rest in the loop.
-- `WriteSequence` is 33 ns per value: about 17 ns in the writer per element (20 ns measured alone with a span name, before the next change), 11 ns in the asynchronous enumeration, the rest in per-value checks. One writer change came out of profiling it: `PushFrame` took a whole `XmlWriterFrame` by value and stored it, and because the frame holds two string references that store went through the collector's block move on every start tag. The frame is now built in its slot (`NextFrame`); 3 ns per element, 39.4 to 36.3 µs per 1,000 in a direct timing. Indexing the inline frames through `Unsafe.Add` instead of the indexer was tried and made no difference, so it was not kept. STJ's converter does not suspend per element either (it loops "while elements are being returned synchronously"); its advantage is that a JSON number and a comma cost less than an XML element.
+- Where the time went before a scalar element was read as a leaf (43 µs then, 32 µs now), measured apart: 22 µs in the tokenizer (three tokens per value), 11 µs in the asynchronous iterator itself (a bare iterator of 1,000 integers costs that; STJ pays it too, the BCL array call does not), 1 µs in stream reads, the rest in the loop.
+- `WriteSequence` was 33 ns per value before a scalar element was written as a leaf (21 ns now): about 17 ns in the writer per element (20 ns measured alone with a span name, before the next change), 11 ns in the asynchronous enumeration, the rest in per-value checks. One writer change came out of profiling it: `PushFrame` took a whole `XmlWriterFrame` by value and stored it, and because the frame holds two string references that store went through the collector's block move on every start tag. The frame is now built in its slot (`NextFrame`); 3 ns per element, 39.4 to 36.3 µs per 1,000 in a direct timing. Indexing the inline frames through `Unsafe.Add` instead of the indexer was tried and made no difference, so it was not kept. STJ's converter does not suspend per element either (it loops "while elements are being returned synchronously"); its advantage is that a JSON number and a comma cost less than an XML element.
 
 Summary: every category, synthetic and real, is under BCL. Synthetic categories are 0 B (apart from the one object per parsed document, and the result a serializer call returns). Real-document drains allocate 80 B to 6920 B per reader.
 
@@ -279,6 +279,138 @@ The first full run after the reader changes had `sample_rss.xml` at 256 µs to d
 The tests written for that skip found a conformance gap that had been there since the reader shipped: line ends inside CDATA sections, comments, and processing instructions were returned as written, where XML 2.11 (and `spec/02-xml-fidelity.md`) say `#xD#xA` and `#xD` become `#xA` everywhere, and NEL and LS too in XML 1.1. `DecodeValueSpan` now takes `expandReferences` and all four token kinds go through it; a value with no carriage return (or 1.1 line end) still stays in the input, at the cost of one vectorized search per token.
 
 Process rule that follows: **when a row moves by a large amount for no visible reason, time it outside BenchmarkDotNet with `DOTNET_TieredCompilation=0`.** If the untiered number is much worse than the tiered one, the hot path depends on a JIT decision and should be fixed so it does not.
+
+### Serializer, objects (`XmlSerializerObjectBenchmarks`, PR 6)
+
+Each library reads the document it wrote and writes into a sink that is reused between calls. The models are in `CloudNimble.XmlEssentials.Performance/Models` and carry both libraries' attributes, so the documents have the same shape (the BCL ones are about 100 bytes longer because they declare `xsi` and `xsd`). The lists hold 1,000 items; the dictionary holds 100. The BCL serializer cannot map a record created through its constructor or a dictionary, so `Members` and `Dictionary` have no BCL row.
+
+| Method | Category | Mean | Ratio | Allocated | Alloc ratio |
+| --- | --- | --- | --- | --- | --- |
+| Bcl_ReadCustomer | ReadCustomer | 8793 ns | 1.00 | 16496 B | 1.00 |
+| Stj_ReadCustomer | ReadCustomer | 3022 ns | 0.34 | 3576 B | 0.22 |
+| XmlEssentials_ReadCustomer | ReadCustomer | 3367 ns | 0.38 | 3224 B | 0.20 |
+| Stj_ReadDictionary | ReadDictionary | 3670 ns |  | 13392 B |  |
+| XmlEssentials_ReadDictionary | ReadDictionary | 4003 ns |  | 13392 B |  |
+| Bcl_ReadDrawing | ReadDrawing | 209954 ns | 1.00 | 130866 B | 1.00 |
+| Stj_ReadDrawing | ReadDrawing | 144239 ns | 0.69 | 117914 B | 0.90 |
+| XmlEssentials_ReadDrawing | ReadDrawing | 114338 ns | 0.54 | 90793 B | 0.69 |
+| Stj_ReadMembers | ReadMembers | 163536 ns |  | 240274 B |  |
+| XmlEssentials_ReadMembers | ReadMembers | 165533 ns |  | 247802 B |  |
+| Bcl_ReadMoney | ReadMoney | 268502 ns | 1.00 | 146251 B | 1.00 |
+| Stj_ReadMoney | ReadMoney | 92919 ns | 0.35 | 89073 B | 0.61 |
+| XmlEssentials_ReadMoney | ReadMoney | 89583 ns | 0.33 | 88601 B | 0.61 |
+| Bcl_ReadOrder | ReadOrder | 2044 ns | 1.00 | 7448 B | 1.00 |
+| Stj_ReadOrder | ReadOrder | 345 ns | 0.17 | 232 B | 0.03 |
+| XmlEssentials_ReadOrder | ReadOrder | 469 ns | 0.23 | 296 B | 0.04 |
+| Bcl_ReadOrders | ReadOrders | 784576 ns | 1.00 | 567319 B | 1.00 |
+| Stj_ReadOrders | ReadOrders | 330984 ns | 0.42 | 249075 B | 0.44 |
+| XmlEssentials_ReadOrders | ReadOrders | 444197 ns | 0.57 | 248667 B | 0.44 |
+| Bcl_ReadReadings | ReadReadings | 345448 ns | 1.00 | 267715 B | 1.00 |
+| Stj_ReadReadings | ReadReadings | 143904 ns | 0.42 | 105074 B | 0.39 |
+| XmlEssentials_ReadReadings | ReadReadings | 195325 ns | 0.57 | 104602 B | 0.39 |
+| Bcl_WriteCustomer | WriteCustomer | 4129 ns | 1.00 | 8648 B | 1.00 |
+| Stj_WriteCustomer | WriteCustomer | 1482 ns | 0.36 | 312 B | 0.04 |
+| XmlEssentials_WriteCustomer | WriteCustomer | 1728 ns | 0.42 | 0 B | 0.00 |
+| Stj_WriteDictionary | WriteDictionary | 1252 ns |  | 0 B |  |
+| XmlEssentials_WriteDictionary | WriteDictionary | 2386 ns |  | 0 B |  |
+| Bcl_WriteDrawing | WriteDrawing | 131666 ns | 1.00 | 30098 B | 1.00 |
+| Stj_WriteDrawing | WriteDrawing | 80973 ns | 0.61 | 313 B | 0.01 |
+| XmlEssentials_WriteDrawing | WriteDrawing | 70420 ns | 0.53 | 0 B | 0.00 |
+| Stj_WriteMembers | WriteMembers | 57350 ns |  | 312 B |  |
+| XmlEssentials_WriteMembers | WriteMembers | 71134 ns |  | 0 B |  |
+| Bcl_WriteMoney | WriteMoney | 82070 ns | 1.00 | 48009 B | 1.000 |
+| Stj_WriteMoney | WriteMoney | 55105 ns | 0.67 | 312 B | 0.006 |
+| XmlEssentials_WriteMoney | WriteMoney | 56167 ns | 0.68 | 0 B | 0.000 |
+| Bcl_WriteOrder | WriteOrder | 1013 ns | 1.00 | 8192 B | 1.00 |
+| Stj_WriteOrder | WriteOrder | 190 ns | 0.19 | 0 B | 0.00 |
+| XmlEssentials_WriteOrder | WriteOrder | 273 ns | 0.27 | 0 B | 0.00 |
+| Bcl_WriteOrders | WriteOrders | 418925 ns | 1.00 | 214507 B | 1.000 |
+| Stj_WriteOrders | WriteOrders | 202642 ns | 0.48 | 314 B | 0.001 |
+| XmlEssentials_WriteOrders | WriteOrders | 234070 ns | 0.56 | 0 B | 0.000 |
+| Bcl_WriteReadings | WriteReadings | 209447 ns | 1.00 | 131138 B | 1.000 |
+| Stj_WriteReadings | WriteReadings | 106860 ns | 0.51 | 313 B | 0.002 |
+| XmlEssentials_WriteReadings | WriteReadings | 136989 ns | 0.65 | 0 B | 0.000 |
+
+| Category | What it holds |
+| --- | --- |
+| `Order` / `Orders` | One flat object of nine scalars (two strings, one with `&`; `int`, `long`, `bool`, enum, `decimal`, `double`, `DateTime`); a list of 1,000 |
+| `Customer` | Two child objects, an unwrapped list of 20 objects, a wrapped list of 4 strings |
+| `Readings` | 1,000 objects mapped as four attributes |
+| `Money` | 1,000 elements with simple content and one attribute |
+| `Members` | 1,000 records created through a four-parameter constructor |
+| `Drawing` | 1,000 objects of three runtime types, told apart by element name |
+| `Dictionary` | 100 integers keyed by name |
+
+- **Every row with a BCL baseline is under it: 0.23 to 0.57 reading and 0.27 to 0.68 writing.** As PR 6 first worked, three rows were over (`WriteOrders` 1.21, `WriteReadings` 1.27, `ReadReadings` 1.51) and `ReadOrders` was 0.92.
+- **Writing an object allocates nothing**, pinned by `Serialize_Objects_ToBufferWriter_DoNotAllocate` (elements, attributes, simple content, wrapped and unwrapped lists, arrays, derived types, dictionaries, a root list, a record). Reading allocates the objects and strings it returns: `Deserialize_Person_AllocatesOnlyTheObjectAndItsString`, `Deserialize_AttributeMapped_AllocatesOnlyTheObject`, `Deserialize_Price_AllocatesOnlyTheObjectAndItsString`. Two exceptions: a type created through a constructor with parameters holds its values in an array and boxes its value types until the constructor runs (`ReadMembers`, 8 B per record more than STJ), and a value that needs decoding makes the reader allocate its decode buffer (see the backlog).
+- **The scalar rows had slowed by about 15 ns when PR 6 first worked, and the object benchmarks are what showed it.** `XmlSerializerOptions` keeps the type info it returned last and checks it before the dictionary. PR 6 put the dictionary behind a lock, so that a type still being bound is not handed out, and stopped updating that slot on a dictionary hit. After a second type had been used, every root call took the lock: `ReadInt32` was 81 ns and `WriteInt32Buffer` 67 ns in the same process that had run other types, and 63 and 48 ns in a loop that used only `int`. A hit now becomes the type info returned last, unless a type is being bound at that moment. The scalar and sequence tables above are from the run after that fix.
+
+#### What made the difference (first pass)
+
+Times are 1,000 `Order` objects in a direct loop unless a row says otherwise.
+
+| Step | Before | After |
+| --- | --- | --- |
+| Members read and written as their own type; object created first and set as it is read; members sorted into attributes, content, and elements once; the next expected member tried first; typed lists | read 710 µs, write 494 µs | read 538 µs, write 372 µs |
+| Dates and times formatted by hand into the output (`XmlLexical.FormatDateTime` and friends) | `DateTime` 57 ns | 26 ns; write 322 µs |
+| An attribute compared by its whole name when it has no prefix; mapped members looked for before the names the serializer reserves | `ReadReadings` 283 µs | 226 µs |
+| `GetNil` scans the attribute records directly and skips unprefixed ones; `HandleNull` read once per type | `ReadReadings` 226 µs | 187 µs |
+| Decoding a value copies whole runs between references; a decoded run followed by the end tag is parsed where it lies | string with `&` 102 ns | 73 ns |
+| Dictionary converter typed by key and value | write 3.7 µs and 8856 B per 100 entries | 2.4 µs and 0 B |
+
+- **Before.** The first version held every member's value in an `object?[]` with a `bool[]` beside it, boxed each value type, searched all members for each element, called the getter twice per member on write, created collections through `Activator` and `IList`, and read an `AsyncLocal` per member for the reference resolver.
+- **Now.** `XmlBoundProperty<TDeclaring, TValue>` reads with `XmlTypeInfo<TValue>` and sets through a typed delegate. Whether each member has appeared is a stack-allocated span. `XmlCollectionBinding<TElement>` builds a `List<TElement>` and writes lists and arrays without an enumerator object. The reference resolver is looked at only when `ReferenceHandler` is set. A type created through a constructor with parameters still holds its values until the element ends, as STJ does.
+- **Where the rest of the time was, before the second pass.** A hand-written loop over the reader that parses and sets the same members (what a source generator would emit) takes 434 µs for the orders against 517 µs, and 189 µs for the readings against 187 µs. The reader alone takes 267 µs of the orders. So the serializer's own share is small now, and the next gains are in the reader and in parsing: `decimal` costs 24 ns more than `int`, `Guid` 29 ns, `DateTime` 17 ns.
+- **Per type before the second pass, 1,000 root items, ns per item (XmlEssentials / BCL / STJ).** Write: `int` 15 / 31 / 3, `bool` 17 / 30 / 2, `double` 51 / 68 / 36, `decimal` 26 / 47 / 18, `DateTime` 26 / 60 / 13, `string` 20 / 30 / 5, string with `&` 36 / 37 / 23, enum 20 / 31 / 3, `Guid` 14 / 44 / 3. Read: `int` 27 / 41 / 9, `double` 48 / 61 / 27, `decimal` 52 / 68 / 23, `DateTime` 45 / 71 / 15, `string` 39 / 144 / 16, string with `&` 73 / 170 / 51, enum 37 / 46 / 8, `Guid` 57 / 78 / 24.
+
+#### Second pass: the element itself
+
+After the first pass the serializer's own share was small, so the second pass went after what each member costs in the writer and the reader. Times are direct loops; rows not named are 1,000 `Order` objects.
+
+| Step | Before | After |
+| --- | --- | --- |
+| A scalar member is written as a start tag built when the type is bound, the value, and an end tag built the same way, with no element frame (`Utf8XmlWriter.WriteLeafStart` / `WriteLeafEnd`) | write 316 µs; one `int` element 14.6 ns | 213 µs; 7.8 ns |
+| An attribute member is written from ` name="` built when the type is bound (`WriteStartAttributeTrusted`); it is still recorded and checked for duplicates | `WriteReadings` 151 µs | 120 µs |
+| A scalar element's text and end tag are read in one step (`Utf8XmlReader.TryReadLeafContent`) | one `int` element 27.9 ns; `ReadMembers` 202 µs; `ReadDrawing` 125 µs | 21.5 ns; 167 µs; 108 µs |
+| `decimal` written as sign, digits, point, digits with at most 18 digits is parsed into 64 bits directly (`XmlLexical.TryParsePlainDecimal`) | 43 ns | 30 ns |
+| A type created through a constructor holds its values in one array laid out in parameter order, and the constructor is called on that array | `ReadMembers` 303802 B, 167 µs | 247802 B, 159 µs |
+| A member that is a built-in scalar and has no attributes is read without the nil check and one virtual call (interleaved runs: 430, 419, 421 without; 394, 394, 408, 388, 378 with) | read about 423 µs | about 392 µs |
+| A struct's properties are read and set through delegates that take the struct by reference, instead of `PropertyInfo.GetValue` / `SetValue` (1,000 four-member structs) | read 145 µs, write 89 µs | read 118 µs, write 66 µs; the same shape as a class is 120 and 57 µs |
+
+- **Why the leaf paths are safe.** A frame exists to remember an element's name, its namespaces, and whether it has content. A scalar member has a fixed name, no namespaces of its own, and exactly one value, so the writer has nothing to remember; the value is written as text of the parent and `WriteLeafEnd` puts back the one flag that changes (whether the parent holds text, which decides indentation). The name is an ASCII NCName checked when the tag is built; `MaxNameByteCount` and `MaxDepth` are still checked on every write. A member in a namespace, with a non-ASCII name, or whose converter is not built in takes the ordinary path. On the reader, `TryReadLeafContent` only accepts text that is plain in both XML versions (tab, blank, printable ASCII without `<`, `&`, `>`), with a byte that is not white space among the first eight, followed at once by an end tag that repeats the start tag's bytes and `>`. Anything else returns `false` before anything has been read, so every other shape still goes through `Read`.
+- **`BCL` generates straight-line code per type and is not faster for it.** `XmlSerializationReaderILGen` emits a stack-allocated `Span<bool>` of members seen and a chain of comparisons of atomized names in declared order, which is the shape this converter already has without generated code.
+- **Tried and not kept**, each measured on the same loop: calling the property's own getter and setter delegates through `Unsafe.As` instead of through a closure that casts (no change); a hand-written parse of the hyphenated GUID form (43 to 48 ns per element, slower than `Utf8Parser`).
+- **Noise.** This machine moves a 400 µs loop by 5 to 8% between runs. A step is listed only if it was larger than that, or was confirmed by interleaved runs of both builds.
+- The reader, writer, DOM, and real-document tables above were not regenerated: the full run after this pass had every one of those rows within noise of the table (the one row that looked different, DOM parse of `document.xml` at 26.5 µs, was 21.1 µs when rerun).
+
+#### Third pass: the backlog
+
+Each backlog item was either done, or measured and left with the reason.
+
+| Item | Outcome | Before | After |
+| --- | --- | --- | --- |
+| `Nullable<T>` members skipped the leaf paths | **Done.** A nullable whose value has a built-in converter gets `XmlNullableValueConverter<T>`, itself a value converter, so `int?` reads and writes like `int`. A custom converter for `T` is still wrapped by `XmlNullableConverter<T>`. | 1,000 `int?`: write 17.8 ns each | 9.6 ns |
+| Writing a nullable from a list boxed it | **Found here and fixed.** `value is null` on a type parameter is a box and a null test. The JIT normally removes the box for a `Nullable<T>`; with profile-guided inlining it did not, in one loop. `XmlConverterHelpers.IsNull` uses the comparer and cannot box. Pinned by `Serialize_NullableValues_ToBufferWriter_DoNotAllocate`, which warms up long enough for tier 1. | 24,000 B per 1,000 `int?` | 0 B |
+| Writing a `TimeSpan` allocated a string | **Done.** `XmlLexical.FormatDuration` writes into the output. It also fixes three defects: a duration under one millisecond was written as `P`, sub-millisecond ticks were dropped, and `TimeSpan.MinValue` threw. A fraction now has no trailing zeros (`PT1.5S`, as `XmlConvert` writes it; it was `PT1.500S`). The parser now reads `TimeSpan.MinValue` back. | 42.3 ns, 152 B | 15.9 ns, 0 B |
+| The reader's decode buffer was sized exactly | **Done.** It at least doubles. Pinned by `Drain_DecodedValuesThatKeepGrowing_AllocateBuffersThatDouble`. | 64 values growing from 5 to 68 bytes: 64 buffers | 5 buffers |
+| A member named like another member's derived type | **Done.** `XmlObjectBinder.ValidateElementNames` throws `InvalidOperationException` when the type is bound, using the case rule the options ask for. | first or expected-next member won | rejected |
+| `XmlReferenceScope` is an `AsyncLocal` | **Measured, not changed.** A thread-static field moved a Preserve write of 200 customers from 134 to 127 µs, inside the noise, against 50 µs with no handler. The cost is the resolver: a dictionary lookup, an id string, and a namespaced attribute per object. | | |
+| Attribute reads (1.36 of STJ) | **Measured, not changed.** Reading the first eight bytes of an attribute value one at a time, as `ReadText` does for text, was slower (155 to 164 µs for `ReadReadings`): the plain-value search already stops at the closing quote. A hand-written loop over the reader is level with the serializer here, so what is left is the start-tag parser. | | |
+| `Guid` and `double` parsing | **Measured, not changed.** Parsing alone is 11 ns for a GUID and 17 ns for a double with `Utf8Parser`, and 9 and 16 ns with the type's own UTF-8 `TryParse`. There are 2 ns to gain. | | |
+| Text with a reference | **Measured, not changed.** One `&amp;` in a 35-byte string costs the reader 31 ns (a drain goes from 25 to 56 ns per element) and the serializer 16 ns more for the two-token path. The reader validates the reference in `ReadText` and decodes it again in `DecodeValueSpan`, with about eleven vectorized searches between them. Decoding in one pass is the fix, and it is a rewrite of the reader's most sensitive loop, so it is its own piece of work. | | |
+| Boxing in constructor-created types | **Not done.** Removing it needs a typed constructor delegate, which means generated code (PR 7) or `System.Reflection.Emit`, and the second is ruled out for AOT. | | |
+
+#### What the benchmarks and tests found
+
+The object benchmarks were the first code to use several shapes, and the coverage gate then showed that many branches had only ever been reached by accident. Both turned up defects in PR 6 as first written; each now has a test in `XmlSerializerObjectMappingTests`.
+
+- A list of a polymorphic type could not hold an item of the declared type itself: writing it threw `NotSupportedException`. It is written under the member name.
+- A member declared as `IDictionary<TKey, TValue>` threw at bind time.
+- A dictionary entry whose key is `Key` was written as `<Key>` and read back as the start of a pair. It is written in the pair form.
+- A child of a mixed-content element named like the mixed member was read as an object instead of kept as an element.
+- A type created through a constructor never registered its `id`, so a later `ref` to it failed.
+- An exception thrown by a constructor arrived wrapped in `TargetInvocationException`. It is thrown as it is.
+- Not changed, for a decision: an array root is named `Int32Array` while `SerializeAsyncEnumerable<int>` writes `ArrayOfInt32`, so one cannot read the other's document.
 
 ## Shipped after PR 4 (reader drain)
 
@@ -341,7 +473,7 @@ Bugs that surfaced while proving the above, all fixed with tests. The first two 
 - DOM getters: parsed values on their own and disagreed with the reader (whitespace, `+`, dates).
 - Typed values: `DateTime` accepted any culture-invariant date (`March 5, 2020`); durations accepted `PT1D`.
 
-Coverage is 100% line and 100% branch (5786 lines, 3376 branches after PR 5; 4427 and 2890 after PR 4), with no test that exists only to reach a branch. `coverage-gate.cs` now fails below 100% branch coverage (it used to allow 80%).
+Coverage is 100% line and 100% branch (7288 lines, 4590 branches after PR 6; 5786 and 3376 after PR 5; 4427 and 2890 after PR 4), with no test that exists only to reach a branch. `coverage-gate.cs` now fails below 100% branch coverage (it used to allow 80%).
 
 ## Backlog (do these next)
 
@@ -384,15 +516,22 @@ STJ benches often use `JsonEncodedText` for repeated property names. Add a categ
 
 **DOM shipped in PR 4** (`XmlDocumentBenchmarks`, table above). DOM parse time is now mostly the tokenizer (about 21 of 31 µs on the catalog), so any further reader work is also the next DOM parse win. The mutable `Nodes` tree has no bench yet; `XmlNode.Parse` goes through `XmlDocument` and then allocates one object per node by design.
 
-**Scalar serializer benches shipped with PR 5** (`XmlSerializerBenchmarks`, table above): 0.06 to 0.29 of BCL. Open there:
+**Scalar serializer benches shipped with PR 5** (`XmlSerializerBenchmarks`, table above): 0.06 to 0.26 of BCL. Open there:
 
-- **Small elements, what is left.** After the work in "The fixed cost of a small element" the reader spends about 20 ns and the writer about 12 ns on `<Int32>1</Int32>`. The asynchronous iterator (about 11 ns per value) is now the largest single part of both sequence rows, and it is the price of `IAsyncEnumerable<T>`; STJ pays it too.
+- **Small elements, what is left.** The serializer now reads `<Int32>1</Int32>` in about 21 ns and writes it in about 8 ns as a leaf; through `Read` and `WriteStartElement` the reader and writer still spend about 20 and 12 ns on the tokens alone. The asynchronous iterator (about 11 ns per value) is now the largest single part of both sequence rows, and it is the price of `IAsyncEnumerable<T>`; STJ pays it too.
 - **The reader is still 1064 bytes and construction is 17 ns.** What remains of construction is the caller clearing the local and the two stacks that must be cleared. Making reader state a value instead of a heap snapshot (as `JsonReaderState` is) would make resuming allocation-free; today `CurrentState` rebuilds every name and namespace as strings and costs about 49 ns.
 - **A converter that cannot resume pays two reader copies per value when streamed** (the read-ahead). The built-in value converters do not. For object graphs (PR 6) decide whether converters become resumable, as STJ made them.
 - **`ReadText` still validates multi-byte and entity-heavy text in small steps.** `sample_rss.xml` is under BCL now, but only CDATA and comments got the plain-run skip; check an entity-dense document with tiering off.
-- Writing a `TimeSpan` still allocates a string in `Utf8XmlWriter`.
 
-Object-graph benches come with PR 6 and PR 9. Follow [15](15-benchmarks.md): cache BCL `XmlSerializer`, same object graph, STJ as sidecar. Apply this same process (probe allocs, official BCL source, coverage, table).
+**Object benches shipped with PR 6** (`XmlSerializerObjectBenchmarks`, table above): 0.23 to 0.68 of BCL. Open there, largest first:
+
+- **Text with a reference is decoded twice by the reader.** One `&amp;` costs 31 ns in the reader and 16 ns more in the serializer. `ReadText` validates the reference and `DecodeValueSpan` decodes it again. Decode in one pass, into the decode buffer, from the first byte that needs it.
+- **Constructor-created types box their value types** until the constructor runs (8 B per record over STJ). This goes away with the typed constructor call the source generator will emit (PR 7).
+- **Attributes are the widest gap to STJ.** What is left is in the start-tag parser, which records, resolves, and checks each attribute. A short scalar scan of the value was tried and was slower.
+- **Parsing is at the framework's floor for `Guid` and `double`** (11 and 17 ns of `Utf8Parser`). `DateTime` and enums are 13 and 10 ns over `int` in our own code and have not been profiled.
+- **Preserve is 2.6 times a plain write** (134 against 50 µs for 200 customers). Each object is looked up twice, once by the member that holds it and once by its own converter; one lookup would do.
+
+The remaining object-graph columns (first call, source-generated context) come with PR 7 and PR 9. Follow [15](15-benchmarks.md): cache BCL `XmlSerializer`, same object graph, STJ as sidecar. Apply this same process (probe allocs, official BCL source, coverage, table).
 
 ## Files that matter
 
@@ -402,8 +541,8 @@ Object-graph benches come with PR 6 and PR 9. Follow [15](15-benchmarks.md): cac
 | Reader hot path | `Utf8XmlReader.cs`, `Utf8XmlReader.Parsing.cs`, `Utf8XmlReader.Namespaces.cs`, `NamespaceBinding.cs` |
 | DOM hot path | `XmlDocument.cs`, `XmlElement.cs`, `XmlDbRow.cs` |
 | Typed values | `XmlLexical.cs`, `XmlDeclarationSyntax.cs` |
-| Serializer hot path | `XmlSerializer.cs`, `Serialization/XmlTypeInfoOfT.cs`, `Serialization/XmlValueConverterOfT.cs`, `Serialization/XmlConverterHelpers.cs`, `Serialization/XmlWriterCache.cs`, `Serialization/XmlEnumConverterOfT.cs`, `XmlStreamBuffer.cs` |
-| Benches | `Utf8XmlWriterBenchmarks.cs`, `Utf8XmlReaderBenchmarks.cs`, `XmlDocumentBenchmarks.cs`, `RealDocumentBenchmarks.cs`, `XmlSerializerBenchmarks.cs`, `Program.cs` |
+| Serializer hot path | `XmlSerializer.cs`, `Serialization/XmlTypeInfoOfT.cs`, `Serialization/XmlValueConverterOfT.cs`, `Serialization/XmlConverterHelpers.cs`, `Serialization/XmlWriterCache.cs`, `Serialization/XmlEnumConverterOfT.cs`, `XmlStreamBuffer.cs`, `Serialization/XmlObjectConverterOfT.cs`, `Serialization/XmlBoundPropertyOfT.cs`, `Serialization/XmlCollectionBindingOfT.cs`, `Serialization/XmlDictionaryConverterOfT.cs`, `Serialization/XmlPolymorphism.cs` |
+| Benches | `Utf8XmlWriterBenchmarks.cs`, `Utf8XmlReaderBenchmarks.cs`, `XmlDocumentBenchmarks.cs`, `RealDocumentBenchmarks.cs`, `XmlSerializerBenchmarks.cs`, `XmlSerializerSequenceBenchmarks.cs`, `XmlSerializerObjectBenchmarks.cs`, `Models/`, `Program.cs` |
 | Allocations | `Utf8XmlWriterAllocationTests.cs`, `Utf8XmlReaderAllocationTests.cs`, `XmlDocumentAllocationTests.cs`, `XmlSerializerAllocationTests.cs` |
 | Coverage | `src/coverage-gate.cs`, `artifacts/coverage/coverage.cobertura.xml` |
 

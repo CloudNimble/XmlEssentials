@@ -37,6 +37,7 @@ namespace CloudNimble.XmlEssentials.Tests
             options.NumberHandling.Should().Be(XmlNumberHandling.AllowNamedFloatingPointLiterals);
             options.ReadCommentHandling.Should().Be(XmlCommentHandling.Skip);
             options.NilHandling.Should().Be(XmlNilHandling.WriteXsiNil);
+            options.DefaultPropertyMapping.Should().Be(XmlPropertyMapping.Element);
             options.EnumHandling.Should().Be(XmlEnumHandling.Name);
             options.OmitXmlDeclaration.Should().BeFalse();
             options.PropertyNamingPolicy.Should().BeNull();
@@ -115,6 +116,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 () => options.DefaultBufferSize = 1,
                 () => options.DefaultIgnoreCondition = XmlIgnoreCondition.Always,
                 () => options.DefaultNamespace = "urn:x",
+                () => options.DefaultPropertyMapping = XmlPropertyMapping.Attribute,
                 () => options.DictionaryKeyPolicy = XmlNamingPolicy.CamelCase,
                 () => options.ElementNamingPolicy = XmlNamingPolicy.CamelCase,
                 () => options.EmitByteOrderMark = true,
@@ -183,6 +185,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 DefaultBufferSize = 512,
                 DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
                 DefaultNamespace = "urn:x",
+                DefaultPropertyMapping = XmlPropertyMapping.Attribute,
                 DictionaryKeyPolicy = XmlNamingPolicy.SnakeCaseLower,
                 ElementNamingPolicy = XmlNamingPolicy.PascalCase,
                 EmitByteOrderMark = true,
@@ -228,6 +231,7 @@ namespace CloudNimble.XmlEssentials.Tests
             copy.DefaultBufferSize.Should().Be(512);
             copy.DefaultIgnoreCondition.Should().Be(XmlIgnoreCondition.WhenWritingNull);
             copy.DefaultNamespace.Should().Be("urn:x");
+            copy.DefaultPropertyMapping.Should().Be(XmlPropertyMapping.Attribute);
             copy.DictionaryKeyPolicy.Should().BeSameAs(XmlNamingPolicy.SnakeCaseLower);
             copy.ElementNamingPolicy.Should().BeSameAs(XmlNamingPolicy.PascalCase);
             copy.EmitByteOrderMark.Should().BeTrue();

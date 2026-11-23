@@ -196,6 +196,28 @@ public string DefaultNamespace { get; set; }
 
 Type: `string?`
 
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultPropertyMapping
+
+Gets or sets how unannotated properties are mapped.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlPropertyMapping DefaultPropertyMapping { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlPropertyMapping`
+
+#### Remarks
+
+The default is [XmlPropertyMapping.Element](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping): public properties become child elements,
+matching JSON properties in System.Text.Json. Set [XmlPropertyMapping.Attribute](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping) to write
+unannotated simple members as XML attributes without annotating each one. Nested objects and
+collections stay elements. `[XmlElement]`, `[XmlAttribute]`, and `[XmlText]` override
+this per member.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DictionaryKeyPolicy
 
 Gets or sets the naming policy for dictionary keys.

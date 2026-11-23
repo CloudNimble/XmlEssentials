@@ -290,9 +290,39 @@ namespace CloudNimble.Text.Xml
         /// <returns>The value.</returns>
         internal static TValue? ReadRoot<TValue>(ref Utf8XmlReader reader, XmlTypeInfo typeInfo)
         {
+            if (typeInfo.Options.ReferenceHandler is { } handler)
+            {
+                return ReadRootWithReferences<TValue>(ref reader, typeInfo, handler);
+            }
+
             return typeInfo is XmlTypeInfo<TValue> typed
                 ? typed.ReadRoot(ref reader)
                 : (TValue?)typeInfo.ReadRootAsObject(ref reader);
+        }
+
+        /// <summary>
+        /// Reads the next element as the document element of <paramref name="typeInfo"/>, resolving references
+        /// between objects with a resolver that lives for this one document.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
+        /// <param name="reader">The reader.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <param name="handler">The reference handler of the options.</param>
+        /// <returns>The value.</returns>
+        internal static TValue? ReadRootWithReferences<TValue>(ref Utf8XmlReader reader, XmlTypeInfo typeInfo, XmlReferenceHandler handler)
+        {
+            var previous = XmlReferenceScope.Current;
+            XmlReferenceScope.Current = handler.CreateResolver();
+            try
+            {
+                return typeInfo is XmlTypeInfo<TValue> typed
+                    ? typed.ReadRoot(ref reader)
+                    : (TValue?)typeInfo.ReadRootAsObject(ref reader);
+            }
+            finally
+            {
+                XmlReferenceScope.Current = previous;
+            }
         }
 
         /// <summary>
@@ -529,6 +559,12 @@ namespace CloudNimble.Text.Xml
         internal static void WriteRoot<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo typeInfo)
         {
             ArgumentNullException.ThrowIfNull(writer);
+            if (typeInfo.Options.ReferenceHandler is { } handler)
+            {
+                WriteRootWithReferences(writer, value, typeInfo, handler);
+                return;
+            }
+
             if (typeInfo is XmlTypeInfo<TValue> typed)
             {
                 typed.WriteRoot(writer, value);
@@ -536,6 +572,35 @@ namespace CloudNimble.Text.Xml
             }
 
             typeInfo.WriteRootAsObject(writer, value);
+        }
+
+        /// <summary>
+        /// Writes <paramref name="value"/> as the document element of <paramref name="typeInfo"/>, tracking references
+        /// between objects with a resolver that lives for this one document.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
+        /// <param name="writer">The writer.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <param name="handler">The reference handler of the options.</param>
+        internal static void WriteRootWithReferences<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo typeInfo, XmlReferenceHandler handler)
+        {
+            var previous = XmlReferenceScope.Current;
+            XmlReferenceScope.Current = handler.CreateResolver();
+            try
+            {
+                if (typeInfo is XmlTypeInfo<TValue> typed)
+                {
+                    typed.WriteRoot(writer, value);
+                    return;
+                }
+
+                typeInfo.WriteRootAsObject(writer, value);
+            }
+            finally
+            {
+                XmlReferenceScope.Current = previous;
+            }
         }
 
         /// <summary>

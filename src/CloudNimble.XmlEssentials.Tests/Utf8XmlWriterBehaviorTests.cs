@@ -92,6 +92,36 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow(1, 1, 2, 0, 0, 0, 0L, "0001-01-02T00:00:00", DisplayName = "a year of one digit is padded to four")]
+        [DataRow(2020, 1, 2, 3, 4, 5, 0L, "2020-01-02T03:04:05", DisplayName = "a whole second has no fraction")]
+        [DataRow(2020, 1, 2, 3, 4, 5, 5_000_000L, "2020-01-02T03:04:05.5", DisplayName = "one fraction digit")]
+        [DataRow(2020, 1, 2, 3, 4, 5, 1_200_000L, "2020-01-02T03:04:05.12", DisplayName = "trailing zeros are dropped")]
+        [DataRow(2020, 1, 2, 3, 4, 5, 1L, "2020-01-02T03:04:05.0000001", DisplayName = "one tick keeps its leading zeros")]
+        [DataRow(2020, 12, 31, 23, 59, 59, 1_234_567L, "2020-12-31T23:59:59.1234567", DisplayName = "seven fraction digits")]
+        [DataRow(9999, 12, 30, 23, 59, 59, 9_999_999L, "9999-12-30T23:59:59.9999999", DisplayName = "the last tick of a second in the last year")]
+        public void DateAndTimeValues_AreWrittenInTheirSchemaForm(int year, int month, int day, int hour, int minute, int second, long fractionTicks, string expected)
+        {
+            var value = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Unspecified).AddTicks(fractionTicks);
+            Element(w => w.WriteStringValue(value)).Should().Be($"<e>{expected}</e>");
+            Element(w => w.WriteStringValue(DateTime.SpecifyKind(value, DateTimeKind.Utc))).Should().Be($"<e>{expected}Z</e>");
+            Element(w => w.WriteStringValue(new DateTimeOffset(value, TimeSpan.Zero))).Should().Be($"<e>{expected}+00:00</e>");
+            Element(w => w.WriteStringValue(new DateTimeOffset(value, new TimeSpan(5, 30, 0)))).Should().Be($"<e>{expected}+05:30</e>");
+            Element(w => w.WriteStringValue(new DateTimeOffset(value, new TimeSpan(-8, 0, 0)))).Should().Be($"<e>{expected}-08:00</e>");
+            Element(w => w.WriteStringValue(DateOnly.FromDateTime(value))).Should().Be($"<e>{expected[..10]}</e>");
+            Element(w => w.WriteStringValue(TimeOnly.FromDateTime(value))).Should().Be($"<e>{expected[11..]}</e>");
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("e");
+                w.WriteStartAttribute("a");
+                w.WriteStringValue(value);
+                w.WriteEndAttribute();
+                w.WriteEndElement();
+            }).Should().Be($"<e a=\"{expected}\"/>");
+            XmlLexical.TryParseDateTime(Encoding.UTF8.GetBytes(expected), out var parsed).Should().BeTrue();
+            parsed.Should().Be(value);
+        }
+
+        [TestMethod]
         public void DateTime_KindSelectsTheZone()
         {
             XmlWriterHarness.ToXml(w =>
@@ -309,6 +339,25 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             xml.Should().Be(expected.ToString());
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Writes one value as the content of an <c>e</c> element.
+        /// </summary>
+        /// <param name="write">Writes the value.</param>
+        /// <returns>The document.</returns>
+        private static string Element(Action<Utf8XmlWriter> write)
+        {
+            return XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("e");
+                write(w);
+                w.WriteEndElement();
+            });
         }
 
         #endregion

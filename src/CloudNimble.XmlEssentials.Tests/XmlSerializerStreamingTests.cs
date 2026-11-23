@@ -194,6 +194,22 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow("1.0", "a\u0085b\u2028c", DisplayName = "XML 1.0 keeps NEL and LS")]
+        [DataRow("1.1", "a\nb\nc", DisplayName = "XML 1.1 reads NEL and LS as line ends")]
+        public async Task AsyncEnumerable_ScalarElements_GiveTheSameValues_HoweverTheStreamIsCutUp(string version, string lineEnds)
+        {
+            var xml = $"<?xml version=\"{version}\"?><ArrayOfString><String>plain</String><String> padded </String><String>longer than the short scan</String>"
+                + "<String>a\u0085b\u2028c</String><String>x\r\ny\rz</String><String>a&amp;b</String><String>&#x9F;</String><String>tab\there</String ><String>caf\u00E9</String></ArrayOfString>";
+            var utf8 = Encoding.UTF8.GetBytes(xml);
+            var small = new XmlSerializerOptions { DefaultBufferSize = 16 };
+            for (var chunk = 1; chunk <= utf8.Length; chunk++)
+            {
+                var values = await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<string>(new TrickleStream(utf8, chunk), small));
+                values.Should().Equal("plain", " padded ", "longer than the short scan", lineEnds, "x\ny\nz", "a&b", "\u009F", "tab\there", "caf\u00E9");
+            }
+        }
+
+        [TestMethod]
         [DataRow(false)]
         [DataRow(true)]
         public async Task AsyncEnumerable_WithACustomConverter_GivesTheSameValues_HoweverTheStreamIsCutUp(bool topLevelValues)

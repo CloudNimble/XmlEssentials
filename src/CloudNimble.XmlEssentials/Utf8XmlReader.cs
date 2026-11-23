@@ -216,6 +216,16 @@ namespace CloudNimble.Text.Xml
         public readonly bool IsEmptyElement => _isEmptyElement;
 
         /// <summary>
+        /// Gets a value indicating whether the bytes after the current token start an end tag.
+        /// </summary>
+        /// <remarks>
+        /// After a text or CDATA token this tells a caller that the element holds nothing more, so the value can
+        /// be used where it lies: reading the end tag does not disturb it. It is <see langword="false"/> when the
+        /// current block ends before the next two bytes.
+        /// </remarks>
+        internal readonly bool IsEndTagNext => (uint)(_pos + 1) < (uint)_span.Length && _span[_pos] is (byte)'<' && _span[_pos + 1] is (byte)'/';
+
+        /// <summary>
         /// Gets a value indicating whether this buffer is the last in a resume series.
         /// </summary>
         public readonly bool IsFinalBlock => _isFinalBlock;
@@ -747,34 +757,25 @@ namespace CloudNimble.Text.Xml
         /// The local name <c>nil</c> must be in the XML Schema instance namespace.
         /// An unprefixed <c>nil</c> attribute is in no namespace and does not count.
         /// </remarks>
-        public bool GetNil()
+        public readonly bool GetNil()
         {
             if (_tokenType != XmlTokenType.StartElement)
             {
                 throw Error("Current token is not a start element.");
             }
 
-            var saved = _attributeIndex;
-            var savedIn = _inAttribute;
-            try
+            for (var i = 0; i < _attributeCount; i++)
             {
-                _attributeIndex = -1;
-                while (MoveToNextAttribute())
+                var attribute = AttributeAt(i);
+                if (attribute.NsIndex >= AttributeRecord.FirstBinding
+                    && AttributeLocalName(attribute).SequenceEqual("nil"u8)
+                    && ResolveAttributeNamespace(attribute).SequenceEqual(XmlUtf8.Xsi))
                 {
-                    if (LocalNameEquals(XmlAttributes.Nil)
-                        && NamespaceUriEquals(XmlNamespaces.Xsi))
-                    {
-                        return XmlLexical.TryParseBoolean(ValueSpan, out var nil) && nil;
-                    }
+                    return XmlLexical.TryParseBoolean(AttributeValue(attribute), out var nil) && nil;
                 }
+            }
 
-                return false;
-            }
-            finally
-            {
-                _attributeIndex = saved;
-                _inAttribute = savedIn;
-            }
+            return false;
         }
 
         /// <summary>

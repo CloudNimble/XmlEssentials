@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text;
 
 namespace CloudNimble.Text.Xml
@@ -43,6 +44,181 @@ namespace CloudNimble.Text.Xml
             }
 
             return utf8[start..end];
+        }
+
+        /// <summary>
+        /// Writes a date in the <c>xs:date</c> form <c>yyyy-MM-dd</c>.
+        /// </summary>
+        /// <param name="year">The year, 1 to 9999.</param>
+        /// <param name="month">The month, 1 to 12.</param>
+        /// <param name="day">The day of the month.</param>
+        /// <param name="destination">The buffer, at least 10 bytes long.</param>
+        /// <returns>The number of bytes written, always 10.</returns>
+        public static int FormatDate(int year, int month, int day, Span<byte> destination)
+        {
+            WriteDigits((uint)year, destination[..4]);
+            destination[4] = (byte)'-';
+            WriteDigits((uint)month, destination.Slice(5, 2));
+            destination[7] = (byte)'-';
+            WriteDigits((uint)day, destination.Slice(8, 2));
+            return 10;
+        }
+
+        /// <summary>
+        /// Writes the clock fields of <paramref name="value"/> in the <c>xs:dateTime</c> form
+        /// <c>yyyy-MM-ddTHH:mm:ss</c>, with a fraction only when there is one. No time zone is written.
+        /// </summary>
+        /// <param name="value">The value. Its <see cref="DateTime.Kind"/> is not used.</param>
+        /// <param name="destination">The buffer, at least 27 bytes long.</param>
+        /// <returns>The number of bytes written.</returns>
+        public static int FormatDateTime(DateTime value, Span<byte> destination)
+        {
+            value.Deconstruct(out int year, out int month, out int day);
+            FormatDate(year, month, day, destination);
+            destination[10] = (byte)'T';
+            return 11 + FormatTime(value.TimeOfDay.Ticks, destination[11..]);
+        }
+
+        /// <summary>
+        /// Writes a duration in the <c>xs:duration</c> form <c>PnDTnHnMn.nS</c>, leaving out every part that is zero.
+        /// </summary>
+        /// <param name="value">The duration. Every value is written exactly, down to one 100-nanosecond tick.</param>
+        /// <param name="destination">The buffer, at least 32 bytes long.</param>
+        /// <returns>The number of bytes written.</returns>
+        /// <remarks>
+        /// Zero is <c>PT0S</c>. A fraction of a second has up to seven digits and no trailing zeros.
+        /// </remarks>
+        public static int FormatDuration(TimeSpan value, Span<byte> destination)
+        {
+            var ticks = value.Ticks;
+            var written = 0;
+            ulong magnitude;
+            if (ticks < 0)
+            {
+                // Negated as an unsigned number, so the smallest value does not overflow.
+                magnitude = (ulong)(-(ticks + 1)) + 1;
+                destination[written++] = (byte)'-';
+            }
+            else
+            {
+                magnitude = (ulong)ticks;
+            }
+
+            destination[written++] = (byte)'P';
+            var days = magnitude / TimeSpan.TicksPerDay;
+            var rest = magnitude % TimeSpan.TicksPerDay;
+            if (days > 0)
+            {
+                written += FormatDurationPart(days, (byte)'D', destination[written..]);
+            }
+
+            if (rest == 0 && days > 0)
+            {
+                return written;
+            }
+
+            destination[written++] = (byte)'T';
+            var hours = rest / TimeSpan.TicksPerHour;
+            var minutes = rest / TimeSpan.TicksPerMinute % 60;
+            var seconds = rest / TimeSpan.TicksPerSecond % 60;
+            var fraction = (uint)(rest % TimeSpan.TicksPerSecond);
+            if (hours > 0)
+            {
+                written += FormatDurationPart(hours, (byte)'H', destination[written..]);
+            }
+
+            if (minutes > 0)
+            {
+                written += FormatDurationPart(minutes, (byte)'M', destination[written..]);
+            }
+
+            if (seconds == 0 && fraction == 0 && rest > 0)
+            {
+                return written;
+            }
+
+            seconds.TryFormat(destination[written..], out var digits, default, CultureInfo.InvariantCulture);
+            written += digits;
+            if (fraction > 0)
+            {
+                var places = 7;
+                while (fraction % 10 == 0)
+                {
+                    fraction /= 10;
+                    places--;
+                }
+
+                destination[written++] = (byte)'.';
+                WriteDigits(fraction, destination.Slice(written, places));
+                written += places;
+            }
+
+            destination[written++] = (byte)'S';
+            return written;
+        }
+
+        /// <summary>
+        /// Writes one part of a duration: a number and the letter that names its unit.
+        /// </summary>
+        /// <param name="value">The number.</param>
+        /// <param name="unit">The unit letter.</param>
+        /// <param name="destination">The buffer.</param>
+        /// <returns>The number of bytes written.</returns>
+        internal static int FormatDurationPart(ulong value, byte unit, Span<byte> destination)
+        {
+            value.TryFormat(destination, out var digits, default, CultureInfo.InvariantCulture);
+            destination[digits] = unit;
+            return digits + 1;
+        }
+
+        /// <summary>
+        /// Writes a time zone offset in the form <c>+HH:mm</c> or <c>-HH:mm</c>.
+        /// </summary>
+        /// <param name="offset">The offset from UTC.</param>
+        /// <param name="destination">The buffer, at least 6 bytes long.</param>
+        /// <returns>The number of bytes written, always 6.</returns>
+        public static int FormatOffset(TimeSpan offset, Span<byte> destination)
+        {
+            var minutes = (int)(offset.Ticks / TimeSpan.TicksPerMinute);
+            destination[0] = (byte)(minutes < 0 ? '-' : '+');
+            minutes = Math.Abs(minutes);
+            WriteDigits((uint)(minutes / 60), destination.Slice(1, 2));
+            destination[3] = (byte)':';
+            WriteDigits((uint)(minutes % 60), destination.Slice(4, 2));
+            return 6;
+        }
+
+        /// <summary>
+        /// Writes a time of day in the <c>xs:time</c> form <c>HH:mm:ss</c>, followed by a fraction of up to
+        /// seven digits with no trailing zeros when the time is not on a whole second.
+        /// </summary>
+        /// <param name="ticks">The time since midnight, in 100-nanosecond ticks.</param>
+        /// <param name="destination">The buffer, at least 16 bytes long.</param>
+        /// <returns>The number of bytes written.</returns>
+        public static int FormatTime(long ticks, Span<byte> destination)
+        {
+            var seconds = (uint)(ticks / TimeSpan.TicksPerSecond);
+            var fraction = (uint)(ticks % TimeSpan.TicksPerSecond);
+            WriteDigits(seconds / 3600, destination[..2]);
+            destination[2] = (byte)':';
+            WriteDigits(seconds / 60 % 60, destination.Slice(3, 2));
+            destination[5] = (byte)':';
+            WriteDigits(seconds % 60, destination.Slice(6, 2));
+            if (fraction == 0)
+            {
+                return 8;
+            }
+
+            var digits = 7;
+            while (fraction % 10 == 0)
+            {
+                fraction /= 10;
+                digits--;
+            }
+
+            destination[8] = (byte)'.';
+            WriteDigits(fraction, destination.Slice(9, digits));
+            return 9 + digits;
         }
 
         /// <summary>
@@ -196,6 +372,11 @@ namespace CloudNimble.Text.Xml
         public static bool TryParseDecimal(ReadOnlySpan<byte> utf8, out decimal value)
         {
             var s = Collapse(utf8);
+            if (TryParsePlainDecimal(s, out value))
+            {
+                return true;
+            }
+
             var body = StripPlus(s);
             var unsigned = body.Length > 0 && body[0] is (byte)'-' && body.Length == s.Length ? body[1..] : body;
             if (ScanDecimal(unsigned) != unsigned.Length || unsigned.IsEmpty)
@@ -330,12 +511,17 @@ namespace CloudNimble.Text.Xml
                 components += timeComponents;
             }
 
-            if (components == 0 || ticks > long.MaxValue)
+            if (negative)
+            {
+                ticks = -ticks;
+            }
+
+            if (components == 0 || ticks > long.MaxValue || ticks < long.MinValue)
             {
                 return false;
             }
 
-            value = new TimeSpan(negative ? -(long)ticks : (long)ticks);
+            value = new TimeSpan((long)ticks);
             return true;
         }
 
@@ -581,6 +767,50 @@ namespace CloudNimble.Text.Xml
         internal static ReadOnlySpan<byte> StripPlus(ReadOnlySpan<byte> collapsed)
         {
             return collapsed.Length > 0 && collapsed[0] is (byte)'+' ? collapsed[1..] : collapsed;
+        }
+
+        /// <summary>
+        /// Parses a decimal written as an optional minus sign, digits, and an optional point followed by digits,
+        /// with no more than 18 digits in all. That is how nearly every decimal is written, and it fits in 64 bits.
+        /// </summary>
+        /// <param name="utf8">The lexical form, with no surrounding white space.</param>
+        /// <param name="value">When this method returns <see langword="true"/>, the value, with the scale it was written with.</param>
+        /// <returns><see langword="false"/> for any other form; the caller then uses the general parser.</returns>
+        internal static bool TryParsePlainDecimal(ReadOnlySpan<byte> utf8, out decimal value)
+        {
+            value = default;
+            var negative = utf8.Length > 0 && utf8[0] is (byte)'-';
+            var first = negative ? 1 : 0;
+            ulong mantissa = 0;
+            var digits = 0;
+            var scale = 0;
+            var seenPoint = false;
+            for (var i = first; i < utf8.Length; i++)
+            {
+                var digit = (uint)(utf8[i] - '0');
+                if (digit <= 9)
+                {
+                    mantissa = (mantissa * 10) + digit;
+                    digits++;
+                    scale += seenPoint ? 1 : 0;
+                }
+                else if (utf8[i] is (byte)'.' && !seenPoint && i > first && i + 1 < utf8.Length)
+                {
+                    seenPoint = true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            if (digits is 0 or > 18)
+            {
+                return false;
+            }
+
+            value = new decimal((int)mantissa, (int)(mantissa >> 32), 0, negative, (byte)scale);
+            return true;
         }
 
         /// <summary>
@@ -922,6 +1152,21 @@ namespace CloudNimble.Text.Xml
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Writes <paramref name="value"/> as decimal digits that fill <paramref name="destination"/>, padded with
+        /// leading zeros.
+        /// </summary>
+        /// <param name="value">The value. It must fit the digit count.</param>
+        /// <param name="destination">The buffer; its length is the number of digits written.</param>
+        internal static void WriteDigits(uint value, Span<byte> destination)
+        {
+            for (var i = destination.Length - 1; i >= 0; i--)
+            {
+                destination[i] = (byte)('0' + (value % 10));
+                value /= 10;
+            }
         }
 
         #endregion

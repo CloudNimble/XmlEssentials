@@ -39,30 +39,42 @@ namespace CloudNimble.Text.Xml.Serialization
             [typeof(byte[])] = XmlByteArrayConverter.Instance,
             [typeof(Uri)] = XmlUriConverter.Instance,
             [typeof(Version)] = XmlVersionConverter.Instance,
-            [typeof(bool?)] = new XmlNullableConverter<bool>(XmlBooleanConverter.Instance),
-            [typeof(byte?)] = new XmlNullableConverter<byte>(XmlByteConverter.Instance),
-            [typeof(sbyte?)] = new XmlNullableConverter<sbyte>(XmlSByteConverter.Instance),
-            [typeof(short?)] = new XmlNullableConverter<short>(XmlInt16Converter.Instance),
-            [typeof(ushort?)] = new XmlNullableConverter<ushort>(XmlUInt16Converter.Instance),
-            [typeof(int?)] = new XmlNullableConverter<int>(XmlInt32Converter.Instance),
-            [typeof(uint?)] = new XmlNullableConverter<uint>(XmlUInt32Converter.Instance),
-            [typeof(long?)] = new XmlNullableConverter<long>(XmlInt64Converter.Instance),
-            [typeof(ulong?)] = new XmlNullableConverter<ulong>(XmlUInt64Converter.Instance),
-            [typeof(float?)] = new XmlNullableConverter<float>(XmlSingleConverter.Instance),
-            [typeof(double?)] = new XmlNullableConverter<double>(XmlDoubleConverter.Instance),
-            [typeof(decimal?)] = new XmlNullableConverter<decimal>(XmlDecimalConverter.Instance),
-            [typeof(char?)] = new XmlNullableConverter<char>(XmlCharConverter.Instance),
-            [typeof(Guid?)] = new XmlNullableConverter<Guid>(XmlGuidConverter.Instance),
-            [typeof(DateTime?)] = new XmlNullableConverter<DateTime>(XmlDateTimeConverter.Instance),
-            [typeof(DateTimeOffset?)] = new XmlNullableConverter<DateTimeOffset>(XmlDateTimeOffsetConverter.Instance),
-            [typeof(DateOnly?)] = new XmlNullableConverter<DateOnly>(XmlDateOnlyConverter.Instance),
-            [typeof(TimeOnly?)] = new XmlNullableConverter<TimeOnly>(XmlTimeOnlyConverter.Instance),
-            [typeof(TimeSpan?)] = new XmlNullableConverter<TimeSpan>(XmlTimeSpanConverter.Instance),
+            [typeof(bool?)] = new XmlNullableValueConverter<bool>(XmlBooleanConverter.Instance),
+            [typeof(byte?)] = new XmlNullableValueConverter<byte>(XmlByteConverter.Instance),
+            [typeof(sbyte?)] = new XmlNullableValueConverter<sbyte>(XmlSByteConverter.Instance),
+            [typeof(short?)] = new XmlNullableValueConverter<short>(XmlInt16Converter.Instance),
+            [typeof(ushort?)] = new XmlNullableValueConverter<ushort>(XmlUInt16Converter.Instance),
+            [typeof(int?)] = new XmlNullableValueConverter<int>(XmlInt32Converter.Instance),
+            [typeof(uint?)] = new XmlNullableValueConverter<uint>(XmlUInt32Converter.Instance),
+            [typeof(long?)] = new XmlNullableValueConverter<long>(XmlInt64Converter.Instance),
+            [typeof(ulong?)] = new XmlNullableValueConverter<ulong>(XmlUInt64Converter.Instance),
+            [typeof(float?)] = new XmlNullableValueConverter<float>(XmlSingleConverter.Instance),
+            [typeof(double?)] = new XmlNullableValueConverter<double>(XmlDoubleConverter.Instance),
+            [typeof(decimal?)] = new XmlNullableValueConverter<decimal>(XmlDecimalConverter.Instance),
+            [typeof(char?)] = new XmlNullableValueConverter<char>(XmlCharConverter.Instance),
+            [typeof(Guid?)] = new XmlNullableValueConverter<Guid>(XmlGuidConverter.Instance),
+            [typeof(DateTime?)] = new XmlNullableValueConverter<DateTime>(XmlDateTimeConverter.Instance),
+            [typeof(DateTimeOffset?)] = new XmlNullableValueConverter<DateTimeOffset>(XmlDateTimeOffsetConverter.Instance),
+            [typeof(DateOnly?)] = new XmlNullableValueConverter<DateOnly>(XmlDateOnlyConverter.Instance),
+            [typeof(TimeOnly?)] = new XmlNullableValueConverter<TimeOnly>(XmlTimeOnlyConverter.Instance),
+            [typeof(TimeSpan?)] = new XmlNullableValueConverter<TimeSpan>(XmlTimeSpanConverter.Instance),
         }.ToFrozenDictionary();
 
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a built-in scalar (or nullable scalar or enum) that can be
+        /// an XML attribute.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns><see langword="true"/> for primitives, enums, strings, and the other built-in value converters.</returns>
+        internal static bool IsScalar(Type type)
+        {
+            var root = Nullable.GetUnderlyingType(type) ?? type;
+            return s_converters.ContainsKey(root) || root.IsEnum;
+        }
 
         /// <summary>
         /// Returns the built-in converter for <paramref name="type"/>.
@@ -87,8 +99,13 @@ namespace CloudNimble.Text.Xml.Serialization
                     return null;
                 }
 
-                return s_converters.TryGetValue(type, out var nullable) && ReferenceEquals(inner, s_converters[underlying])
-                    ? nullable
+                if (s_converters.TryGetValue(type, out var nullable) && ReferenceEquals(inner, s_converters[underlying]))
+                {
+                    return nullable;
+                }
+
+                return inner.IsValueConverter
+                    ? (XmlConverter)Activator.CreateInstance(typeof(XmlNullableValueConverter<>).MakeGenericType(underlying), inner)!
                     : (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(underlying), inner)!;
             }
 
@@ -97,8 +114,18 @@ namespace CloudNimble.Text.Xml.Serialization
                 return converter;
             }
 
-            return type.IsEnum
-                ? (XmlConverter)Activator.CreateInstance(typeof(XmlEnumConverter<>).MakeGenericType(type))!
+            if (type.IsEnum)
+            {
+                return (XmlConverter)Activator.CreateInstance(typeof(XmlEnumConverter<>).MakeGenericType(type))!;
+            }
+
+            if (XmlCollectionConverterFactory.Instance.CanConvert(type))
+            {
+                return XmlCollectionConverterFactory.Instance.CreateConverter(type, options);
+            }
+
+            return XmlObjectBinder.IsObjectType(type)
+                ? XmlObjectConverterFactory.Instance.CreateConverter(type, options)
                 : null;
         }
 
@@ -111,7 +138,46 @@ namespace CloudNimble.Text.Xml.Serialization
         internal static string GetXmlTypeName(Type type)
         {
             var root = Nullable.GetUnderlyingType(type) ?? type;
-            return root == typeof(byte[]) ? "ByteArray" : root.Name;
+            if (root.IsArray)
+            {
+                return root == typeof(byte[])
+                    ? "ByteArray"
+                    : GetXmlTypeName(root.GetElementType()!) + "Array";
+            }
+
+            if (!root.IsGenericType)
+            {
+                return root.Name;
+            }
+
+            var name = root.Name;
+            var tick = name.IndexOf('`');
+            if (tick >= 0)
+            {
+                name = name[..tick];
+            }
+
+            var args = root.GetGenericArguments();
+            var length = name.Length + 2;
+            foreach (var arg in args)
+            {
+                length += GetXmlTypeName(arg).Length;
+            }
+
+            return string.Create(length, (name, args), static (span, state) =>
+            {
+                var written = 0;
+                state.name.AsSpan().CopyTo(span);
+                written += state.name.Length;
+                "Of".AsSpan().CopyTo(span[written..]);
+                written += 2;
+                foreach (var arg in state.args)
+                {
+                    var argName = GetXmlTypeName(arg);
+                    argName.AsSpan().CopyTo(span[written..]);
+                    written += argName.Length;
+                }
+            });
         }
 
         #endregion

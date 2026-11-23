@@ -80,14 +80,17 @@ ns = XmlAttribute.Namespace | XmlElement.Namespace | XmlArray.Namespace
 
 ## Element vs attribute vs text
 
-| Annotation | Mapping |
+Unannotated members follow `XmlSerializerOptions.DefaultPropertyMapping` (default `Element`). That is the blanket switch: set `Attribute` to write scalars as attributes without `[XmlAttribute]` on every property. Nested objects stay **elements**; the same options apply when those types bind, so their unannotated simple members are attributes too (`<Employee Name="Ada"><Home Street="1 Main" City="Paris"/></Employee>`). Collections stay elements. Per-member annotations still win.
+
+| Annotation / default | Mapping |
 | --- | --- |
-| (none) | child **element** |
+| (none), `DefaultPropertyMapping = Element` | child **element** |
+| (none), `DefaultPropertyMapping = Attribute` | XML **attribute** when the member is a simple type; otherwise child element |
 | `[XmlAttribute]` | XML **attribute** (simple types only). Complex types throw at type-info build. |
 | `[XmlText]` | simple content of the current element |
 | `[XmlCData]` | like text, written as CDATA |
 | `[XmlArray]` | wrapped collection |
-| `[XmlElement]` | element with extra metadata (still default kind) |
+| `[XmlElement]` | element with extra metadata (forces element even when the default is `Attribute`) |
 
 Illegal combinations (type-info build error): `[XmlAttribute]+[XmlElement]`, `[XmlAttribute]+[XmlText]`, `[XmlText]+[XmlArray]`, two `[XmlText]` on one type, `[XmlAttribute]` on a complex type.
 
@@ -156,6 +159,8 @@ Supported collection types, matching STJ:
 </Scores>
 ```
 
+The key `Key` itself is written in the pair form, because an element named `Key` starts a pair when the document is read. A member declared as `IDictionary<TKey,TValue>` is read into a `Dictionary<TKey,TValue>`. A dictionary whose keys are not strings is always written as pairs, and reading one rejects an element that is not `Key` or `Value` with `XmlException`.
+
 `[XmlArrayItem]` / `[XmlElement]` on a dictionary member can rename the entry wrapper. Null dictionary: omit or `xsi:nil` per nil/ignore rules.
 
 **Not maps:** `[XmlExtensionData]` (`XmlExtensionData` or `Dictionary<string, XmlElementNode>` **only** with that attribute) and `[XmlNamespaceDeclarations]`. Generator must not treat those as dictionary maps.
@@ -192,14 +197,14 @@ public sealed class XmlMixedText : XmlMixedContentItem { public string Text { ge
 public sealed class XmlMixedElement : XmlMixedContentItem { public Nodes.XmlElementNode Element { get; set; } }
 ```
 
-POCOs in the list use `[XmlDerivedType]` / `[XmlElement]` for child element names. Text nodes become `XmlMixedText`. A type with `[XmlMixed]` **and** ordinary element properties is `NotSupportedException` at type-info build. Simple content (`[XmlAttribute]` + `[XmlText]`) stays the leaf-element case.
+POCOs in the list use `[XmlDerivedType]` / `[XmlElement]` for child element names. Text nodes become `XmlMixedText`. Every child element becomes an `XmlMixedElement`, including one named like the mixed member itself. A type with `[XmlMixed]` **and** ordinary element properties is `NotSupportedException` at type-info build. Simple content (`[XmlAttribute]` + `[XmlText]`) stays the leaf-element case.
 
 ## Polymorphism
 
 ```csharp
 [XmlPolymorphic] // DiscriminatorPlacement = ElementName
-[XmlDerivedType(typeof(Book), "Book")]
-[XmlDerivedType(typeof(Dvd), "Dvd")]
+[XmlDerivedType<Book>]
+[XmlDerivedType<Dvd>]
 public class Product
 {
     public string Title { get; set; }
@@ -221,6 +226,8 @@ public class Product
 </Catalog>
 ```
 
+An item whose runtime type is the declared type itself (a plain `Product` here) is written under the member name, `<Products>`, and read back as the declared type.
+
 Wrapped with `[XmlArray("Items")]`:
 
 ```xml
@@ -236,7 +243,7 @@ Wrapped with `[XmlArray("Items")]`:
 
 ```csharp
 [XmlPolymorphic(TypeDiscriminatorPropertyName = "kind", DiscriminatorPlacement = XmlDiscriminatorPlacement.Attribute)]
-[XmlDerivedType(typeof(Book), "book")]
+[XmlDerivedType<Book>("book")]
 ```
 
 ```xml
@@ -247,7 +254,7 @@ Wrapped with `[XmlArray("Items")]`:
 
 Unknown derived types: `UnknownDerivedTypeHandling` (default `FailSerialization`).
 
-Per-member `[XmlElement(typeof(Book), "Book")]` duplicates this for one property ([K35](01-identity-and-decisions.md#key-decisions)).
+Per-member `[XmlElement<Book>("Book")]` duplicates this for one property ([K35](01-identity-and-decisions.md#key-decisions)).
 
 ## Enums
 
@@ -304,7 +311,7 @@ Same as reader getters, plus `string`, `char`, `Uri`, `Version`, `byte[]` (base6
 | `[XmlAttribute]` | `[XmlAttribute]` (our ns) |
 | `[XmlIgnore]` | `[XmlIgnore]` |
 | `[XmlArray]` / `[XmlArrayItem]` | same names, our ns; **default collection shape differs** (unwrapped) |
-| `[XmlInclude(typeof(T))]` | `[XmlDerivedType(typeof(T), "T")]` |
+| `[XmlInclude(typeof(T))]` | `[XmlDerivedType<T>]` |
 | `[XmlEnum("n")]` | `[XmlPropertyName("n")]` on the field |
 | `[XmlText]` | `[XmlText]` |
 | `[XmlType]` | `[XmlType]` |

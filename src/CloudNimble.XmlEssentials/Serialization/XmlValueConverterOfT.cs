@@ -29,6 +29,12 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
+        public sealed override T ReadLexical(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
+        {
+            return Parse(utf8, options);
+        }
+
+        /// <inheritdoc />
         public sealed override void Write(Utf8XmlWriter writer, T value, XmlSerializerOptions options)
         {
             WriteValue(writer, value, options);
@@ -45,6 +51,9 @@ namespace CloudNimble.Text.Xml.Serialization
         #endregion
 
         #region Private Methods
+
+        /// <inheritdoc />
+        internal sealed override bool IsValueConverter => true;
 
         /// <summary>
         /// Parses the lexical form.

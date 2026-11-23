@@ -34,6 +34,12 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Private Methods
 
         /// <summary>
+        /// Gets whether this is one of the built-in converters that read and write a value from its lexical form,
+        /// which the serializer can call directly.
+        /// </summary>
+        internal virtual bool IsValueConverter => false;
+
+        /// <summary>
         /// Creates type info that reads and writes <paramref name="typeToConvert"/> with this converter.
         /// </summary>
         /// <param name="typeToConvert">The CLR type.</param>

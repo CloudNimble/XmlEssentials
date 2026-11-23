@@ -278,17 +278,34 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void FormatDuration_ZeroNegativeAndParts()
+        [DataRow(0L, "PT0S", DisplayName = "zero")]
+        [DataRow(1L, "PT0.0000001S", DisplayName = "one tick")]
+        [DataRow(15_000_000L, "PT1.5S", DisplayName = "a fraction has no trailing zeros")]
+        [DataRow(70_000L, "PT0.007S", DisplayName = "milliseconds")]
+        [DataRow(90_000_000L, "PT9S", DisplayName = "seconds only")]
+        [DataRow(4_800_000_000L, "PT8M", DisplayName = "minutes only")]
+        [DataRow(108_000_000_000L, "PT3H", DisplayName = "hours only")]
+        [DataRow(1_728_000_000_000L, "P2D", DisplayName = "days only")]
+        [DataRow(1_728_040_000_000L, "P2DT4S", DisplayName = "days and seconds")]
+        [DataRow(937_840_050_000L, "P1DT2H3M4.005S", DisplayName = "every part")]
+        [DataRow(-37_230_000_000L, "-PT1H2M3S", DisplayName = "negative")]
+        [DataRow(long.MaxValue, "P10675199DT2H48M5.4775807S", DisplayName = "the largest duration")]
+        [DataRow(long.MinValue, "-P10675199DT2H48M5.4775808S", DisplayName = "the smallest duration")]
+        public void FormatDuration_WritesEveryTick_AndReadsItBack(long ticks, string expected)
         {
-            Utf8XmlWriter.FormatDuration(TimeSpan.Zero).Should().Be("PT0S");
-            Utf8XmlWriter.FormatDuration(new TimeSpan(-1, -2, -3)).Should().Be("-PT1H2M3S");
-            Utf8XmlWriter.FormatDuration(TimeSpan.FromDays(2)).Should().Be("P2D");
-            Utf8XmlWriter.FormatDuration(new TimeSpan(1, 2, 3, 4, 5)).Should().Be("P1DT2H3M4.005S");
-            Utf8XmlWriter.FormatDuration(TimeSpan.FromMilliseconds(7)).Should().Be("PT0.007S");
-            Utf8XmlWriter.FormatDuration(TimeSpan.FromMinutes(8)).Should().Be("PT8M");
-            Utf8XmlWriter.FormatDuration(TimeSpan.FromSeconds(9)).Should().Be("PT9S");
-            Utf8XmlWriter.FormatDuration(TimeSpan.FromHours(3)).Should().Be("PT3H");
-            Utf8XmlWriter.FormatDuration(new TimeSpan(2, 0, 0, 4)).Should().Be("P2DT4S");
+            var value = new TimeSpan(ticks);
+            Span<byte> buffer = stackalloc byte[32];
+            var written = XmlLexical.FormatDuration(value, buffer);
+            Encoding.UTF8.GetString(buffer[..written]).Should().Be(expected);
+            var xml = XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("e");
+                w.WriteStringValue(value);
+                w.WriteEndElement();
+            });
+            xml.Should().Be($"<e>{expected}</e>");
+            XmlLexical.TryParseDuration(buffer[..written], out var parsed).Should().BeTrue();
+            parsed.Should().Be(value);
         }
 
         [TestMethod]

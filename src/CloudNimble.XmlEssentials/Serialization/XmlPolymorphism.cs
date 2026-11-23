@@ -1,0 +1,221 @@
+using System;
+
+namespace CloudNimble.Text.Xml.Serialization
+{
+
+    /// <summary>
+    /// The derived types a member or collection item may hold, and how they are told apart in the document.
+    /// </summary>
+    internal sealed class XmlPolymorphism
+    {
+
+        #region Fields
+
+        /// <summary>
+        /// The mapping of a type that declares no derived types and no discriminator.
+        /// </summary>
+        internal static readonly XmlPolymorphism None = new(typeof(object), null, XmlDiscriminatorPlacement.ElementName, null, XmlUnknownDerivedTypeHandling.FailSerialization);
+
+        /// <summary>
+        /// The declared CLR type of the member or item.
+        /// </summary>
+        internal readonly Type DeclaredType;
+
+        /// <summary>
+        /// The derived-type choices.
+        /// </summary>
+        internal readonly XmlDerivedBinding[] Derived;
+
+        /// <summary>
+        /// Whether a derived type is written under its own element name.
+        /// </summary>
+        internal readonly bool HasElementNames;
+
+        /// <summary>
+        /// Whether a value read here has to be checked for a derived type.
+        /// </summary>
+        internal readonly bool IsActive;
+
+        /// <summary>
+        /// Where the discriminator is written.
+        /// </summary>
+        internal readonly XmlDiscriminatorPlacement Placement;
+
+        /// <summary>
+        /// How a runtime type that is not declared is handled.
+        /// </summary>
+        internal readonly XmlUnknownDerivedTypeHandling UnknownDerivedTypeHandling;
+
+        /// <summary>
+        /// The UTF-8 discriminator attribute local name when <see cref="Placement"/> is
+        /// <see cref="XmlDiscriminatorPlacement.Attribute"/>, or empty.
+        /// </summary>
+        internal readonly byte[] Utf8DiscriminatorAttributeName;
+
+        #endregion
+
+        #region Constructors
+
+        /// <summary>
+        /// Creates the mapping.
+        /// </summary>
+        /// <param name="declaredType">The declared CLR type of the member or item.</param>
+        /// <param name="derived">The derived-type choices, or null.</param>
+        /// <param name="placement">Where the discriminator is written.</param>
+        /// <param name="utf8DiscriminatorAttributeName">The discriminator attribute local name, or null.</param>
+        /// <param name="unknownDerivedTypeHandling">How a runtime type that is not declared is handled.</param>
+        internal XmlPolymorphism(Type declaredType, XmlDerivedBinding[]? derived, XmlDiscriminatorPlacement placement, byte[]? utf8DiscriminatorAttributeName, XmlUnknownDerivedTypeHandling unknownDerivedTypeHandling)
+        {
+            DeclaredType = declaredType;
+            Derived = derived ?? [];
+            Placement = placement;
+            Utf8DiscriminatorAttributeName = utf8DiscriminatorAttributeName ?? [];
+            UnknownDerivedTypeHandling = unknownDerivedTypeHandling;
+            IsActive = Derived.Length > 0 || placement is not XmlDiscriminatorPlacement.ElementName;
+            HasElementNames = Derived.Length > 0 && placement is XmlDiscriminatorPlacement.ElementName;
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Returns the derived binding whose discriminator equals <paramref name="discriminator"/>.
+        /// </summary>
+        /// <param name="discriminator">The discriminator value.</param>
+        /// <returns>The binding, or null.</returns>
+        internal XmlDerivedBinding? FindByDiscriminator(string discriminator)
+        {
+            foreach (var derived in Derived)
+            {
+                if (derived.Discriminator == discriminator)
+                {
+                    return derived;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the derived binding whose element name matches the reader.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <returns>The binding, or null.</returns>
+        internal XmlDerivedBinding? FindByElementName(ref Utf8XmlReader reader)
+        {
+            foreach (var derived in Derived)
+            {
+                if (reader.LocalNameEquals(derived.Utf8Name) || System.Text.Ascii.EqualsIgnoreCase(reader.LocalNameSpan, derived.Utf8Name))
+                {
+                    return derived;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns whether the reader is on an element named for one of the derived types.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <param name="caseInsensitive">Whether ASCII case is ignored.</param>
+        /// <returns><see langword="true"/> when a derived type is written under this element name.</returns>
+        internal bool MatchesElementName(ref Utf8XmlReader reader, bool caseInsensitive)
+        {
+            foreach (var derived in Derived)
+            {
+                if (XmlBoundProperty.NameEquals(ref reader, derived.Utf8Name, caseInsensitive))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Reads the element the reader is on as the declared type or one of its derived types.
+        /// </summary>
+        /// <param name="reader">The reader, on the start tag.</param>
+        /// <param name="fallback">Type info used when no derived type matches.</param>
+        /// <returns>The value.</returns>
+        internal object? ReadValue(ref Utf8XmlReader reader, XmlTypeInfo fallback)
+        {
+            if (Placement is XmlDiscriminatorPlacement.Attribute or XmlDiscriminatorPlacement.XsiType)
+            {
+                var discriminator = XmlConverterHelpers.ReadDiscriminator(ref reader, Placement, Utf8DiscriminatorAttributeName);
+                if (discriminator is { Length: > 0 })
+                {
+                    if (FindByDiscriminator(discriminator) is { } typed)
+                    {
+                        return typed.Info.ReadElementAsObject(ref reader);
+                    }
+
+                    if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
+                    {
+                        throw new XmlException($"Unknown type discriminator '{discriminator}'.");
+                    }
+                }
+
+                return fallback.ReadElementAsObject(ref reader);
+            }
+
+            if (FindByElementName(ref reader) is { } derived)
+            {
+                return derived.Info.ReadElementAsObject(ref reader);
+            }
+
+            return fallback.ReadElementAsObject(ref reader);
+        }
+
+        /// <summary>
+        /// Returns the derived binding to write for <paramref name="runtime"/>, or null to write the declared type.
+        /// </summary>
+        /// <param name="runtime">The runtime type of the value.</param>
+        /// <returns>The binding, or null.</returns>
+        /// <exception cref="NotSupportedException">The runtime type is not declared and unknown types fail.</exception>
+        internal XmlDerivedBinding? TryGetDerivedWrite(Type runtime)
+        {
+            foreach (var derived in Derived)
+            {
+                if (derived.Type == runtime)
+                {
+                    return derived;
+                }
+            }
+
+            if (runtime == DeclaredType)
+            {
+                return null;
+            }
+
+            if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FallBackToBaseType)
+            {
+                return null;
+            }
+
+            if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FallBackToNearestAncestor)
+            {
+                for (var type = runtime.BaseType; type is not null && type != DeclaredType && type != typeof(object); type = type.BaseType)
+                {
+                    foreach (var derived in Derived)
+                    {
+                        if (derived.Type == type)
+                        {
+                            return derived;
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            throw new NotSupportedException($"The type '{runtime}' is not a declared derived type of '{DeclaredType}'.");
+        }
+
+        #endregion
+
+    }
+
+}

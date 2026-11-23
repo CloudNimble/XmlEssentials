@@ -224,6 +224,23 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Returns whether the current attribute is in no namespace and has the name <paramref name="utf8Name"/>.
+        /// </summary>
+        /// <param name="utf8Name">The UTF-8 attribute name, with no prefix.</param>
+        /// <returns><see langword="true"/> when the names are equal, byte for byte.</returns>
+        /// <remarks>
+        /// An attribute with no prefix is in no namespace, so the whole name is compared at once. A prefixed
+        /// attribute and an <c>xmlns</c> declaration never match. Callers must have selected an attribute with
+        /// <see cref="MoveToNextAttribute"/>.
+        /// </remarks>
+        internal readonly bool UnqualifiedAttributeNameEquals(ReadOnlySpan<byte> utf8Name)
+        {
+            var attribute = CurrentAttribute();
+            return attribute.NsIndex == AttributeRecord.NoNamespace
+                && _span.Slice(attribute.NameStart, attribute.NameLength).SequenceEqual(utf8Name);
+        }
+
+        /// <summary>
         /// Returns the qualified name of the current element token, including a prefix and colon when present.
         /// </summary>
         /// <param name="prefixLength">When this method returns, the prefix byte length, or 0 when unprefixed.</param>
@@ -528,8 +545,20 @@ namespace CloudNimble.Text.Xml
             var written = 0;
             var i = 0;
             Span<byte> entityScratch = stackalloc byte[8];
+            var stops = _version is XmlVersion.Version11 ? XmlChars.DecodeStops11 : XmlChars.DecodeStops10;
             while (i < slice.Length)
             {
+                // Everything up to the next reference or line end is copied as it is, in one piece.
+                var run = slice[i..].IndexOfAny(stops);
+                if (run != 0)
+                {
+                    run = run < 0 ? slice.Length - i : run;
+                    slice.Slice(i, run).CopyTo(_decodedValue.AsSpan(written));
+                    written += run;
+                    i += run;
+                    continue;
+                }
+
                 if (expandReferences && slice[i] is (byte)'&')
                 {
                     var saved = _pos;
@@ -671,7 +700,8 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
-            _decodedValue = new byte[needed];
+            // At least double, so values that keep getting longer cost a logarithmic number of buffers.
+            _decodedValue = new byte[Math.Max(needed, (_decodedValue?.Length ?? 0) * 2)];
         }
 
         /// <summary>
@@ -2036,6 +2066,94 @@ namespace CloudNimble.Text.Xml
 
             nameLength = after - nameStart;
             _pos = after;
+            return true;
+        }
+
+        /// <summary>
+        /// Reads the rest of the open element in one step when it is a run of plain text followed at once by the
+        /// element's own end tag, written with the same bytes as its start tag.
+        /// </summary>
+        /// <param name="content">When this method returns <see langword="true"/>, the text, as a slice of the input.</param>
+        /// <returns>
+        /// <see langword="true"/> when the text and the end tag were read; the reader is then on the end tag, as it
+        /// would be after two calls to <see cref="Read"/>. <see langword="false"/> when the content is anything
+        /// else, or is not all in the current block; nothing has been read and the caller uses <see cref="Read"/>.
+        /// </returns>
+        /// <remarks>
+        /// This is the shape of nearly every element that holds one value, <c>&lt;Id&gt;42&lt;/Id&gt;</c>, and reading
+        /// it as two tokens spends more on the bookkeeping between them than on the bytes. Plain text here is tab,
+        /// blank, and printable ASCII other than <c>&lt;</c>, <c>&amp;</c> and <c>&gt;</c>, with at least one byte
+        /// that is not white space among the first few: nothing to decode, no line end to count, and no question
+        /// of whether white space is significant. The caller must not be on an empty element.
+        /// </remarks>
+        internal bool TryReadLeafContent(out ReadOnlySpan<byte> content)
+        {
+            content = default;
+            var start = _pos;
+            var end = start;
+            var headEnd = Math.Min(_span.Length, start + ShortTextBytes);
+            var hasNonWs = false;
+            while (end < headEnd)
+            {
+                var b = _span[end];
+                if (b is > (byte)' ' and < 0x7F and not (byte)'<' and not (byte)'&' and not (byte)'>')
+                {
+                    hasNonWs = true;
+                }
+                else if (b is not ((byte)' ' or (byte)'\t'))
+                {
+                    break;
+                }
+
+                end++;
+            }
+
+            if (!hasNonWs)
+            {
+                return false;
+            }
+
+            if (end == headEnd)
+            {
+                var more = _span[end..].IndexOfAnyExcept(XmlChars.LeafTextChars);
+                if (more < 0)
+                {
+                    return false;
+                }
+
+                end += more;
+            }
+
+            if (end + 1 >= _span.Length || _span[end] is not (byte)'<' || _span[end + 1] is not (byte)'/' || end - start > _maxTextBytes)
+            {
+                return false;
+            }
+
+            _pos = end + 2;
+            if (!TryMatchStartTagName(out var nameStart, out var nameLength, out var prefixLength) || _span[_pos] is not (byte)'>')
+            {
+                _pos = start;
+                return false;
+            }
+
+            _pos++;
+            _inAttribute = false;
+            _attributeIndex = -1;
+            _decodedLength = 0;
+            _valueIsEscaped = false;
+            _tokenStartIndex = _documentBytesConsumedBase + end;
+            _tokenLineNumber = _lineNumber;
+            _tokenLineStart = _lineStart;
+            RestoreCurrentNamespaceFromElement(_elementCount - 1);
+            PopNamespaceScope(_depth);
+            _elementCount--;
+            _depth--;
+            _nameStart = nameStart;
+            _nameLength = nameLength;
+            _prefixLength = prefixLength;
+            _tokenType = XmlTokenType.EndElement;
+            _attributeCount = 0;
+            content = _span.Slice(start, end - start);
             return true;
         }
 

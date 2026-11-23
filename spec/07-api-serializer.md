@@ -31,6 +31,12 @@ public enum XmlDiscriminatorPlacement : byte
     XsiType = 2,
 }
 
+public enum XmlPropertyMapping : byte
+{
+    Element = 0,
+    Attribute = 1,
+}
+
 namespace CloudNimble.Text.Xml.Serialization;
 
 public enum XmlIgnoreCondition
@@ -143,6 +149,7 @@ public sealed class XmlSerializerOptions
     public bool IncludeFields { get; set; }
     public bool PropertyNameCaseInsensitive { get; set; }
     public XmlIgnoreCondition DefaultIgnoreCondition { get; set; }
+    public XmlPropertyMapping DefaultPropertyMapping { get; set; }
     public XmlNumberHandling NumberHandling { get; set; }
     public XmlUnmappedMemberHandling UnmappedMemberHandling { get; set; }
     public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
@@ -207,6 +214,7 @@ Defaults (when unset / `0` on max-* except `MaxDocumentByteCount`):
 | `NumberHandling` | `AllowNamedFloatingPointLiterals` |
 | `RespectNullableAnnotations` | `false` |
 | `RespectRequiredConstructorParameters` | `true` ([K37](01-identity-and-decisions.md#key-decisions)) |
+| `DefaultPropertyMapping` | `Element` ([K7](01-identity-and-decisions.md#key-decisions)). `Attribute` writes unannotated simple members as XML attributes; nested objects and collections stay elements. `[XmlElement]` / `[XmlAttribute]` / `[XmlText]` override per member. |
 | `TypeInfoResolver` | `DefaultXmlTypeInfoResolver.Instance` when reflection is enabled |
 | `WhitespaceHandling` | forwarded to `Utf8XmlReader` on deserialize only ([K38](01-identity-and-decisions.md#key-decisions)) |
 | `General` / `Default` | identity names, write declaration, xsi:nil for null |
@@ -448,7 +456,7 @@ public abstract class XmlReferenceResolver
 }
 ```
 
-Preserve writes `id` / `ref` attributes in namespace `urn:CloudNimble.Text.Xml:refs`. IgnoreCycles omits already-seen objects (empty nillable element).
+Preserve writes `id` / `ref` attributes in namespace `urn:CloudNimble.Text.Xml:refs`. IgnoreCycles omits already-seen objects (empty nillable element). A type created through a constructor with parameters is registered under its `id` once it has been constructed, so a later `ref` to it resolves; it cannot hold a reference to itself. Without a handler an `id` attribute is ignored and a `ref` attribute is an `XmlException`.
 
 Feature switch:
 
@@ -564,6 +572,7 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
     public XmlKnownNamingPolicy ElementNamingPolicy { get; set; }
     public XmlKnownNamingPolicy AttributeNamingPolicy { get; set; }
     public XmlIgnoreCondition DefaultIgnoreCondition { get; set; }
+    public XmlPropertyMapping DefaultPropertyMapping { get; set; }
     public XmlSourceGenerationMode GenerationMode { get; set; }
     public bool PropertyNameCaseInsensitive { get; set; }
     public bool RespectNullableAnnotations { get; set; }

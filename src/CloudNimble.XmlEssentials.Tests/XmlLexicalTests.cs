@@ -430,6 +430,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("PT1")]
         [DataRow("P-1D")]
         [DataRow("+P1D")]
+        [DataRow("-P10675200D", DisplayName = "below the smallest TimeSpan")]
+        [DataRow("-P10675199DT2H48M5.4775809S", DisplayName = "one tick below the smallest TimeSpan")]
         [DataRow("P1D T1H")]
         [DataRow("P9999999999999999D")]
         [DataRow("P999999999999999D")]

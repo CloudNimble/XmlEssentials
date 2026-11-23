@@ -13,6 +13,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #region Fields
 
+        private readonly bool _handleNull;
         private readonly XmlValueConverter<T>? _valueConverter;
 
         #endregion
@@ -39,6 +40,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             Converter = converter;
             _valueConverter = converter as XmlValueConverter<T>;
+            _handleNull = converter.HandleNull;
         }
 
         #endregion
@@ -54,7 +56,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <exception cref="XmlException">The element is nil and <typeparamref name="T"/> cannot be null.</exception>
         internal bool IsNil(ref Utf8XmlReader reader)
         {
-            if (Converter.HandleNull || !reader.HasAttributes || !reader.GetNil())
+            if (!reader.HasAttributes || _handleNull || !reader.GetNil())
             {
                 return false;
             }
@@ -89,10 +91,16 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         /// <param name="reader">The reader.</param>
         /// <returns>The value.</returns>
-        internal T? ReadRoot(ref Utf8XmlReader reader)
+        internal virtual T? ReadRoot(ref Utf8XmlReader reader)
         {
             XmlConverterHelpers.MoveToStartElement(ref reader);
             CheckRoot(ref reader);
+            return ReadElement(ref reader);
+        }
+
+        /// <inheritdoc />
+        internal sealed override object? ReadElementAsObject(ref Utf8XmlReader reader)
+        {
             return ReadElement(ref reader);
         }
 
@@ -162,17 +170,30 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         /// <param name="writer">The writer.</param>
         /// <param name="value">The value.</param>
-        internal void WriteRoot(Utf8XmlWriter writer, T value)
+        internal virtual void WriteRoot(Utf8XmlWriter writer, T value)
         {
-            if (value is null)
+            if (XmlConverterHelpers.IsNull(value))
             {
                 WriteNullRoot(writer);
+                return;
+            }
+
+            if (_valueConverter is not null && TryWriteLeafStart(writer) is { } closeTag)
+            {
+                _valueConverter.WriteValue(writer, value, Options);
+                writer.WriteLeafEnd(closeTag);
                 return;
             }
 
             WriteStartRoot(writer);
             Converter.Write(writer, value, Options);
             writer.WriteEndElement();
+        }
+
+        /// <inheritdoc />
+        internal sealed override void WriteContentAsObject(Utf8XmlWriter writer, object value)
+        {
+            Converter.Write(writer, (T)value, Options);
         }
 
         /// <inheritdoc />

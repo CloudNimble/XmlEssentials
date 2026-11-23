@@ -58,6 +58,7 @@ namespace CloudNimble.Text.Xml
         private XmlWriterFrame8 _framesInline;
         private bool _inAttribute;
         private int _indentSize;
+        private bool _leafParentHadText;
         private int _maxAttributes;
         private int _maxDepth;
         private int _maxNameBytes;
@@ -1257,13 +1258,18 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(DateTime value)
         {
-            var format = value.Kind switch
+            var destination = BeginPlainValue(40);
+            var written = XmlLexical.FormatDateTime(value, destination);
+            if (value.Kind is DateTimeKind.Utc)
             {
-                DateTimeKind.Utc => "yyyy-MM-ddTHH:mm:ss.FFFFFFFZ",
-                DateTimeKind.Local => "yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz",
-                _ => "yyyy-MM-ddTHH:mm:ss.FFFFFFF",
-            };
-            WriteFormatted(value, format);
+                destination[written++] = (byte)'Z';
+            }
+            else if (value.Kind is DateTimeKind.Local)
+            {
+                written += XmlLexical.FormatOffset(TimeZoneInfo.Local.GetUtcOffset(value), destination[written..]);
+            }
+
+            _buffered += written;
         }
 
         /// <summary>
@@ -1272,7 +1278,9 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(DateTimeOffset value)
         {
-            WriteFormatted(value, "yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz");
+            var destination = BeginPlainValue(40);
+            var written = XmlLexical.FormatDateTime(value.DateTime, destination);
+            _buffered += written + XmlLexical.FormatOffset(value.Offset, destination[written..]);
         }
 
         /// <summary>
@@ -1281,7 +1289,8 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(DateOnly value)
         {
-            WriteFormatted(value, "yyyy-MM-dd");
+            var written = XmlLexical.FormatDate(value.Year, value.Month, value.Day, BeginPlainValue(10));
+            _buffered += written;
         }
 
         /// <summary>
@@ -1290,7 +1299,8 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(TimeOnly value)
         {
-            WriteFormatted(value, "HH:mm:ss.FFFFFFF");
+            var written = XmlLexical.FormatTime(value.Ticks, BeginPlainValue(16));
+            _buffered += written;
         }
 
         /// <summary>
@@ -1299,7 +1309,8 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The value.</param>
         public void WriteStringValue(TimeSpan value)
         {
-            WriteStringValue(FormatDuration(value));
+            var written = XmlLexical.FormatDuration(value, BeginPlainValue(32));
+            _buffered += written;
         }
 
         /// <summary>
@@ -1985,59 +1996,6 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Formats <paramref name="value"/> as XSD duration.
-        /// </summary>
-        /// <param name="value">The duration.</param>
-        /// <returns>The lexical form.</returns>
-        internal static string FormatDuration(TimeSpan value)
-        {
-            if (value == TimeSpan.Zero)
-            {
-                return "PT0S";
-            }
-
-            var negative = value < TimeSpan.Zero;
-            if (negative)
-            {
-                value = value.Negate();
-            }
-
-            var text = new StringBuilder(negative ? "-P" : "P");
-            if (value.Days > 0)
-            {
-                text.Append(value.Days).Append('D');
-            }
-
-            if (value.Hours > 0 || value.Minutes > 0 || value.Seconds > 0 || value.Milliseconds > 0)
-            {
-                text.Append('T');
-                if (value.Hours > 0)
-                {
-                    text.Append(value.Hours).Append('H');
-                }
-
-                if (value.Minutes > 0)
-                {
-                    text.Append(value.Minutes).Append('M');
-                }
-
-                if (value.Seconds > 0 || value.Milliseconds > 0)
-                {
-                    if (value.Milliseconds > 0)
-                    {
-                        text.Append(CultureInfo.InvariantCulture, $"{value.Seconds}.{value.Milliseconds:D3}").Append('S');
-                    }
-                    else
-                    {
-                        text.Append(value.Seconds).Append('S');
-                    }
-                }
-            }
-
-            return text.ToString();
-        }
-
-        /// <summary>
         /// Returns the in-scope prefix bound to <paramref name="uri"/>, or null.
         /// </summary>
         /// <param name="uri">The namespace URI.</param>
@@ -2199,9 +2157,8 @@ namespace CloudNimble.Text.Xml
         internal void WriteFormatted<T>(T value, ReadOnlySpan<char> format)
             where T : struct, IUtf8SpanFormattable
         {
-            Span<byte> utf8 = stackalloc byte[64];
-            value.TryFormat(utf8, out var written, format, CultureInfo.InvariantCulture);
-            WriteStringValue(utf8[..written]);
+            value.TryFormat(BeginPlainValue(64), out var written, format, CultureInfo.InvariantCulture);
+            _buffered += written;
         }
 
         /// <summary>
@@ -3064,6 +3021,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets ready to write a value that needs no escaping, such as a number or a date, and returns the place
+        /// to format it. The caller adds the bytes it wrote to <c>_buffered</c>.
+        /// </summary>
+        /// <param name="maxBytes">The most bytes the value can take.</param>
+        /// <returns>The free part of the output buffer, at least <paramref name="maxBytes"/> long.</returns>
+        /// <exception cref="XmlException">The writer is at the document level, where text is not allowed.</exception>
+        internal Span<byte> BeginPlainValue(int maxBytes)
+        {
+            ThrowIfDisposed();
+            if (!_inAttribute)
+            {
+                if (_depth == 0)
+                {
+                    throw new XmlException("Text is not allowed at the document level.");
+                }
+
+                CloseStartTag();
+                MarkText();
+            }
+
+            Ensure(maxBytes);
+            return _memory.Span[_buffered..];
+        }
+
+        /// <summary>
         /// Closes a parent start tag, writes indent, and enforces depth before a new element.
         /// </summary>
         internal void BeginStartElement()
@@ -3289,6 +3271,30 @@ namespace CloudNimble.Text.Xml
             {
                 WriteDefaultNamespace(nsUri);
             }
+        }
+
+        /// <summary>
+        /// Begins an attribute in no namespace from bytes built ahead of time.
+        /// </summary>
+        /// <param name="local">The attribute name, an NCName that was checked when <paramref name="head"/> was built.</param>
+        /// <param name="head">Everything up to the value: a space, the name, <c>="</c>.</param>
+        /// <remarks>
+        /// The name is still recorded and compared with the attributes already on the element, so a duplicate is
+        /// reported as it is for any other attribute.
+        /// </remarks>
+        /// <exception cref="XmlException">No start tag is open, the name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or the element already has an attribute with this name.</exception>
+        internal void WriteStartAttributeTrusted(ReadOnlySpan<byte> local, ReadOnlySpan<byte> head)
+        {
+            ThrowIfDisposed();
+            RequireOpenTag();
+            if (local.Length > _maxNameBytes)
+            {
+                ValidateNcName(local);
+            }
+
+            TrackAttribute(local, []);
+            WriteRaw(head);
+            _inAttribute = true;
         }
 
         /// <summary>
@@ -3827,6 +3833,57 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Ends an element started with <see cref="WriteLeafStart"/>.
+        /// </summary>
+        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
+        internal void WriteLeafEnd(ReadOnlySpan<byte> closeTag)
+        {
+            WriteRaw(closeTag);
+            CurrentFrame().HasText = _leafParentHadText;
+        }
+
+        /// <summary>
+        /// Starts a child element that will hold exactly one value and no attributes, from a start tag built ahead
+        /// of time. The caller writes the value and then calls <see cref="WriteLeafEnd"/>.
+        /// </summary>
+        /// <param name="openTag">
+        /// The whole start tag, <c>&lt;name&gt;</c>. The name is an NCName that was checked when the tag was built,
+        /// has no prefix, and is in no namespace of its own.
+        /// </param>
+        /// <remarks>
+        /// No element frame is pushed: the element cannot have attributes, namespaces, or children, and its end tag
+        /// is supplied by the caller, so there is nothing for a frame to remember. The value is written as text of
+        /// the parent, and <see cref="WriteLeafEnd"/> puts back the one thing that changes, the parent's record of
+        /// holding text. The writer must be inside an element.
+        /// </remarks>
+        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>.</exception>
+        internal void WriteLeafStart(ReadOnlySpan<byte> openTag)
+        {
+            ThrowIfDisposed();
+            if (openTag.Length - 2 > _maxNameBytes)
+            {
+                ValidateNcName(openTag[1..^1]);
+            }
+
+            if (_inAttribute)
+            {
+                WriteEndAttribute();
+            }
+
+            if (_depth + 1 > _maxDepth)
+            {
+                throw new XmlException($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
+            }
+
+            CloseStartTag();
+            ref var parent = ref CurrentFrame();
+            parent.HasContent = true;
+            WriteElementIndent(_depth);
+            _leafParentHadText = parent.HasText;
+            WriteRaw(openTag);
+        }
+
+        /// <summary>
         /// Formats <paramref name="value"/> into the output without going through the text escaper.
         /// </summary>
         /// <typeparam name="T">A UTF-8 span-formattable number.</typeparam>
@@ -3835,24 +3892,7 @@ namespace CloudNimble.Text.Xml
         internal void WriteNumberUtf8<T>(T value, int maxBytes)
             where T : struct, IUtf8SpanFormattable
         {
-            ThrowIfDisposed();
-            if (_inAttribute)
-            {
-                Ensure(maxBytes);
-            }
-            else
-            {
-                if (_depth == 0)
-                {
-                    throw new XmlException("Text is not allowed at the document level.");
-                }
-
-                CloseStartTag();
-                MarkText();
-                Ensure(maxBytes);
-            }
-
-            value.TryFormat(_memory.Span[_buffered..], out var written, default, CultureInfo.InvariantCulture);
+            value.TryFormat(BeginPlainValue(maxBytes), out var written, default, CultureInfo.InvariantCulture);
             _buffered += written;
         }
 

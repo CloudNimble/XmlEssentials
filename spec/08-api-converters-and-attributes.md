@@ -118,13 +118,19 @@ public sealed class XmlNamingPolicyAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true)]
-public sealed class XmlDerivedTypeAttribute : Attribute
+public abstract class XmlDerivedTypeAttribute : Attribute
 {
-    public XmlDerivedTypeAttribute(Type derivedType);
-    public XmlDerivedTypeAttribute(Type derivedType, string typeDiscriminator);
-    public Type DerivedType { get; }
+    public abstract Type DerivedType { get; }
     public object? TypeDiscriminator { get; }
     public string? Namespace { get; set; }
+}
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true)]
+public sealed class XmlDerivedTypeAttribute<T> : XmlDerivedTypeAttribute
+{
+    public XmlDerivedTypeAttribute();
+    public XmlDerivedTypeAttribute(string typeDiscriminator);
+    public override Type DerivedType { get; }
 }
 
 public enum XmlUnknownDerivedTypeHandling
@@ -159,18 +165,25 @@ public sealed class XmlAttributeAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-public sealed class XmlElementAttribute : Attribute
+public class XmlElementAttribute : Attribute
 {
     public XmlElementAttribute();
     public XmlElementAttribute(string elementName);
     public XmlElementAttribute(string elementName, string? namespaceUri);
-    public XmlElementAttribute(Type type);
-    public XmlElementAttribute(string elementName, Type type);
     public string? ElementName { get; set; }
     public string? Namespace { get; set; }
     public int Order { get; set; } // default -1 = unset (K36)
     public bool IsNullable { get; set; }
-    public Type? Type { get; set; }
+    public virtual Type? Type { get; }
+}
+
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
+public sealed class XmlElementAttribute<T> : XmlElementAttribute
+{
+    public XmlElementAttribute();
+    public XmlElementAttribute(string elementName);
+    public XmlElementAttribute(string elementName, string? namespaceUri);
+    public override Type Type { get; }
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
@@ -185,14 +198,21 @@ public sealed class XmlArrayAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-public sealed class XmlArrayItemAttribute : Attribute
+public class XmlArrayItemAttribute : Attribute
 {
     public XmlArrayItemAttribute();
     public XmlArrayItemAttribute(string elementName);
-    public XmlArrayItemAttribute(string elementName, Type type);
     public string? ElementName { get; set; }
     public string? Namespace { get; set; }
-    public Type? Type { get; set; }
+    public virtual Type? Type { get; }
+}
+
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
+public sealed class XmlArrayItemAttribute<T> : XmlArrayItemAttribute
+{
+    public XmlArrayItemAttribute();
+    public XmlArrayItemAttribute(string elementName);
+    public override Type Type { get; }
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]

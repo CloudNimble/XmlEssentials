@@ -49,6 +49,12 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
+        public override T? ReadLexical(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
+        {
+            return _inner.ReadLexical(utf8, options);
+        }
+
+        /// <inheritdoc />
         public override void Write(Utf8XmlWriter writer, T? value, XmlSerializerOptions options)
         {
             _inner.Write(writer, value!.Value, options);

@@ -95,9 +95,26 @@ namespace CloudNimble.Text.Xml
         public static readonly SearchValues<byte> CDataPlainChars = SearchValues.Create("\t !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
 
         /// <summary>
+        /// The bytes that end a run copied as it is when an XML 1.0 value is decoded: the start of a reference and CR.
+        /// </summary>
+        public static readonly SearchValues<byte> DecodeStops10 = SearchValues.Create("&\r"u8);
+
+        /// <summary>
+        /// <see cref="DecodeStops10"/> and the UTF-8 lead bytes of NEL (U+0085) and LS (U+2028), which XML 1.1 reads as
+        /// line ends.
+        /// </summary>
+        public static readonly SearchValues<byte> DecodeStops11 = SearchValues.Create([(byte)'&', (byte)'\r', 0xC2, 0xE2]);
+
+        /// <summary>
         /// <see cref="PlainAsciiChars"/> without <c>-</c>, which may start the end of a comment.
         /// </summary>
         public static readonly SearchValues<byte> CommentPlainChars = SearchValues.Create("\t !\"#$%&'()*+,./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
+        /// <see cref="PlainAsciiChars"/> without <c>&lt;</c>, <c>&amp;</c> and <c>&gt;</c>: text that ends at the next tag and
+        /// needs no decoding.
+        /// </summary>
+        public static readonly SearchValues<byte> LeafTextChars = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
 
         /// <summary>
         /// Tab and every printable ASCII character. A run made only of these bytes holds legal characters in

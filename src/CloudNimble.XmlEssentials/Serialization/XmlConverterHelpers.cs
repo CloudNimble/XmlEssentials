@@ -1,5 +1,8 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -11,6 +14,55 @@ namespace CloudNimble.Text.Xml.Serialization
     {
 
         #region Private Methods
+
+        /// <summary>
+        /// Returns whether <paramref name="value"/> is null, without boxing a <see cref="Nullable{T}"/>.
+        /// </summary>
+        /// <typeparam name="T">The value type.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <returns><see langword="true"/> for a null reference or a <see cref="Nullable{T}"/> with no value.</returns>
+        /// <remarks>
+        /// <c>value is null</c> on a type parameter is compiled as a box and a null test. The JIT usually removes the
+        /// box for a <see cref="Nullable{T}"/>, but not always: with profile-guided inlining it stayed, and writing a
+        /// list of 1,000 <c>int?</c> allocated 24,000 bytes. The comparer never boxes.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool IsNull<T>([NotNullWhen(false)] T? value)
+        {
+            return typeof(T).IsValueType
+                ? default(T) is null && EqualityComparer<T>.Default.Equals(value, default!)
+                : value is null;
+        }
+
+        /// <summary>
+        /// Copies <paramref name="segment"/> to the end of the pooled buffer, renting or growing it first.
+        /// </summary>
+        /// <param name="segment">The run to add.</param>
+        /// <param name="rented">The pooled buffer, or null when nothing has been copied yet.</param>
+        /// <param name="length">The number of bytes used in <paramref name="rented"/>.</param>
+        /// <param name="content">The run held as a slice of the input, copied in first when the buffer is rented.</param>
+        internal static void CopyContent(ReadOnlySpan<byte> segment, ref byte[]? rented, ref int length, ReadOnlySpan<byte> content)
+        {
+            if (rented is null || rented.Length - length < segment.Length)
+            {
+                var grown = ArrayPool<byte>.Shared.Rent(Math.Max(256, (content.Length + length + segment.Length) * 2));
+                if (rented is null)
+                {
+                    content.CopyTo(grown);
+                    length = content.Length;
+                }
+                else
+                {
+                    rented.AsSpan(0, length).CopyTo(grown);
+                    ArrayPool<byte>.Shared.Return(rented);
+                }
+
+                rented = grown;
+            }
+
+            segment.CopyTo(rented.AsSpan(length));
+            length += segment.Length;
+        }
 
         /// <summary>
         /// Advances to the next start tag, skipping the declaration, comments, and processing instructions.
@@ -51,6 +103,11 @@ namespace CloudNimble.Text.Xml.Serialization
                 return true;
             }
 
+            if (reader.TryReadLeafContent(out content))
+            {
+                return true;
+            }
+
             var length = 0;
             while (reader.Read())
             {
@@ -61,32 +118,15 @@ namespace CloudNimble.Text.Xml.Serialization
                         return true;
                     case XmlTokenType.Text:
                     case XmlTokenType.CData:
-                        var segment = reader.ValueSpan;
-                        if (rented is null && content.IsEmpty && !reader.ValueIsEscaped)
+                        if (rented is null && content.IsEmpty && (!reader.ValueIsEscaped || reader.IsEndTagNext))
                         {
-                            content = segment;
-                            break;
+                            content = reader.ValueSpan;
+                        }
+                        else
+                        {
+                            CopyContent(reader.ValueSpan, ref rented, ref length, content);
                         }
 
-                        if (rented is null || rented.Length - length < segment.Length)
-                        {
-                            var grown = ArrayPool<byte>.Shared.Rent(Math.Max(256, (content.Length + length + segment.Length) * 2));
-                            if (rented is null)
-                            {
-                                content.CopyTo(grown);
-                                length = content.Length;
-                            }
-                            else
-                            {
-                                rented.AsSpan(0, length).CopyTo(grown);
-                                ArrayPool<byte>.Shared.Return(rented);
-                            }
-
-                            rented = grown;
-                        }
-
-                        segment.CopyTo(rented.AsSpan(length));
-                        length += segment.Length;
                         break;
                     case XmlTokenType.Comment:
                     case XmlTokenType.ProcessingInstruction:
@@ -124,13 +164,75 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="name">The qualified name.</param>
         internal static void WriteStartAttribute(Utf8XmlWriter writer, XmlName name)
         {
-            if (name.Prefix.Length > 0)
+            if (name.Prefix.Length > 0 || name.NamespaceUri.Length > 0)
             {
-                writer.WriteStartAttribute(name.Prefix, name.LocalName, name.NamespaceUri);
+                writer.WriteStartAttribute(name.Prefix.Length > 0 ? name.Prefix : null, name.LocalName, name.NamespaceUri);
                 return;
             }
 
             writer.WriteStartAttribute(name.LocalName);
+        }
+
+        /// <summary>
+        /// Reads the derived-type discriminator from attributes on the current start tag.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <param name="placement">Where the discriminator is written.</param>
+        /// <param name="utf8AttributeName">The discriminator attribute local name when placement is attribute.</param>
+        /// <returns>The discriminator, or null when it is absent.</returns>
+        internal static string? ReadDiscriminator(ref Utf8XmlReader reader, XmlDiscriminatorPlacement placement, byte[] utf8AttributeName)
+        {
+            if (!reader.HasAttributes)
+            {
+                return null;
+            }
+
+            string? value = null;
+            while (reader.MoveToNextAttribute())
+            {
+                if (placement is XmlDiscriminatorPlacement.XsiType)
+                {
+                    if (reader.LocalNameEquals(XmlAttributes.Type) && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
+                    {
+                        value = reader.GetString();
+                    }
+
+                    continue;
+                }
+
+                if (utf8AttributeName.Length > 0 && reader.LocalNameEquals(utf8AttributeName) && reader.PrefixSpan.IsEmpty)
+                {
+                    value = reader.GetString();
+                }
+            }
+
+            reader.MoveToElement();
+            return value;
+        }
+
+        /// <summary>
+        /// Writes the derived-type discriminator on the open start tag.
+        /// </summary>
+        /// <param name="writer">The writer, on an open start tag.</param>
+        /// <param name="placement">Where the discriminator is written.</param>
+        /// <param name="utf8AttributeName">The discriminator attribute local name when placement is attribute.</param>
+        /// <param name="discriminator">The discriminator value.</param>
+        internal static void WriteDiscriminator(Utf8XmlWriter writer, XmlDiscriminatorPlacement placement, byte[] utf8AttributeName, string discriminator)
+        {
+            if (placement is XmlDiscriminatorPlacement.Attribute)
+            {
+                writer.WriteStartAttributeUtf8(utf8AttributeName, [], []);
+                writer.WriteStringValue(discriminator);
+                writer.WriteEndAttribute();
+                return;
+            }
+
+            if (placement is XmlDiscriminatorPlacement.XsiType)
+            {
+                writer.WriteStartAttribute("xsi", XmlAttributes.Type, XmlNamespaces.Xsi);
+                writer.WriteStringValue(discriminator);
+                writer.WriteEndAttribute();
+            }
         }
 
         #endregion

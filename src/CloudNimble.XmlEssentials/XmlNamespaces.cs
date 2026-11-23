@@ -14,6 +14,12 @@ namespace CloudNimble.Text.Xml
         #region Fields
 
         /// <summary>
+        /// The namespace of serializer identity <c>id</c> / <c>ref</c> attributes:
+        /// <c>urn:CloudNimble.Text.Xml:refs</c>.
+        /// </summary>
+        public const string Refs = "urn:CloudNimble.Text.Xml:refs";
+
+        /// <summary>
         /// The namespace bound to the <c>xml</c> prefix:
         /// <c>http://www.w3.org/XML/1998/namespace</c>.
         /// </summary>

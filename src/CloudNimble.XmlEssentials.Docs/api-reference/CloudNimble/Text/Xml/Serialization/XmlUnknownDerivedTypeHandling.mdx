@@ -1,0 +1,41 @@
+---
+title: XmlUnknownDerivedTypeHandling
+description: "How an unknown derived type is handled when reading or writing a polymorphic type."
+icon: list-ol
+tag: "ENUM"
+keywords: ['XmlUnknownDerivedTypeHandling', 'CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml.Serialization
+
+**Inheritance:** System.Enum
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling
+```
+
+## Summary
+
+How an unknown derived type is handled when reading or writing a polymorphic type.
+
+## Values
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `FailSerialization` | 0 | Throw when the type is not in the declared derived-type map. |
+| `FallBackToBaseType` | 1 | Read and write the value as the declared base type. |
+| `FallBackToNearestAncestor` | 2 | Read and write the value as the nearest declared ancestor. |
+
+## Related APIs
+
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
+

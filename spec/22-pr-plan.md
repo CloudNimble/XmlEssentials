@@ -15,12 +15,16 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 2d | xmlconf subset | **Done** (`47e7fd1`) |
 | 3 | Utf8XmlWriter | **Done** (`e211820`) |
 | 4 | DOM | **Done** (`7a7d8da`; real-document speed work in `26a0d03`) |
-| 5 | Options, converters, primitive serialize | **Done** (`c24bee9`; small-element speed work in `97b91b2`); scalar roots are 0.06 to 0.29 of BCL; the two streaming rows are 0.93 and 0.87 of BCL ([optimization](23-optimization.md)) |
-| 6a–6e | POCO mapping | Not started |
+| 5 | Options, converters, primitive serialize | **Done** (`c24bee9`; small-element speed work in `97b91b2`); scalar roots are 0.06 to 0.26 of BCL; the two streaming rows are 0.79 and 0.65 of BCL ([optimization](23-optimization.md)) |
+| 6a | POCO element mapping | **Done**; object rows are 0.23 to 0.68 of BCL ([optimization](23-optimization.md)) |
+| 6b | XmlText / simple content | **Done** |
+| 6c | Collections and dictionaries | **Done** |
+| 6d | Polymorphism / extension data | **Done** |
+| 6e | Mixed content, references, async enumerable | Partial: IgnoreCycles/Preserve scope, mixed types; async enumerable already in PR 5 |
 | 7 | Source generator + context | Not started |
 | 7b | XSD generator | Not started |
 | 8 | AOT / trimming tests | Not started |
-| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Not started (reader, writer, DOM and real-document benches shipped with PRs 2–4) |
+| 9 | Benchmarks vs BCL XmlSerializer vs STJ | Partial: reader, writer, DOM and real-document benches shipped with PRs 2–4, scalar and sequence benches with PR 5, object benches (`XmlSerializerObjectBenchmarks`) with PR 6. First-call and source-generated columns are not written. |
 | 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
 | 11 | Breakdance freeze + coverage slogan check | Not started |
 
@@ -113,32 +117,38 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 
 ## PR 6a: POCO elements
 
+- **Status:** Done
 - **Title:** `feat: POCO element mapping`
 - **Depends on:** PR 5
-- **Description:** Public properties, naming policy, nested objects, records/init/required/constructor.
+- **Description:** Public properties serialize as child elements by convention (STJ map). `DefaultPropertyMapping` (`Element` / `Attribute`) is the blanket switch: `Attribute` writes unannotated scalars as attributes; nested objects stay elements and their simple members are attributes too. `[XmlAttribute]` is honored (simple types only). Naming policy, nested objects, records/init/required/constructor, `[XmlRoot]` / `[XmlPropertyName]` / `[XmlIgnore]` / `[XmlInclude]` / `[XmlRequired]` / `[XmlPropertyOrder]` / `[XmlElement]` name/ns/order/nillable. `[XmlText]` and typed/multiple `[XmlElement]` throw `NotSupportedException` at type-info bind (6b / 6d).
 
 ## PR 6b: Attributes and simple content
 
+- **Status:** Done
 - **Title:** `feat: XmlAttribute and XmlText mapping`
 - **Depends on:** PR 6a
+- **Description:** `[XmlText]` / `[XmlCData]` simple content. `[XmlAttribute]` and `DefaultPropertyMapping.Attribute` shipped with 6a.
 
 ## PR 6c: Collections
 
+- **Status:** Done
 - **Title:** `feat: collection mapping (unwrapped default, XmlArray wrap)`
 - **Depends on:** PR 6b
-- **Description:** Unwrapped default, `[XmlArray]` wrap, **`Dictionary<,>` maps** ([K16](01-identity-and-decisions.md#key-decisions)), extension-data bags.
+- **Description:** Unwrapped default, `[XmlArray]` wrap, `Dictionary<,>` maps ([K16](01-identity-and-decisions.md#key-decisions)).
 
 ## PR 6d: Nil, polymorphism, extension data
 
+- **Status:** Done
 - **Title:** `feat: xsi:nil, polymorphism, XmlExtensionData`
 - **Depends on:** PR 6c
-- **Description:** Interleave `[XmlPropertyOrder]` test (derived between two base members). Multiple `[XmlElement]` per-member choice.
+- **Description:** `[XmlDerivedType<T>]` element-name discriminator; typed `[XmlElement<T>]`. `[XmlPolymorphic]` `DiscriminatorPlacement` (`ElementName`, `Attribute`, `XsiType`). `[XmlExtensionData]` captures unmapped attributes and elements. `[XmlPropertyOrder]` interleave shipped with 6a.
 
 ## PR 6e: Mixed content, references, async enumerable
 
+- **Status:** Done
 - **Title:** `feat: XmlMixed, ReferenceHandler, SerializeAsyncEnumerable`
 - **Depends on:** PR 6d
-- **Description:** `[XmlMixed]` lists; `XmlReferenceHandler.Preserve` / `IgnoreCycles`; `DeserializeAsyncEnumerable` / `SerializeAsyncEnumerable` (`topLevelValues`); `PipeReader`/`PipeWriter`.
+- **Description:** `[XmlMixed]` text and child elements (`XmlMixedText` / `XmlMixedElement`). `IgnoreCycles` / `Preserve` write and read (`id`/`ref` in `urn:CloudNimble.Text.Xml:refs`). `DeserializeAsyncEnumerable` / `SerializeAsyncEnumerable` shipped with PR 5.
 
 ## PR 7: Source generator + context
 

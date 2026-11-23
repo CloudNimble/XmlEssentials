@@ -23,6 +23,8 @@ namespace CloudNimble.Text.Xml
 
         private readonly ConcurrentDictionary<Type, XmlConverter?> _converters = new();
         private XmlTypeInfo? _lastTypeInfo;
+        private int _resolveDepth;
+        private readonly object _typeInfoLock = new();
         private XmlTypeInfoResolverChain? _typeInfoResolverChain;
         private IXmlTypeInfoResolver? _typeInfoResolver;
         private readonly ConcurrentDictionary<Type, XmlTypeInfo?> _typeInfos = new();
@@ -110,6 +112,26 @@ namespace CloudNimble.Text.Xml
         /// Gets or sets the default namespace of the document element.
         /// </summary>
         public string? DefaultNamespace
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets how unannotated properties are mapped.
+        /// </summary>
+        /// <remarks>
+        /// The default is <see cref="XmlPropertyMapping.Element"/>: public properties become child elements,
+        /// matching JSON properties in System.Text.Json. Set <see cref="XmlPropertyMapping.Attribute"/> to write
+        /// unannotated simple members as XML attributes without annotating each one. Nested objects and
+        /// collections stay elements. <c>[XmlElement]</c>, <c>[XmlAttribute]</c>, and <c>[XmlText]</c> override
+        /// this per member.
+        /// </remarks>
+        public XmlPropertyMapping DefaultPropertyMapping
         {
             get;
             set
@@ -626,6 +648,7 @@ namespace CloudNimble.Text.Xml
             DefaultBufferSize = options.DefaultBufferSize;
             DefaultIgnoreCondition = options.DefaultIgnoreCondition;
             DefaultNamespace = options.DefaultNamespace;
+            DefaultPropertyMapping = options.DefaultPropertyMapping;
             DictionaryKeyPolicy = options.DictionaryKeyPolicy;
             ElementNamingPolicy = options.ElementNamingPolicy;
             EmitByteOrderMark = options.EmitByteOrderMark;
@@ -759,6 +782,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Converts a CLR member name to an attribute local name.
+        /// </summary>
+        /// <param name="clrName">The CLR name.</param>
+        /// <returns>The XML local name.</returns>
+        internal string ConvertAttributeName(string clrName)
+        {
+            return (AttributeNamingPolicy ?? PropertyNamingPolicy)?.ConvertName(clrName) ?? clrName;
+        }
+
+        /// <summary>
         /// Converts a CLR type or member name to an element local name.
         /// </summary>
         /// <param name="clrName">The CLR name.</param>
@@ -787,7 +820,18 @@ namespace CloudNimble.Text.Xml
         /// <returns>The converter, or <see langword="null"/> when no converter handles the type.</returns>
         internal XmlConverter? GetConverterOrNull(Type type)
         {
-            return _converters.GetOrAdd(type, static (key, options) => options.ResolveConverter(key), this);
+            if (_converters.TryGetValue(type, out var cached))
+            {
+                return cached;
+            }
+
+            var converter = ResolveConverter(type);
+            if (converter is not null)
+            {
+                _converters.TryAdd(type, converter);
+            }
+
+            return converter;
         }
 
         /// <summary>
@@ -797,6 +841,8 @@ namespace CloudNimble.Text.Xml
         /// <returns>The type info, or <see langword="null"/> when the resolver has none.</returns>
         /// <remarks>
         /// The type info returned last is checked before the dictionary, because most callers serialize one type repeatedly.
+        /// A type info found in the dictionary becomes the one returned last, unless a type is being bound at that
+        /// moment: one that is still being bound must not be handed to a caller that does not hold the lock.
         /// </remarks>
         internal XmlTypeInfo? GetTypeInfoOrNull(Type type)
         {
@@ -806,13 +852,56 @@ namespace CloudNimble.Text.Xml
             }
 
             MakeReadOnly();
-            var typeInfo = _typeInfos.GetOrAdd(type, static (key, options) => options.ResolveTypeInfo(key), this);
-            if (typeInfo is not null)
+            lock (_typeInfoLock)
             {
-                _lastTypeInfo = typeInfo;
-            }
+                if (_typeInfos.TryGetValue(type, out var cached))
+                {
+                    if (_resolveDepth == 0)
+                    {
+                        _lastTypeInfo = cached;
+                    }
 
-            return typeInfo;
+                    return cached;
+                }
+
+                XmlTypeInfo? typeInfo;
+                _resolveDepth++;
+                try
+                {
+                    typeInfo = ResolveTypeInfo(type);
+                }
+                finally
+                {
+                    _resolveDepth--;
+                }
+
+                _typeInfos.TryAdd(type, typeInfo);
+                if (typeInfo is not null)
+                {
+                    _lastTypeInfo = typeInfo;
+                }
+
+                return typeInfo;
+            }
+        }
+
+        /// <summary>
+        /// Stores <paramref name="typeInfo"/> so a recursive request for the same type during binding
+        /// returns this instance instead of building it again.
+        /// </summary>
+        /// <param name="typeInfo">The type info being built.</param>
+        internal void CacheTypeInfo(XmlTypeInfo typeInfo)
+        {
+            _typeInfos[typeInfo.Type] = typeInfo;
+        }
+
+        /// <summary>
+        /// Drops a type info that failed to finish binding so a later request can throw again.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        internal void RemoveTypeInfo(Type type)
+        {
+            _typeInfos.TryRemove(type, out _);
         }
 
         /// <summary>
