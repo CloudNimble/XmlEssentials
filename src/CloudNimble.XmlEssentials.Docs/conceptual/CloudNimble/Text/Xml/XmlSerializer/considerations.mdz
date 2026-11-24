@@ -17,7 +17,7 @@ The first call for a type with a given options instance builds the type's XML ma
 
 ### Differences from System.Text.Json
 
-- `Serialize<object>(value)` doesn't serialize the run-time type. It throws a `NotSupportedException`. Use the overload that takes a `Type`.
+- `Serialize<object>(value)` writes the value as the type it has, and names the document element after that type. `Deserialize<object>` returns an `XmlElement`.
 - Constructor parameters are matched to members with case unless `PropertyNameCaseInsensitive` is `true`. See [Immutable types](/guides/immutable-types).
 - `RespectRequiredConstructorParameters` defaults to `true`.
 - A `null` member is written as an element marked `xsi:nil="true"` by default, because XML has no `null` literal.

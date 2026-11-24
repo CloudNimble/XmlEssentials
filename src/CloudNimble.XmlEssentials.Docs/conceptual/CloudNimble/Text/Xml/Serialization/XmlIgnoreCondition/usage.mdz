@@ -5,6 +5,8 @@
 | `Never` | Always written and read. This is the default for `DefaultIgnoreCondition`. |
 | `Always` | Never written and never read. This is the default for `[XmlIgnore]`. |
 | `WhenWritingDefault` | Left out when its value is `null` or the default value of its type. |
+| `WhenWriting` | Never written. Still read. |
+| `WhenReading` | Never read. Still written. |
 | `WhenWritingNull` | Left out when its value is `null`. |
 
 The following example serializes one object with each of the three values that make sense as a default:

@@ -1,3 +1,5 @@
+using System;
+
 namespace CloudNimble.Text.Xml
 {
 
@@ -41,7 +43,15 @@ namespace CloudNimble.Text.Xml
         /// The maximum number of attributes on one element, including namespace declarations
         /// (<c>xmlns</c> and <c>xmlns:prefix</c>). The default is 0, which means 1000.
         /// </value>
-        public int MaxAttributeCount { get; set; }
+        public int MaxAttributeCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum size allowed for the content of one comment.
@@ -49,7 +59,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum size of the content of a comment, in UTF-8 bytes. The default is 0, which means 1,048,576.
         /// </value>
-        public int MaxCommentByteCount { get; set; }
+        public int MaxCommentByteCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum depth allowed when parsing XML.
@@ -57,7 +75,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum depth of nested elements. The default is 0, which means 64.
         /// </value>
-        public int MaxDepth { get; set; }
+        public int MaxDepth
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum size allowed for the document.
@@ -65,7 +91,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum size of the document, in UTF-8 bytes. The default is 0, which means that the size is not limited.
         /// </value>
-        public int MaxDocumentByteCount { get; set; }
+        public int MaxDocumentByteCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum size allowed for an element name or an attribute name.
@@ -73,7 +107,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum size of an element or attribute name, in UTF-8 bytes. The default is 0, which means 1024.
         /// </value>
-        public int MaxNameByteCount { get; set; }
+        public int MaxNameByteCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum size allowed for one text node or CDATA section.
@@ -81,7 +123,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum size of a text node or a CDATA section, in UTF-8 bytes. The default is 0, which means 16,777,216.
         /// </value>
-        public int MaxTextByteCount { get; set; }
+        public int MaxTextByteCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets a value that determines how the parser handles text between elements that consists only of white space.

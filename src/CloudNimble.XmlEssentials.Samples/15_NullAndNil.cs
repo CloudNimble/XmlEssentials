@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using CloudNimble.Text.Xml;
+using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Samples.Models.Shapes;
 
 namespace CloudNimble.XmlEssentials.Samples
@@ -51,14 +52,14 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
-        /// Leaves null members out of the document with <see cref="XmlNilHandling.Omit"/>.
+        /// Leaves null members out of the document with <see cref="XmlIgnoreCondition.WhenWritingNull"/>.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void OmitNulls(TextWriter output)
         {
             var options = new XmlSerializerOptions
             {
-                NilHandling = XmlNilHandling.Omit,
+                DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
                 WriteIndented = true,
                 NewLine = "\n",
             };
@@ -107,36 +108,9 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine(xml);
             output.WriteLine(XmlSerializer.Deserialize<Contact>(xml) is null);
 
-            try
-            {
-                XmlSerializer.Serialize(nobody, new XmlSerializerOptions { NilHandling = XmlNilHandling.Omit });
-            }
-            catch (InvalidOperationException ex)
-            {
-                output.WriteLine(ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Writes null members as empty elements with <see cref="XmlNilHandling.WriteEmptyElement"/>, and shows that
-        /// the document does not read back as it was written.
-        /// </summary>
-        /// <param name="output">The writer that receives what the sample prints.</param>
-        public static void WriteEmptyElements(TextWriter output)
-        {
-            var options = new XmlSerializerOptions
-            {
-                NilHandling = XmlNilHandling.WriteEmptyElement,
-                WriteIndented = true,
-                NewLine = "\n",
-            };
-
-            var contact = new Contact { Name = "Ada", Nickname = null, Age = 36 };
-            string xml = XmlSerializer.Serialize(contact, options);
-            output.WriteLine(xml);
-
-            Contact? copy = XmlSerializer.Deserialize<Contact>(xml, options);
-            output.WriteLine($"Nickname: {Describe(copy!.Nickname)}");
+            // An ignore condition is about members. The document still needs its root, so a null root is written.
+            var omitNulls = new XmlSerializerOptions { DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
+            output.WriteLine(XmlSerializer.Serialize(nobody, omitNulls) == xml);
         }
 
         #endregion

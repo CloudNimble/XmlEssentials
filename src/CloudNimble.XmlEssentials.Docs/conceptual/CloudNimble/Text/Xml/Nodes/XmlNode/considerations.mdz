@@ -5,5 +5,5 @@
 - `ParseValue` uses the options of the reader you pass. By default a reader reports comments and white-space-only text between elements, so the tree keeps both.
 - `Parent` is `null` until the node is added to an element's `Children` or `Attributes`, and `null` again after it's removed.
 - `NamespaceUri` is `null` on nodes that have no name (text, CDATA, comments, processing instructions, and the declaration). On an element or an attribute, it's an empty string when the name is in no namespace.
-- `ToString` writes with a `Utf8XmlWriter` that omits the XML declaration, doesn't indent, and writes XML 1.0. It throws an `XmlException` when the node can't be written as it stands: a text node or an attribute on its own, an invalid name, or a prefix with no namespace.
+- `ToString` writes with a `Utf8XmlWriter` that omits the XML declaration, doesn't indent, and writes by the rules of XML 1.1, because a node doesn't know which version it was parsed from. A character that only XML 1.1 allows, or that XML 1.1 would normalize, is written as a character reference. It throws an `XmlException` when the node can't be written as it stands: a text node or an attribute on its own, an invalid name, or a prefix with no namespace.
 - `WriteTo` and `ToString` are where the tree is validated. Building the tree doesn't check names or values.

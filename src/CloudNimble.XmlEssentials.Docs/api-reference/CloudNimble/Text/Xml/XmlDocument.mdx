@@ -1,6 +1,6 @@
 ---
 title: XmlDocument
-description: "An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`."
+description: "Provides a mechanism for examining the structural content of an XML document without automatically instantiating data values. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlDocument', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml', 'class', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlValueKind', 'CloudNimble.Text.Xml.Utf8XmlReader']
@@ -20,7 +20,8 @@ CloudNimble.Text.Xml.XmlDocument
 
 ## Summary
 
-An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`.
+Provides a mechanism for examining the structural content of an XML document without automatically
+instantiating data values. This class cannot be inherited.
 
 ## Usage
 
@@ -71,11 +72,18 @@ For a walkthrough of every member, see [How to read XML with XmlDocument and Xml
 
 ## Remarks
 
-Dispose returns rented buffers. Use after dispose throws [ObjectDisposedException](https://learn.microsoft.com/dotnet/api/system.objectdisposedexception).
-Prolog and epilog comments or processing instructions are preserved for [XmlDocument.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlDocument#writeto)
-and are not children of [XmlDocument.RootElement](/api-reference/CloudNimble/Text/Xml/XmlDocument#rootelement).
-The document owns a pooled copy of the UTF-8 payload. Names and unescaped values are offsets
-into that copy; only entity-decoded values and interned namespace URIs are copied a second time.
+This class is the XML counterpart of `JsonDocument` in System.Text.Json. The document is read-only.
+It uses buffers from the shared array pool, and [XmlDocument.Dispose](/api-reference/CloudNimble/Text/Xml/XmlDocument#dispose) returns them. A document that
+is not disposed does not return its buffers to the pool. Using the document or an
+[XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that was obtained from it after it is disposed throws
+[ObjectDisposedException](https://learn.microsoft.com/dotnet/api/system.objectdisposedexception).
+Comments and processing instructions before and after the document element are kept for
+[XmlDocument.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlDocument#writeto). They are not children of [XmlDocument.RootElement](/api-reference/CloudNimble/Text/Xml/XmlDocument#rootelement). Comments are kept by default, so that
+a document that is parsed and written back does not lose them. To leave them out, set
+[XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+The document owns a pooled copy of the UTF-8 input. Names and values that contain no entity or
+character references are stored as offsets into that copy. Only values that had references
+expanded and namespace URIs are copied a second time.
 
 ## Examples
 
@@ -387,7 +395,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Declaration
 
-Gets the XML declaration captured at parse time, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when omitted.
+Gets the XML declaration of this document.
 
 #### Syntax
 
@@ -398,10 +406,19 @@ public CloudNimble.Text.Xml.XmlDeclarationInfo? Declaration { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlDeclarationInfo?`
+The XML declaration that was read when the document was parsed, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the
+document has no XML declaration. The version is reported as `1.0` or `1.1`, and the
+encoding is always reported as `utf-8`.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ObjectDisposedException` | The document has been disposed. |
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RootElement
 
-Gets the document element.
+Gets the root element of this XML document.
 
 #### Syntax
 
@@ -412,6 +429,14 @@ public CloudNimble.Text.Xml.XmlElement RootElement { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlElement`
+An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents the document element.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ObjectDisposedException` | The document has been disposed. |
+| `XmlException` | The document has no root element. No document that a public method returns is in that state. |
 
 ## Methods
 
@@ -508,7 +533,7 @@ Type: `object`
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
-Parses *xml* as UTF-16 converted to UTF-8.
+Parses a string that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
 
 #### Syntax
 
@@ -520,17 +545,33 @@ public static CloudNimble.Text.Xml.XmlDocument Parse(string xml, CloudNimble.Tex
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `string` | The XML text. |
-| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+| `xml` | `string` | The XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-A disposable document.
+An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the XML document.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `XmlException` | *xml* is not a well-formed XML document.
+-or-
+*xml* exceeds a limit that is set in *options*. |
+
+#### Remarks
+
+The text is converted to UTF-8 in a pooled buffer that the document owns.
+[XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount) applies to the UTF-8 size.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
-Parses UTF-16 XML.
+Parses a span of characters that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
 
 #### Syntax
 
@@ -542,17 +583,32 @@ public static CloudNimble.Text.Xml.XmlDocument Parse(System.ReadOnlySpan<char> x
 
 | Name | Type | Description |
 |------|------|-------------|
-| `xml` | `System.ReadOnlySpan<char>` | The XML text. |
-| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+| `xml` | `System.ReadOnlySpan<char>` | The XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-A disposable document.
+An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the XML document.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *xml* is not a well-formed XML document.
+-or-
+*xml* exceeds a limit that is set in *options*. |
+
+#### Remarks
+
+The text is converted to UTF-8 in a pooled buffer that the document owns.
+[XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount) applies to the UTF-8 size.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
-Parses UTF-8 XML.
+Parses a span of UTF-8 bytes that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
 
 #### Syntax
 
@@ -564,17 +620,32 @@ public static CloudNimble.Text.Xml.XmlDocument Parse(System.ReadOnlySpan<byte> u
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-A disposable document.
+An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the XML document.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8Xml* is not a well-formed XML document.
+-or-
+*utf8Xml* exceeds a limit that is set in *options*. |
+
+#### Remarks
+
+The bytes are copied into a pooled buffer that the document owns, so the document does not
+depend on *utf8Xml* after this method returns.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
-Parses a UTF-8 sequence.
+Parses a sequence of UTF-8 bytes that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
 
 #### Syntax
 
@@ -586,17 +657,34 @@ public static CloudNimble.Text.Xml.XmlDocument Parse(System.Buffers.ReadOnlySequ
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence. |
-| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 encoded XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-A disposable document.
+An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the XML document.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `OverflowException` | *utf8Xml* is longer than [MaxValue](https://learn.microsoft.com/dotnet/api/system.int32.maxvalue) bytes. |
+| `XmlException` | *utf8Xml* is not a well-formed XML document.
+-or-
+*utf8Xml* exceeds a limit that is set in *options*. |
+
+#### Remarks
+
+The bytes are copied into one pooled buffer that the document owns, so the document does not
+depend on *utf8Xml* after this method returns.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
-Reads a UTF-8 stream to its end and parses it.
+Parses a stream of UTF-8 bytes that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
+The stream is read to completion.
 
 #### Syntax
 
@@ -608,17 +696,33 @@ public static CloudNimble.Text.Xml.XmlDocument Parse(System.IO.Stream utf8Xml, C
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream. |
-| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
+| `utf8Xml` | `System.IO.Stream` | The stream that holds the UTF-8 encoded XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-A disposable document.
+An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the XML document.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `XmlException` | *utf8Xml* does not hold a well-formed XML document.
+-or-
+*utf8Xml* exceeds a limit that is set in *options*. |
+
+#### Remarks
+
+When [XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount) is set, reading stops as soon as the
+stream is found to be longer than that limit. The stream is not closed.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ParseValue
 
-Parses the current element (and its descendants) from *reader* as a document.
+Parses one XML element (including its attributes and descendants) from the provided reader.
 
 #### Syntax
 
@@ -630,12 +734,31 @@ public static CloudNimble.Text.Xml.XmlDocument ParseValue(ref CloudNimble.Text.X
 
 | Name | Type | Description |
 |------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | A reader positioned at or before a start tag. |
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader to read. It is positioned on or before the start tag of the element. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlDocument`
-A disposable document whose root is that element.
+An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the element (and nested nodes) read from the reader.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *reader* reaches an end tag before it reaches a start tag.
+-or-
+*reader* reaches the end of its input without reading an element.
+-or-
+The XML that *reader* reads is not well formed. |
+
+#### Remarks
+
+If the reader is positioned on an attribute, it is moved back to the element that owns the attribute.
+When this method returns, the reader is positioned on the end tag of the element, or on the
+element itself if it is an empty-element tag.
+The document copies the names and values it keeps, so it does not depend on the reader's input
+after this method returns.
+The reader is not restored to its original position when this method throws.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
 
@@ -674,7 +797,7 @@ Type: `string?`
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryParse
 
-Attempts to parse UTF-8 XML.
+Attempts to parse a span of UTF-8 bytes that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
 
 #### Syntax
 
@@ -686,18 +809,27 @@ public static bool TryParse(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 XML. |
-| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Parse options. |
-| `document` | `CloudNimble.Text.Xml.XmlDocument?` | When this method returns true, the parsed document. |
+| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
+| `document` | `CloudNimble.Text.Xml.XmlDocument?` | When this method returns, contains the parsed document if parsing succeeded, or
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it failed. This parameter is treated as uninitialized. |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the payload was well-formed.
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if *utf8Xml* is a well-formed XML document that is within
+the limits set in *options*; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Remarks
+
+This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) in every case where
+[XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse) throws an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException).
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteTo
 
-Writes the declaration (when present), prolog, root, and epilog to *writer*.
+Writes the document to the provided writer as XML.
 
 #### Syntax
 
@@ -709,7 +841,24 @@ public void WriteTo(CloudNimble.Text.Xml.Utf8XmlWriter writer)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The destination writer. |
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer to which to write the document. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *writer* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ObjectDisposedException` | The document has been disposed. |
+
+#### Remarks
+
+The XML declaration (when the document has one) is written first, then the comments and processing
+instructions before the root element, the root element, and the comments and processing
+instructions after it. The declaration belongs to the document, so it is written whatever the writer's
+[XmlWriterOptions.OmitXmlDeclaration](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#omitxmldeclaration) says: that option only decides whether the writer adds a declaration
+to a document that has none. Write with it set to [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to get back what was parsed. The
+declaration is written with the version of the parsed document and
+`encoding="utf-8"`.
 
 ## Related APIs
 

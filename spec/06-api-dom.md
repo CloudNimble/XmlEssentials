@@ -135,7 +135,8 @@ Prolog/epilog comments and PIs are **preserved** in the parse buffer and round-t
 - `GetInt32()`, `GetDouble()`, `GetDateTime()`, and the other typed getters apply the lexical rules in [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant) through the same code as `Utf8XmlReader`. `<n> 42 </n>` is the string `" 42 "` and the integer `42`.
 - A typed getter on a nil element throws: the element has no value.
 - `IsEmptyElement` is true for `<e/>` and false for `<e></e>`, including when the element is nil.
-- Name lookups compare `{local, namespace URI}`. The overloads without a namespace match the local name in any namespace.
+- Name lookups compare `{local, namespace URI}`. The overloads without a namespace match the local name in any namespace. `XmlElementNode.SetAttribute` is not a lookup: without a namespace it sets the attribute in no namespace.
+- `SerializeToElement` returns the root element of a document that holds no pooled memory, because the caller has no document to dispose. `XmlDocument.ParseValue` throws when the reader has no element left to read.
 
 ### WriteTo fidelity
 

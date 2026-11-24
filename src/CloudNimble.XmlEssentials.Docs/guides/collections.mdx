@@ -185,10 +185,9 @@ Wrapper missing: null
 
 When the XML has no element for a collection member, the serializer doesn't touch the member. It keeps whatever the type's initializer or constructor gave it. `Playlist.Tracks` is initialized to an empty list, so an unwrapped empty list reads back as empty. If the property had no initializer, it would read back as `null`.
 
-Two options change the `null` row for a wrapped collection:
+One option changes the `null` row for a wrapped collection:
 
-- With an ignore condition of `WhenWritingNull`, on the member or as `DefaultIgnoreCondition`, a `null` wrapped collection is left out. `WhenWritingDefault` doesn't leave it out.
-- With `NilHandling` set to `Omit` or `WriteEmptyElement`, a `null` wrapped collection is written as an empty wrapper, `<Tracks/>`, which reads back as an empty collection.
+- With an ignore condition of `WhenWritingNull` or `WhenWritingDefault`, on the member or as `DefaultIgnoreCondition`, a `null` wrapped collection is left out.
 
 A `null` item inside a collection is written as an element marked `xsi:nil="true"` and reads back as `null`.
 
@@ -344,20 +343,59 @@ Notes: 1
 | --- | --- |
 | `T[]` | An array |
 | `List<T>`, `IList<T>`, `ICollection<T>`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IReadOnlyCollection<T>` | A `List<T>` |
-| A class with a public parameterless constructor that implements `IList` or has a public `Add(T)` method, such as `Collection<T>`, `ObservableCollection<T>`, `HashSet<T>`, or `SortedSet<T>` | An instance of that class |
-| `Dictionary<TKey, TValue>` and other classes that implement `IDictionary<TKey, TValue>` and have a public parameterless constructor, such as `SortedDictionary<TKey, TValue>` | An instance of that class |
-| `IDictionary<TKey, TValue>` | A `Dictionary<TKey, TValue>` |
+| `ISet<T>`, `IReadOnlySet<T>` | A `HashSet<T>` |
+| `Queue<T>`, `Stack<T>`, `LinkedList<T>`, `HashSet<T>`, `SortedSet<T>`, `Collection<T>`, `ObservableCollection<T>`, `ReadOnlyCollection<T>` | An instance of that class |
+| `ImmutableArray<T>`, `ImmutableList<T>`, and the other immutable and frozen collections | An instance of that type |
+| `Dictionary<TKey, TValue>`, `SortedDictionary<TKey, TValue>`, `ImmutableDictionary<TKey, TValue>`, and other dictionary classes | An instance of that class |
+| `IDictionary<TKey, TValue>`, `IReadOnlyDictionary<TKey, TValue>` | A `Dictionary<TKey, TValue>` |
 
-These types can be written but not read. Deserializing a member declared as one of them throws an exception:
+Every collection type that can be written can be read. A stack is written from its top down and is read back with the same top. A class of your own is read when it has a public parameterless constructor and either implements `ICollection<T>` or has a public `Add` method, or when it has a public constructor that takes `IEnumerable<T>` or `IList<T>`. A class with none of these is written, and reading it throws `NotSupportedException`.
 
-- `ImmutableArray<T>`, `ImmutableList<T>`, and the other immutable collections.
-- `Queue<T>`, `Stack<T>`, and `LinkedList<T>`, which have no `Add(T)` method.
-- `ISet<T>`, which is an interface the serializer has no default class for.
-- `IReadOnlyDictionary<TKey, TValue>`. A member declared with this type isn't treated as a dictionary at all: its entries are written as repeated elements that each hold a `Key` and a `Value`.
+The complete list of supported types is in [Supported types](/guides/supported-types#collections-and-dictionaries).
 
-For those, declare the member with a type from the table, or write a [custom converter](/guides/custom-converters). The complete list of supported types is in [Supported types](/guides/supported-types).
+### Populate a collection that already holds a value
 
-A collection property must have a setter or an `init` accessor to be read, or be a parameter of the constructor. A read-only collection property is written but isn't filled when reading.
+By default a member is given a new value when it is read, and a property with no setter is not read at all. That is `XmlObjectCreationHandling.Replace`, and it is what System.Text.Json does. To keep the value a member already holds and add to it, use `XmlObjectCreationHandling.Populate`:
+
+```csharp
+public sealed class Playlist
+{
+    // Populated whatever the options say.
+    [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]
+    public List<string> Tracks { get; } = [];
+}
+
+// Or populate every member that can be populated.
+var options = new XmlSerializerOptions
+{
+    PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
+};
+```
+
+When a member is populated:
+
+- The items of a collection and the entries of a dictionary are added to the instance the member holds. An entry whose key the dictionary already holds takes the value from the XML.
+- The members of an object are set on the object the member holds. The members the XML leaves out keep their values.
+- A member that holds `null` is given a new instance when it has a setter.
+- An element marked `xsi:nil="true"` sets a member that has a setter to `null`. For a member with no setter, the serializer throws an `InvalidOperationException`.
+
+The following can't be populated. `PreferredObjectCreationHandling` leaves them as they are under `Replace`, and `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` on such a member throws an `InvalidOperationException` the first time the type is used:
+
+- An array, an immutable or frozen collection, and a collection declared as a read-only interface such as `IEnumerable<T>` or `IReadOnlyList<T>`.
+- A value that has a custom converter, and mixed content.
+- A polymorphic type.
+- A value type with no setter.
+
+Two more limits apply:
+
+- A type that is created through a constructor with parameters populates none of its members. The attribute on such a type, or on one of its members, throws a `NotSupportedException`.
+- `Populate` can't be combined with `ReferenceHandler`. A type with a member to populate throws an `InvalidOperationException`.
+
+A member declared as `IList<T>` or `ICollection<T>` is populated through the interface. If it holds an array or another read-only collection at run time, the serializer throws a `NotSupportedException`.
+
+<Note>
+A source-generated context adds to collections and dictionaries in the same way. It can't set members on an object that already exists. It reports `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` on such a member as the error `XMLXE016`, and when the options ask for `Populate` it throws a `NotSupportedException` for a type that has such a member. Mark the member `[XmlObjectCreationHandling(XmlObjectCreationHandling.Replace)]` to keep the type in a generated context.
+</Note>
 
 ## A collection as the document element
 

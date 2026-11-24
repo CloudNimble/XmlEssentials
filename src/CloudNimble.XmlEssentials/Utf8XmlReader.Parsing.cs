@@ -192,6 +192,7 @@ namespace CloudNimble.Text.Xml
             SetCurrentNamespace(InternUri(Encoding.UTF8.GetBytes(snapshot.CurrentNamespaceUri)));
             _finished = snapshot.Finished;
             _isEmptyElement = snapshot.IsEmptyElement;
+            _isOnOpenStartTag = snapshot.IsOnOpenStartTag;
             _lineNumber = snapshot.LineNumber;
             _lineStart = snapshot.LineStart;
             _pendingEmptyNsDepth = snapshot.PendingEmptyNsDepth;
@@ -218,6 +219,7 @@ namespace CloudNimble.Text.Xml
                 ElementNamespaceUris = MaterializeElementNamespaces(),
                 Finished = _finished,
                 IsEmptyElement = _isEmptyElement,
+                IsOnOpenStartTag = _isOnOpenStartTag,
                 LineNumber = _lineNumber,
                 LineStart = _lineStart,
                 PendingEmptyNsDepth = _pendingEmptyNsDepth,
@@ -1059,6 +1061,12 @@ namespace CloudNimble.Text.Xml
             }
 
             _version = version;
+            if (_options.IgnoreDeclaredEncoding)
+            {
+                // The document arrived as characters, so the encoding it names was for some other copy of it.
+                return;
+            }
+
             if (!encoding.IsEmpty && !Ascii.EqualsIgnoreCase(encoding, "utf-8"u8) && !Ascii.EqualsIgnoreCase(encoding, "utf8"u8))
             {
                 throw Error($"XmlEssentials is UTF-8 only. Declared encoding '{Encoding.UTF8.GetString(encoding).ToLowerInvariant()}' is not supported.");
@@ -1851,6 +1859,8 @@ namespace CloudNimble.Text.Xml
 
             if (!_isEmptyElement)
             {
+                // The element is open from here on, and its start tag is reported at the depth it was read at.
+                _isOnOpenStartTag = true;
                 var localAdj = prefixLength > 0 ? prefixLength + 1 : 0;
                 EnsureElementCapacity();
                 if (_elementCount < InlineSlots)

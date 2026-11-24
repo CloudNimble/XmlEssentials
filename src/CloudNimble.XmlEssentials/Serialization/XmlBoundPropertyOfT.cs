@@ -81,6 +81,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override void Read(ref Utf8XmlReader reader, object? instance, object?[]? values)
         {
+            if (NeverStored && !Populates)
+            {
+                // A member with no setter, or one that is never read, takes nothing from the document. The element
+                // is passed over without being read, so what it holds does not have to be a value of the member's type.
+                reader.Skip();
+                return;
+            }
+
             TValue? value;
             if (_valueConverter is not null && !reader.HasAttributes)
             {
@@ -91,24 +99,51 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (Collection is { } collection)
             {
-                var builder = collection.CreateBuilder();
-                if (!reader.IsEmptyElement)
+                if (reader.HasAttributes && reader.GetNil())
                 {
-                    while (reader.Read())
+                    // A wrapper marked nil is a null collection, which is not the same as an empty one.
+                    reader.Skip();
+                    value = default;
+                }
+                else
+                {
+                    var builder = collection.CreateBuilder();
+                    if (!reader.IsEmptyElement)
                     {
-                        if (reader.TokenType is XmlTokenType.EndElement)
+                        while (reader.Read())
                         {
-                            break;
-                        }
+                            if (reader.TokenType is XmlTokenType.EndElement)
+                            {
+                                break;
+                            }
 
-                        if (reader.TokenType is XmlTokenType.StartElement)
-                        {
-                            ReadItem(ref reader, builder);
+                            if (reader.TokenType is XmlTokenType.StartElement)
+                            {
+                                ReadItem(ref reader, builder);
+                            }
                         }
                     }
+
+                    if (Populates)
+                    {
+                        PopulateCollection(builder, instance!);
+                        return;
+                    }
+
+                    value = (TValue)collection.Finish(builder);
+                }
+            }
+            else if (Populates && !(reader.HasAttributes && reader.GetNil()) && (object?)_get(instance!) is { } existing)
+            {
+                // A value type is populated in its box, and the box is then copied back through the setter the
+                // binder required. A nil element and a member that holds nothing are read as any member is.
+                _typeInfo.Converter.Populate(ref reader, existing, _typeInfo.Options);
+                if (typeof(TValue).IsValueType)
+                {
+                    _set!(instance!, (TValue)existing);
                 }
 
-                value = (TValue)collection.Finish(builder);
+                return;
             }
             else if (Polymorphism.IsActive)
             {
@@ -128,18 +163,39 @@ namespace CloudNimble.Text.Xml.Serialization
                 throw new XmlException($"The required member '{Info.Name.LocalName}' cannot be nil.");
             }
 
+            if (NullReadError is not null && XmlConverterHelpers.IsNull(value))
+            {
+                throw new XmlException(NullReadError);
+            }
+
+            if (Populates && _set is null && XmlConverterHelpers.IsNull(value))
+            {
+                // The document asks for null, and a member with no setter cannot be given it.
+                throw new InvalidOperationException($"Unable to assign 'null' to the property or field of type '{typeof(TValue)}'.");
+            }
+
             Store(instance, values, value);
         }
 
         /// <inheritdoc />
         internal override void ReadAttribute(ref Utf8XmlReader reader, object? instance, object?[]? values)
         {
+            if (NeverStored)
+            {
+                return;
+            }
+
             Store(instance, values, _converter!.ReadAsAttribute(ref reader, typeof(TValue), _typeInfo.Options));
         }
 
         /// <inheritdoc />
         internal override void ReadText(ReadOnlySpan<byte> utf8, object? instance, object?[]? values)
         {
+            if (NeverStored)
+            {
+                return;
+            }
+
             Store(instance, values, _converter!.ReadLexical(utf8, _typeInfo.Options));
         }
 
@@ -197,6 +253,62 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Adds the items that were read to the collection the member holds, or gives the member a new collection
+        /// when it holds none.
+        /// </summary>
+        /// <param name="builder">The builder that holds the items.</param>
+        /// <param name="instance">The instance the member belongs to.</param>
+        /// <exception cref="NotSupportedException">The collection the member holds cannot take items.</exception>
+        /// <remarks>
+        /// A member that holds no collection and has no setter stays as it is: there is nothing to populate and no
+        /// way to give it a new collection.
+        /// </remarks>
+        internal void PopulateCollection(object builder, object instance)
+        {
+            var existing = _get(instance);
+            if (XmlConverterHelpers.IsNull(existing))
+            {
+                _set?.Invoke(instance, (TValue)Collection!.Finish(builder));
+                return;
+            }
+
+            if (!Collection!.AddItemsTo(builder, existing))
+            {
+                throw new NotSupportedException($"The collection of type '{existing.GetType()}' held by the member '{Info.Name.LocalName}' is read-only and cannot be populated.");
+            }
+        }
+
+        /// <inheritdoc />
+        internal override string? PopulateRefusal()
+        {
+            const string cannot = "but it doesn't support populating. This can be either because the property type is immutable or it could use a custom converter.";
+            if (_ignore is XmlIgnoreCondition.WhenReading)
+            {
+                // A member that is never read is not populated either.
+                return cannot;
+            }
+
+            if (Collection is { } collection)
+            {
+                return collection.CanPopulate(typeof(TValue)) ? null : cannot;
+            }
+
+            if (Polymorphism.IsActive)
+            {
+                return "but its type allows polymorphic deserialization.";
+            }
+
+            if (!_typeInfo.Converter.CanPopulate)
+            {
+                return cannot;
+            }
+
+            return typeof(TValue).IsValueType && _set is null
+                ? "but is a value type that doesn't have a setter."
+                : null;
+        }
+
+        /// <summary>
         /// Sets <paramref name="value"/> on the instance, or holds it for the constructor.
         /// </summary>
         /// <param name="instance">The instance to set the member on, or null when values are held.</param>
@@ -224,13 +336,30 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override void StoreCollection(object builder, object? instance, object?[]? values)
         {
+            if (Populates)
+            {
+                PopulateCollection(builder, instance!);
+                return;
+            }
+
             Store(instance, values, (TValue)Collection!.Finish(builder));
         }
 
         /// <inheritdoc />
         internal override void Write(Utf8XmlWriter writer, object instance, XmlSerializerOptions options)
         {
+            if (_ignore is XmlIgnoreCondition.WhenWriting)
+            {
+                return;
+            }
+
             var value = _get(instance);
+            if (NullWriteError is not null && XmlConverterHelpers.IsNull(value) && _ignore is not (XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault))
+            {
+                // A null the ignore condition leaves out is not written, so it is not refused either.
+                throw new XmlException(NullWriteError);
+            }
+
             if (Collection is not null)
             {
                 WriteCollection(writer, value, options);
@@ -274,7 +403,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (IsCData)
                 {
-                    writer.WriteCData(value as string ?? value.ToString()!);
+                    XmlConverterHelpers.WriteCDataSections(writer, value as string ?? value.ToString()!);
                     return;
                 }
 
@@ -331,17 +460,14 @@ namespace CloudNimble.Text.Xml.Serialization
             var collection = Collection!;
             if (XmlConverterHelpers.IsNull(value))
             {
-                if (!collection.Wrapped || _ignore is XmlIgnoreCondition.WhenWritingNull)
+                // A null wrapped collection is left out under the same conditions as any other null member.
+                if (!collection.Wrapped || _ignore is XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault)
                 {
                     return;
                 }
 
                 WriteStart(writer);
-                if (options.NilHandling is XmlNilHandling.WriteXsiNil)
-                {
-                    writer.WriteNilValue();
-                }
-
+                writer.WriteNilValue();
                 writer.WriteEndElement();
                 return;
             }
@@ -389,17 +515,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="options">The serializer options.</param>
         internal void WriteNull(Utf8XmlWriter writer, XmlSerializerOptions options)
         {
-            if (IsAttribute || IsText || _ignore is XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault || options.NilHandling is XmlNilHandling.Omit)
+            if (IsAttribute || IsText || _ignore is XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault)
             {
                 return;
             }
 
             WriteStart(writer);
-            if (options.NilHandling is XmlNilHandling.WriteXsiNil)
-            {
-                writer.WriteNilValue();
-            }
-
+            writer.WriteNilValue();
             writer.WriteEndElement();
         }
 

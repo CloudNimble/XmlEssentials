@@ -1,0 +1,783 @@
+using System.Linq;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace CloudNimble.XmlEssentials.Tests
+{
+
+    /// <summary>
+    /// A generated converter follows the options it runs with. A setting it reads when it runs is honored, and
+    /// a setting that was compiled in is reported when the options ask for something else. Each test compiles
+    /// a program with the generator and runs it.
+    /// </summary>
+    [TestClass]
+    public class XmlSerializerGeneratedOptionsTests
+    {
+
+        #region Fields
+
+        private const string Usings = """
+            using System;
+            using System.Collections.Generic;
+            using CloudNimble.Text.Xml;
+            using CloudNimble.Text.Xml.Serialization;
+
+            """;
+
+        /// <summary>
+        /// Writes a value through the context and through the reflection resolver with options built the same
+        /// way, and reads the context's document back through both. A failure is reported as its message.
+        /// </summary>
+        private const string Compare = """
+
+            public static class Both
+            {
+                public static string Write<T>(T value, Func<XmlSerializerOptions, XmlTypeInfo<T>> info, Func<T, string> show, Action<XmlSerializerOptions>? configure = null)
+                {
+                    try
+                    {
+                        var generatedOptions = new XmlSerializerOptions { OmitXmlDeclaration = true };
+                        configure?.Invoke(generatedOptions);
+                        var typeInfo = info(generatedOptions);
+                        var reflectionOptions = new XmlSerializerOptions { OmitXmlDeclaration = true };
+                        configure?.Invoke(reflectionOptions);
+                        var generated = XmlSerializer.Serialize(value, typeInfo);
+                        var reflected = XmlSerializer.Serialize(value, typeof(T), reflectionOptions);
+                        var readByContext = show(XmlSerializer.Deserialize(generated, typeInfo)!);
+                        var readByReflection = show((T)XmlSerializer.Deserialize(generated, typeof(T), reflectionOptions)!);
+                        return generated + "\n" + (generated == reflected ? "same" : "reflection: " + reflected) + "\n" + readByContext + "\n" + readByReflection;
+                    }
+                    catch (Exception ex)
+                    {
+                        return ex.GetType().Name + ": " + ex.Message;
+                    }
+                }
+            }
+            """;
+
+        private const string Item = """
+            public sealed class Item
+            {
+                [XmlAttribute]
+                public string? Code { get; set; }
+
+                public string? Name { get; set; }
+
+                public int Count { get; set; }
+
+                public int? Limit { get; set; }
+
+                public double Ratio { get; set; }
+
+                [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]
+                public string? Note { get; set; }
+
+                [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingDefault)]
+                public int Rank { get; set; }
+
+                [XmlIgnore(Condition = XmlIgnoreCondition.Never)]
+                public string? Always { get; set; }
+            }
+
+            [XmlSerializable<Item>]
+            internal partial class AppXmlContext : XmlSerializerContext
+            {
+            }
+
+            """;
+
+        private const string Nil = "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"";
+
+        #endregion
+
+        #region Public Methods
+
+        [TestMethod]
+        public void CompiledSettings_ThatTheOptionsContradict_AreReported()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Item item) => item.Name ?? "null";
+                        return string.Join("\n",
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.PropertyNamingPolicy = XmlNamingPolicy.CamelCase),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.AttributeNamingPolicy = XmlNamingPolicy.KebabCaseLower),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.DefaultPropertyMapping = XmlPropertyMapping.Attribute),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.IncludeFields = true),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.IgnoreReadOnlyProperties = true),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.IgnoreReadOnlyFields = true),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.Converters.Add(new Upper())),
+                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.Converters.Add(new Whole())));
+                    }
+                }
+
+                public sealed class Upper : XmlConverter<string>
+                {
+                    public override string? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => throw new NotSupportedException();
+
+                    public override void Write(Utf8XmlWriter writer, string value, XmlSerializerOptions options) => writer.WriteStringValue(value.ToUpperInvariant());
+                }
+
+                public sealed class Whole : XmlConverter<Item>
+                {
+                    public override Item? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => throw new NotSupportedException();
+
+                    public override void Write(Utf8XmlWriter writer, Item value, XmlSerializerOptions options) => writer.WriteStringValue("item");
+                }
+                """ + Compare).Should().Be(
+                "NotSupportedException: The generated converters were compiled with ElementNamingPolicy = none, and the options have XmlCamelCaseNamingPolicy. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
+                "NotSupportedException: The generated converters were compiled with AttributeNamingPolicy = none, and the options have XmlKebabCaseLowerNamingPolicy. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
+                "NotSupportedException: The generated converters were compiled with DefaultPropertyMapping = Element, and the options have Attribute. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
+                "NotSupportedException: The generated converters were compiled with IncludeFields = False, and the options have True. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
+                "NotSupportedException: The generated converters were compiled with IgnoreReadOnlyProperties = False, and the options have True. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
+                "NotSupportedException: The generated converters were compiled with IgnoreReadOnlyFields = False, and the options have True. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
+                "NotSupportedException: The options supply a converter for 'System.String', and the generated converters read and write that type directly. Use the reflection resolver for these options.\n" +
+                "NotSupportedException: The options supply a converter for 'Item', and the generated converters read and write that type directly. Use the reflection resolver for these options.");
+        }
+
+        [TestMethod]
+        public void CompiledSettings_ThatTheSeedSets_AreAccepted()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public sealed class Item
+                {
+                    public string? FirstName { get; set; }
+
+                    public int ItemCount;
+
+                    public string? Note { get; set; }
+                }
+
+                [XmlSourceGenerationOptions(
+                    OmitXmlDeclaration = true,
+                    PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase,
+                    AttributeNamingPolicy = XmlKnownNamingPolicy.KebabCaseLower,
+                    DefaultPropertyMapping = XmlPropertyMapping.Attribute,
+                    IncludeFields = true,
+                    DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull)]
+                [XmlSerializable<Item>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var seeded = XmlSerializer.Serialize(new Item { FirstName = "Ada", ItemCount = 2 }, AppXmlContext.Default.Item);
+                        var same = new XmlSerializerOptions
+                        {
+                            OmitXmlDeclaration = true,
+                            PropertyNamingPolicy = XmlNamingPolicy.CamelCase,
+                            AttributeNamingPolicy = XmlNamingPolicy.KebabCaseLower,
+                            DefaultPropertyMapping = XmlPropertyMapping.Attribute,
+                            IncludeFields = true,
+                            DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
+                        };
+                        var given = XmlSerializer.Serialize(new Item { FirstName = "Ada", ItemCount = 2 }, new AppXmlContext(same).Item);
+                        var reflected = XmlSerializer.Serialize(new Item { FirstName = "Ada", ItemCount = 2 }, typeof(Item), new XmlSerializerOptions
+                        {
+                            OmitXmlDeclaration = true,
+                            PropertyNamingPolicy = XmlNamingPolicy.CamelCase,
+                            AttributeNamingPolicy = XmlNamingPolicy.KebabCaseLower,
+                            DefaultPropertyMapping = XmlPropertyMapping.Attribute,
+                            IncludeFields = true,
+                            DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
+                        });
+                        return seeded + "\n" + given + "\n" + reflected + "\n" + AppXmlContext.Default.Options.DefaultIgnoreCondition + "," + AppXmlContext.Default.Options.DefaultPropertyMapping;
+                    }
+                }
+                """).Should().Be(
+                "<item first-name=\"Ada\" item-count=\"2\"/>\n<item first-name=\"Ada\" item-count=\"2\"/>\n<item first-name=\"Ada\" item-count=\"2\"/>\nWhenWritingNull,Attribute");
+        }
+
+        [TestMethod]
+        public void IgnoreConditions_OnMembersAndInOptions_AreFollowed()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Item item) => item.Count + "," + (item.Limit?.ToString() ?? "null") + "," + item.Rank;
+                        return string.Join("\n",
+                            Both.Write(new Item { Ratio = 1 }, o => new AppXmlContext(o).Item, Show),
+                            Both.Write(new Item { Ratio = 1 }, o => new AppXmlContext(o).Item, Show, o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull),
+                            Both.Write(new Item { Ratio = 1 }, o => new AppXmlContext(o).Item, Show, o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingDefault),
+                            Both.Write(new Item { Code = "c", Name = "n", Count = 1, Limit = 0, Ratio = 2, Note = "t", Rank = 3, Always = "a" }, o => new AppXmlContext(o).Item, Show, o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingDefault));
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<Item><Name " + Nil + "/><Count>0</Count><Limit " + Nil + "/><Ratio>1</Ratio><Always " + Nil + "/></Item>\nsame\n0,null,0\n0,null,0\n" +
+                "<Item><Count>0</Count><Ratio>1</Ratio><Always " + Nil + "/></Item>\nsame\n0,null,0\n0,null,0\n" +
+                "<Item><Ratio>1</Ratio><Always " + Nil + "/></Item>\nsame\n0,null,0\n0,null,0\n" +
+                "<Item Code=\"c\"><Name>n</Name><Count>1</Count><Limit>0</Limit><Ratio>2</Ratio><Note>t</Note><Rank>3</Rank><Always>a</Always></Item>\nsame\n1,0,3\n1,0,3");
+        }
+
+        [TestMethod]
+        public void IgnoreConditions_ForOneDirection_AreFollowedAsTheReflectionResolverFollowsThem()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public sealed class Directions
+                {
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]
+                    public int Count { get; set; } = 1;
+
+                    [XmlElement("Item")]
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]
+                    public List<int> Items { get; set; } = new() { 1 };
+
+                    public string Normal { get; set; } = "n";
+
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]
+                    public string ReadIgnored { get; set; } = "r";
+
+                    [XmlAttribute]
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]
+                    public string ReadIgnoredAttribute { get; set; } = "ra";
+
+                    [XmlArray]
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]
+                    public List<int> Tags { get; set; } = new() { 1 };
+
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWriting)]
+                    public string WriteIgnored { get; set; } = "w";
+
+                    [XmlAttribute]
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWriting)]
+                    public string WriteIgnoredAttribute { get; set; } = "wa";
+
+                    [XmlArray]
+                    public List<int> GetOnly { get; } = new() { 1 };
+                }
+
+                public sealed class Plain
+                {
+                    [XmlAttribute]
+                    public string Code { get; set; } = "c";
+
+                    public string? Maybe { get; set; }
+
+                    public string Name { get; set; } = "n";
+
+                    [XmlArray]
+                    public List<int> Tags { get; set; } = new() { 1 };
+                }
+
+                public sealed class Body
+                {
+                    [XmlText]
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]
+                    public int Number { get; set; } = 1;
+                }
+
+                public sealed record Pair([property: XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)] string Name, string Other);
+
+                public sealed class Needs
+                {
+                    public required string Name { get; set; }
+                }
+
+                public sealed class Starts
+                {
+                    public string Name { get; init; } = "n";
+                }
+
+                [XmlSerializable<Directions>]
+                [XmlSerializable<Plain>]
+                [XmlSerializable<Body>]
+                [XmlSerializable<Pair>]
+                [XmlSerializable<Needs>]
+                [XmlSerializable<Starts>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private const string Nil = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>";
+
+                    // Runs the same work through a generated context and through the reflection resolver, each with
+                    // its own options, and reports one result when they agree.
+                    private static string Same(Func<XmlSerializerOptions, string> generated, Func<XmlSerializerOptions, string> reflected, Action<XmlSerializerOptions>? configure = null)
+                    {
+                        string Run(Func<XmlSerializerOptions, string> work)
+                        {
+                            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+                            configure?.Invoke(options);
+                            try
+                            {
+                                return work(options);
+                            }
+                            catch (Exception ex)
+                            {
+                                return ex.GetType().Name + ": " + ex.Message;
+                            }
+                        }
+
+                        var fromContext = Run(generated);
+                        var fromReflection = Run(reflected);
+                        return fromContext == fromReflection ? fromContext : fromContext + " <> reflection: " + fromReflection;
+                    }
+
+                    private static string Show(Directions d) => string.Join(",", d.Count, string.Join(";", d.Items), d.Normal, d.ReadIgnored, d.ReadIgnoredAttribute, string.Join(";", d.Tags), d.WriteIgnored, d.WriteIgnoredAttribute, string.Join(";", d.GetOnly));
+
+                    private static string Show(Plain p) => string.Join(",", p.Code, p.Maybe ?? "null", p.Name, string.Join(";", p.Tags));
+
+                    public static string Run()
+                    {
+                        const string directions =
+                            "<Directions ReadIgnoredAttribute=\"x\" WriteIgnoredAttribute=\"x\"><Count>not a number</Count><Item>not a number</Item><Normal>x</Normal>" +
+                            "<ReadIgnored>x</ReadIgnored><Tags><Int32>not a number</Int32></Tags><WriteIgnored>x</WriteIgnored><GetOnly><Int32>not a number</Int32></GetOnly></Directions>";
+                        const string plain = "<Plain Code=\"x\"><Maybe>m</Maybe><Name>x</Name><Tags><Int32>9</Int32></Tags></Plain>";
+                        Action<XmlSerializerOptions> whenReading = o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenReading;
+                        Action<XmlSerializerOptions> whenWriting = o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWriting;
+                        return string.Join("\n",
+                            Same(o => XmlSerializer.Serialize(new Directions(), new AppXmlContext(o).Directions), o => XmlSerializer.Serialize(new Directions(), typeof(Directions), o)),
+                            Same(o => Show(XmlSerializer.Deserialize(directions, new AppXmlContext(o).Directions)!), o => Show((Directions)XmlSerializer.Deserialize(directions, typeof(Directions), o)!)),
+                            Same(o => Show(XmlSerializer.Deserialize(directions, new AppXmlContext(o).Directions)!), o => Show((Directions)XmlSerializer.Deserialize(directions, typeof(Directions), o)!),
+                                o => { o.UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow; o.RespectNullableAnnotations = true; }),
+                            Same(o => XmlSerializer.Serialize(new Directions { WriteIgnored = null!, WriteIgnoredAttribute = null! }, new AppXmlContext(o).Directions),
+                                o => XmlSerializer.Serialize(new Directions { WriteIgnored = null!, WriteIgnoredAttribute = null! }, typeof(Directions), o),
+                                o => o.RespectNullableAnnotations = true),
+                            Same(o => Show(XmlSerializer.Deserialize("<Directions><ReadIgnored" + Nil + "<Tags" + Nil + "</Directions>", new AppXmlContext(o).Directions)!),
+                                o => Show((Directions)XmlSerializer.Deserialize("<Directions><ReadIgnored" + Nil + "<Tags" + Nil + "</Directions>", typeof(Directions), o)!),
+                                o => o.RespectNullableAnnotations = true),
+                            Same(o => XmlSerializer.Serialize(new Plain(), new AppXmlContext(o).Plain), o => XmlSerializer.Serialize(new Plain(), typeof(Plain), o), whenWriting),
+                            Same(o => Show(XmlSerializer.Deserialize(plain, new AppXmlContext(o).Plain)!), o => Show((Plain)XmlSerializer.Deserialize(plain, typeof(Plain), o)!), whenWriting),
+                            Same(o => XmlSerializer.Serialize(new Plain(), new AppXmlContext(o).Plain), o => XmlSerializer.Serialize(new Plain(), typeof(Plain), o), whenReading),
+                            Same(o => Show(XmlSerializer.Deserialize(plain, new AppXmlContext(o).Plain)!), o => Show((Plain)XmlSerializer.Deserialize(plain, typeof(Plain), o)!), whenReading),
+                            Same(o => XmlSerializer.Serialize(new Directions(), new AppXmlContext(o).Directions), o => XmlSerializer.Serialize(new Directions(), typeof(Directions), o), whenWriting),
+                            Same(o => { var context = new AppXmlContext(o); return XmlSerializer.Serialize(new Body(), context.Body) + XmlSerializer.Deserialize("<Body>not a number</Body>", context.Body)!.Number; },
+                                o => XmlSerializer.Serialize(new Body(), typeof(Body), o) + ((Body)XmlSerializer.Deserialize("<Body>not a number</Body>", typeof(Body), o)!).Number),
+                            Same(o => XmlSerializer.Deserialize("<Pair><Name>x</Name><Other>y</Other></Pair>", new AppXmlContext(o).Pair)!.ToString(),
+                                o => XmlSerializer.Deserialize("<Pair><Name>x</Name><Other>y</Other></Pair>", typeof(Pair), o)!.ToString()!),
+                            Same(o => XmlSerializer.Deserialize("<Pair><Name>x</Name><Other>y</Other></Pair>", new AppXmlContext(o).Pair)!.ToString(),
+                                o => XmlSerializer.Deserialize("<Pair><Name>x</Name><Other>y</Other></Pair>", typeof(Pair), o)!.ToString()!, whenReading),
+                            Same(o => XmlSerializer.Deserialize("<Needs><Name>x</Name></Needs>", new AppXmlContext(o).Needs)!.Name,
+                                o => ((Needs)XmlSerializer.Deserialize("<Needs><Name>x</Name></Needs>", typeof(Needs), o)!).Name, whenReading),
+                            Same(o => XmlSerializer.Deserialize("<Starts><Name>x</Name></Starts>", new AppXmlContext(o).Starts)!.Name,
+                                o => ((Starts)XmlSerializer.Deserialize("<Starts><Name>x</Name></Starts>", typeof(Starts), o)!).Name, whenReading));
+                    }
+                }
+                """).Should().Be(string.Join("\n",
+                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags><GetOnly><Int32>1</Int32></GetOnly></Directions>",
+                "1,1,x,r,ra,1,x,x,1",
+                "1,1,x,r,ra,1,x,x,1",
+                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags><GetOnly><Int32>1</Int32></GetOnly></Directions>",
+                "1,1,n,r,ra,1,w,wa,1",
+                // As the default for every member, WhenWriting and WhenReading have no effect, as in System.Text.Json.
+                "<Plain Code=\"c\"><Maybe " + Nil + "/><Name>n</Name><Tags><Int32>1</Int32></Tags></Plain>",
+                "x,m,x,9",
+                "<Plain Code=\"c\"><Maybe " + Nil + "/><Name>n</Name><Tags><Int32>1</Int32></Tags></Plain>",
+                "x,m,x,9",
+                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags><GetOnly><Int32>1</Int32></GetOnly></Directions>",
+                "<Body>1</Body>1",
+                "Pair { Name = x, Other = y }",
+                "Pair { Name = x, Other = y }",
+                "x",
+                "x"));
+        }
+
+        [TestMethod]
+        [DataRow("public sealed class Bad { [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)] public required string Name { get; set; } }", DisplayName = "the required modifier")]
+        [DataRow("public sealed class Bad { [XmlRequired] [XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)] public string Name { get; set; } = \"n\"; }", DisplayName = "the attribute")]
+        public void IgnoreConditions_WhenReadingOnARequiredMember_IsReported(string types)
+        {
+            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable<Bad>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id is "XMLXE017").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
+                .Should().Equal("'Bad.Name' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read");
+        }
+
+        [TestMethod]
+        public void UnknownTypeHandling_IsFollowed()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public sealed class Holder
+                {
+                    public object? Any { get; set; }
+
+                    [XmlArray]
+                    public List<object?> Items { get; set; } = new();
+                }
+
+                [XmlSerializable<Holder>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(UnknownTypeHandling = XmlUnknownTypeHandling.XmlNode, PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate)]
+                [XmlSerializable<Holder>]
+                internal partial class SeededContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Show(Holder holder) => (holder.Any?.GetType().Name ?? "null") + "," + string.Join(";", System.Linq.Enumerable.Select(holder.Items, item => item?.GetType().Name ?? "null"));
+
+                    private static string Read(XmlUnknownTypeHandling handling)
+                    {
+                        const string xml = "<Holder><Any><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>";
+                        var generated = Show(XmlSerializer.Deserialize(xml, new AppXmlContext(new XmlSerializerOptions { UnknownTypeHandling = handling }).Holder)!);
+                        var reflected = Show((Holder)XmlSerializer.Deserialize(xml, typeof(Holder), new XmlSerializerOptions { UnknownTypeHandling = handling })!);
+                        return generated == reflected ? generated : generated + " <> reflection: " + reflected;
+                    }
+
+                    public static string Run()
+                    {
+                        return Read(XmlUnknownTypeHandling.XmlElement) + "\n" + Read(XmlUnknownTypeHandling.XmlNode);
+                    }
+                }
+                """).Should().Be("XmlElement,XmlElement;null\nXmlElementNode,XmlElementNode;null");
+        }
+
+        [TestMethod]
+        public void MemberConverter_IsReportedRatherThanIgnored()
+        {
+            var source = Usings + """
+                public sealed class Hex : XmlConverter<int>
+                {
+                    public override int Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => 0;
+
+                    public override void Write(Utf8XmlWriter writer, int value, XmlSerializerOptions options) => writer.WriteStringValue("x");
+                }
+
+                public sealed class Item
+                {
+                    [XmlConverter<Hex>]
+                    public int Flags { get; set; }
+                }
+
+                [XmlSerializable<Item>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+                """;
+            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            diagnostics.Where(d => d.Id is "XMLXE009").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal(
+                "'Item.Flags' names a converter with [XmlConverter]; a generated converter would not call it, so put the attribute on the member's type or use the reflection resolver for the declaring type");
+        }
+
+        [TestMethod]
+        public void NamesAreMatchedWithoutCase_WhenTheOptionsAskForIt()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        const string Document = "<ITEM code=\"c\"><name>n</name><COUNT>4</COUNT></ITEM>";
+                        var loose = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var read = XmlSerializer.Deserialize(Document, new AppXmlContext(loose).Item)!;
+                        var reflected = XmlSerializer.Deserialize<Item>(Document, new XmlSerializerOptions { PropertyNameCaseInsensitive = true })!;
+                        var exact = XmlSerializer.Deserialize("<Item code=\"c\"><name>n</name><Count>4</Count></Item>", new AppXmlContext(new XmlSerializerOptions()).Item)!;
+                        return read.Code + "," + read.Name + "," + read.Count + "|" + reflected.Code + "," + reflected.Name + "," + reflected.Count + "|" + (exact.Code ?? "null") + "," + (exact.Name ?? "null") + "," + exact.Count;
+                    }
+                }
+                """).Should().Be("c,n,4|c,n,4|null,null,4");
+        }
+
+        [TestMethod]
+        public void NumbersThatAreNotFinite_AreRefusedWhenNumberHandlingIsStrict()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Item item) => item.Ratio.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        return string.Join("\n",
+                            Both.Write(new Item { Name = "n", Limit = 1, Always = "a", Ratio = double.NaN }, o => new AppXmlContext(o).Item, Show),
+                            Both.Write(new Item { Name = "n", Limit = 1, Always = "a", Ratio = double.NaN }, o => new AppXmlContext(o).Item, Show, o => o.NumberHandling = XmlNumberHandling.Strict),
+                            Both.Write(new Item { Name = "n", Limit = 1, Always = "a", Ratio = 2 }, o => new AppXmlContext(o).Item, Show, o => o.NumberHandling = XmlNumberHandling.Strict));
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<Item><Name>n</Name><Count>0</Count><Limit>1</Limit><Ratio>NaN</Ratio><Always>a</Always></Item>\nsame\nNaN\nNaN\n" +
+                "XmlException: Named floating-point literals are not allowed when NumberHandling is Strict.\n" +
+                "<Item><Name>n</Name><Count>0</Count><Limit>1</Limit><Ratio>2</Ratio><Always>a</Always></Item>\nsame\n2\n2");
+        }
+
+        [TestMethod]
+        public void NullableAnnotations_AreRespectedAsTheReflectionResolverRespectsThem()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                using System.Diagnostics.CodeAnalysis;
+
+                public class Base<T> where T : class
+                {
+                    public T Kept { get; set; } = default!;
+                }
+
+                public sealed class Note : Base<string>
+                {
+                    public Note()
+                    {
+                        Kept = "k";
+                    }
+
+                    [XmlAttribute]
+                    public string Code { get; set; } = "c";
+
+                    public string Name { get; set; } = "n";
+
+                    public string? Maybe { get; set; } = "m";
+
+                    [XmlArray]
+                    public List<string> Tags { get; set; } = new();
+
+                    [AllowNull]
+                    public string Allowed { get; set; } = "a";
+
+                    [DisallowNull]
+                    public string? Disallowed { get; set; } = "d";
+
+                    [MaybeNull]
+                    public string Possibly { get; set; } = "p";
+
+                    [NotNull]
+                    public string? Certain { get; set; } = "c";
+
+                    [DisallowNull]
+                    public int? Limit { get; set; } = 1;
+
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]
+                    public string Skipped { get; set; } = "s";
+                }
+
+                public sealed record Pair(string Name, string? Maybe);
+
+                public sealed class Box<T>
+                {
+                    public T Value { get; set; } = default!;
+                }
+
+                public sealed class Hard<T> where T : notnull
+                {
+                    public T Value { get; set; } = default!;
+                }
+
+                public sealed class Bound<T> where T : IComparable
+                {
+                    public T Value { get; set; } = default!;
+                }
+
+                [XmlSerializable<Note>]
+                [XmlSerializable<Pair>]
+                [XmlSerializable<Box<string>>(TypeInfoPropertyName = "Box")]
+                [XmlSerializable<Hard<string>>(TypeInfoPropertyName = "Hard")]
+                [XmlSerializable<Bound<string>>(TypeInfoPropertyName = "Bound")]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(RespectNullableAnnotations = true)]
+                [XmlSerializable<Pair>]
+                internal partial class SeededContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private const string Nil = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>";
+
+                    // Runs the same work through a generated context and through the reflection resolver, each with
+                    // its own options, and reports one result when they agree.
+                    private static string Same(Func<XmlSerializerOptions, string> generated, Func<XmlSerializerOptions, string> reflected, Action<XmlSerializerOptions>? configure = null)
+                    {
+                        static string Run(Func<XmlSerializerOptions, string> work, Action<XmlSerializerOptions>? configure)
+                        {
+                            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, RespectNullableAnnotations = true };
+                            configure?.Invoke(options);
+                            try
+                            {
+                                return work(options);
+                            }
+                            catch (Exception ex)
+                            {
+                                return ex.GetType().Name + ": " + ex.Message;
+                            }
+                        }
+
+                        var fromContext = Run(generated, configure);
+                        var fromReflection = Run(reflected, configure);
+                        return fromContext == fromReflection ? fromContext : fromContext + " <> reflection: " + fromReflection;
+                    }
+
+                    private static string ReadNote(string member, Action<XmlSerializerOptions>? configure = null)
+                    {
+                        var xml = "<Note><" + member + Nil + "</Note>";
+                        return Same(
+                            o => XmlSerializer.Deserialize(xml, new AppXmlContext(o).Note) is null ? "null" : "read",
+                            o => XmlSerializer.Deserialize(xml, typeof(Note), o) is null ? "null" : "read",
+                            configure);
+                    }
+
+                    private static string WriteNote(Note note, Action<XmlSerializerOptions>? configure = null)
+                    {
+                        return Same(o => XmlSerializer.Serialize(note, new AppXmlContext(o).Note), o => XmlSerializer.Serialize(note, typeof(Note), o), configure);
+                    }
+
+                    public static string Run()
+                    {
+                        return string.Join("\n",
+                            ReadNote("Name"),
+                            ReadNote("Kept"),
+                            ReadNote("Maybe"),
+                            ReadNote("Tags"),
+                            ReadNote("Allowed"),
+                            ReadNote("Disallowed"),
+                            ReadNote("Possibly"),
+                            ReadNote("Certain"),
+                            ReadNote("Limit"),
+                            ReadNote("Name", o => o.RespectNullableAnnotations = false),
+                            Same(
+                                o => XmlSerializer.Deserialize("<Pair><Name" + Nil + "<Maybe" + Nil + "</Pair>", new AppXmlContext(o).Pair)!.ToString(),
+                                o => XmlSerializer.Deserialize("<Pair><Name" + Nil + "<Maybe" + Nil + "</Pair>", typeof(Pair), o)!.ToString()!),
+                            Same(
+                                o => XmlSerializer.Deserialize("<Pair><Name>n</Name><Maybe" + Nil + "</Pair>", new AppXmlContext(o).Pair)!.ToString(),
+                                o => XmlSerializer.Deserialize("<Pair><Name>n</Name><Maybe" + Nil + "</Pair>", typeof(Pair), o)!.ToString()!),
+                            Same(
+                                o => XmlSerializer.Deserialize("<BoxOfString><Value" + Nil + "</BoxOfString>", new AppXmlContext(o).Box)!.Value ?? "null",
+                                o => ((Box<string>)XmlSerializer.Deserialize("<BoxOfString><Value" + Nil + "</BoxOfString>", typeof(Box<string>), o)!).Value ?? "null"),
+                            Same(
+                                o => XmlSerializer.Deserialize("<HardOfString><Value" + Nil + "</HardOfString>", new AppXmlContext(o).Hard)!.Value ?? "null",
+                                o => ((Hard<string>)XmlSerializer.Deserialize("<HardOfString><Value" + Nil + "</HardOfString>", typeof(Hard<string>), o)!).Value ?? "null"),
+                            Same(
+                                o => XmlSerializer.Deserialize("<BoundOfString><Value" + Nil + "</BoundOfString>", new AppXmlContext(o).Bound)!.Value ?? "null",
+                                o => ((Bound<string>)XmlSerializer.Deserialize("<BoundOfString><Value" + Nil + "</BoundOfString>", typeof(Bound<string>), o)!).Value ?? "null"),
+                            WriteNote(new Note { Name = null! }),
+                            WriteNote(new Note { Kept = null! }),
+                            WriteNote(new Note { Code = null! }),
+                            WriteNote(new Note { Tags = null! }),
+                            WriteNote(new Note { Allowed = null }),
+                            WriteNote(new Note { Certain = null }),
+                            WriteNote(new Note { Maybe = null, Possibly = null!, Disallowed = null!, Limit = null, Skipped = null! }),
+                            WriteNote(new Note { Name = null!, Kept = null!, Code = null!, Tags = null!, Allowed = null, Certain = null }, o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull),
+                            WriteNote(new Note { Name = null! }, o => o.RespectNullableAnnotations = false),
+                            SeededContext.Default.Options.RespectNullableAnnotations.ToString(),
+                            Same(
+                                o => XmlSerializer.Deserialize("<Pair><Name" + Nil + "<Maybe>m</Maybe></Pair>", SeededContext.Default.Pair)!.ToString(),
+                                o => XmlSerializer.Deserialize("<Pair><Name" + Nil + "<Maybe>m</Maybe></Pair>", typeof(Pair), o)!.ToString()!));
+                    }
+                }
+                """).Should().Be(string.Join("\n",
+                Setting("Name", "Note"),
+                Setting("Kept", "Base`1[System.String]"),
+                "read",
+                Setting("Tags", "Note"),
+                "read",
+                Setting("Disallowed", "Note"),
+                Setting("Possibly", "Note"),
+                "read",
+                Setting("Limit", "Note"),
+                "read",
+                "XmlException: The constructor parameter 'Name' on type 'Pair' doesn't allow null values. Consider updating its nullability annotation.",
+                "Pair { Name = n, Maybe =  }",
+                "null",
+                Setting("Value", "Hard`1[System.String]"),
+                "null",
+                Getting("Name", "Note"),
+                Getting("Kept", "Base`1[System.String]"),
+                Getting("Code", "Note"),
+                Getting("Tags", "Note"),
+                Getting("Allowed", "Note"),
+                Getting("Certain", "Note"),
+                "<Note Code=\"c\"><Kept>k</Kept><Name>n</Name><Maybe " + Nil + "/><Tags/><Allowed>a</Allowed><Disallowed " + Nil + "/><Possibly " + Nil + "/><Certain>c</Certain><Limit " + Nil + "/></Note>",
+                "<Note><Maybe>m</Maybe><Disallowed>d</Disallowed><Possibly>p</Possibly><Limit>1</Limit><Skipped>s</Skipped></Note>",
+                "<Note Code=\"c\"><Kept>k</Kept><Name " + Nil + "/><Maybe>m</Maybe><Tags/><Allowed>a</Allowed><Disallowed>d</Disallowed><Possibly>p</Possibly><Certain>c</Certain><Limit>1</Limit><Skipped>s</Skipped></Note>",
+                "True",
+                "XmlException: The constructor parameter 'Name' on type 'Pair' doesn't allow null values. Consider updating its nullability annotation."));
+
+            static string Getting(string member, string type) => "XmlException: The property or field '" + member + "' on type '" + type + "' doesn't allow getting null values. Consider updating its nullability annotation.";
+            static string Setting(string member, string type) => "XmlException: The property or field '" + member + "' on type '" + type + "' doesn't allow setting null values. Consider updating its nullability annotation.";
+        }
+
+        [TestMethod]
+        public void TypeWithItsOwnConverter_IsReadAndWrittenByIt()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                [XmlConverter<TemperatureConverter>]
+                public readonly record struct Temperature(int Degrees);
+
+                public sealed class TemperatureConverter : XmlConverter<Temperature>
+                {
+                    public override Temperature Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        var value = default(Temperature);
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                            value = ReadLexical(reader.ValueSpan, options);
+                        }
+
+                        return value;
+                    }
+
+                    public override Temperature ReadAsAttribute(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => ReadLexical(reader.ValueSpan, options);
+
+                    public override Temperature ReadLexical(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
+                    {
+                        return new Temperature(int.Parse(System.Text.Encoding.UTF8.GetString(utf8).TrimEnd('C')));
+                    }
+
+                    public override void Write(Utf8XmlWriter writer, Temperature value, XmlSerializerOptions options) => writer.WriteStringValue(value.Degrees + "C");
+
+                    public override void WriteAsAttribute(Utf8XmlWriter writer, XmlName name, Temperature value, XmlSerializerOptions options)
+                    {
+                        writer.WriteStartAttribute(name.LocalName);
+                        Write(writer, value, options);
+                        writer.WriteEndAttribute();
+                    }
+                }
+
+                public sealed class Reading
+                {
+                    [XmlAttribute]
+                    public Temperature Low { get; set; }
+
+                    [XmlAttribute]
+                    public Temperature? High { get; set; }
+
+                    [XmlText]
+                    public Temperature Now { get; set; }
+                }
+
+                public sealed class Log
+                {
+                    public Temperature Peak { get; set; }
+
+                    public List<Temperature> All { get; set; } = new();
+                }
+
+                [XmlSerializable<Reading>]
+                [XmlSerializable<Log>]
+                [XmlSerializable<Temperature>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        return string.Join("\n",
+                            Both.Write(new Reading { Low = new Temperature(1), High = new Temperature(9), Now = new Temperature(5) }, o => new AppXmlContext(o).Reading, r => r.Low + "," + r.High + "," + r.Now),
+                            Both.Write(new Log { Peak = new Temperature(7), All = { new Temperature(2), new Temperature(3) } }, o => new AppXmlContext(o).Log, l => l.Peak + "," + l.All.Count),
+                            Both.Write(new Temperature(4), o => new AppXmlContext(o).Temperature, t => t.ToString()));
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<Reading Low=\"1C\" High=\"9C\">5C</Reading>\nsame\nTemperature { Degrees = 1 },Temperature { Degrees = 9 },Temperature { Degrees = 5 }\nTemperature { Degrees = 1 },Temperature { Degrees = 9 },Temperature { Degrees = 5 }\n" +
+                "<Log><Peak>7C</Peak><All>2C</All><All>3C</All></Log>\nsame\nTemperature { Degrees = 7 },2\nTemperature { Degrees = 7 },2\n" +
+                "<Temperature>4C</Temperature>\nsame\nTemperature { Degrees = 4 }\nTemperature { Degrees = 4 }");
+        }
+
+        #endregion
+
+    }
+
+}

@@ -285,10 +285,10 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void Dictionary_NullValue_IsWrittenAsAnEmptyElement()
+        public void Dictionary_NullValue_IsWrittenAsANilElement()
         {
             var xml = XmlSerializer.Serialize(new Dictionary<string, string?> { ["a"] = null, ["b"] = "x" }, Bare);
-            xml.Should().Be("<DictionaryOfStringString><a/><b>x</b></DictionaryOfStringString>");
+            xml.Should().Be("<DictionaryOfStringString><a xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><b>x</b></DictionaryOfStringString>");
         }
 
         [TestMethod]

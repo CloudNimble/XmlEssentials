@@ -135,6 +135,7 @@ namespace CloudNimble.Text.Xml
         private int _internedUriCount;
         private byte[][]? _internedUris;
         private bool _isEmptyElement;
+        private bool _isOnOpenStartTag;
         private readonly bool _isFinalBlock;
         private long _lineNumber;
         private long _lineStart;
@@ -199,14 +200,21 @@ namespace CloudNimble.Text.Xml
         /// Gets the depth of the current token.
         /// </summary>
         /// <value>
-        /// The number of elements that are open after the current token.
+        /// The number of elements that the current token is inside.
         /// </value>
+        /// <example>
+        /// <code>
+        /// // &lt;a&gt;&lt;b/&gt;&lt;c&gt;text&lt;/c&gt;&lt;/a&gt;
+        /// // &lt;a&gt; 0, &lt;b/&gt; 1, &lt;c&gt; 1, text 2, &lt;/c&gt; 1, &lt;/a&gt; 0
+        /// </code>
+        /// </example>
         /// <remarks>
-        /// A start tag adds one to the depth and an end tag subtracts one, each before the token is reported.
-        /// The start tag and the content of the root element are at depth 1, and its end tag is at depth 0.
-        /// Empty elements do not change the depth.
+        /// The root element is at depth 0, and so is anything before or after it. A start tag, its end tag, and an
+        /// empty element in the same place are at the same depth, and the content of an element is one deeper.
+        /// An attribute is at the depth of its element. This is the depth that <c>XmlReader.Depth</c> and
+        /// <c>Utf8JsonReader.CurrentDepth</c> report.
         /// </remarks>
-        public readonly int CurrentDepth => _depth;
+        public readonly int CurrentDepth => _isOnOpenStartTag ? _depth - 1 : _depth;
 
         /// <summary>
         /// Gets the current <see cref="Utf8XmlReader"/> state to pass to a <see cref="Utf8XmlReader"/>
@@ -700,6 +708,7 @@ namespace CloudNimble.Text.Xml
             _internedUriCount = 0;
             _internedUris = null;
             _isEmptyElement = false;
+            _isOnOpenStartTag = false;
             _isFinalBlock = isFinalBlock;
             _lineNumber = 1;
             _lineStart = 0;
@@ -1391,6 +1400,10 @@ namespace CloudNimble.Text.Xml
             _inAttribute = false;
             _attributeIndex = -1;
             _isEmptyElement = false;
+
+            // The reader leaves the start tag it was on. If this read finds no token, the reader is between
+            // tokens, inside every element that is open.
+            _isOnOpenStartTag = false;
             _decodedLength = 0;
             _valueIsEscaped = false;
 
@@ -1419,6 +1432,35 @@ namespace CloudNimble.Text.Xml
                 // The first buffer ends inside what may be a byte order mark. Nothing can be read until the
                 // rest of it arrives.
                 return NeedMore(rewindToTokenStart: false);
+            }
+
+            if (_pos == 0 && _documentBytesConsumedBase == 0 && !_span.IsEmpty && _span[0] is 0xFF or 0xFE or 0x00 or (byte)'<')
+            {
+                // The first two bytes of UTF-16 and UTF-32 text, with or without a byte order mark, are never
+                // the first two bytes of UTF-8 XML. Saying so is more use than the error they lead to.
+                if (_span.Length == 1)
+                {
+                    if (!_isFinalBlock && _span[0] is not (byte)'<')
+                    {
+                        return NeedMore(rewindToTokenStart: false);
+                    }
+                }
+                else
+                {
+                    // FF FE and FE FF are byte order marks. "<" beside a zero byte is UTF-16 or UTF-32 with
+                    // none, and so are two zero bytes. The last arm is a first byte of zero.
+                    var isAnotherEncoding = _span[0] switch
+                    {
+                        0xFF => _span[1] is 0xFE,
+                        0xFE => _span[1] is 0xFF,
+                        (byte)'<' => _span[1] is 0x00,
+                        _ => _span[1] is (byte)'<' or 0x00,
+                    };
+                    if (isAnotherEncoding)
+                    {
+                        throw Error("XmlEssentials is UTF-8 only. The input is UTF-16 or UTF-32.");
+                    }
+                }
             }
 
             while (true)
@@ -1520,15 +1562,13 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException">
         /// The element is not all in the current input and <see cref="IsFinalBlock"/> is <see langword="false"/>.
         /// -or-
-        /// The current token is not a start element and there is no next token to read.
-        /// -or-
         /// The skipped XML is not well formed, exceeds a limit set in <see cref="XmlReaderOptions"/>, or ends
         /// inside a token when <see cref="IsFinalBlock"/> is <see langword="true"/>.
         /// </exception>
         /// <remarks>
-        /// When the current token is a start element, the reader moves to its end tag. On an empty element
-        /// this method does nothing, and the next <see cref="Read"/> moves to the following sibling. When the
-        /// current token is not a start element, the reader moves to the next token, as <see cref="Read"/> does.
+        /// When the current token is a start element, the reader moves to its end tag. On an empty element, and
+        /// on any token that is not a start element, this method does nothing, as <c>Utf8JsonReader.Skip</c>
+        /// does on a value. The next <see cref="Read"/> moves to the following token.
         /// </remarks>
         public void Skip()
         {
@@ -1798,16 +1838,16 @@ namespace CloudNimble.Text.Xml
         /// <c>Utf8JsonReader.TrySkip</c> does, so the caller can supply more data and skip or read it again.
         /// </para>
         /// <para>
-        /// When the current token is not a start element, this method calls <see cref="Read"/> and returns
-        /// its result. The reader moves to the next token, and the result is <see langword="false"/> at the
-        /// end of the document as well as when more data is required.
+        /// When the current token is not a start element, this method does nothing and returns
+        /// <see langword="true"/>: the token has no children to skip.
         /// </para>
         /// </remarks>
         public bool TrySkip()
         {
             if (_tokenType != XmlTokenType.StartElement)
             {
-                return Read();
+                // Only a start tag has children. Any other token is already complete.
+                return true;
             }
 
             if (_isEmptyElement)

@@ -1,6 +1,6 @@
 ---
 title: XmlNumberHandling
-description: "How floating-point named literals are treated."
+description: "Specifies how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles the named floating-point literals `INF`, `-INF`, and `NaN` when seri..."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization.XmlNumberHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlException']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.Serialization.XmlNumberHandling
 
 ## Summary
 
-How floating-point named literals are treated.
+Specifies how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles the named floating-point literals `INF`, `-INF`, and `NaN`
+when serializing and deserializing.
 
 ## Usage
 
@@ -45,8 +46,8 @@ Use `Strict` when the consumer of the XML treats the element as a plain decimal 
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Strict` | 0 | Reject `INF`, `-INF`, and `NaN`. |
-| `AllowNamedFloatingPointLiterals` | 1 | Accept and write the XSD named literals (any letter case on read). |
+| `Strict` | 0 | Strict handling, in which `INF`, `-INF`, and `NaN` are rejected on both reading and writing. |
+| `AllowNamedFloatingPointLiterals` | 1 | Lenient handling, in which the XML Schema named literals `INF`, `-INF`, and `NaN` are read, in any letter case, and written. |
 
 ## Related APIs
 

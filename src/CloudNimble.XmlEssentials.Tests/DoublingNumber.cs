@@ -6,7 +6,7 @@ namespace CloudNimble.XmlEssentials.Tests
     /// <summary>
     /// A type that serializes through <see cref="DoublingNumberConverter"/>.
     /// </summary>
-    [XmlConverter(typeof(DoublingNumberConverter))]
+    [XmlConverter<DoublingNumberConverter>]
     public readonly struct DoublingNumber
     {
 

@@ -1,6 +1,6 @@
 ---
 title: XmlReaderState
-description: "Opaque resume state for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader)."
+description: "Represents the state a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) needs to continue reading a document with more data."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlReaderState', 'CloudNimble.Text.Xml.XmlReaderState', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlCommentHandling']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlReaderState
 
 ## Summary
 
-Opaque resume state for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader).
+Represents the state a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) needs to continue reading a document with more data.
 
 ## Usage
 
@@ -51,8 +51,8 @@ The state is opaque. Its only public member is `Options`, the options it was cre
 
 ## Remarks
 
-The public surface matches `Utf8JsonReader`: only [XmlReaderState.Options](/api-reference/CloudNimble/Text/Xml/XmlReaderState#options) is visible.
-[Utf8XmlReader.CurrentState](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#currentstate) copies an immutable snapshot so two readers
+The state is opaque. As with the state of a `Utf8JsonReader`, only [XmlReaderState.Options](/api-reference/CloudNimble/Text/Xml/XmlReaderState#options) is
+visible. [Utf8XmlReader.CurrentState](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#currentstate) copies an immutable snapshot so two readers
 never share mutable element or namespace stacks.
 
 ## Examples
@@ -156,7 +156,7 @@ Read 142 bytes in 8 blocks. The buffer grew to 32 bytes.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates a state with the given options and no parse progress.
+Initializes a new instance of the [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) struct using the specified options.
 
 #### Syntax
 
@@ -168,7 +168,13 @@ public XmlReaderState(CloudNimble.Text.Xml.XmlReaderOptions options = default(Cl
 
 | Name | Type | Description |
 |------|------|-------------|
-| `options` | `CloudNimble.Text.Xml.XmlReaderOptions` | Reader options. |
+| `options` | `CloudNimble.Text.Xml.XmlReaderOptions` | The options that define the behavior of the [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). The default is
+`default`, which is the same as `new XmlReaderOptions()`: comments and
+whitespace-only text between elements are reported as tokens. |
+
+#### Remarks
+
+The new state holds no read progress, so a reader created from it starts at the beginning of a document.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -194,7 +200,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Options
 
-Gets the options used to create the reader.
+Gets the custom behavior of the [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) that this state belongs to.
 
 #### Syntax
 
@@ -205,6 +211,7 @@ public CloudNimble.Text.Xml.XmlReaderOptions Options { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlReaderOptions`
+The options the reader was created with.
 
 ## Methods
 

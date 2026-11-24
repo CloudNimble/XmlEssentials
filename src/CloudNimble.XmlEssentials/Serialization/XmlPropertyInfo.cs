@@ -27,8 +27,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </value>
         /// <remarks>
         /// A member is nillable when its type is a reference type, a <see cref="Nullable{T}"/>, or a collection, or when
-        /// <see cref="XmlElementAttribute.IsNullable"/> is <see langword="true"/>. How a <see langword="null"/> value is written
-        /// depends on <see cref="XmlSerializerOptions.NilHandling"/> and on the ignore condition of the member.
+        /// <see cref="XmlElementAttribute.IsNullable"/> is <see langword="true"/>. Whether a <see langword="null"/> value is written
+        /// depends on the ignore condition of the member. When it is written, it is an element marked <c>xsi:nil="true"</c>.
         /// </remarks>
         public bool IsNillable { get; }
 

@@ -211,6 +211,27 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Writes <paramref name="text"/> as CDATA, in as many sections as it takes.
+        /// </summary>
+        /// <param name="writer">The writer, inside an element.</param>
+        /// <param name="text">The text.</param>
+        /// <remarks>
+        /// A section ends at the first <c>]]&gt;</c>, so text that holds one is cut between the brackets and the
+        /// angle bracket. The sections are adjacent, and a reader gives their text back as one value.
+        /// </remarks>
+        internal static void WriteCDataSections(Utf8XmlWriter writer, ReadOnlySpan<char> text)
+        {
+            int terminator;
+            while ((terminator = text.IndexOf("]]>")) >= 0)
+            {
+                writer.WriteCData(text[..(terminator + 2)]);
+                text = text[(terminator + 2)..];
+            }
+
+            writer.WriteCData(text);
+        }
+
+        /// <summary>
         /// Writes the derived-type discriminator on the open start tag.
         /// </summary>
         /// <param name="writer">The writer, on an open start tag.</param>

@@ -68,6 +68,22 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #endregion
 
+        #region Private Methods
+
+        /// <inheritdoc />
+        internal override bool CanPopulate => _inner.CanPopulate;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// A nullable value that has a value is boxed as that value, so the box is the one the inner converter populates.
+        /// </remarks>
+        internal override void Populate(ref Utf8XmlReader reader, object existing, XmlSerializerOptions options)
+        {
+            _inner.Populate(ref reader, existing, options);
+        }
+
+        #endregion
+
     }
 
 }

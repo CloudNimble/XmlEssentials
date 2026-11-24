@@ -8,7 +8,7 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Advanced
     /// that applies custom converters to the members of a type.
     /// </summary>
     [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
-    [XmlSerializable(typeof(Quote))]
+    [XmlSerializable<Quote>]
     public partial class QuoteXmlContext : XmlSerializerContext
     {
     }

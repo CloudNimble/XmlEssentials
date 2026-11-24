@@ -1,6 +1,6 @@
 ---
 title: XmlExtensionData
-description: "Unmapped attributes and elements captured by [XmlExtensionDataAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionDataAttribute)."
+description: "Represents the XML attributes and child elements that have no matching member and are captured by a member marked with [XmlExtensionDataAttribute](/api-refer..."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlExtensionData', 'CloudNimble.Text.Xml.Serialization.XmlExtensionData', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.XmlName', 'CloudNimble.Text.Xml.Nodes.XmlElementNode', 'CloudNimble.Text.Xml.XmlSerializerOptions']
@@ -20,7 +20,8 @@ CloudNimble.Text.Xml.Serialization.XmlExtensionData
 
 ## Summary
 
-Unmapped attributes and elements captured by [XmlExtensionDataAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionDataAttribute).
+Represents the XML attributes and child elements that have no matching member and are captured by a member marked with
+[XmlExtensionDataAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionDataAttribute). This class cannot be inherited.
 
 ## Usage
 
@@ -127,7 +128,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Attributes
 
-Gets unmapped attributes keyed by XML name.
+Gets the XML attributes that have no matching member.
 
 #### Syntax
 
@@ -138,10 +139,11 @@ public System.Collections.Generic.Dictionary<CloudNimble.Text.Xml.XmlName, strin
 #### Property Value
 
 Type: `System.Collections.Generic.Dictionary<CloudNimble.Text.Xml.XmlName, string>`
+A dictionary that maps the name of each unmapped attribute to its value.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Elements
 
-Gets unmapped child elements.
+Gets the child elements that have no matching member.
 
 #### Syntax
 
@@ -152,6 +154,7 @@ public System.Collections.Generic.List<CloudNimble.Text.Xml.Nodes.XmlElementNode
 #### Property Value
 
 Type: `System.Collections.Generic.List<CloudNimble.Text.Xml.Nodes.XmlElementNode>`
+A list of the unmapped child elements, in document order.
 
 ## Methods
 

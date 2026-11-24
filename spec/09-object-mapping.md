@@ -13,25 +13,33 @@ JSON has one null. XML has four shapes:
 | `<Name/>` or `<Name></Name>` | `""` (empty string), not null | empty string |
 | `<Name>Alice</Name>` | `"Alice"` | non-empty |
 
-Nillable if any of:
+A reference type and `Nullable<T>` are nillable. `[XmlElement(IsNullable = true)]` marks a member nillable as well.
 
-- `T?` (Nullable reference or `Nullable<T>`),
-- `[XmlElement(IsNullable = true)]` / `[XmlRoot(IsNullable = true)]`,
-- `RespectNullableAnnotations` and the property is annotated nullable.
+**`RespectNullableAnnotations`** (default `false`) refuses a null where the annotation says there is none, with the rules of `JsonSerializerOptions.RespectNullableAnnotations`, and throws `XmlException`:
+
+- Reading: an element marked `xsi:nil="true"` for a member that does not accept null ("The property or field 'Name' on type 'T' doesn't allow setting null values. Consider updating its nullability annotation."), or for the constructor parameter it fills ("The constructor parameter 'name' on type 'T' doesn't allow null values. …").
+- Writing: a null held by a member annotated as never returning null ("… doesn't allow getting null values. …"), whether it is an element, an attribute or text. A null the ignore condition leaves out is not refused.
+- `[AllowNull]` and `[DisallowNull]` change what a member accepts; `[MaybeNull]` and `[NotNull]` what it returns.
+- Not checked: a member the document leaves out, collection items, dictionary values, the root, a member compiled without annotations, and a member whose type is a type parameter with no `class`, `struct` or `notnull` constraint.
+- The reflection resolver reads the annotations with `NullabilityInfoContext` when the type is bound. The generator reads them from the symbols and emits checks that test the option when the converter runs; both give the same answer for the same member.
 
 `required` members and `[XmlRequired]` cannot be nil; nil is `XmlException`. **Missing** required member / required constructor parameter on deserialize is also `XmlException` ([K37](01-identity-and-decisions.md#key-decisions)). `RespectRequiredConstructorParameters` default **true**.
 
 `xsi:nil` plus other attributes on the same element is **legal**. Deserialize: map attributes, set the element value to null. `WriteNilValue` after attributes: legal; after content: `XmlException`.
 
-`XmlSerializerOptions.NilHandling`:
+**Null is written as `xsi:nil`.** `xsi:nil` is how XML spells `null`, so there is no separate option for it. Whether a null member is written at all is `DefaultIgnoreCondition` and `[XmlIgnore(Condition = …)]`, with the meaning `JsonIgnoreCondition` has in System.Text.Json:
 
-- `WriteXsiNil` (default when the value is null and not ignored),
-- `WriteEmptyElement` (write `<e/>` for null — **not** recommended; exists for broken interop),
-- `Omit` (treat null as omit even if `DefaultIgnoreCondition` is `Never`).
+- `Never` (default): a null element member is written, marked `xsi:nil="true"`.
+- `WhenWritingNull`: a null member is left out.
+- `WhenWritingDefault`: a null member, and a value type holding its default value, is left out.
+- `WhenWriting`: the member is never written, and is still read.
+- `WhenReading`: the member is never read, and is still written. Its element or attribute is a known one (it is not an unmapped member) and is passed over without being read. A constructor parameter of the same name is still filled. On a required member it is `InvalidOperationException` when the type is bound: "The member 'X' on type 'T' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read."
 
-Default stack: `DefaultIgnoreCondition = Never`, `NilHandling = WriteXsiNil`.
+`DefaultIgnoreCondition` takes every value but `Always`, as in System.Text.Json. As the default for every member, `WhenWriting` and `WhenReading` have no effect there (a probe of .NET 11: both are accepted and neither is applied), and they have none here: a member with no `[XmlIgnore]` is written and read as under `Never`.
 
-**Null root ([K31](01-identity-and-decisions.md#key-decisions)):** `Serialize<T>(null)` for a nillable reference type writes the root element with `xsi:nil="true"`. If `NilHandling` is `Omit`, throw `InvalidOperationException`.
+The condition applies to members only. A null item of a collection, a null value of a dictionary and a null root are always written, marked `xsi:nil="true"`, as System.Text.Json always writes `null` for them. A null attribute or text member is left out, because only an element can be nil.
+
+**Null root ([K31](01-identity-and-decisions.md#key-decisions)):** `Serialize<T>(null)` for a nillable reference type writes the root element with `xsi:nil="true"`. No ignore condition changes that.
 
 Serializer `WhitespaceHandling` is **reader-only** ([K38](01-identity-and-decisions.md#key-decisions)).
 
@@ -53,7 +61,9 @@ Serialize a member if:
 5. Records: compiler-generated parameters bind like STJ.
 6. Record structs and structs are supported. Parameterless constructor is not required if `[XmlConstructor]` or a unique parameterized constructor can bind all required members.
 
-Deserialize needs: setter, or `init`, or constructor parameter (name match against the member's C# name or XML name, always without regard to case as in STJ; an exact-case match wins when two members differ only by case), or `[XmlConstructor]`.
+Deserialize needs: setter, or `init`, or constructor parameter (name match against the member's C# name or XML name, always without regard to case as in STJ; an exact-case match wins when two members differ only by case), or `[XmlConstructor]`. A member with none of these is read only when the value it holds is populated (see "Object creation handling"); otherwise its element is passed over without being read, so what it holds does not have to be a value of the member's type. A constructor parameter whose property or field is marked `[XmlIgnore]` takes the default of its type.
+
+`PropertyNameCaseInsensitive` applies to the document element as well as to members. Ignoring case is an ASCII rule; a name that holds other characters matches only itself.
 
 Multiple parameterized constructors: `[XmlConstructor]` wins; else the public constructor whose parameters are a subset of serializable members, preferring most parameters. Ambiguity is `NotSupportedException` at type-info build.
 
@@ -139,12 +149,17 @@ BCL `XmlSerializer` cannot emit this (derived appends). This library can.
 
 Supported collection types, matching STJ:
 
-- `T[]`, `List<T>`, `IList<T>`, `ICollection<T>`, `IEnumerable<T>` (serialize only unless concrete `List<T>` or `T[]` on deserialize)
-- `IReadOnlyList<T>`, `IReadOnlyCollection<T>`
-- `Collection<T>`, `ObservableCollection<T>`
-- `ImmutableArray<T>`, `ImmutableList<T>` (if referenced by the consumer)
+Every collection and dictionary that can be written can be read, with its items in document order:
+
+- `T[]`, `List<T>`, and the interfaces a `List<T>` satisfies (`IList<T>`, `ICollection<T>`, `IEnumerable<T>`, `IReadOnlyList<T>`, `IReadOnlyCollection<T>`), which read as `List<T>`
+- `ISet<T>` and `IReadOnlySet<T>`, which read as `HashSet<T>`
+- `Queue<T>`, `Stack<T>`, `LinkedList<T>`, `HashSet<T>`, `SortedSet<T>`, `Collection<T>`, `ObservableCollection<T>`, `ReadOnlyCollection<T>`, and the concurrent collections
+- `ImmutableArray<T>`, `ImmutableList<T>`, `ImmutableHashSet<T>`, `ImmutableSortedSet<T>`, `ImmutableQueue<T>`, `ImmutableStack<T>`, their interfaces, and `FrozenSet<T>`
+- any other type with a public parameterless constructor and `ICollection<T>` or a public `Add` method, or a public constructor that takes `IEnumerable<T>` or `IList<T>`. A type with neither is written, and fails with `NotSupportedException` when it is read.
 - `IAsyncEnumerable<T>` via `SerializeAsyncEnumerable` / `DeserializeAsyncEnumerable` only (not as a property type unless the member converter handles it)
-- `Dictionary<TKey,TValue>`, `IDictionary<TKey,TValue>`, `IReadOnlyDictionary<TKey,TValue>` as **maps** ([K16](01-identity-and-decisions.md#key-decisions))
+- `Dictionary<TKey,TValue>`, `IDictionary<TKey,TValue>`, `IReadOnlyDictionary<TKey,TValue>`, `SortedDictionary<,>`, `SortedList<,>`, `ReadOnlyDictionary<,>`, `ConcurrentDictionary<,>`, `ImmutableDictionary<,>`, `ImmutableSortedDictionary<,>`, `IImmutableDictionary<,>` and `FrozenDictionary<,>` as **maps** ([K16](01-identity-and-decisions.md#key-decisions)). The two interfaces read as `Dictionary<,>`.
+
+A stack is written from its top down and read back with the same top. A collection member with no setter is read only when it is populated (see "Object creation handling"). A null wrapped collection follows the ignore condition as any null member does, and a wrapper marked `xsi:nil` reads back as null. A null dictionary value is always an entry marked `xsi:nil`; the ignore condition is about members, and an entry is not one.
 
 **Dictionary mapping (STJ JSON object analogue):**
 
@@ -180,6 +195,22 @@ Empty vs null:
 | empty | omit | `<Items/>` |
 
 Unwrapped empty and unwrapped null both omit. Prefer wrapped collections or non-null empty lists.
+
+## Object creation handling
+
+`XmlSerializerOptions.PreferredObjectCreationHandling` and `[XmlObjectCreationHandling]` decide what happens to the value a member already holds when the member is read. The values and the rules are those of `JsonObjectCreationHandling` in System.Text.Json, taken from a probe of .NET 11.
+
+- **`Replace` (default).** A member with a setter is given a new value. A member with no setter is not read, whatever its type.
+- **`Populate`.** The items of a collection and the entries of a dictionary are added to the instance the member holds, and the members of an object are set on it, with or without a setter. An entry whose key is held already takes the value that was read. A member that holds null is given a new instance when it has a setter and is left null when it has none. A stack takes the items last to first, so the first item of the document ends on top.
+- **Precedence.** The attribute on the member, then the attribute on the type, then the option. The attribute on a member applies to that member only, not to the members of the object it holds; the option reaches them because their type is bound with the same options.
+- **What can be populated** is decided by the declared type. A collection: `ICollection<T>` and the interfaces that extend it, a class that implements it and has a public parameterless constructor, `Stack<T>`, `Queue<T>`. A dictionary: `IDictionary<TKey, TValue>`, or a class that implements it and has a public parameterless constructor. An object or a value type read by the built-in object converter; a value type needs a setter, because it is populated in its box and copied back. `Nullable<T>` follows `T`.
+- **What cannot:** an array, a value-type collection or dictionary, an immutable or frozen one, a read-only interface (`IEnumerable<T>`, `IReadOnlyList<T>`, `IReadOnlyDictionary<,>`), mixed content, a polymorphic member, a value read by a converter the caller supplied, and any scalar. The option and the attribute on a type skip these. The attribute on such a member is `InvalidOperationException` when the type is bound: "Property 'X' on type 'T' is marked with XmlObjectCreationHandling.Populate but it doesn't support populating. This can be either because the property type is immutable or it could use a custom converter.", "… but is a value type that doesn't have a setter.", or "… but its type allows polymorphic deserialization."
+- **Constructor with parameters.** A type created through one populates nothing. The attribute on it or on one of its members is `NotSupportedException`: "XmlObjectCreationHandling.Populate is currently not supported in types with parameterized constructors."
+- **Reference handling.** A type with a member to populate and a `ReferenceHandler` is `InvalidOperationException`: "XmlObjectCreationHandling.Populate is incompatible with reference handling."
+- **Nil.** An element marked `xsi:nil="true"` sets a populated member that has a setter to null. For one with no setter it is `InvalidOperationException`: "Unable to assign 'null' to the property or field of type 'T'."
+- **A declared interface that holds a read-only instance** (an `IList<T>` holding an array) is `NotSupportedException` when it is populated: "The collection of type 'T' held by the member 'X' is read-only and cannot be populated." The dictionary message is "The dictionary of type 'T' is read-only and cannot be populated."
+- **Where System.Text.Json differs.** It throws `InvalidCastException` when the option populates a polymorphic member that holds another derived type; here the option leaves a polymorphic member under `Replace`.
+- **Generated converters** follow the same rules for collections and dictionaries. They cannot set members on an object that exists, or populate a member they set as the object is created (`init`, `required`). The attribute on such a member is XMLXE016, and under the option the converter of a type that has such a member throws `NotSupportedException` when it reads, naming the member; `[XmlObjectCreationHandling(Replace)]` on the member lifts it.
 
 ## Mixed content
 
@@ -292,9 +323,15 @@ Name comparison for mapping is always `{local, ns}`, never prefix.
 
 ## Built-in primitives (serializer)
 
-Same as reader getters, plus `string`, `char`, `Uri`, `Version`, `byte[]` (base64), `enum`.
+Same as reader getters, plus `string`, `char`, `Uri`, `Version`, `byte[]`, `Memory<byte>` and `ReadOnlyMemory<byte>` (base64), `Int128`, `UInt128` and `BigInteger` (decimal digits), `Half` (the lexical form of `xs:float`), and `enum`. A `char` that is white space is that character: white space is collapsed only around a character that is not white space. Every one of them is parsed by `XmlLexical`.
 
-`object` properties: only with a converter, or `UnknownTypeHandling` to `XmlElement`/`XmlNode`.
+**XML values.** `XmlElement`, `XmlDocument`, `XmlNode` and `XmlElementNode` are XML already. As the document element the value is the document, under its own name. As a member it is the one element inside the member's element, which is what `System.Xml.Serialization` writes. Only an element can be the value. A value that is read holds no rented memory.
+
+**`object`.** A value declared as `object` is written as the type it has: as the root under that type's element name, and as a member, a list item or a dictionary value inside the element that names it. A document does not record the type, so it reads back as XML. `UnknownTypeHandling` says which kind, as `JsonSerializerOptions.UnknownTypeHandling` chooses between `JsonElement` and `JsonNode`: `XmlElement` (default, read-only) or `XmlNode` (an `XmlElementNode`, which can be changed). It applies wherever the declared type is `object`: a member, a list item, a dictionary value and the root. A nil element is null under both. Generated contexts read `object` through the runtime library, so they follow it.
+
+**Anonymous types** are all named `AnonymousType`, and are read through their constructor.
+
+**A converter the caller supplies** (in `options.Converters`, or with `[XmlConverter]` on the type or on the member) makes its type a single value: it may be an attribute or the text of an element. `[XmlConverter]` on a member reads and writes that member only.
 
 ## What we do not honor
 
@@ -316,6 +353,7 @@ Same as reader getters, plus `string`, `char`, `Uri`, `Version`, `byte[]` (base6
 | `[XmlInclude(typeof(T))]` | `[XmlDerivedType<T>]` |
 | `[XmlEnum("n")]` | `[XmlPropertyName("n")]` on the field |
 | `[XmlText]` | `[XmlText]` |
+| a collection with no setter is filled | not read under the default `Replace`; `[XmlObjectCreationHandling(Populate)]` or `PreferredObjectCreationHandling = Populate` fills it |
 | `[XmlType]` | `[XmlType]` |
 | public types only | internal OK with source-gen (consuming compilation) |
 | base-then-derived Order | default same; `[XmlPropertyOrder]` may interleave |

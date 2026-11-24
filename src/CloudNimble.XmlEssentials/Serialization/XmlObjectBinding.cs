@@ -150,6 +150,13 @@ namespace CloudNimble.Text.Xml.Serialization
                     ParameterHasDefault[i] = true;
                     ParameterDefaults[i] = parameters[i].DefaultValue;
                 }
+                else if (constructorMap[i] < 0)
+                {
+                    // The parameter belongs to an ignored member. It is never in the document, so it cannot
+                    // be missing from one, and the constructor takes the default of its type: the null held
+                    // in its slot is what reflection passes as the default of a value type.
+                    ParameterHasDefault[i] = true;
+                }
             }
 
             _heldSlots = new bool[slotCount];

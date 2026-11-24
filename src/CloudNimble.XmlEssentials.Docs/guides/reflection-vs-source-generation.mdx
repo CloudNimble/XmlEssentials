@@ -56,7 +56,7 @@ Reflection needs nothing but the type. It has two costs:
 With source generation, you declare a partial class that derives from [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) and list your types on it. The generator, which ships inside the `XmlEssentials` package, fills in the class with a converter for each type.
 
 ```csharp OrderXmlContext.cs
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class OrderXmlContext : XmlSerializerContext
 {
 }
@@ -123,10 +123,11 @@ For the full procedure, see [How to use source generation](/guides/source-genera
 | Overloads you call | Those that take a value and optional `XmlSerializerOptions`. | Those that take an `XmlTypeInfo<T>` or an `XmlSerializerContext`. |
 | Trimming and Native AOT | Not safe. The overloads carry `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. | Safe. The overloads carry no trimming or AOT annotations. |
 | Mapping errors | Found at run time, when the type is first used. | Many are compiler errors, `XMLXE001` and up. |
-| `XmlSerializerOptions` settings | All apply. | Generated converters apply only some of them. See [Set options](/guides/source-generation#set-options). |
-| Custom converters | Supported. | Applied to enumerations. For other member types, use metadata mode. See [Custom converters](/guides/custom-converters#use-a-converter-with-source-generation). |
+| `XmlSerializerOptions` settings | All apply. | Generated converters read some when they run and have others compiled in. Options that ask for a compiled-in setting to be different throw `NotSupportedException`. See [Set options](/guides/source-generation#set-options). |
+| Custom converters | Supported, on a type, on a member, and in the options. | `[XmlConverter]` on a type is supported. On a member it is the error `XMLXE009`. A converter in the options for a type the generated code writes itself throws `NotSupportedException`. See [Custom converters](/guides/custom-converters#use-a-converter-with-source-generation). |
 | `[XmlDerivedType]` polymorphism | Supported. | Not supported. The generator reports `XMLXE008`. |
 | `ReferenceHandler` | Supported. | Not supported. A generated converter throws `NotSupportedException`. |
+| Types the contract covers | Any type the serializer supports. | The types the context lists and the types reachable from them. Any other class, struct, or record is `NotSupportedException`; the context never maps the members of a type through reflection. |
 
 The last four rows describe the generator's default mode, in which it writes a converter for each type. In [metadata mode](/guides/source-generation-modes), a context hands the type to the run-time resolver, so every option and converter applies, but the context is no longer safe for Native AOT.
 
@@ -166,7 +167,7 @@ output.WriteLine(options.TypeInfoResolver!.GetType().Name);
 ```
 
 ```csharp ShippingXmlContext.cs
-[XmlSerializable(typeof(Shipment))]
+[XmlSerializable<Shipment>]
 public partial class ShippingXmlContext : XmlSerializerContext
 {
 }
@@ -190,7 +191,7 @@ The generator intercepts two shapes of call: `XmlSerializer.Serialize<T>(value)`
 A call is never intercepted when it passes an `XmlSerializerOptions` argument, even `null`. Options say how the call is to run: which resolver, which converters, which names. The call runs as you wrote it, and your options aren't changed. To use a generated context with your own options, create the context from them and pass its type info: `new MyContext(options).Order`.
 
 <Note>
-An intercepted call runs the generated converter with the context's own options, which the `[XmlSourceGenerationOptions]` attribute on the context seeds. The generated converter has the limits in the comparison table. When two contexts list the same type, the call goes to one of them.
+An intercepted call runs the generated converter with the options of the context's `Default` instance, which the `[XmlSourceGenerationOptions]` attribute on the context seeds. The generated converter has the limits in the comparison table. When two contexts list the same type, the call goes to one of them.
 
 To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those calls are never intercepted.
 </Note>
@@ -200,7 +201,7 @@ To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those call
 Use **reflection** when:
 
 - You're writing an application that isn't trimmed or published with Native AOT, and the first-call cost doesn't matter.
-- You rely on custom converters, `[XmlDerivedType]`, `ReferenceHandler`, or options such as `NilHandling` and `DefaultIgnoreCondition`.
+- You rely on custom converters, `[XmlDerivedType]`, `ReferenceHandler`, or an option such as `DefaultIgnoreCondition`.
 
 Use **source generation** when:
 

@@ -1,5 +1,5 @@
-- `WriteTo` writes the declaration text directly, and the writer doesn't record that a declaration was written. With a writer whose `OmitXmlDeclaration` is `false`, the output has two declarations and isn't well formed. Create the writer with `OmitXmlDeclaration = true`.
-- The node must be written before anything else. It doesn't belong in an element's `Children`; added there, it's written inside the element.
+- `WriteTo` writes the declaration and records it with the writer, so the writer doesn't add a second one, whatever `OmitXmlDeclaration` is set to.
+- The node must be written before anything else. It can't be added to an element's `Children`; that throws an `XmlException`.
 - `Version` and `Encoding` are written as they are, without validation. XmlEssentials writes UTF-8 only, so leave `Encoding` at `utf-8`. Setting `Version` to `1.1` changes the declaration, not the writer; set `XmlWriterOptions.Version` as well.
 - `XmlNode.Parse` never returns this node, and a tree has no document node to hold it. The declaration of a parsed document is `XmlDocument.Declaration`, an `XmlDeclarationInfo`.
 - This is the only node type whose `ValueKind` is `XmlDeclaration`.

@@ -122,7 +122,7 @@ namespace CloudNimble.XmlEssentials.Samples
         {
             try
             {
-                XmlSerializer.Serialize<object>(42);
+                XmlSerializer.Serialize(IntPtr.Zero);
             }
             catch (NotSupportedException ex)
             {

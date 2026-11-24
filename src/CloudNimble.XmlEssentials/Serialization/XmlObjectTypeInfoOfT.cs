@@ -75,9 +75,9 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 foreach (var derived in polymorphism.Derived)
                 {
-                    if (reader.LocalNameEquals(derived.Utf8Name))
+                    if (XmlBoundProperty.NameEquals(ref reader, derived.Utf8Name, Options.PropertyNameCaseInsensitive))
                     {
-                        return (T?)derived.Info.ReadElementAsObject(ref reader);
+                        return (T?)polymorphism.ReadDerived(ref reader, derived);
                     }
                 }
             }
@@ -86,7 +86,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 if (polymorphism.FindByDiscriminator(discriminator) is { } derived)
                 {
                     CheckRoot(ref reader);
-                    return (T?)derived.Info.ReadElementAsObject(ref reader);
+                    return (T?)polymorphism.ReadDerived(ref reader, derived);
                 }
 
                 if (polymorphism.UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)

@@ -42,8 +42,8 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             [XmlSourceGenerationOptions(OmitXmlDeclaration = true, PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-            [XmlSerializable(typeof(Person))]
-            [XmlSerializable(typeof(Point))]
+            [XmlSerializable<Person>]
+            [XmlSerializable<Point>]
             internal partial class AppXmlContext : XmlSerializerContext
             {
             }

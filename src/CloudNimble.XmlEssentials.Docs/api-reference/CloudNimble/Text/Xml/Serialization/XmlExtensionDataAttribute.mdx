@@ -1,6 +1,6 @@
 ---
 title: XmlExtensionDataAttribute
-description: "Marks a member that receives unmapped attributes and elements."
+description: "Indicates, when placed on a member of type [XmlExtensionData](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionData), that XML attributes and ch..."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlExtensionDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlExtensionData', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute', 'CloudNimble.Text.Xml.XmlSerializerOptions']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute
 
 ## Summary
 
-Marks a member that receives unmapped attributes and elements.
+Indicates, when placed on a member of type [XmlExtensionData](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionData), that XML attributes and child elements that have
+no matching member are added to that member during deserialization. This class cannot be inherited.
 
 ## Usage
 
@@ -39,6 +40,11 @@ public sealed class Settings
 ```
 
 After deserializing, `Extra.Attributes` and `Extra.Elements` hold what the document had beyond `Theme`. When you serialize the object, that content is written back. See `XmlExtensionData` for an example with its output, and [Mixed content and overflow](/guides/mixed-content#keep-content-that-no-member-maps) for the walkthrough.
+
+## Remarks
+
+The member must be of type [XmlExtensionData](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionData), and a type can have only one member with this attribute.
+The reflection-based serializer throws a [NotSupportedException](https://learn.microsoft.com/dotnet/api/system.notsupportedexception) when either rule is broken.
 
 ## Considerations
 

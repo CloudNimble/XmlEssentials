@@ -1,6 +1,0 @@
-- Only elements are affected. A `null` member that is mapped to an attribute or to the element's text is always left out.
-- `Omit` can't apply to the document root. Serializing a `null` root with `Omit` throws `InvalidOperationException` with the message `A null document root cannot be omitted.`
-- `Omit` doesn't remove a `null` collection that has an `[XmlArray]` wrapper. The wrapper is written as an empty element.
-- A `null` item inside a collection is written as an element in every mode. `Omit` and `WriteEmptyElement` write it as an empty element.
-- Every nil element declares the `xsi` prefix itself. The declaration isn't moved to the document element.
-- A reference handler writes a repeated object as `xsi:nil` regardless of this setting. See `XmlReferenceHandler.IgnoreCycles`.

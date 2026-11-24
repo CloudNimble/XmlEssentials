@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
@@ -655,6 +656,243 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             message.Should().Be("Invalid XML name.");
+        }
+
+        [TestMethod]
+        public void Attribute_AfterDispose_IsRejected()
+        {
+            // The start tag is still open when the writer is disposed, so only the disposed check stands
+            // between these calls and a buffer that has been given back.
+            var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true });
+            writer.WriteStartElement("e");
+            writer.Dispose();
+            FluentActions.Invoking(() => writer.WriteStartAttribute("a")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteStartAttribute(null, "a", "urn:a")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteAttributeString("a", "v")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteAttributeString("a"u8, "v"u8)).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteAttributeNumber("a", 1)).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteNamespaceDeclaration("p", "urn:p")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(() => writer.WriteDefaultNamespace("urn:d")).Should().ThrowExactly<ObjectDisposedException>();
+            FluentActions.Invoking(writer.WriteNilValue).Should().ThrowExactly<ObjectDisposedException>();
+        }
+
+        [TestMethod]
+        public void CommentsAndProcessingInstructions_WhenIndented_GoOnTheirOwnLines()
+        {
+            var indented = new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n", IndentSize = 2 };
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteComment("top");
+                w.WriteProcessingInstruction("style", "x");
+                w.WriteStartElement("a");
+                w.WriteComment("in");
+                w.WriteEmptyElement("b");
+                w.WriteProcessingInstruction("p", "d");
+                w.WriteStartElement("c");
+                w.WriteComment("only");
+                w.WriteEndElement();
+                w.WriteEndElement();
+                w.WriteComment("tail");
+            }, indented).Should().Be(
+                "<!--top-->\n" +
+                "<?style x?>\n" +
+                "<a>\n" +
+                "  <!--in-->\n" +
+                "  <b/>\n" +
+                "  <?p d?>\n" +
+                "  <c>\n" +
+                "    <!--only-->\n" +
+                "  </c>\n" +
+                "</a>\n" +
+                "<!--tail-->");
+        }
+
+        [TestMethod]
+        public void CommentsAndProcessingInstructions_AfterTheDeclaration_GoOnTheirOwnLines()
+        {
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteComment("top"u8);
+                w.WriteEmptyElement("a");
+            }, new XmlWriterOptions { Indented = true, NewLine = "\n" }).Should().Be("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!--top-->\n<a/>");
+        }
+
+        [TestMethod]
+        public void CommentsAndProcessingInstructions_NextToText_AreNotIndented()
+        {
+            // White space next to character data is part of the data, so an element that holds text is
+            // written on one line, comments included.
+            var indented = new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n" };
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("a");
+                w.WriteStringValue("text");
+                w.WriteComment("c");
+                w.WriteProcessingInstruction("p", "d");
+                w.WriteEndElement();
+            }, indented).Should().Be("<a>text<!--c--><?p d?></a>");
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("a");
+                w.WriteComment("c");
+                w.WriteStringValue("text");
+                w.WriteEndElement();
+            }, indented).Should().Be("<a>\n  <!--c-->text</a>");
+        }
+
+        [TestMethod]
+        public void CommentsAndProcessingInstructions_WhenNotIndented_AreWrittenInPlace()
+        {
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteComment("top");
+                w.WriteStartElement("a");
+                w.WriteComment("in");
+                w.WriteProcessingInstruction("p", "d");
+                w.WriteEndElement();
+            }).Should().Be("<!--top--><a><!--in--><?p d?></a>");
+        }
+
+        [TestMethod]
+        public async System.Threading.Tasks.Task Dispose_WithAnElementOpen_WritesWhatItHasAndThenThrows()
+        {
+            // The caller gets the error and keeps the output written so far, in the stream or the buffer.
+            using var stream = new MemoryStream();
+            var toStream = new Utf8XmlWriter(stream, new XmlWriterOptions { OmitXmlDeclaration = true });
+            toStream.WriteStartElement("a");
+            toStream.WriteStringValue("text");
+            FluentActions.Invoking(toStream.Dispose).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The document has unclosed elements.");
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<a>text");
+
+            var buffer = new ArrayBufferWriter<byte>();
+            var toBuffer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            toBuffer.WriteStartElement("a");
+            toBuffer.WriteStringValue("text");
+            FluentActions.Invoking(toBuffer.Dispose).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The document has unclosed elements.");
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<a>text");
+
+            using var asyncStream = new MemoryStream();
+            var asyncWriter = new Utf8XmlWriter(asyncStream, new XmlWriterOptions { OmitXmlDeclaration = true });
+            asyncWriter.WriteStartElement("a");
+            asyncWriter.WriteStringValue("text");
+            (await FluentActions.Awaiting(async () => await asyncWriter.DisposeAsync()).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The document has unclosed elements.");
+            Encoding.UTF8.GetString(asyncStream.ToArray()).Should().Be("<a>text");
+            FluentActions.Invoking(() => asyncWriter.WriteEndElement()).Should().ThrowExactly<ObjectDisposedException>();
+        }
+
+        [TestMethod]
+        [DataRow('x')]
+        [DataRow('\n')]
+        [DataRow('\r')]
+        [DataRow(' ')]
+        [DataRow(' ')]
+        public void IndentCharacter_ThatIsNotASpaceOrATab_IsRejected(char character)
+        {
+            // Anything else would be written into the document as text, or cut down to one byte.
+            FluentActions.Invoking(() => new XmlWriterOptions { IndentCharacter = character })
+                .Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { IndentCharacter = character })
+                .Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+        }
+
+        [TestMethod]
+        public void IndentCharacter_SpaceOrTab_IsUsed()
+        {
+            foreach (var character in new[] { ' ', '\t' })
+            {
+                var indent = new string(character, 3);
+                XmlWriterHarness.ToXml(w =>
+                {
+                    w.WriteStartElement("a");
+                    w.WriteEmptyElement("b");
+                    w.WriteEndElement();
+                }, new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n", IndentSize = 3, IndentCharacter = character })
+                    .Should().Be("<a>\n" + indent + "<b/>\n</a>");
+                XmlSerializer.Serialize(new int[] { 1 }, new XmlSerializerOptions { OmitXmlDeclaration = true, WriteIndented = true, NewLine = "\n", IndentSize = 3, IndentCharacter = character })
+                    .Should().Be("<Int32Array>\n" + indent + "<Int32>1</Int32>\n</Int32Array>");
+            }
+        }
+
+        [TestMethod]
+        public void Limits_ThatAreNegative_AreRejected()
+        {
+            // 0 means the default. A negative limit means nothing, and used to surface as "MaxDepth exceeded (-1)".
+            FluentActions.Invoking(() => new XmlWriterOptions { MaxDepth = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlWriterOptions { MaxAttributeCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlWriterOptions { MaxNameByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlWriterOptions { IndentSize = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlReaderOptions { MaxDepth = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlReaderOptions { MaxAttributeCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlReaderOptions { MaxCommentByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlReaderOptions { MaxDocumentByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlReaderOptions { MaxNameByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlReaderOptions { MaxTextByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlDocumentOptions { MaxDepth = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlDocumentOptions { MaxAttributeCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlDocumentOptions { MaxCommentByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlDocumentOptions { MaxDocumentByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlDocumentOptions { MaxNameByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlDocumentOptions { MaxTextByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { MaxDepth = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { MaxAttributeCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { MaxCommentByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { MaxDocumentByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { MaxNameByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { MaxTextByteCount = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { DefaultBufferSize = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+            FluentActions.Invoking(() => new XmlSerializerOptions { IndentSize = -1 }).Should().ThrowExactly<ArgumentOutOfRangeException>().Which.ParamName.Should().Be("value");
+        }
+
+        [TestMethod]
+        public void Limits_LeftAtZero_AreTheDefaults()
+        {
+            new XmlWriterOptions { MaxDepth = 0, MaxAttributeCount = 0, MaxNameByteCount = 0, IndentSize = 0 }.MaxDepth.Should().Be(0);
+            XmlWriterHarness.ThrownMessage(w =>
+            {
+                for (var i = 0; i < 65; i++)
+                {
+                    w.WriteStartElement("d");
+                }
+            }, new XmlWriterOptions { OmitXmlDeclaration = true, MaxDepth = 0 }).Should().Be("MaxDepth exceeded (64).");
+        }
+
+        [TestMethod]
+        [DataRow("D83D", DisplayName = "a high surrogate alone")]
+        [DataRow("DE00", DisplayName = "a low surrogate alone")]
+        [DataRow("0061D83D0062", DisplayName = "a high surrogate between letters")]
+        [DataRow("DE00D83D", DisplayName = "a pair in the wrong order")]
+        [DataRow("0061D83D", DisplayName = "a high surrogate at the end")]
+        public void HalfASurrogatePair_IsRejectedWhereverTextIsWritten(string units)
+        {
+            // Half a pair is not a character and has no UTF-8 form. It used to be written as U+FFFD, so the
+            // document read back differed from the text that was written, with no error.
+            const string message = "The text contains half of a surrogate pair.";
+            var text = new string(Array.ConvertAll(Enumerable.Range(0, units.Length / 4).ToArray(), i => (char)Convert.ToUInt16(units.Substring(i * 4, 4), 16)));
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteStringValue(text); }).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteStringValue(text.AsSpan()); }).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteStringValueSegment(text.AsSpan(), true); }).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteAttributeString("a", text); }).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteStartAttribute("a"); w.WriteStringValue(text); }).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => w.WriteElementString("e", text)).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => w.WriteComment(text)).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteCData(text); }).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => w.WriteProcessingInstruction("p", text)).Should().Be(message);
+            XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteRawValue(text, skipInputValidation: true); }).Should().Be(message);
+            FluentActions.Invoking(() => XmlSerializer.Serialize(text)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new POCOs.Person { Name = text })).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+        }
+
+        [TestMethod]
+        public void SurrogatePair_IsWrittenAsOneCharacter()
+        {
+            var pair = new string([(char)0xD83D, (char)0xDE00]);
+            XmlWriterHarness.ToXml(w =>
+            {
+                w.WriteStartElement("e");
+                w.WriteAttributeString("a", pair);
+                w.WriteStringValue("x" + pair + "y");
+                w.WriteEndElement();
+            }).Should().Be("<e a=\"" + pair + "\">x" + pair + "y</e>");
         }
 
         [TestMethod]

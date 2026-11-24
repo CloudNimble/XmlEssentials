@@ -11,13 +11,6 @@ Constants: `RefMsg` / `DynMsg` match STJ wording (reflection trim/AOT).
 ```csharp
 namespace CloudNimble.Text.Xml;
 
-public enum XmlNilHandling : byte
-{
-    WriteXsiNil = 0,
-    WriteEmptyElement = 1,
-    Omit = 2,
-}
-
 public enum XmlEnumHandling : byte
 {
     Name = 0,
@@ -45,6 +38,20 @@ public enum XmlIgnoreCondition
     Always = 1,
     WhenWritingDefault = 2,
     WhenWritingNull = 3,
+    WhenWriting = 4,
+    WhenReading = 5,
+}
+
+public enum XmlObjectCreationHandling
+{
+    Replace = 0,
+    Populate = 1,
+}
+
+public enum XmlUnknownTypeHandling
+{
+    XmlElement = 0,
+    XmlNode = 1,
 }
 
 public enum XmlUnmappedMemberHandling : byte
@@ -77,18 +84,6 @@ public enum XmlSourceGenerationMode
     Default = 0,       // Metadata | Serialization (STJ)
     Metadata = 1,
     Serialization = 2,
-}
-
-public enum XmlObjectCreationHandling
-{
-    Replace = 0,
-    Populate = 1,
-}
-
-public enum XmlUnknownTypeHandling
-{
-    XmlElement = 0,
-    XmlNode = 1,
 }
 ```
 
@@ -151,10 +146,10 @@ public sealed class XmlSerializerOptions
     public XmlIgnoreCondition DefaultIgnoreCondition { get; set; }
     public XmlPropertyMapping DefaultPropertyMapping { get; set; }
     public XmlNumberHandling NumberHandling { get; set; }
-    public XmlUnmappedMemberHandling UnmappedMemberHandling { get; set; }
-    public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
     public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
+    public XmlUnmappedMemberHandling UnmappedMemberHandling { get; set; }
     public XmlCommentHandling ReadCommentHandling { get; set; }
+    public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
     public bool RespectNullableAnnotations { get; set; }
     public bool RespectRequiredConstructorParameters { get; set; }
 
@@ -166,7 +161,6 @@ public sealed class XmlSerializerOptions
     public XmlConverter GetConverter(Type typeToConvert);
     public XmlReferenceHandler? ReferenceHandler { get; set; }
     public bool AllowDuplicateProperties { get; set; }
-    public bool AllowOutOfOrderMetadataProperties { get; set; }
     public bool InferClosedTypePolymorphism { get; set; }
 
     public bool IsReadOnly { get; }
@@ -182,7 +176,6 @@ public sealed class XmlSerializerOptions
     public string? DefaultNamespace { get; set; }
     public XmlNamingPolicy? ElementNamingPolicy { get; set; }
     public XmlNamingPolicy? AttributeNamingPolicy { get; set; }
-    public XmlNilHandling NilHandling { get; set; }
     public XmlEnumHandling EnumHandling { get; set; }
     public XmlWhitespaceHandling WhitespaceHandling { get; set; }
 }
@@ -213,13 +206,15 @@ Defaults (when unset / `0` on max-* except `MaxDocumentByteCount`):
 | `PropertyNameCaseInsensitive` | `false` |
 | `NumberHandling` | `AllowNamedFloatingPointLiterals` |
 | `RespectNullableAnnotations` | `false` |
+| `UnknownTypeHandling` | `XmlElement`. `XmlNode` reads a value declared as `object` as an `XmlNode`. |
+| `PreferredObjectCreationHandling` | `Replace`, as in System.Text.Json. A member with no setter is not read. See [object mapping](09-object-mapping.md#object-creation-handling). |
 | `RespectRequiredConstructorParameters` | `true` ([K37](01-identity-and-decisions.md#key-decisions)) |
 | `DefaultPropertyMapping` | `Element` ([K7](01-identity-and-decisions.md#key-decisions)). `Attribute` writes unannotated simple members as XML attributes; nested objects and collections stay elements. `[XmlElement]` / `[XmlAttribute]` / `[XmlText]` override per member. |
 | `TypeInfoResolver` | `DefaultXmlTypeInfoResolver.Instance` when reflection is enabled |
 | `WhitespaceHandling` | forwarded to `Utf8XmlReader` on deserialize only ([K38](01-identity-and-decisions.md#key-decisions)) |
 | `General` / `Default` | identity names, write declaration, xsi:nil for null |
 | `Web` | CamelCase, `OmitXmlDeclaration = true` |
-| `Strict` | `UnmappedMemberHandling.Disallow`, `AllowDuplicateProperties = false`, comments `Disallow` |
+| `Strict` | `UnmappedMemberHandling.Disallow`, `AllowDuplicateProperties = false`, `RespectNullableAnnotations = true` (as `JsonSerializerOptions.Strict`), comments `Disallow` |
 
 Effective name policy: member kind chooses `AttributeNamingPolicy` or `ElementNamingPolicy`, each falling back to `PropertyNamingPolicy`, which falling back to identity.
 
@@ -421,7 +416,11 @@ All reading goes through `Utf8XmlReader` and all writing through `Utf8XmlWriter`
 | Topic | Rule |
 | --- | --- |
 | Unsupported type | `NotSupportedException` (`The type 'X' is not supported.`), as STJ. `TryGetTypeInfo` returns `false`. A payload problem is `XmlException`. |
-| Misconfigured converter | `InvalidOperationException`: `[XmlConverter]` naming a type that is not a converter, a factory that returns `null` or another factory, a converter whose `T` is not the requested type, a resolver that answers with another type. These are never reported as "not supported". |
+| `object` | A value declared as `object` is written as the type it has, and reads back as an `XmlElement`, or as an `XmlNode` under `UnknownTypeHandling = XmlNode` ([object mapping](09-object-mapping.md#built-in-primitives-serializer)). `Serialize<object>(value)` names the document element after the value's type. |
+| `DefaultIgnoreCondition` | `Always` is `ArgumentException`, as STJ: it would ignore every member. |
+| Asynchronous sequences | Without `topLevelValues` the values are the children of one `ArrayOf…` element, which is in the namespace of its items, and they share one set of references under a `ReferenceHandler`. With `topLevelValues` each value is a document, with references of its own. |
+| A context in a chain | Asked by options that are not its own, a generated context creates type info for those options, so the options that hold the chain decide the declaration, the indentation, the limits and every setting a converter reads. Options that contradict a setting compiled into the context are refused. A hand-written context answers through `XmlSerializerContext`: a built-in scalar, an XML value, or `object` for the options that ask, and `GetTypeInfo(Type)` for anything else. |
+| Misconfigured converter | `InvalidOperationException`: a factory that returns `null` or another factory, a converter whose `T` is not the requested type, a resolver that answers with another type. These are never reported as "not supported". |
 | Read-only | Options become read-only on first `GetTypeInfo` / `TryGetTypeInfo` or first serializer call (not on `GetConverter`). Every setter and both lists then throw `InvalidOperationException`. |
 | `TypeInfoResolver` | Unset: `DefaultXmlTypeInfoResolver.Instance` when `IsReflectionEnabledByDefault`, else `null` (and using the options throws `InvalidOperationException`). An explicitly set resolver, the default one included, works with the switch off. |
 | `TypeInfoResolverChain` | A view of `TypeInfoResolver`, as STJ: empty until a resolver is set, the single resolver or the items of a chain afterwards. Changing the list makes it the resolver; setting the resolver replaces the list's content. It is not a second list searched before the resolver. |
@@ -500,7 +499,7 @@ public sealed class DefaultXmlTypeInfoResolver : IXmlTypeInfoResolver
 
 public abstract class XmlTypeInfo
 {
-    public Type Type { get; }
+    public Type Type { get; }   // typeof(T)
     public XmlConverter Converter { get; }
     public XmlSerializerOptions Options { get; }
     public XmlName RootName { get; }
@@ -535,7 +534,7 @@ public sealed class XmlPolymorphismOptions
 
 public readonly struct XmlDerivedTypeInfo
 {
-    public Type Type { get; }
+    public Type Type { get; }   // typeof(T)
     public string Discriminator { get; }
     public string? Namespace { get; }
 }
@@ -549,10 +548,9 @@ public abstract class XmlSerializerContext : IXmlTypeInfoResolver
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public sealed class XmlSerializableAttribute : Attribute
+public sealed class XmlSerializableAttribute<T> : Attribute
 {
-    public XmlSerializableAttribute(Type type);
-    public Type Type { get; }
+    public Type Type { get; }   // typeof(T)
     public string? TypeInfoPropertyName { get; set; }
     public XmlSourceGenerationMode GenerationMode { get; set; }
 }
@@ -575,9 +573,11 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
     public XmlPropertyMapping DefaultPropertyMapping { get; set; }
     public XmlSourceGenerationMode GenerationMode { get; set; }
     public bool PropertyNameCaseInsensitive { get; set; }
+    public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
+    public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
     public bool RespectNullableAnnotations { get; set; }
+    public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
     public bool UseStringEnumConverter { get; set; }
-    public XmlNilHandling NilHandling { get; set; }
     public XmlEnumHandling EnumHandling { get; set; }
     public int MaxDepth { get; set; }
     public XmlDiscriminatorPlacement DiscriminatorPlacement { get; set; }
@@ -602,8 +602,8 @@ Usage:
 
 ```csharp
 [XmlSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-[XmlSerializable(typeof(Person))]
-[XmlSerializable(typeof(Address))]
+[XmlSerializable<Person>]
+[XmlSerializable<Address>]
 internal partial class AppXmlContext : XmlSerializerContext { }
 
 string xml = XmlSerializer.Serialize(person, AppXmlContext.Default.Person);

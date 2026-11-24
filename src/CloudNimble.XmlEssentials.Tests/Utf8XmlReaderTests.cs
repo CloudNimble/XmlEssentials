@@ -111,7 +111,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var reader = new Utf8XmlReader("<e>hi</e>"u8);
             reader.Read();
-            reader.CurrentDepth.Should().Be(1);
+            reader.CurrentDepth.Should().Be(0);
             reader.BytesConsumed.Should().Be(3);
             reader.IsFinalBlock.Should().BeTrue();
             reader.HasValueSequence.Should().BeFalse();
@@ -1013,6 +1013,120 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void CurrentDepth_IsTheNumberOfElementsTheTokenIsInside()
+        {
+            // The depth of a token is the number of elements open around it, as XmlReader.Depth and
+            // Utf8JsonReader.CurrentDepth have it: a start tag, its end tag, and an empty element written at
+            // the same place are all at the same depth.
+            var bytes = "<?xml version=\"1.0\"?><!--top--><a x=\"1\"><b/><c>t</c><!--k--><d y=\"2\"/><?p q?><e><f/><g><![CDATA[z]]></g></e></a><!--tail-->"u8.ToArray();
+            const string expected =
+                "XmlDeclaration:0 Comment:0 StartElement a:0 @x:0 StartElement b:1 StartElement c:1 Text:2 EndElement c:1 Comment:1 " +
+                "StartElement d:1 @y:1 ProcessingInstruction:1 StartElement e:1 StartElement f:2 StartElement g:2 CData:3 EndElement g:2 " +
+                "EndElement e:1 EndElement a:0 Comment:0";
+            var reader = new Utf8XmlReader(bytes, ValueOptions);
+            reader.CurrentDepth.Should().Be(0);
+            Depths(ref reader).Should().Be(expected);
+            reader.CurrentDepth.Should().Be(0);
+            for (var split = 1; split < bytes.Length; split++)
+            {
+                var first = new Utf8XmlReader(bytes.AsSpan(0, split), false, new XmlReaderState(ValueOptions));
+                var head = Depths(ref first);
+                var second = new Utf8XmlReader(bytes.AsSpan((int)first.BytesConsumed), true, first.CurrentState);
+                var tail = Depths(ref second);
+                (head.Length > 0 && tail.Length > 0 ? head + " " + tail : head + tail).Should().Be(expected, "the depths must not depend on a split at byte {0}", split);
+            }
+        }
+
+        [TestMethod]
+        public void CurrentDepth_InAStateCapturedOnAStartTag_IsTheDepthOfThatTag()
+        {
+            // The state says where the reader is. A reader made from it reports the same depth before it reads,
+            // whether the state was captured on a start tag or after a read that needed more input.
+            var reader = new Utf8XmlReader("<a><b>"u8, false, new XmlReaderState(ValueOptions));
+            reader.Read();
+            reader.CurrentDepth.Should().Be(0);
+            new Utf8XmlReader(""u8, false, reader.CurrentState).CurrentDepth.Should().Be(0);
+            reader.Read();
+            reader.CurrentDepth.Should().Be(1);
+            new Utf8XmlReader(""u8, false, reader.CurrentState).CurrentDepth.Should().Be(1);
+            reader.Read().Should().BeFalse();
+            reader.CurrentDepth.Should().Be(2, "the reader is now between tokens, inside both elements");
+            new Utf8XmlReader(""u8, false, reader.CurrentState).CurrentDepth.Should().Be(2);
+        }
+
+        [TestMethod]
+        public void CurrentDepth_AfterSkip_IsTheDepthOfTheSkippedElement()
+        {
+            var reader = new Utf8XmlReader("<a><b><c>t</c></b><d/></a>"u8);
+            reader.Read();
+            reader.Read();
+            reader.CurrentDepth.Should().Be(1);
+            reader.Skip();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            reader.CurrentDepth.Should().Be(1);
+            reader.Read();
+            reader.Skip();
+            Encoding.UTF8.GetString(reader.LocalNameSpan).Should().Be("d");
+            reader.TokenType.Should().Be(XmlTokenType.StartElement);
+            reader.CurrentDepth.Should().Be(1);
+        }
+
+        [TestMethod]
+        public void Skip_OnATokenThatIsNotAStartTag_DoesNothing()
+        {
+            // Only a start tag has children to skip. On any other token Skip leaves the reader where it is,
+            // as Utf8JsonReader.Skip does on a value.
+            var bytes = "<a>text<!--k--><?p q?><![CDATA[z]]><b>in</b></a>"u8.ToArray();
+            var reader = new Utf8XmlReader(bytes, ValueOptions);
+            reader.Skip();
+            reader.TokenType.Should().Be(XmlTokenType.None);
+            reader.BytesConsumed.Should().Be(0);
+            reader.Read();
+            foreach (var expected in new[] { XmlTokenType.Text, XmlTokenType.Comment, XmlTokenType.ProcessingInstruction, XmlTokenType.CData })
+            {
+                reader.Read();
+                reader.TokenType.Should().Be(expected);
+                var consumed = reader.BytesConsumed;
+                var value = reader.GetString();
+                reader.Skip();
+                reader.TrySkip().Should().BeTrue();
+                reader.TokenType.Should().Be(expected);
+                reader.BytesConsumed.Should().Be(consumed);
+                reader.GetString().Should().Be(value);
+            }
+
+            reader.Read();
+            reader.Skip();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            Encoding.UTF8.GetString(reader.LocalNameSpan).Should().Be("b");
+            var atEndTag = reader.BytesConsumed;
+            reader.Skip();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            Encoding.UTF8.GetString(reader.LocalNameSpan).Should().Be("b");
+            reader.BytesConsumed.Should().Be(atEndTag);
+            reader.Read();
+            reader.Skip();
+            Encoding.UTF8.GetString(reader.LocalNameSpan).Should().Be("a");
+            reader.BytesConsumed.Should().Be(bytes.Length);
+            reader.Read().Should().BeFalse();
+            reader.Skip();
+            reader.TrySkip().Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void Skip_OnATokenThatIsNotAStartTag_InABlockThatIsNotFinal_DoesNothing()
+        {
+            var reader = new Utf8XmlReader("<a>text<b>"u8, false, new XmlReaderState(ValueOptions));
+            reader.Read();
+            reader.Read();
+            reader.TokenType.Should().Be(XmlTokenType.Text);
+            var consumed = reader.BytesConsumed;
+            reader.TrySkip().Should().BeTrue();
+            reader.TokenType.Should().Be(XmlTokenType.Text);
+            reader.BytesConsumed.Should().Be(consumed);
+        }
+
+        [TestMethod]
         public void ValueMembers_OnEndTagAfterSkip_AreEmpty()
         {
             var reader = new Utf8XmlReader("<r><a>text<b>deep</b></a><c/></r>"u8);
@@ -1125,6 +1239,34 @@ namespace CloudNimble.XmlEssentials.Tests
 
                 tokens.Add(line.ToString());
             }
+        }
+
+        /// <summary>
+        /// Reads to the end of the input and returns each token with its depth, attributes included.
+        /// </summary>
+        /// <param name="reader">The reader.</param>
+        /// <returns>The tokens, separated by blanks.</returns>
+        private static string Depths(ref Utf8XmlReader reader)
+        {
+            var line = new StringBuilder();
+            while (reader.Read())
+            {
+                line.Append(line.Length > 0 ? " " : "").Append(reader.TokenType);
+                if (reader.TokenType is XmlTokenType.StartElement or XmlTokenType.EndElement)
+                {
+                    line.Append(' ').Append(Encoding.UTF8.GetString(reader.LocalNameSpan));
+                }
+
+                line.Append(':').Append(reader.CurrentDepth);
+                while (reader.MoveToNextAttribute())
+                {
+                    line.Append(" @").Append(Encoding.UTF8.GetString(reader.LocalNameSpan)).Append(':').Append(reader.CurrentDepth);
+                }
+
+                reader.MoveToElement();
+            }
+
+            return line.ToString();
         }
 
         private static void AppendValue(ref Utf8XmlReader reader, StringBuilder line)

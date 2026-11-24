@@ -20,7 +20,8 @@ namespace CloudNimble.Text.Xml
         Web = 1,
 
         /// <summary>
-        /// Option values for strict deserialization: an unmapped member, a duplicate property, or a comment is an error.
+        /// Option values for strict deserialization: an unmapped member, a duplicate property, a comment, or a
+        /// <see langword="null"/> for a member annotated non-nullable is an error.
         /// </summary>
         Strict = 2,
 

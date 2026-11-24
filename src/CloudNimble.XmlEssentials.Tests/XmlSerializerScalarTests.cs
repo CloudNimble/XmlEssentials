@@ -195,15 +195,14 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void NilHandling_ChoosesHowANullRootIsWritten()
+        public void NullRoot_IsWrittenAsNil_UnderEveryIgnoreCondition()
         {
-            var empty = new XmlSerializerOptions { NilHandling = XmlNilHandling.WriteEmptyElement, OmitXmlDeclaration = true };
-            XmlSerializer.Serialize<string?>(null, empty).Should().Be("<String/>");
-            XmlSerializer.Serialize((int?)null, empty).Should().Be("<Int32/>");
-
-            var omit = new XmlSerializerOptions { NilHandling = XmlNilHandling.Omit };
-            FluentActions.Invoking(() => XmlSerializer.Serialize<string?>(null, omit))
-                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("A null document root cannot be omitted.");
+            foreach (var condition in new[] { XmlIgnoreCondition.Never, XmlIgnoreCondition.WhenWritingNull, XmlIgnoreCondition.WhenWritingDefault })
+            {
+                var options = new XmlSerializerOptions { DefaultIgnoreCondition = condition, OmitXmlDeclaration = true };
+                XmlSerializer.Serialize<string?>(null, options).Should().Be("<String" + Nil + "/>");
+                XmlSerializer.Serialize((int?)null, options).Should().Be("<Int32" + Nil + "/>");
+            }
         }
 
         [TestMethod]

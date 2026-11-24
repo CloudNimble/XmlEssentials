@@ -1,6 +1,6 @@
 ---
 title: XmlWriterOptions
-description: "Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter)."
+description: "Provides the options that control how a [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) formats and checks the XML it writes."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlWriterOptions', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.Text.Xml.XmlVersion', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlException']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlWriterOptions
 
 ## Summary
 
-Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter).
+Provides the options that control how a [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) formats and checks the XML it writes.
 
 ## Usage
 
@@ -46,8 +46,10 @@ With no options at all, the writer produces one line of XML that starts with an 
 
 ## Remarks
 
-A max-* of 0 means the default from the DoS table. Construct with
-`new XmlWriterOptions()` so indent defaults apply.
+A limit property ([XmlWriterOptions.MaxAttributeCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxattributecount), [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth), [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount))
+that is 0 uses the default limit that the property documents. `new XmlWriterOptions()` sets
+[XmlWriterOptions.IndentCharacter](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indentcharacter) to a space and [XmlWriterOptions.NewLine](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#newline) to [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
+`default(XmlWriterOptions)` leaves them unset, and the writer then uses the same two values.
 
 ## Examples
 
@@ -158,7 +160,7 @@ A limit of 0 selects its default. There's no value that turns a limit off. `MaxA
 
 ### What indentation does
 
-`Indented` adds a line break and indentation before elements only. An element that holds text is written on one line, with any child elements, so that no value changes. Comments and processing instructions get no line break of their own.
+`Indented` adds a line break and indentation before elements, comments, and processing instructions. An element that holds text is written on one line, with any child elements, so that no value changes.
 
 ### What SkipValidation skips
 
@@ -168,8 +170,8 @@ With `SkipValidation` set, the writer doesn't check names, namespace declaration
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates options with indent character space, indent size 0 (meaning 2),
-and [XmlWriterOptions.NewLine](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#newline) equal to [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
+Initializes a new instance of the [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) struct with a space as the indent
+character, an indent size of 0 (which means 2), and [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline) as the line ending.
 
 #### Syntax
 
@@ -201,8 +203,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmitByteOrderMark
 
-Gets or sets whether to write a UTF-8 BOM at the first output.
-Default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+Gets or sets a value that indicates whether the writer writes a UTF-8 byte order mark before its first output.
 
 #### Syntax
 
@@ -213,11 +214,12 @@ public bool EmitByteOrderMark { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the writer writes a UTF-8 byte order mark; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentCharacter
 
-Gets or sets the indent character when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is true.
-Default is space when constructed with [XmlWriterOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#.ctor).
+Gets or sets the character used to indent when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 #### Syntax
 
@@ -228,10 +230,12 @@ public char IndentCharacter { get; set; }
 #### Property Value
 
 Type: `char`
+The indent character. The default is a space. The null character (`'\0'`), which is the value in
+`default(XmlWriterOptions)`, also means a space.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Indented
 
-Gets or sets whether to pretty-print with newlines and indentation.
+Gets or sets a value that indicates whether the writer formats the output with new lines and indentation.
 
 #### Syntax
 
@@ -242,11 +246,13 @@ public bool Indented { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the writer puts each element on its own line and indents it; otherwise,
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IndentSize
 
-Gets or sets the number of [XmlWriterOptions.IndentCharacter](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indentcharacter)s per depth.
-0 means 2.
+Gets or sets the number of [XmlWriterOptions.IndentCharacter](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indentcharacter) characters written for each level of depth
+when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 #### Syntax
 
@@ -257,11 +263,11 @@ public int IndentSize { get; set; }
 #### Property Value
 
 Type: `int`
+The number of indent characters for each level. The default is 0, which means 2.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
 
-Gets or sets the maximum attributes on one element, including xmlns*.
-0 means 1000.
+Gets or sets the maximum number of attributes on one element, including namespace declarations.
 
 #### Syntax
 
@@ -272,11 +278,11 @@ public int MaxAttributeCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum number of attributes on one element. The default is 0, which means 1000.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
 
-Gets or sets the maximum element depth.
-0 means 64.
+Gets or sets the maximum depth of nested elements.
 
 #### Syntax
 
@@ -287,11 +293,11 @@ public int MaxDepth { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum element depth. The default is 0, which means 64.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
 
-Gets or sets the maximum UTF-8 byte length of an element or attribute name.
-0 means 1024.
+Gets or sets the maximum length of an element name, an attribute name, or a prefix, in UTF-8 bytes.
 
 #### Syntax
 
@@ -302,11 +308,11 @@ public int MaxNameByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum name length, in UTF-8 bytes. The default is 0, which means 1024.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
 
-Gets or sets the newline sequence when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is true.
-Default is [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline) when constructed with [XmlWriterOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#.ctor).
+Gets or sets the line ending written before each indented line when [XmlWriterOptions.Indented](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#indented) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 #### Syntax
 
@@ -317,10 +323,12 @@ public string NewLine { get; set; }
 #### Property Value
 
 Type: `string?`
+The line ending. The default is [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline). A [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or empty
+value also means [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
 
-Gets or sets whether to omit `<?xml ...?>`.
+Gets or sets a value that indicates whether the writer omits the XML declaration (`<?xml ...?>`).
 
 #### Syntax
 
@@ -331,10 +339,16 @@ public bool OmitXmlDeclaration { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the writer does not write the XML declaration on its own; otherwise,
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Remarks
+
+[Utf8XmlWriter.WriteXmlDeclaration](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#writexmldeclaration) writes the declaration whatever this value is.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SkipValidation
 
-Gets or sets whether to skip name and well-formedness checks.
+Gets or sets a value that indicates whether the writer skips its name, namespace, and duplicate attribute checks.
 
 #### Syntax
 
@@ -345,10 +359,20 @@ public bool SkipValidation { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the writer skips those checks; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Remarks
+
+When the value is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the writer does not check that names are valid XML names or
+fit in [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount), that prefixes and namespace declarations follow Namespaces in XML,
+that an element has no duplicate attribute, that the characters of a comment, CDATA section, or
+processing instruction are allowed, or that every element is closed when the writer is disposed.
+The writer still enforces a single root element, [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth), and [XmlWriterOptions.MaxAttributeCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxattributecount).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Standalone
 
-Gets or sets the standalone pseudo-attribute, or null to omit it.
+Gets or sets the value of the `standalone` pseudo-attribute of the XML declaration.
 
 #### Syntax
 
@@ -359,10 +383,13 @@ public bool? Standalone { get; set; }
 #### Property Value
 
 Type: `bool?`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to write `standalone="yes"`; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to write
+`standalone="no"`; [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to omit the pseudo-attribute. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
 
-Gets or sets the XML version written in the declaration and used for Char checks.
+Gets or sets the XML version that the writer writes in the XML declaration and uses to decide which
+characters are allowed.
 
 #### Syntax
 
@@ -373,6 +400,7 @@ public CloudNimble.Text.Xml.XmlVersion Version { get; set; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlVersion`
+One of the enumeration values that specifies the XML version. The default is [XmlVersion.Version10](/api-reference/CloudNimble/Text/Xml/XmlVersion).
 
 ## Methods
 

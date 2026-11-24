@@ -91,7 +91,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample37_SupportedTypes_UnsupportedType()
         {
             SampleOutput.Capture(SupportedTypes.UnsupportedType).Should().Be(
-                "The type 'System.Object' is not supported.\n" +
+                "The type 'System.IntPtr' is not supported.\n" +
                 "The type 'System.Int32[,]' is not supported.");
         }
 

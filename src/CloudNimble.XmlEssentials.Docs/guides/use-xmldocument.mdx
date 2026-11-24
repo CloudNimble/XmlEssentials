@@ -70,7 +70,7 @@ What to notice:
 - `RootElement` is the document element. It's where every query starts.
 - When you already have UTF-8 bytes, pass them as bytes. The `string` and `ReadOnlySpan<char>` overloads convert the text to UTF-8 first.
 - The `Stream` overload reads the stream to its end and doesn't close it. There is no `ParseAsync`; to parse from a stream without blocking, read the bytes yourself and pass them to `Parse`.
-- The input must be UTF-8 (or text that the string overloads convert). A declaration that names another encoding, such as `encoding="utf-16"`, is rejected.
+- The input must be UTF-8 (or text that the string overloads convert). In bytes, a declaration that names another encoding, such as `encoding="utf-16"`, is rejected. In a string or a span of characters, the declared encoding isn't checked.
 - Input that isn't a well-formed XML document throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). So does a document that has more than one root element, no root element, or a document type declaration (`<!DOCTYPE ...>`), which XmlEssentials never accepts.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)
@@ -1039,7 +1039,7 @@ The code produces the following output:
 Price as a decimal: 49.90
 ```
 
-Dispose the document that `SerializeToDocument` returns. `SerializeToElement` returns the root element of a document that you have no reference to and so can't dispose; prefer `SerializeToDocument`. For everything else about the serializer, see [Deserialize XML](/guides/deserialize) and [Serialize XML](/guides/serialize).
+Dispose the document that `SerializeToDocument` returns. `SerializeToElement` returns the root element of a document that holds no pooled memory, so there's nothing to dispose; it costs one more copy of the XML than `SerializeToDocument`. For everything else about the serializer, see [Deserialize XML](/guides/deserialize) and [Serialize XML](/guides/serialize).
 
 ## Performance
 

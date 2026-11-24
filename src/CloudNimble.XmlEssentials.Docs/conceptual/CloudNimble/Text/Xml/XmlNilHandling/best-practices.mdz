@@ -1,4 +1,0 @@
-- Keep `WriteXsiNil` when a document must round-trip exactly, or when a schema declares the element nillable.
-- Choose `Omit` for smaller documents when the reader treats a missing element as no value.
-- Avoid `WriteEmptyElement` unless a consumer can't process `xsi:nil`. A `null` string reads back as an empty string, and a `null` number produces a document that can't be read back at all.
-- To change the behavior for one member instead of all of them, use `[XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]` on that member.

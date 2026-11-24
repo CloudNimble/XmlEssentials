@@ -1,6 +1,6 @@
 ---
 title: XmlTokenType
-description: "Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document."
+description: "Specifies the type of token that a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) is positioned on in a UTF-8 XML document."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlTokenType', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlValueKind']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlTokenType
 
 ## Summary
 
-Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document.
+Specifies the type of token that a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) is positioned on in a UTF-8 XML document.
 
 ## Usage
 
@@ -71,12 +71,12 @@ For the document below, the loop prints the token types in the order shown.
 
 ```text
 XmlDeclaration (depth 0)
-StartElement Order (depth 1)
-StartElement Item (depth 2)
+StartElement Order (depth 0)
+StartElement Item (depth 1)
 Text "Keyboard" (depth 2)
 EndElement Item (depth 1)
 StartElement Gift (depth 1)
-StartElement Note (depth 2)
+StartElement Note (depth 1)
 CData "Leave at <door>" (depth 2)
 EndElement Note (depth 1)
 EndElement Order (depth 0)
@@ -116,13 +116,14 @@ before expecting a matching end tag.
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `None` | 0 | No token has been read yet, or the reader has reached the end of a complete document. |
+| `None` | 0 | No token. No token has been read yet, or the reader has reached the end of a complete document. |
 | `StartElement` | 1 | A start tag, including empty elements such as `<e/>`. |
 | `EndElement` | 2 | An end tag such as `</e>`. |
 | `Attribute` | 3 | An attribute selected by [Utf8XmlReader.MoveToNextAttribute](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#movetonextattribute). |
 | `Text` | 4 | Character data, after entity expansion and end-of-line handling. |
 | `CData` | 5 | A CDATA section. The value is the payload between `<![CDATA[` and `]]>`. |
-| `Comment` | 6 | A comment, reported only when [XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) is set. |
+| `Comment` | 6 | A comment, reported only when [XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) is
+[XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
 | `ProcessingInstruction` | 7 | A processing instruction other than the XML declaration. |
 | `XmlDeclaration` | 8 | The XML declaration (`<?xml ...?>`), which must be the first token in the document. |
 

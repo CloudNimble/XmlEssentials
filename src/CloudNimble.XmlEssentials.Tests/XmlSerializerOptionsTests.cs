@@ -36,7 +36,6 @@ namespace CloudNimble.XmlEssentials.Tests
             options.NewLine.Should().Be(Environment.NewLine);
             options.NumberHandling.Should().Be(XmlNumberHandling.AllowNamedFloatingPointLiterals);
             options.ReadCommentHandling.Should().Be(XmlCommentHandling.Skip);
-            options.NilHandling.Should().Be(XmlNilHandling.WriteXsiNil);
             options.DefaultPropertyMapping.Should().Be(XmlPropertyMapping.Element);
             options.EnumHandling.Should().Be(XmlEnumHandling.Name);
             options.OmitXmlDeclaration.Should().BeFalse();
@@ -57,12 +56,14 @@ namespace CloudNimble.XmlEssentials.Tests
 
             var strict = new XmlSerializerOptions(XmlSerializerDefaults.Strict);
             strict.AllowDuplicateProperties.Should().BeFalse();
+            strict.RespectNullableAnnotations.Should().BeTrue("the Strict preset of System.Text.Json respects nullable annotations");
             strict.ReadCommentHandling.Should().Be(XmlCommentHandling.Disallow);
             strict.UnmappedMemberHandling.Should().Be(XmlUnmappedMemberHandling.Disallow);
             strict.OmitXmlDeclaration.Should().BeFalse();
 
             var general = new XmlSerializerOptions(XmlSerializerDefaults.General);
             general.PropertyNamingPolicy.Should().BeNull();
+            general.RespectNullableAnnotations.Should().BeFalse();
             general.UnmappedMemberHandling.Should().Be(XmlUnmappedMemberHandling.Skip);
 
             XmlSerializerOptions.Default.IsReadOnly.Should().BeTrue();
@@ -111,7 +112,6 @@ namespace CloudNimble.XmlEssentials.Tests
             var changes = new Action[]
             {
                 () => options.AllowDuplicateProperties = false,
-                () => options.AllowOutOfOrderMetadataProperties = true,
                 () => options.AttributeNamingPolicy = XmlNamingPolicy.CamelCase,
                 () => options.DefaultBufferSize = 1,
                 () => options.DefaultIgnoreCondition = XmlIgnoreCondition.Always,
@@ -134,7 +134,6 @@ namespace CloudNimble.XmlEssentials.Tests
                 () => options.MaxNameByteCount = 1,
                 () => options.MaxTextByteCount = 1,
                 () => options.NewLine = "\n",
-                () => options.NilHandling = XmlNilHandling.Omit,
                 () => options.NumberHandling = XmlNumberHandling.Strict,
                 () => options.OmitXmlDeclaration = true,
                 () => options.PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
@@ -180,7 +179,6 @@ namespace CloudNimble.XmlEssentials.Tests
             var source = new XmlSerializerOptions
             {
                 AllowDuplicateProperties = false,
-                AllowOutOfOrderMetadataProperties = true,
                 AttributeNamingPolicy = XmlNamingPolicy.KebabCaseLower,
                 DefaultBufferSize = 512,
                 DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
@@ -203,7 +201,6 @@ namespace CloudNimble.XmlEssentials.Tests
                 MaxNameByteCount = 15,
                 MaxTextByteCount = 16,
                 NewLine = "\n",
-                NilHandling = XmlNilHandling.WriteEmptyElement,
                 NumberHandling = XmlNumberHandling.Strict,
                 OmitXmlDeclaration = true,
                 PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
@@ -226,7 +223,6 @@ namespace CloudNimble.XmlEssentials.Tests
             var copy = new XmlSerializerOptions(source);
             copy.IsReadOnly.Should().BeFalse();
             copy.AllowDuplicateProperties.Should().BeFalse();
-            copy.AllowOutOfOrderMetadataProperties.Should().BeTrue();
             copy.AttributeNamingPolicy.Should().BeSameAs(XmlNamingPolicy.KebabCaseLower);
             copy.DefaultBufferSize.Should().Be(512);
             copy.DefaultIgnoreCondition.Should().Be(XmlIgnoreCondition.WhenWritingNull);
@@ -249,7 +245,6 @@ namespace CloudNimble.XmlEssentials.Tests
             copy.MaxNameByteCount.Should().Be(15);
             copy.MaxTextByteCount.Should().Be(16);
             copy.NewLine.Should().Be("\n");
-            copy.NilHandling.Should().Be(XmlNilHandling.WriteEmptyElement);
             copy.NumberHandling.Should().Be(XmlNumberHandling.Strict);
             copy.OmitXmlDeclaration.Should().BeTrue();
             copy.PreferredObjectCreationHandling.Should().Be(XmlObjectCreationHandling.Populate);
@@ -384,15 +379,15 @@ namespace CloudNimble.XmlEssentials.Tests
         public void UnsupportedType_IsNotSupportedException_AndTryGetTypeInfoIsFalse()
         {
             var options = new XmlSerializerOptions();
-            FluentActions.Invoking(() => options.GetConverter(typeof(object)))
-                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'System.Object' is not supported.");
-            FluentActions.Invoking(() => options.GetTypeInfo(typeof(object)))
-                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'System.Object' is not supported.");
-            FluentActions.Invoking(() => XmlSerializer.Serialize(new object()))
-                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'System.Object' is not supported.");
-            options.TryGetTypeInfo(typeof(object), out var missing).Should().BeFalse();
+            FluentActions.Invoking(() => options.GetConverter(typeof(Action)))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'System.Action' is not supported.");
+            FluentActions.Invoking(() => options.GetTypeInfo(typeof(Action)))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'System.Action' is not supported.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize<Action>(static () => { }))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'System.Action' is not supported.");
+            options.TryGetTypeInfo(typeof(Action), out var missing).Should().BeFalse();
             missing.Should().BeNull();
-            options.TryGetTypeInfo<object>(out var missingTyped).Should().BeFalse();
+            options.TryGetTypeInfo<Action>(out var missingTyped).Should().BeFalse();
             missingTyped.Should().BeNull();
             options.TryGetTypeInfo(typeof(IntPtr), out _).Should().BeFalse();
             options.TryGetTypeInfo(typeof(IntPtr?), out _).Should().BeFalse();
@@ -435,11 +430,6 @@ namespace CloudNimble.XmlEssentials.Tests
                 .Should().Be($"Converter factory '{typeof(NullConverterFactory).FullName}' returned null for 'System.UInt32'.");
             FluentActions.Invoking(() => XmlSerializer.Serialize(1u, nullFactory)).Should().ThrowExactly<InvalidOperationException>().Which.Message
                 .Should().Be($"Converter factory '{typeof(NullConverterFactory).FullName}' returned null for 'System.UInt32'.");
-
-            FluentActions.Invoking(() => new XmlSerializerOptions().GetConverter(typeof(NotAConverterType)))
-                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("Type 'System.String' is not an XmlConverter.");
-            FluentActions.Invoking(() => new XmlSerializerOptions().TryGetTypeInfo(typeof(NotAConverterType), out _))
-                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("Type 'System.String' is not an XmlConverter.");
 
             var wrongType = new XmlSerializerOptions();
             wrongType.Converters.Add(new UIntClaimingConverter());
@@ -510,6 +500,21 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Context_AskedByOtherOptions_AnswersBuiltInTypesForThoseOptions()
+        {
+            // A context that is one resolver of several is asked by options that are not its own. A type whose
+            // converter exists already is answered for the options that ask. Any other type is whatever the
+            // context's own GetTypeInfo returns, which for this hand-written context is bound to its own options.
+            var context = new PrimitiveXmlContext();
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            options.TypeInfoResolverChain.Add(context);
+            XmlSerializer.Serialize(5, options).Should().Be("<Int32>5</Int32>");
+            options.GetTypeInfo<int>().Options.Should().BeSameAs(options);
+            options.GetTypeInfo<POCOs.Person>().Options.Should().BeSameAs(context.Options);
+            context.Options.GetTypeInfo<int>().Options.Should().BeSameAs(context.Options);
+        }
+
+        [TestMethod]
         public void Context_BindsItsOptions_AndIsTheirResolver()
         {
             var created = new PrimitiveXmlContext();
@@ -525,10 +530,10 @@ namespace CloudNimble.XmlEssentials.Tests
 
             FluentActions.Invoking(() => new PrimitiveXmlContext(XmlSerializerOptions.Default))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(ReadOnlyMessage);
-            FluentActions.Invoking(() => XmlSerializer.Serialize(new object(), context)).Should().ThrowExactly<NotSupportedException>().Which.Message
-                .Should().Be($"The type 'System.Object' is not supported by '{typeof(PrimitiveXmlContext).FullName}'.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize("<Object/>", typeof(object), context)).Should().ThrowExactly<NotSupportedException>().Which.Message
-                .Should().Be($"The type 'System.Object' is not supported by '{typeof(PrimitiveXmlContext).FullName}'.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize<Action>(static () => { }, context)).Should().ThrowExactly<NotSupportedException>().Which.Message
+                .Should().Be($"The type 'System.Action' is not supported by '{typeof(PrimitiveXmlContext).FullName}'.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize("<Action/>", typeof(Action), context)).Should().ThrowExactly<NotSupportedException>().Which.Message
+                .Should().Be($"The type 'System.Action' is not supported by '{typeof(PrimitiveXmlContext).FullName}'.");
         }
 
         [TestMethod]

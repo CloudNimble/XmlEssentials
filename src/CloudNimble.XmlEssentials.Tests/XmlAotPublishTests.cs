@@ -62,6 +62,7 @@ namespace CloudNimble.XmlEssentials.Tests
             smoke.StandardOutput.Should().Be(
                 "<Person><Age>36</Age><Name>Ada</Name></Person>" + Environment.NewLine
                 + "<Order xmlns=\"urn:order\" currency=\"USD\"><Id>A-1</Id><Status>Open</Status><Qty>2</Qty><Line><Sku>sku</Sku><Qty>1</Qty></Line></Order>" + Environment.NewLine
+                + "<Inventory><Any>5</Any><Codes>1</Codes><Codes>2</Codes><Counts><bolts>40</bolts></Counts><Notes>n</Notes><Pending>7</Pending><Pending>8</Pending><Raw><part id=\"9\"/></Raw><Sizes>3</Sizes><Tags>new</Tags></Inventory>" + Environment.NewLine
                 + "XmlEssentials AOT smoke passed." + Environment.NewLine);
 #endif
         }

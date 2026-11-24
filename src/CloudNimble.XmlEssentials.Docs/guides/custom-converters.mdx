@@ -218,11 +218,12 @@ Each child element is read to its own end tag, by `ReadNumber` or by `Skip`, bef
 
 The serializer looks for a converter in this order and uses the first match:
 
-1. The converters in [`XmlSerializerOptions.Converters`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), in list order, by calling `CanConvert`.
-2. The converter named by `[XmlConverter]` on the type.
-3. The built-in converters.
+1. The converter named by `[XmlConverter]` on the property or field. It applies to that member only.
+2. The converters in [`XmlSerializerOptions.Converters`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), in list order, by calling `CanConvert`.
+3. The converter named by `[XmlConverter]` on the type.
+4. The built-in converters.
 
-Because the options list comes first, a converter you add there replaces a built-in converter and overrides an attribute on the type.
+Because the options list comes before the type, a converter you add there replaces a built-in converter and overrides an attribute on the type. An attribute on a member overrides both.
 
 ### Add it to the options
 
@@ -280,7 +281,7 @@ The options become read-only the first time the serializer uses them. Adding a c
 Apply `[XmlConverter]` to a class, struct, or enumeration that you own. Every options instance then uses the converter, with nothing to register.
 
 ```csharp GeoPoint.cs
-[XmlConverter(typeof(GeoPointConverter))]
+[XmlConverter<GeoPointConverter>]
 public readonly struct GeoPoint
 {
     public GeoPoint(double latitude, double longitude)
@@ -320,13 +321,13 @@ The code produces the following output:
 North: 47.61, -122.33
 ```
 
-The converter type must derive from `XmlConverter` and have a public parameterless constructor. The serializer creates one instance for each options instance.
+The converter is the type argument of the attribute. It must derive from `XmlConverter` and have a public parameterless constructor, and the compiler checks both. The serializer creates one instance for each options instance.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
 
-<Warning>
-`[XmlConverter]` can also be applied to a property or a field, and the code compiles, but the serializer doesn't read the attribute there. To convert one member differently from the others of its type, give the member its own type, or map the class that holds it with a converter. In System.Text.Json, `[JsonConverter]` on a property does take effect, so check this when you port a model.
-</Warning>
+<Note>
+`[XmlConverter]` can also be applied to a property or a field, as `[JsonConverter]` can in System.Text.Json. The converter then reads and writes that member only, and the other members of the same type keep their usual converter. The converter handles the whole value: a collection member isn't taken apart into items, and the member may be mapped with `[XmlAttribute]` or `[XmlText]`. A converter for `T` also serves a member of type `T?`. This form is for the reflection resolver. A source-generated context reports it as the compile-time error `XMLXE009`, because the generated code wouldn't call the converter.
+</Note>
 
 ## Replace a built-in converter
 
@@ -394,7 +395,7 @@ In the invoice output above, `Issued="20261123"` came from `WriteAsAttribute` an
 [View the converter on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/Models/Advanced/CompactDateConverter.cs)
 
 <Note>
-Only the types the serializer treats as simple values can be attributes or text. A member of your own type, such as `Money`, can't be mapped with `[XmlAttribute]` or `[XmlText]`, even when a converter writes it as text. The serializer throws `NotSupportedException` with the message "Complex types cannot be attributes." Map such a member as an element.
+A type that has a converter can be an attribute or the text of an element, whether the converter is in `Converters` or named by `[XmlConverter]`. The serializer then calls the converter's `WriteAsAttribute`, `ReadAsAttribute`, and `ReadLexical` methods, so override them. A converter that overrides only `Read` and `Write` throws `InvalidOperationException` with the message "Converter '...' does not support attributes." when it is asked for an attribute. A type with no converter that isn't a simple value still can't be an attribute: the serializer throws `NotSupportedException` with the message "Complex types cannot be attributes."
 </Note>
 
 ## Write a converter factory
@@ -503,13 +504,13 @@ This factory is a teaching example. To change how enumerations are written witho
 
 ## Use a converter with source generation
 
-In the default generation mode, the generator writes a converter for each class and struct it reaches, and that generated converter reads and writes the members itself. It asks your options for a converter only for enumeration members. A custom converter for a class, a struct, or a built-in value isn't used, whether you register it in `Converters` or with `[XmlConverter]`.
+In the default generation mode, the generator writes a converter for each class and struct it reaches, and that generated converter reads and writes the members itself. Custom converters work with it as follows. A type with `[XmlConverter]` is read and written by that converter, and the generator writes none for it. A converter in `Converters` is used for the types the runtime handles: enumerations, collections, dictionaries, and types the context doesn't list. A converter in `Converters` for a type the generated code writes itself throws `NotSupportedException` when the type info is created. That is a class or struct the context generates a converter for, or a built-in value that a generated converter writes directly, such as `int` or `string`. `[XmlConverter]` on a member is the compile-time error `XMLXE009`.
 
 To use custom converters with a context, generate the context in [metadata mode](/guides/source-generation-modes). The context then builds its type info with the run-time resolver, which applies every converter.
 
 ```csharp QuoteXmlContext.cs
 [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
-[XmlSerializable(typeof(Quote))]
+[XmlSerializable<Quote>]
 public partial class QuoteXmlContext : XmlSerializerContext
 {
 }

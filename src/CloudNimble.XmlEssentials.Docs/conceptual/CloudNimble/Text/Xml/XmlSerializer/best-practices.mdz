@@ -1,6 +1,6 @@
 - **Reuse the options.** Keep one `XmlSerializerOptions` instance in a `static readonly` field and pass it to every call. The type metadata is cached on the instance. See [Configure XmlSerializerOptions](/guides/configure-options).
 - **Write UTF-8 when the destination is bytes.** Use `SerializeToUtf8Bytes` or the `IBufferWriter<byte>` and `Stream` overloads instead of creating a `string` and encoding it. Read UTF-8 with the `ReadOnlySpan<byte>` and `Stream` overloads for the same reason.
-- **Pass a `Type` when you hold an `object`.** `Serialize(value, value.GetType(), options)` serializes the run-time type. `Serialize<object>(value)` throws a `NotSupportedException`.
+- **A value held as `object` is written as the type it has.** `Serialize<object>(value)` and `Serialize(value, value.GetType(), options)` write the same document. Reading is different: `Deserialize<object>` returns an `XmlElement`, because a document doesn't record the type. Name the type when you read.
 - **Use the source-generation overloads for trimmed and Native AOT applications.** The overloads that take an `XmlTypeInfo<TValue>` or an `XmlSerializerContext` don't use reflection. See [Use source generation](/guides/source-generation).
 - **Tighten the options for XML you don't control.** Start from `XmlSerializerOptions.Strict` and set `MaxDocumentByteCount`. See [Security](/guides/security).
 - **Dispose what `SerializeToDocument` returns.** The `XmlDocument` holds pooled memory.

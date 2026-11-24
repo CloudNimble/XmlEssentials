@@ -7,7 +7,7 @@ namespace CloudNimble.XmlEssentials.Samples.Cli
     /// Source-generated context used by the CLI sample. Native AOT uses these type-info overloads.
     /// </summary>
     [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
-    [XmlSerializable(typeof(Person))]
+    [XmlSerializable<Person>]
     internal partial class AppXmlContext : XmlSerializerContext
     {
     }

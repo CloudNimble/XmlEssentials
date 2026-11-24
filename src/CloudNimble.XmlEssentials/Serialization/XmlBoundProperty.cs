@@ -72,6 +72,29 @@ namespace CloudNimble.Text.Xml.Serialization
         internal readonly byte[]? LeafOpenTag;
 
         /// <summary>
+        /// Whether nothing read for the member can be kept: it has no setter, or is never read
+        /// (<see cref="XmlIgnoreCondition.WhenReading"/>), and fills no constructor parameter. Such a member is
+        /// read only when the value it holds is populated.
+        /// </summary>
+        internal readonly bool NeverStored;
+
+        /// <summary>
+        /// The message of the exception thrown when the document gives null for the member, or null when the member
+        /// accepts null. Set once, while the type is bound, when
+        /// <see cref="XmlSerializerOptions.RespectNullableAnnotations"/> is on and the member, or the constructor
+        /// parameter it fills, is annotated non-nullable.
+        /// </summary>
+        internal string? NullReadError;
+
+        /// <summary>
+        /// The message of the exception thrown when the member holds null as it is written, or null when the member
+        /// may hold null. Set once, while the type is bound, when
+        /// <see cref="XmlSerializerOptions.RespectNullableAnnotations"/> is on and the member is annotated as never
+        /// reading null.
+        /// </summary>
+        internal string? NullWriteError;
+
+        /// <summary>
         /// Whether the member must appear when deserializing.
         /// </summary>
         internal readonly bool IsRequired;
@@ -90,6 +113,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The derived types the member, or each item of a collection member, may hold.
         /// </summary>
         internal readonly XmlPolymorphism Polymorphism;
+
+        /// <summary>
+        /// Whether the value the member already holds is populated when the member is read: items are added to a
+        /// collection, entries to a dictionary, and the members of an object are set on it. Set once, while the type
+        /// is bound, from <see cref="XmlObjectCreationHandlingAttribute"/> and
+        /// <see cref="XmlSerializerOptions.PreferredObjectCreationHandling"/>.
+        /// </summary>
+        internal bool Populates;
 
         /// <summary>
         /// The UTF-8 local name used to match start tags.
@@ -136,6 +167,7 @@ namespace CloudNimble.Text.Xml.Serialization
             Utf8LocalName = utf8LocalName;
             Utf8NamespaceUri = utf8NamespaceUri;
             CanSet = canSet;
+            NeverStored = !canSet && constructorIndex < 0;
             ConstructorIndex = constructorIndex;
             IsCData = isCData;
             Collection = collection;
@@ -222,9 +254,10 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <returns><see langword="true"/> when they match.</returns>
         internal static bool NameEquals(ref Utf8XmlReader reader, byte[] utf8Name, bool caseInsensitive)
         {
-            return caseInsensitive
-                ? System.Text.Ascii.EqualsIgnoreCase(reader.LocalNameSpan, utf8Name)
-                : reader.LocalNameEquals(utf8Name);
+            // The exact comparison comes first: the ASCII one answers false for any name that holds a
+            // character outside ASCII, even when the two names are the same bytes.
+            return reader.LocalNameEquals(utf8Name)
+                || (caseInsensitive && System.Text.Ascii.EqualsIgnoreCase(reader.LocalNameSpan, utf8Name));
         }
 
         /// <summary>
@@ -293,6 +326,15 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="instance">The instance.</param>
         /// <param name="value">The held value.</param>
         internal abstract void SetHeldValue(object instance, object? value);
+
+        /// <summary>
+        /// Returns why the value this member holds cannot be populated.
+        /// </summary>
+        /// <returns>
+        /// The end of the sentence "Property 'X' on type 'T' is marked with XmlObjectCreationHandling.Populate …", or
+        /// null when the member can be populated.
+        /// </returns>
+        internal abstract string? PopulateRefusal();
 
         /// <summary>
         /// Converts a collection builder to the member type and stores it.

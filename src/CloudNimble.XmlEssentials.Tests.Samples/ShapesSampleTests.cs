@@ -114,25 +114,12 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
-        public void Sample15_NullAndNil_WriteEmptyElements()
-        {
-            SampleOutput.Capture(NullAndNil.WriteEmptyElements).Should().Be(
-                Declaration + "\n" +
-                "<Contact>\n" +
-                "  <Name>Ada</Name>\n" +
-                "  <Nickname/>\n" +
-                "  <Age>36</Age>\n" +
-                "</Contact>\n" +
-                "Nickname: empty string");
-        }
-
-        [TestMethod]
         public void Sample15_NullAndNil_WriteNullRoot()
         {
             SampleOutput.Capture(NullAndNil.WriteNullRoot).Should().Be(
                 Declaration + "<Contact " + XsiNil + "/>\n" +
                 "True\n" +
-                "A null document root cannot be omitted.");
+                "True");
         }
 
         [TestMethod]

@@ -26,9 +26,17 @@ namespace CloudNimble.Text.Xml.Nodes
         /// The name that identifies the application to which the instruction is directed.
         /// </value>
         /// <remarks>
-        /// The constructor rejects a target that is <see langword="null"/>, empty, or white space. The setter does not check the value.
+        /// A target that is <see langword="null"/>, empty, or white space is rejected, by the constructor and when the property is set.
         /// </remarks>
-        public string Target { get; set; }
+        public string Target
+        {
+            get;
+            set
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(value);
+                field = value;
+            }
+        }
 
         /// <inheritdoc />
         public override XmlValueKind ValueKind => XmlValueKind.ProcessingInstruction;

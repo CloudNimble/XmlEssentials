@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Serialization;
+using CloudNimble.XmlEssentials.Tests.POCOs;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -223,6 +224,105 @@ namespace CloudNimble.XmlEssentials.Tests
                 var values = await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<DoublingNumber?>(new TrickleStream(utf8, chunk), topLevelValues, small));
                 values.Select(value => value?.Value).Should().Equal(1, null, 20, 3);
             }
+        }
+
+        [TestMethod]
+        public async Task AsyncEnumerable_InADefaultNamespace_WritesTheArrayElementInIt()
+        {
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultNamespace = "urn:x" };
+            using var stream = new MemoryStream();
+            await XmlSerializer.SerializeAsyncEnumerable(stream, Values(1, 2), options);
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<ArrayOfInt32 xmlns=\"urn:x\"><Int32>1</Int32><Int32>2</Int32></ArrayOfInt32>");
+            stream.Position = 0;
+            (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(stream, options))).Should().Equal(1, 2);
+
+            using var empty = new MemoryStream();
+            await XmlSerializer.SerializeAsyncEnumerable(empty, Values<int>(), options);
+            Encoding.UTF8.GetString(empty.ToArray()).Should().Be("<ArrayOfInt32 xmlns=\"urn:x\"/>");
+
+            using var documents = new MemoryStream();
+            await XmlSerializer.SerializeAsyncEnumerable(documents, Values(1, 2), topLevelValues: true, options);
+            Encoding.UTF8.GetString(documents.ToArray()).Should().Be("<Int32 xmlns=\"urn:x\">1</Int32><Int32 xmlns=\"urn:x\">2</Int32>");
+        }
+
+        [TestMethod]
+        public async Task AsyncEnumerable_WithPreserve_SharesOneSetOfReferencesAcrossTheDocument()
+        {
+            const string refs = "xmlns:ns1=\"urn:CloudNimble.Text.Xml:refs\"";
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, ReferenceHandler = XmlReferenceHandler.Preserve, DefaultBufferSize = 16 };
+            var shared = new RefLeaf { Name = "a" };
+            var other = new RefLeaf { Name = "b" };
+            using var stream = new MemoryStream();
+            await XmlSerializer.SerializeAsyncEnumerable(
+                stream,
+                Values(new RefPair { First = shared, Second = shared }, new RefPair { First = shared, Second = other }),
+                options);
+            var utf8 = stream.ToArray();
+            Encoding.UTF8.GetString(utf8).Should().Be(
+                "<ArrayOfRefPair>" +
+                "<RefPair " + refs + " ns1:id=\"1\"><First ns1:id=\"2\"><Name>a</Name></First><Second ns1:ref=\"2\"/></RefPair>" +
+                // The writer numbers the prefixes it makes up through the whole document, so the second value gets the next one.
+                "<RefPair xmlns:ns2=\"urn:CloudNimble.Text.Xml:refs\" ns2:id=\"3\"><First ns2:ref=\"2\"/><Second ns2:id=\"4\"><Name>b</Name></Second></RefPair>" +
+                "</ArrayOfRefPair>");
+
+            // A value is read only once all of it has arrived, so however the stream is cut up, each id is seen once.
+            for (var chunk = 1; chunk <= utf8.Length; chunk++)
+            {
+                var read = await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<RefPair>(new TrickleStream(utf8, chunk), options));
+                read.Should().HaveCount(2);
+                read[0]!.First!.Name.Should().Be("a");
+                read[0]!.Second.Should().BeSameAs(read[0]!.First);
+                read[1]!.First.Should().BeSameAs(read[0]!.First, "the second value refers to an object the first value defined");
+                read[1]!.Second!.Name.Should().Be("b");
+            }
+        }
+
+        [TestMethod]
+        public async Task AsyncEnumerable_WithPreserve_TopLevelValues_EachDocumentHasItsOwnReferences()
+        {
+            const string refs = "xmlns:ns1=\"urn:CloudNimble.Text.Xml:refs\"";
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, ReferenceHandler = XmlReferenceHandler.Preserve, DefaultBufferSize = 16 };
+            var shared = new RefLeaf { Name = "a" };
+            using var stream = new MemoryStream();
+            await XmlSerializer.SerializeAsyncEnumerable(
+                stream,
+                Values(new RefPair { First = shared, Second = shared }, new RefPair { First = shared }),
+                topLevelValues: true,
+                options);
+            var utf8 = stream.ToArray();
+            Encoding.UTF8.GetString(utf8).Should().Be(
+                "<RefPair " + refs + " ns1:id=\"1\"><First ns1:id=\"2\"><Name>a</Name></First><Second ns1:ref=\"2\"/></RefPair>" +
+                "<RefPair " + refs + " ns1:id=\"1\"><First ns1:id=\"2\"><Name>a</Name></First><Second xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></RefPair>");
+
+            for (var chunk = 1; chunk <= utf8.Length; chunk++)
+            {
+                var read = await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<RefPair>(new TrickleStream(utf8, chunk), topLevelValues: true, options));
+                read.Should().HaveCount(2);
+                read[0]!.Second.Should().BeSameAs(read[0]!.First);
+                read[1]!.First!.Name.Should().Be("a");
+                read[1]!.First.Should().NotBeSameAs(read[0]!.First, "each document is read on its own");
+                read[1]!.Second.Should().BeNull();
+            }
+        }
+
+        [TestMethod]
+        public async Task AsyncEnumerable_WithIgnoreCycles_WritesACycleAsNull()
+        {
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, ReferenceHandler = XmlReferenceHandler.IgnoreCycles };
+            var root = new RefLeaf { Name = "r" };
+            root.Children.Add(root);
+            using var stream = new MemoryStream();
+            await XmlSerializer.SerializeAsyncEnumerable(stream, Values(root, root), options);
+            const string item = "<RefLeaf><Children xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Name>r</Name></RefLeaf>";
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<ArrayOfRefLeaf>" + item + item + "</ArrayOfRefLeaf>", "an object written twice in a row is not a cycle");
+
+            var pipe = new Pipe();
+            await XmlSerializer.SerializeAsyncEnumerable(pipe.Writer, Values(root), topLevelValues: false, options);
+            await pipe.Writer.CompleteAsync();
+            var piped = await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<RefLeaf>(pipe.Reader, topLevelValues: false, options));
+            piped.Should().HaveCount(1);
+            piped[0]!.Name.Should().Be("r");
+            piped[0]!.Children.Should().Equal([null]);
         }
 
         [TestMethod]

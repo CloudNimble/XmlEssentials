@@ -7,7 +7,7 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Advanced
     /// A context for <see cref="Order"/> generated in <see cref="XmlSourceGenerationMode.Metadata"/> mode.
     /// </summary>
     [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
-    [XmlSerializable(typeof(Order))]
+    [XmlSerializable<Order>]
     public partial class MetadataOrderXmlContext : XmlSerializerContext
     {
     }

@@ -1,9 +1,9 @@
 ---
 title: XmlIgnoreAttribute
-description: "Excludes a property or field from serialization, or skips it when a condition matches."
+description: "Prevents a property or field from being serialized or deserialized, or from being written when a condition is met. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
-keywords: ['XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNilHandling']
+keywords: ['XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.XmlSerializerOptions']
 ---
 
 ## Definition
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
 
 ## Summary
 
-Excludes a property or field from serialization, or skips it when a condition matches.
+Prevents a property or field from being serialized or deserialized, or from being written when a condition is met. This class cannot be inherited.
 
 ## Usage
 
@@ -97,10 +97,10 @@ The code produces the following output:
 ## Considerations
 
 - With the default condition, `Always`, the member isn't part of the type's XML mapping at all. An element for it in incoming XML is an unmapped member: skipped by default, and an error when `UnmappedMemberHandling` is `Disallow`.
-- With `WhenWritingNull` or `WhenWritingDefault`, the member is still read when the XML has it. The conditions affect writing only.
+- With `WhenWritingNull`, `WhenWritingDefault`, or `WhenWriting`, the member is still read when the XML has it. Those conditions affect writing only. `WhenReading` is the other way round: the member is written and never read.
 - The attribute overrides `XmlSerializerOptions.DefaultIgnoreCondition` for the member. `[XmlIgnore(Condition = XmlIgnoreCondition.Never)]` keeps a member in every document when the option would leave it out.
 - Ignoring a positional record property with `[property: XmlIgnore]` leaves its constructor parameter with no member to bind to, and the record can no longer be deserialized.
-- To leave out every `null` member at once, set `DefaultIgnoreCondition` on the options, or set `NilHandling` to `XmlNilHandling.Omit`.
+- To leave out every `null` member at once, set `DefaultIgnoreCondition` on the options.
 
 ## Constructors
 
@@ -136,7 +136,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Condition
 
-Gets or sets when the member is skipped. The default is [XmlIgnoreCondition.Always](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition).
+Gets or sets the condition that must be met before the member is ignored.
 
 #### Syntax
 
@@ -147,6 +147,11 @@ public CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition Condition { get; se
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition`
+One of the enumeration values that specifies when the member is ignored. The default is [XmlIgnoreCondition.Always](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition).
+
+#### Remarks
+
+The value takes precedence over [XmlSerializerOptions.DefaultIgnoreCondition](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#defaultignorecondition) for the member.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -1036,5 +1041,4 @@ Type: `string?`
 - CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute
 - CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
 - CloudNimble.Text.Xml.XmlSerializerOptions
-- CloudNimble.Text.Xml.XmlNilHandling
 

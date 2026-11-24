@@ -31,7 +31,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public int Age { get; set; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -40,7 +40,7 @@ namespace CloudNimble.XmlEssentials.Tests
             diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
             var text = string.Join("\n", generated.Select(tree => tree.ToString()));
             Declared(compilation, generated).Should().Equal(
-                "class AppXmlContext : XmlSerializerContext [CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute(typeof(Person))]",
+                "class AppXmlContext : XmlSerializerContext [CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute<Person>]",
                 "  CloudNimble.Text.Xml.Serialization.XmlTypeInfo<Person> Person");
             RunGenerated(source + """
 
@@ -66,7 +66,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? Name { get; set; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal class AppXmlContext : XmlSerializerContext
                 {
                     public AppXmlContext() : base(null) { }
@@ -94,7 +94,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public Address? Home { get; set; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -117,7 +117,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? B { get; set; }
                 }
 
-                [XmlSerializable(typeof(Payload))]
+                [XmlSerializable<Payload>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -139,7 +139,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
 
                 [XmlSourceGenerationOptions(PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -173,7 +173,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
 
                 [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -203,7 +203,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? Name { get; set; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -232,7 +232,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public System.IntPtr Handle { get; set; }
                 }
 
-                [XmlSerializable(typeof(Holder))]
+                [XmlSerializable<Holder>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -242,18 +242,21 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void UnboundGeneric_ReportsXMLXE002()
+        public void UnboundGeneric_IsRejectedByTheCompiler_AndReportsXMLXE002()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
 
-                [XmlSerializable(typeof(System.Collections.Generic.List<>))]
+                [XmlSerializable<System.Collections.Generic.List<>>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
                 """;
-            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
+            // The type is a type argument of the attribute, and the language does not allow an unbound one there.
+            // The generator still sees the attribute, reports the type, and generates nothing from it.
+            var (compilation, diagnostics, _) = GeneratorTestHost.Run(source);
             diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE002");
+            compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.Id + ": " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal("CS7003: Unexpected use of an unbound generic name");
         }
 
         [TestMethod]
@@ -270,7 +273,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public Point(int Y, int X) { }
                 }
 
-                [XmlSerializable(typeof(Point))]
+                [XmlSerializable<Point>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -291,7 +294,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? Name { get; set; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -312,7 +315,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? Name { get; set; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -336,7 +339,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public Person(string Name) { this.Name = Name; }
                 }
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -389,7 +392,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void XmlSerializableAttribute_StoresTheType()
         {
-            var attribute = new XmlSerializableAttribute(typeof(int)) { TypeInfoPropertyName = "N", GenerationMode = XmlSourceGenerationMode.Metadata };
+            var attribute = new XmlSerializableAttribute<int> { TypeInfoPropertyName = "N", GenerationMode = XmlSourceGenerationMode.Metadata };
             attribute.Type.Should().Be(typeof(int));
             attribute.TypeInfoPropertyName.Should().Be("N");
             attribute.GenerationMode.Should().Be(XmlSourceGenerationMode.Metadata);
@@ -407,7 +410,9 @@ namespace CloudNimble.XmlEssentials.Tests
                 IgnoreReadOnlyFields = true,
                 IgnoreReadOnlyProperties = true,
                 PropertyNameCaseInsensitive = true,
+                PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
                 RespectNullableAnnotations = true,
+                UnknownTypeHandling = XmlUnknownTypeHandling.XmlNode,
                 UseStringEnumConverter = true,
                 MaxDepth = 8,
                 DefaultNamespace = "urn:x",
@@ -418,7 +423,6 @@ namespace CloudNimble.XmlEssentials.Tests
                 DefaultPropertyMapping = XmlPropertyMapping.Attribute,
                 DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType,
                 EnumHandling = XmlEnumHandling.Integer,
-                NilHandling = XmlNilHandling.Omit,
                 XmlVersion = XmlVersion.Version11,
                 GenerationMode = XmlSourceGenerationMode.Serialization,
             };
@@ -431,7 +435,9 @@ namespace CloudNimble.XmlEssentials.Tests
                 IgnoreReadOnlyFields = true,
                 IgnoreReadOnlyProperties = true,
                 PropertyNameCaseInsensitive = true,
+                PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
                 RespectNullableAnnotations = true,
+                UnknownTypeHandling = XmlUnknownTypeHandling.XmlNode,
                 UseStringEnumConverter = true,
                 MaxDepth = 8,
                 DefaultNamespace = "urn:x",
@@ -442,7 +448,6 @@ namespace CloudNimble.XmlEssentials.Tests
                 DefaultPropertyMapping = XmlPropertyMapping.Attribute,
                 DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType,
                 EnumHandling = XmlEnumHandling.Integer,
-                NilHandling = XmlNilHandling.Omit,
                 XmlVersion = XmlVersion.Version11,
                 GenerationMode = XmlSourceGenerationMode.Serialization,
             });
@@ -455,7 +460,9 @@ namespace CloudNimble.XmlEssentials.Tests
                 IgnoreReadOnlyFields = false,
                 IgnoreReadOnlyProperties = false,
                 PropertyNameCaseInsensitive = false,
+                PreferredObjectCreationHandling = XmlObjectCreationHandling.Replace,
                 RespectNullableAnnotations = false,
+                UnknownTypeHandling = XmlUnknownTypeHandling.XmlElement,
                 UseStringEnumConverter = false,
                 MaxDepth = 0,
                 DefaultNamespace = (string?)null,
@@ -472,7 +479,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 public sealed record Person(string Name, int Age);
 
                 [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -499,7 +506,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
                 public sealed record Item(string Name, int Count = 5, double Scale = 1.5, DayOfWeek Day = DayOfWeek.Friday, string Note = "n/a \"quoted\"", long? Limit = null, char Mark = 'x', bool On = true, decimal Price = 2.50m);
 
-                [XmlSerializable(typeof(Item))]
+                [XmlSerializable<Item>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -526,7 +533,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
                 public sealed record Person(string Name, int Age);
 
-                [XmlSerializable(typeof(Person))]
+                [XmlSerializable<Person>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -599,11 +606,11 @@ namespace CloudNimble.XmlEssentials.Tests
                     public Titled(string TITLE) { Heading = TITLE; }
                 }
 
-                [XmlSerializable(typeof(Camel))]
-                [XmlSerializable(typeof(Marked))]
-                [XmlSerializable(typeof(Either))]
-                [XmlSerializable(typeof(Twins))]
-                [XmlSerializable(typeof(Titled))]
+                [XmlSerializable<Camel>]
+                [XmlSerializable<Marked>]
+                [XmlSerializable<Either>]
+                [XmlSerializable<Twins>]
+                [XmlSerializable<Titled>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -665,7 +672,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
 
                 [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
-                [XmlSerializable(typeof(Scored))]
+                [XmlSerializable<Scored>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -697,7 +704,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public List<string> Tags { get; set; } = ["kept"];
                 }
 
-                [XmlSerializable(typeof(Entry))]
+                [XmlSerializable<Entry>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -737,7 +744,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
                 public sealed record Sample(int Count, long Total, double Ratio, bool Flagged);
 
-                [XmlSerializable(typeof(Sample))]
+                [XmlSerializable<Sample>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -772,7 +779,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(int Age) { this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two constructors that bind as many members")]
         public void GeneratedContext_ConstructorThatCannotBeChosenOrCalled_IsReported(string type, string expectedId)
         {
-            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + type + "\n[XmlSerializable(typeof(Odd))]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
+            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + type + "\n[XmlSerializable<Odd>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
             diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal(expectedId);
         }
@@ -801,8 +808,8 @@ namespace CloudNimble.XmlEssentials.Tests
                     public required string Name { get; set; }
                 }
 
-                [XmlSerializable(typeof(Holder))]
-                [XmlSerializable(typeof(Strict))]
+                [XmlSerializable<Holder>]
+                [XmlSerializable<Strict>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -854,7 +861,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? Kind { get; set; }
                 }
 
-                [XmlSerializable(typeof(Pet))]
+                [XmlSerializable<Pet>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -888,7 +895,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("public class Shape { public int Id { get; set; } } public class Circle : Shape { public int Radius { get; set; } } public class Drawing { [XmlDerivedType<Circle>(\"circle\")] public Shape? Main { get; set; } }", "Drawing", "'Drawing.Main' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it", DisplayName = "on a member")]
         public void GeneratedContext_DerivedTypes_AreReportedRatherThanDropped(string types, string root, string expectedMessage)
         {
-            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable(typeof(" + root + "))]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
+            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable<" + root + ">]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
             diagnostics.Where(d => d.Id is "XMLXE008").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal(expectedMessage);
         }
@@ -926,9 +933,9 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
 
                 [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
-                [XmlSerializable(typeof(Outer))]
-                [XmlSerializable(typeof(OnlyInternal))]
-                [XmlSerializable(typeof(Renamed))]
+                [XmlSerializable<Outer>]
+                [XmlSerializable<OnlyInternal>]
+                [XmlSerializable<Renamed>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }

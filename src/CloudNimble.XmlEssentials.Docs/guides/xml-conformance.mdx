@@ -65,11 +65,11 @@ Input and output are UTF-8.
 | Declaration with `encoding="utf-8"`, `"UTF-8"`, or `"utf8"` in any letter case | Read. |
 | Declaration that names any other encoding | `XmlException`: `XmlEssentials is UTF-8 only. Declared encoding 'iso-8859-1' is not supported.` The name in the message is the declared name in lowercase. |
 | Bytes that aren't valid UTF-8 | `XmlException`: `Invalid UTF-8.` |
-| UTF-16 bytes with no declaration | `XmlException` for a well-formedness error, such as `Unexpected content outside the root element.` The reader doesn't detect UTF-16. |
+| UTF-16 or UTF-32 bytes, with or without a byte order mark | `XmlException`: `XmlEssentials is UTF-8 only. The input is UTF-16 or UTF-32.` |
 
-<Warning>
-The declared encoding is checked even when the XML is in a .NET `string`. A string that starts with `<?xml version="1.0" encoding="utf-16"?>`, which is what `System.Xml` writes to a `StringWriter`, is rejected. Remove the declaration or change it to `utf-8` before you pass the string to `XmlSerializer.Deserialize` or `XmlDocument.Parse`.
-</Warning>
+<Note>
+The declared encoding is checked for bytes only. A .NET `string` or a span of characters has no encoding of its own, so `XmlSerializer.Deserialize`, `XmlDocument.Parse`, and `XmlNode.Parse` read a string that starts with `<?xml version="1.0" encoding="utf-16"?>`, which is what `System.Xml` writes to a `StringWriter`.
+</Note>
 
 The writer writes `<?xml version="1.0" encoding="utf-8"?>`, or `version="1.1"` when `XmlWriterOptions.Version` is `XmlVersion.Version11`, and adds `standalone="yes"` or `standalone="no"` when `XmlWriterOptions.Standalone` is set. It writes a byte order mark only when `EmitByteOrderMark` is `true`. To convert a document in another encoding, transcode it to UTF-8 first, for example with `Encoding.CreateTranscodingStream`, and fix the declaration.
 
@@ -458,7 +458,7 @@ The writer also refuses to produce a document that isn't well formed:
 
 Two things switch these checks off: `XmlWriterOptions.SkipValidation`, and `WriteRawValue`, which copies its input to the output without checking it. See [Use Utf8XmlWriter](/guides/use-utf8xmlwriter).
 
-A lone UTF-16 surrogate in a .NET string isn't a character. The writer writes `U+FFFD`, the replacement character, in its place.
+A lone UTF-16 surrogate in a .NET string isn't a character. The writer throws `XmlException` with the message `The text contains half of a surrogate pair.`
 
 ## Round trips through XmlDocument
 

@@ -25,7 +25,10 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override char Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            var collapsed = XmlLexical.Collapse(utf8);
+            // A value that is one character is that character, white space included: a blank or a tab is a
+            // char like any other, and collapsing it away would leave nothing to read. White space is
+            // collapsed only around a character that is not itself white space.
+            var collapsed = utf8.Length == 1 ? utf8 : XmlLexical.Collapse(utf8);
             var status = Rune.DecodeFromUtf8(collapsed, out var rune, out var consumed);
             if (status is not OperationStatus.Done || consumed != collapsed.Length || !rune.IsBmp)
             {

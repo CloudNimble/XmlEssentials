@@ -1,6 +1,6 @@
 ---
 title: XmlDocumentOptions
-description: "Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse)."
+description: "Provides the ability for the user to define custom behavior when parsing XML to create an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument)."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlException']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.XmlDocumentOptions
 
 ## Summary
 
-Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse).
+Provides the ability for the user to define custom behavior when parsing XML to create an
+[XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument).
 
 ## Usage
 
@@ -89,9 +90,14 @@ The options are:
 
 ## Remarks
 
-A max-* of 0 means the default from the DoS table, except [XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount)
-which stays unbounded. Construct with `new XmlDocumentOptions()` so
-[XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) defaults to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+The defaults are chosen so that a document that is parsed and then written with
+[XmlDocument.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlDocument#writeto) keeps its comments and the white space between its
+elements. If you don't want comments in the document, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) to
+[XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). If you don't want white-space-only text in the document, set
+[XmlDocumentOptions.WhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#whitespacehandling) to [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
+`default` and `new XmlDocumentOptions()` are the same options.
+A limit property that is set to 0 uses its default limit, except
+[XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount), where 0 means that the size is not limited.
 
 ## Examples
 
@@ -207,14 +213,19 @@ Insignificant: 2 children
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates options with [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) set to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling)
-and every max-* at 0 (table defaults).
+Initializes a new instance of the [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) struct.
 
 #### Syntax
 
 ```csharp
 public XmlDocumentOptions()
 ```
+
+#### Remarks
+
+[XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling) is [XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling),
+[XmlDocumentOptions.WhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#whitespacehandling) is [XmlWhitespaceHandling.Significant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling), and every
+limit property is set to 0, which selects its default limit.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -240,8 +251,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CommentHandling
 
-Gets or sets how comments are handled.
-Default is [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) when constructed with [XmlDocumentOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#.ctor).
+Gets or sets a value that determines how the parser handles comments.
 
 #### Syntax
 
@@ -252,11 +262,18 @@ public CloudNimble.Text.Xml.XmlCommentHandling CommentHandling { get; set; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlCommentHandling`
+One of the enumeration values that indicates how comments are handled. The default is
+[XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+
+#### Remarks
+
+Comments are kept by default so that parsing a document and writing it back does not lose them.
+Set this property to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) to leave comments out of the document,
+or to [XmlCommentHandling.Disallow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) to reject a document that contains one.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
 
-Gets or sets the maximum attributes on one element, including xmlns*.
-0 means 1000.
+Gets or sets the maximum number of attributes allowed on one element.
 
 #### Syntax
 
@@ -267,11 +284,12 @@ public int MaxAttributeCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum number of attributes on one element, including namespace declarations
+(`xmlns` and `xmlns:prefix`). The default is 0, which means 1000.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxCommentByteCount
 
-Gets or sets the maximum comment payload in UTF-8 bytes.
-0 means 1,048,576.
+Gets or sets the maximum size allowed for the content of one comment.
 
 #### Syntax
 
@@ -282,11 +300,11 @@ public int MaxCommentByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum size of the content of a comment, in UTF-8 bytes. The default is 0, which means 1,048,576.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
 
-Gets or sets the maximum element depth.
-0 means 64.
+Gets or sets the maximum depth allowed when parsing XML.
 
 #### Syntax
 
@@ -297,11 +315,11 @@ public int MaxDepth { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum depth of nested elements. The default is 0, which means 64.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDocumentByteCount
 
-Gets or sets the maximum document size in bytes.
-0 means unbounded.
+Gets or sets the maximum size allowed for the document.
 
 #### Syntax
 
@@ -312,11 +330,11 @@ public int MaxDocumentByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum size of the document, in UTF-8 bytes. The default is 0, which means that the size is not limited.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
 
-Gets or sets the maximum UTF-8 byte length of an element or attribute name.
-0 means 1024.
+Gets or sets the maximum size allowed for an element name or an attribute name.
 
 #### Syntax
 
@@ -327,11 +345,11 @@ public int MaxNameByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum size of an element or attribute name, in UTF-8 bytes. The default is 0, which means 1024.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
 
-Gets or sets the maximum UTF-8 byte length of a text or CDATA node.
-0 means 16,777,216.
+Gets or sets the maximum size allowed for one text node or CDATA section.
 
 #### Syntax
 
@@ -342,11 +360,11 @@ public int MaxTextByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum size of a text node or a CDATA section, in UTF-8 bytes. The default is 0, which means 16,777,216.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
 
-Gets or sets how whitespace-only text between elements is handled.
-Default is [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
+Gets or sets a value that determines how the parser handles text between elements that consists only of white space.
 
 #### Syntax
 
@@ -357,6 +375,16 @@ public CloudNimble.Text.Xml.XmlWhitespaceHandling WhitespaceHandling { get; set;
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlWhitespaceHandling`
+One of the enumeration values that indicates how white-space-only text between elements is handled.
+The default is [XmlWhitespaceHandling.Significant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
+
+#### Remarks
+
+White space between elements, such as indentation, is kept by default so that parsing a document
+and writing it back does not change its layout. Each run of white space is a text node, so it
+appears when you enumerate an element's children. Set this property to
+[XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) to leave white-space-only text out of the
+document, or to [XmlWhitespaceHandling.None](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) to reject a document that contains it.
 
 ## Methods
 

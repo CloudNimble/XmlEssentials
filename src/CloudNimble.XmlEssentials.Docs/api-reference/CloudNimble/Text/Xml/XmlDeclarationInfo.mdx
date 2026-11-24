@@ -1,6 +1,6 @@
 ---
 title: XmlDeclarationInfo
-description: "Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed."
+description: "Represents the XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlDeclarationInfo', 'CloudNimble.Text.Xml.XmlDeclarationInfo', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml.XmlVersion', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml.Nodes.XmlDeclarationNode']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlDeclarationInfo
 
 ## Summary
 
-Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed.
+Represents the XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed.
 
 ## Usage
 
@@ -55,7 +55,7 @@ See [How to use XmlDocument](/guides/use-xmldocument) for the rest of the docume
 
 ## Remarks
 
-Mutable trees use `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode` instead.
+The value is immutable. Mutable trees use `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode` instead.
 
 ## Considerations
 
@@ -69,7 +69,7 @@ Mutable trees use `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode` instead.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates declaration info.
+Initializes a new instance of the [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) struct.
 
 #### Syntax
 
@@ -81,9 +81,9 @@ public XmlDeclarationInfo(string version, string encoding, bool? standalone)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `version` | `string` | The version string. |
-| `encoding` | `string` | The encoding string. |
-| `standalone` | `bool?` | The standalone flag, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `version` | `string` | The XML version named in the declaration, such as `1.0`. |
+| `encoding` | `string` | The name of the encoding named in the declaration, such as `utf-8`. |
+| `standalone` | `bool?` | The value of the `standalone` pseudo-attribute, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is omitted. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -109,7 +109,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encoding
 
-Gets the declared encoding. Always `utf-8` for documents this stack accepts.
+Gets the encoding named in the declaration.
 
 #### Syntax
 
@@ -120,10 +120,12 @@ public string Encoding { get; }
 #### Property Value
 
 Type: `string`
+The name of the encoding. This is always `utf-8` for a document that
+[XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) parsed, because no other encoding is accepted.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Standalone
 
-Gets the standalone pseudo-attribute, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when omitted.
+Gets the value of the `standalone` pseudo-attribute of the declaration.
 
 #### Syntax
 
@@ -134,10 +136,12 @@ public bool? Standalone { get; }
 #### Property Value
 
 Type: `bool?`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the declaration says `standalone="yes"`; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if
+it says `standalone="no"`; [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the pseudo-attribute is omitted.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Version
 
-Gets the declared version, `1.0` or `1.1`.
+Gets the XML version named in the declaration.
 
 #### Syntax
 
@@ -148,6 +152,8 @@ public string Version { get; }
 #### Property Value
 
 Type: `string`
+The version string, which is `1.0` or `1.1` for a document that
+[XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) parsed.
 
 ## Methods
 

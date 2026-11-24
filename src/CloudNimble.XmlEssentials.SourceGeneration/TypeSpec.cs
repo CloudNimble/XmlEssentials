@@ -19,7 +19,24 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <summary>
         /// Gets whether serialization converters should be emitted.
         /// </summary>
+        /// <summary>
+        /// The named arguments passed for constructor parameters whose members are ignored, each with a leading comma, or empty.
+        /// </summary>
+        internal string ConstructorTail { get; }
+
+        /// <summary>
+        /// Gets the name of a member the reflection resolver would populate and the generated converter cannot, or
+        /// empty. The converter refuses <c>PreferredObjectCreationHandling.Populate</c> when it is not empty.
+        /// </summary>
+        internal string PopulateRefusal { get; }
+
         internal bool EmitSerialization { get; }
+
+        /// <summary>
+        /// The expression that creates the type info without reflection, for a collection, a dictionary, an
+        /// enumeration, or a nullable value the runtime library reads and writes; otherwise empty.
+        /// </summary>
+        internal string Factory { get; }
 
         /// <summary>
         /// Gets whether the type is a value type.
@@ -72,6 +89,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="isNillable">Whether null is nillable.</param>
         /// <param name="emitSerialization">Whether a converter should be emitted.</param>
         /// <param name="members">The members.</param>
+        /// <param name="constructorTail">The named arguments for constructor parameters whose members are ignored, or empty.</param>
+        /// <param name="factory">The expression that creates the type info without reflection, or empty.</param>
+        /// <param name="populateRefusal">The name of a member the generated converter cannot populate, or empty.</param>
         internal TypeSpec(
             string clrTypeName,
             string propertyName,
@@ -81,7 +101,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             bool isValueType,
             bool isNillable,
             bool emitSerialization,
-            EquatableArray<MemberSpec> members)
+            EquatableArray<MemberSpec> members,
+            string constructorTail,
+            string factory = "",
+            string populateRefusal = "")
         {
             ClrTypeName = clrTypeName;
             PropertyName = propertyName;
@@ -92,6 +115,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             IsNillable = isNillable;
             EmitSerialization = emitSerialization;
             Members = members;
+            ConstructorTail = constructorTail;
+            Factory = factory;
+            PopulateRefusal = populateRefusal;
         }
 
         #endregion
@@ -109,13 +135,26 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 && IsValueType == other.IsValueType
                 && IsNillable == other.IsNillable
                 && EmitSerialization == other.EmitSerialization
-                && Members.Equals(other.Members);
+                && Members.Equals(other.Members)
+                && ConstructorTail == other.ConstructorTail
+                && Factory == other.Factory
+                && PopulateRefusal == other.PopulateRefusal;
         }
 
         /// <inheritdoc />
         public override bool Equals(object? obj)
         {
             return obj is TypeSpec other && Equals(other);
+        }
+
+        /// <summary>
+        /// Returns the same type spec under another type-info property name.
+        /// </summary>
+        /// <param name="propertyName">The property name, which also names the generated converter.</param>
+        /// <returns>The renamed spec.</returns>
+        internal TypeSpec WithPropertyName(string propertyName)
+        {
+            return new TypeSpec(ClrTypeName, propertyName, RootName, RootNamespace, Kind, IsValueType, IsNillable, EmitSerialization, Members, ConstructorTail, Factory, PopulateRefusal);
         }
 
         /// <inheritdoc />

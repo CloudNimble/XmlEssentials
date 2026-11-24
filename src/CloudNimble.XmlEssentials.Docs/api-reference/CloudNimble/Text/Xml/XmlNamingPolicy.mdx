@@ -1,6 +1,6 @@
 ---
 title: XmlNamingPolicy
-description: "Converts CLR member and type names to XML local names."
+description: "Defines the core behavior of policies that convert CLR type and member names to XML local names and provides a base for derived classes."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlNamingPolicy', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml', 'class', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRootAttribute']
@@ -20,7 +20,7 @@ CloudNimble.Text.Xml.XmlNamingPolicy
 
 ## Summary
 
-Converts CLR member and type names to XML local names.
+Defines the core behavior of policies that convert CLR type and member names to XML local names and provides a base for derived classes.
 
 ## Usage
 
@@ -59,8 +59,8 @@ A policy of `null`, the default, leaves names unchanged. The built-in policies a
 
 ## Remarks
 
-Identity is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) on [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), matching
-`System.Text.Json.JsonNamingPolicy`.
+There is no identity policy. A [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) policy on [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) leaves
+names unchanged, matching `System.Text.Json.JsonNamingPolicy`.
 
 ## Examples
 
@@ -178,7 +178,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CamelCase
 
-Gets a policy that lowercases the first character.
+Gets the naming policy for camel-casing.
 
 #### Syntax
 
@@ -189,10 +189,11 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy CamelCase { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+A naming policy that converts the first character of a name to lowercase.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> KebabCaseLower
 
-Gets a policy that joins words with `-` in lowercase.
+Gets the naming policy for lowercase kebab-casing.
 
 #### Syntax
 
@@ -203,10 +204,11 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy KebabCaseLower { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+A naming policy that separates the words of a name with `-` and converts every character to lowercase.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> KebabCaseUpper
 
-Gets a policy that joins words with `-` in uppercase.
+Gets the naming policy for uppercase kebab-casing.
 
 #### Syntax
 
@@ -217,10 +219,11 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy KebabCaseUpper { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+A naming policy that separates the words of a name with `-` and converts every character to uppercase.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PascalCase
 
-Gets a policy that uppercases the first character.
+Gets the naming policy for Pascal-casing.
 
 #### Syntax
 
@@ -231,10 +234,11 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy PascalCase { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+A naming policy that converts the first character of a name to uppercase.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SnakeCaseLower
 
-Gets a policy that joins words with `_` in lowercase.
+Gets the naming policy for lowercase snake-casing.
 
 #### Syntax
 
@@ -245,10 +249,11 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy SnakeCaseLower { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+A naming policy that separates the words of a name with `_` and converts every character to lowercase.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> SnakeCaseUpper
 
-Gets a policy that joins words with `_` in uppercase.
+Gets the naming policy for uppercase snake-casing.
 
 #### Syntax
 
@@ -259,12 +264,13 @@ public static CloudNimble.Text.Xml.XmlNamingPolicy SnakeCaseUpper { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlNamingPolicy`
+A naming policy that separates the words of a name with `_` and converts every character to uppercase.
 
 ## Methods
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConvertName <Badge color="orange">Abstract</Badge>
 
-Converts *name* to an XML local name.
+When overridden in a derived class, converts the specified CLR name to an XML local name according to the policy.
 
 #### Syntax
 
@@ -276,12 +282,12 @@ public abstract string ConvertName(string name)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `name` | `string` | The CLR name. |
+| `name` | `string` | The CLR name to convert. |
 
 #### Returns
 
 Type: `string`
-The XML local name.
+The converted XML local name.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

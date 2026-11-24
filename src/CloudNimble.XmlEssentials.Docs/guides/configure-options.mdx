@@ -49,7 +49,7 @@ Three ready-made, read-only instances cover common cases, so you often don't nee
 | --- | --- | --- |
 | `XmlSerializerOptions.Default` | `new XmlSerializerOptions()` | None. |
 | `XmlSerializerOptions.Web` | `new XmlSerializerOptions(XmlSerializerDefaults.Web)` | `PropertyNamingPolicy` is `XmlNamingPolicy.CamelCase` and `OmitXmlDeclaration` is `true`. |
-| `XmlSerializerOptions.Strict` | `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` | `AllowDuplicateProperties` is `false`, `ReadCommentHandling` is `Disallow`, and `UnmappedMemberHandling` is `Disallow`. |
+| `XmlSerializerOptions.Strict` | `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` | `AllowDuplicateProperties` is `false`, `RespectNullableAnnotations` is `true`, `ReadCommentHandling` is `Disallow`, and `UnmappedMemberHandling` is `Disallow`. |
 
 ```csharp Program.cs
 var line = new InvoiceLine { Sku = "KB-101", Quantity = 2 };
@@ -188,7 +188,6 @@ The following sample prints the value of every option on a new instance. The tes
 var options = new XmlSerializerOptions();
 
 output.WriteLine($"AllowDuplicateProperties = {options.AllowDuplicateProperties}");
-output.WriteLine($"AllowOutOfOrderMetadataProperties = {options.AllowOutOfOrderMetadataProperties}");
 output.WriteLine($"AttributeNamingPolicy = {options.AttributeNamingPolicy?.ToString() ?? "null"}");
 output.WriteLine($"Converters.Count = {options.Converters.Count}");
 output.WriteLine($"DefaultBufferSize = {options.DefaultBufferSize}");
@@ -213,7 +212,6 @@ output.WriteLine($"MaxDocumentByteCount = {options.MaxDocumentByteCount}");
 output.WriteLine($"MaxNameByteCount = {options.MaxNameByteCount}");
 output.WriteLine($"MaxTextByteCount = {options.MaxTextByteCount}");
 output.WriteLine($"NewLine is Environment.NewLine = {options.NewLine == Environment.NewLine}");
-output.WriteLine($"NilHandling = {options.NilHandling}");
 output.WriteLine($"NumberHandling = {options.NumberHandling}");
 output.WriteLine($"OmitXmlDeclaration = {options.OmitXmlDeclaration}");
 output.WriteLine($"PreferredObjectCreationHandling = {options.PreferredObjectCreationHandling}");
@@ -235,7 +233,6 @@ The code produces the following output:
 
 ```text
 AllowDuplicateProperties = True
-AllowOutOfOrderMetadataProperties = False
 AttributeNamingPolicy = null
 Converters.Count = 0
 DefaultBufferSize = 0
@@ -260,7 +257,6 @@ MaxDocumentByteCount = 0
 MaxNameByteCount = 0
 MaxTextByteCount = 0
 NewLine is Environment.NewLine = True
-NilHandling = WriteXsiNil
 NumberHandling = AllowNamedFloatingPointLiterals
 OmitXmlDeclaration = False
 PreferredObjectCreationHandling = Replace
@@ -291,7 +287,7 @@ These options take effect when writing.
 | Option | Default | What it does |
 | --- | --- | --- |
 | `WriteIndented` | `false` | Puts each element on its own line and indents nested elements. |
-| `IndentCharacter` | `' '` (space) | The character used to indent. |
+| `IndentCharacter` | `' '` (space) | The character used to indent: a space or a tab. |
 | `IndentSize` | `0`, which means 2 | How many indent characters each level gets. |
 | `NewLine` | `Environment.NewLine` | The line end written when the output is indented. Set it to `"\n"` for output that is the same on every operating system. |
 | `OmitXmlDeclaration` | `false` | Leaves out the `<?xml ...?>` declaration. |
@@ -319,11 +315,11 @@ See [Ignore properties](/guides/ignore-properties) and [Handle null values](/gui
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `DefaultIgnoreCondition` | `XmlIgnoreCondition.Never` | Leaves members out when writing, if they are `null` (`WhenWritingNull`) or have their default value (`WhenWritingDefault`). |
-| `NilHandling` | `XmlNilHandling.WriteXsiNil` | How a `null` member that isn't ignored is written: `xsi:nil="true"`, an empty element, or nothing. |
+| `DefaultIgnoreCondition` | `XmlIgnoreCondition.Never` | Leaves members out when writing, if they are `null` (`WhenWritingNull`) or have their default value (`WhenWritingDefault`). `WhenWriting` and `WhenReading` have no effect as the default, as in System.Text.Json; use them on `[XmlIgnore]`. `[XmlIgnore]` on a member takes precedence. |
 | `IncludeFields` | `false` | Serializes public fields as well as properties. |
 | `IgnoreReadOnlyProperties` | `false` | Leaves out properties that have no setter. |
 | `IgnoreReadOnlyFields` | `false` | Leaves out `readonly` fields. Only matters when `IncludeFields` is `true`. |
+| `RespectNullableAnnotations` | `false` | Refuses a `null` for a member or constructor parameter annotated non-nullable, when reading and when writing. See [Handle null values](/guides/null-and-nil#respect-nullable-annotations). |
 
 ### Reading
 
@@ -333,7 +329,9 @@ These options take effect when reading. See [Deserialize](/guides/deserialize) a
 | --- | --- | --- |
 | `PropertyNameCaseInsensitive` | `false` | Matches element and attribute names in the document to members without regard to the case of ASCII letters. Constructor parameters always match members without regard to case. |
 | `UnmappedMemberHandling` | `XmlUnmappedMemberHandling.Skip` | Whether an element or attribute that no member maps to is skipped or rejected. |
+| `UnknownTypeHandling` | `XmlUnknownTypeHandling.XmlElement` | What a value declared as `object` is read as: a read-only `XmlElement`, or an `XmlNode` that can be changed. |
 | `AllowDuplicateProperties` | `true` | When `true`, a repeated element overwrites the earlier value. When `false`, it throws an `XmlException`. |
+| `PreferredObjectCreationHandling` | `XmlObjectCreationHandling.Replace` | Whether a member that already holds a value is given a new one (`Replace`) or has its value populated (`Populate`). Under `Replace`, a property with no setter isn't read. See [Collections](/guides/collections#populate-a-collection-that-already-holds-a-value). |
 | `RespectRequiredConstructorParameters` | `true` | Rejects XML that lacks a value for a constructor parameter with no default value. |
 | `ReadCommentHandling` | `XmlCommentHandling.Skip` | Whether comments in the XML are skipped or rejected. |
 | `WhitespaceHandling` | `XmlWhitespaceHandling.Insignificant` | How the reader treats white space between elements. See [`XmlWhitespaceHandling`](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling). |
@@ -370,18 +368,12 @@ The limits protect against oversized or hostile input. See [Security](/guides/se
 ### Options that have no effect
 
 <Warning>
-The properties in the following table can be set, and the copy constructor copies them, but in version 1.0 the serializer doesn't read them. Setting them changes nothing.
+The property in the following table can be set, and the copy constructor copies it, but in version 1.0 the serializer doesn't read it. Setting it changes nothing.
 </Warning>
 
 | Option | Default |
 | --- | --- |
-| `AllowOutOfOrderMetadataProperties` | `false` |
 | `InferClosedTypePolymorphism` | `false` |
-| `PreferredObjectCreationHandling` | `XmlObjectCreationHandling.Replace` |
-| `RespectNullableAnnotations` | `false` |
-| `UnknownTypeHandling` | `XmlUnknownTypeHandling.XmlElement` |
-
-In particular, the serializer always replaces a member's value when it reads one. It doesn't add to an existing collection or fill an existing object, and a collection property with no setter isn't filled.
 
 ## See also
 

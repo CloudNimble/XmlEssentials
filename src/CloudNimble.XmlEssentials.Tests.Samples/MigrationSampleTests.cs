@@ -98,11 +98,11 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
-        public void Sample40_MigrateFromXmlSerializer_Utf16DeclarationIsRejected()
+        public void Sample40_MigrateFromXmlSerializer_Utf16Declaration()
         {
-            SampleOutput.Capture(MigrateFromXmlSerializer.Utf16DeclarationIsRejected).Should().Be(
-                "XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.\n" +
-                "Contoso Freight");
+            SampleOutput.Capture(MigrateFromXmlSerializer.Utf16Declaration).Should().Be(
+                "Contoso Freight\n" +
+                "XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.");
         }
 
         [TestMethod]
@@ -118,12 +118,12 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample41_MigrateFromXmlReader()
         {
             SampleOutput.Capture(MigrateFromXmlReader.Run).Should().Be(
-                "Item at depth 2 with 2 attributes\n" +
+                "Item at depth 1 with 2 attributes\n" +
                 "  Sku: KB-01\n" +
                 "  Discontinued: False\n" +
                 "  Name: Keyboard\n" +
                 "  Price: 49.90\n" +
-                "Item at depth 2 with 2 attributes\n" +
+                "Item at depth 1 with 2 attributes\n" +
                 "  Sku: MS-02\n" +
                 "  Discontinued: True\n" +
                 "  Name: Mouse\n" +
@@ -147,11 +147,11 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(MigrateFromXmlReader.Tokens).Should().Be(
                 "XmlDeclaration at depth 0\n" +
-                "StartElement at depth 1: Order, empty: False\n" +
+                "StartElement at depth 0: Order, empty: False\n" +
                 "Text at depth 1: ' '\n" +
                 "Comment at depth 1\n" +
                 "StartElement at depth 1: Item, empty: True\n" +
-                "StartElement at depth 2: Note, empty: False\n" +
+                "StartElement at depth 1: Note, empty: False\n" +
                 "Text at depth 2: 'Fragile & heavy'\n" +
                 "EndElement at depth 1: Note\n" +
                 "EndElement at depth 0: Order");
@@ -345,11 +345,11 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample45_SystemTextXmlProposal_ReadInChunks()
         {
             SampleOutput.Capture(SystemTextXmlProposal.ReadInChunks).Should().Be(
-                "Token: StartElement, Depth: 1, Consumed: 17\n" +
-                "Token: StartElement, Depth: 2, Consumed: 23\n" +
+                "Token: StartElement, Depth: 0, Consumed: 17\n" +
+                "Token: StartElement, Depth: 1, Consumed: 23\n" +
                 "Token: Text, Depth: 2, Consumed: 8\n" +
                 "Token: EndElement, Depth: 1, Consumed: 15\n" +
-                "Token: StartElement, Depth: 2, Consumed: 21\n" +
+                "Token: StartElement, Depth: 1, Consumed: 21\n" +
                 "Token: Text, Depth: 2, Consumed: 5\n" +
                 "Token: EndElement, Depth: 1, Consumed: 12\n" +
                 "Token: EndElement, Depth: 0, Consumed: 20");

@@ -47,6 +47,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal bool IncludeFields { get; }
 
         /// <summary>
+        /// Gets whether a null for a member annotated non-nullable is refused.
+        /// </summary>
+        internal bool RespectNullableAnnotations { get; }
+
+        /// <summary>
+        /// Gets the object creation handling value.
+        /// </summary>
+        internal int PreferredObjectCreationHandling { get; }
+
+        /// <summary>
+        /// Gets the unknown type handling value.
+        /// </summary>
+        internal int UnknownTypeHandling { get; }
+
+        /// <summary>
         /// Gets whether the XML declaration is omitted.
         /// </summary>
         internal bool OmitXmlDeclaration { get; }
@@ -55,11 +70,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// Gets whether output is indented.
         /// </summary>
         internal bool WriteIndented { get; }
-
-        /// <summary>
-        /// Gets the nil handling value.
-        /// </summary>
-        internal int NilHandling { get; }
 
         /// <summary>
         /// Gets whether a seed was specified.
@@ -83,7 +93,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="defaultIgnoreCondition">The ignore condition.</param>
         /// <param name="defaultPropertyMapping">The property mapping.</param>
         /// <param name="includeFields">Whether fields are included.</param>
-        /// <param name="nilHandling">The nil handling.</param>
+        /// <param name="respectNullableAnnotations">Whether a null for a member annotated non-nullable is refused.</param>
+        /// <param name="preferredObjectCreationHandling">The object creation handling.</param>
+        /// <param name="unknownTypeHandling">The unknown type handling.</param>
         internal OptionsSpec(
             bool hasSeed,
             bool writeIndented,
@@ -95,7 +107,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             int defaultIgnoreCondition,
             int defaultPropertyMapping,
             bool includeFields,
-            int nilHandling)
+            bool respectNullableAnnotations,
+            int preferredObjectCreationHandling,
+            int unknownTypeHandling)
         {
             HasSeed = hasSeed;
             WriteIndented = writeIndented;
@@ -107,7 +121,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             DefaultIgnoreCondition = defaultIgnoreCondition;
             DefaultPropertyMapping = defaultPropertyMapping;
             IncludeFields = includeFields;
-            NilHandling = nilHandling;
+            RespectNullableAnnotations = respectNullableAnnotations;
+            PreferredObjectCreationHandling = preferredObjectCreationHandling;
+            UnknownTypeHandling = unknownTypeHandling;
         }
 
         #endregion
@@ -127,7 +143,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 && DefaultIgnoreCondition == other.DefaultIgnoreCondition
                 && DefaultPropertyMapping == other.DefaultPropertyMapping
                 && IncludeFields == other.IncludeFields
-                && NilHandling == other.NilHandling;
+                && RespectNullableAnnotations == other.RespectNullableAnnotations
+                && PreferredObjectCreationHandling == other.PreferredObjectCreationHandling
+                && UnknownTypeHandling == other.UnknownTypeHandling;
         }
 
         /// <inheritdoc />

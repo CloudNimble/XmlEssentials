@@ -39,7 +39,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var pocos = new List<(string Hint, string Source)>();
             var contexts = new List<ContextSpec>();
             var parsed = new Dictionary<string, MiniElement>(StringComparer.OrdinalIgnoreCase);
-            var classNames = new HashSet<string>(StringComparer.Ordinal);
+            // A class is known by its namespace and its name, so the names in use are kept for each namespace.
+            // Two schema files that generate into different namespaces may each have a class called Order.
+            var classNamesByNamespace = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
             foreach (var file in files)
             {
                 if (file.Text.IndexOf("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) >= 0
@@ -78,6 +80,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 var contextName = string.IsNullOrWhiteSpace(file.ContextName)
                     ? Naming.ToPascal(Sanitize(Path.GetFileNameWithoutExtension(file.Path))) + "XmlContext"
                     : file.ContextName;
+                if (!classNamesByNamespace.TryGetValue(ns, out var classNames))
+                {
+                    classNames = new HashSet<string>(StringComparer.Ordinal);
+                    classNamesByNamespace[ns] = classNames;
+                }
+
                 var result = EmitSchema(root, ns, contextName, Path.GetFileName(file.Path), classNames, diagnostics);
                 pocos.AddRange(result.Pocos);
                 if (result.Context is { } context)
@@ -158,7 +166,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="ns">The C# namespace.</param>
         /// <param name="contextName">The context type name.</param>
         /// <param name="fileName">The schema file name, for diagnostics.</param>
-        /// <param name="classNames">Used class names across the compilation.</param>
+        /// <param name="classNames">The class names already used in <paramref name="ns"/>, by this schema file or an earlier one.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
         /// <returns>The POCOs and context.</returns>
         internal static (List<(string Hint, string Source)> Pocos, ContextSpec? Context) EmitSchema(
@@ -242,7 +250,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     true,
                     false,
                     false,
-                    new EquatableArray<MemberSpec>([])));
+                    new EquatableArray<MemberSpec>([]),
+                    ""));
             }
 
             var bind = new XsdBindContext(ns, fileName, targetNs, classNames, complexTypes, typeMap, pocos, typeSpecs, diagnostics);
@@ -322,7 +331,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 ns,
                 "public",
                 0,
-                new OptionsSpec(!string.IsNullOrEmpty(targetNs), false, false, targetNs, 0, 0, 0, 0, 0, false, 0),
+                new OptionsSpec(!string.IsNullOrEmpty(targetNs), false, false, targetNs, 0, 0, 0, 0, 0, false, false, 0, 0),
                 new EquatableArray<TypeSpec>(typeSpecs.ToArray()),
                 emitInheritance: true);
             return (pocos, context);
@@ -764,7 +773,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 false,
                 true,
                 true,
-                new EquatableArray<MemberSpec>(members.ToArray()));
+                new EquatableArray<MemberSpec>(members.ToArray()),
+                "");
         }
 
         /// <summary>

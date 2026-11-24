@@ -17,8 +17,9 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <para>
     /// The source generator reads <see cref="AttributeNamingPolicy"/>, <see cref="DefaultIgnoreCondition"/>,
     /// <see cref="DefaultNamespace"/>, <see cref="DefaultPropertyMapping"/>, <see cref="ElementNamingPolicy"/>,
-    /// <see cref="GenerationMode"/>, <see cref="IncludeFields"/>, <see cref="NilHandling"/>,
-    /// <see cref="OmitXmlDeclaration"/>, <see cref="PropertyNamingPolicy"/>, and <see cref="WriteIndented"/>.
+    /// <see cref="GenerationMode"/>, <see cref="IncludeFields"/>,
+    /// <see cref="OmitXmlDeclaration"/>, <see cref="PreferredObjectCreationHandling"/>, <see cref="PropertyNamingPolicy"/>,
+    /// <see cref="RespectNullableAnnotations"/>, <see cref="UnknownTypeHandling"/>, and <see cref="WriteIndented"/>.
     /// It does not read the other properties.
     /// </para>
     /// <para>
@@ -138,20 +139,20 @@ namespace CloudNimble.Text.Xml.Serialization
         public int MaxDepth { get; set; }
 
         /// <summary>
-        /// Gets or sets how <see langword="null"/> values are written.
-        /// </summary>
-        /// <value>
-        /// One of the enumeration values that specifies how <see langword="null"/> values are written. The default is <see cref="XmlNilHandling.WriteXsiNil"/>.
-        /// </value>
-        public XmlNilHandling NilHandling { get; set; }
-
-        /// <summary>
         /// Gets or sets a value that indicates whether the XML declaration is omitted.
         /// </summary>
         /// <value>
         /// <see langword="true"/> if the XML declaration is omitted; otherwise, <see langword="false"/>. The default is <see langword="false"/>.
         /// </value>
         public bool OmitXmlDeclaration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether a member that already holds a value is given a new one or has its value populated when it is read.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlObjectCreationHandling.Replace"/>.
+        /// </value>
+        public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
 
         /// <summary>
         /// Gets or sets a value that indicates whether element and attribute names are matched to members without regard to case on deserialization.
@@ -171,12 +172,20 @@ namespace CloudNimble.Text.Xml.Serialization
         public XmlKnownNamingPolicy PropertyNamingPolicy { get; set; }
 
         /// <summary>
-        /// Gets or sets a value that indicates whether nullable annotations are respected.
+        /// Gets or sets a value that indicates whether a <see langword="null"/> is refused for a member or constructor parameter annotated non-nullable.
         /// </summary>
         /// <value>
         /// <see langword="true"/> if nullable annotations are respected; otherwise, <see langword="false"/>. The default is <see langword="false"/>.
         /// </value>
         public bool RespectNullableAnnotations { get; set; }
+
+        /// <summary>
+        /// Gets or sets what an element is read as when the declared type is <see cref="object"/>.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlUnknownTypeHandling.XmlElement"/>.
+        /// </value>
+        public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
 
         /// <summary>
         /// Gets or sets a value that indicates whether enumeration values are written as names even when

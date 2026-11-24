@@ -48,7 +48,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 reader.TrySkip().Should().BeFalse();
                 reader.TokenType.Should().Be(XmlTokenType.StartElement);
                 reader.LocalNameEquals("a").Should().BeTrue();
-                reader.CurrentDepth.Should().Be(2);
+                reader.CurrentDepth.Should().Be(1);
                 reader.BytesConsumed.Should().Be(consumed);
                 reader.MoveToNextAttribute().Should().BeTrue();
                 reader.ValueTextEquals("1").Should().BeTrue();

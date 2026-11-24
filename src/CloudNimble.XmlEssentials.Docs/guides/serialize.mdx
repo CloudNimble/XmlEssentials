@@ -300,7 +300,7 @@ The code produces the following output:
 ```
 
 <Warning>
-`XmlSerializer.Serialize<object>(value)` doesn't look at the run-time type of the value. It throws a `NotSupportedException`, because `object` has no XML mapping. This differs from System.Text.Json, which serializes an `object` as its run-time type. To write members whose declared type is a base class, see [Polymorphism](/guides/polymorphism).
+`XmlSerializer.Serialize<object>(value)` writes the value as the type it has, as System.Text.Json does: the document element is named after that type. A document doesn't record which type wrote it, so `Deserialize<object>` returns an `XmlElement`, which you can read as the type you expect with `XmlSerializer.Deserialize<T>(element)`. To write members whose declared type is a base class, and read them back as the derived type, see [Polymorphism](/guides/polymorphism).
 </Warning>
 
 ## Serialize to the document object model

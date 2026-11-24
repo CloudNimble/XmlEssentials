@@ -29,11 +29,13 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
             _ = args;
             string personXml;
             string orderXml;
+            string inventoryXml;
             try
             {
                 CheckReflectionIsOff();
                 personXml = CheckPersonRoundTrip();
                 orderXml = CheckOrderFromXsd();
+                inventoryXml = CheckInventoryRoundTrip();
                 CheckReader();
             }
             catch (Exception ex)
@@ -44,6 +46,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
 
             Console.WriteLine(personXml);
             Console.WriteLine(orderXml);
+            Console.WriteLine(inventoryXml);
             Console.WriteLine("XmlEssentials AOT smoke passed.");
             return 0;
         }
@@ -66,6 +69,46 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
             }
 
             throw new InvalidOperationException(name + ":" + Environment.NewLine + "expected: " + expected + Environment.NewLine + "actual:   " + actual);
+        }
+
+        /// <summary>
+        /// Serializes a type whose members the generated converter hands to the runtime library, and reads it back.
+        /// </summary>
+        /// <returns>The serialized document.</returns>
+        /// <remarks>
+        /// A dictionary, collections that are not lists, a collection with no setter, an XML value, and a value
+        /// declared as object are read and written by the runtime library, not by generated code. This check
+        /// proves they work with reflection off and the code trimmed.
+        /// </remarks>
+        internal static string CheckInventoryRoundTrip()
+        {
+            const string expected = "<Inventory><Any>5</Any><Codes>1</Codes><Codes>2</Codes><Counts><bolts>40</bolts></Counts><Notes>n</Notes>"
+                + "<Pending>7</Pending><Pending>8</Pending><Raw><part id=\"9\"/></Raw><Sizes>3</Sizes><Tags>new</Tags></Inventory>";
+            using var document = XmlDocument.Parse("<part id=\"9\"/>");
+            var inventory = new Inventory
+            {
+                Any = 5,
+                Codes = [1, 2],
+                Counts = { ["bolts"] = 40 },
+                Pending = new System.Collections.Generic.Queue<int>([7, 8]),
+                Raw = document.RootElement,
+                Sizes = [3],
+                Tags = ["new"],
+            };
+            inventory.Notes.Add("n");
+            var xml = XmlSerializer.Serialize(inventory, AppXmlContext.Default.Inventory);
+            CheckEqual(xml, expected, "inventory");
+            var read = XmlSerializer.Deserialize(xml, AppXmlContext.Default.Inventory);
+            if (read is null)
+            {
+                throw new InvalidOperationException("inventory deserialize returned null.");
+            }
+
+            CheckEqual(read.Counts["bolts"].ToString(System.Globalization.CultureInfo.InvariantCulture) + "," + read.Pending.Count + "," + read.Sizes.Length + "," + read.Notes.Count + "," + read.Tags.Count + "," + read.Codes.Length, "40,2,1,1,1,2", "inventory-values");
+            CheckEqual(((XmlElement)read.Any!).GetInt32().ToString(System.Globalization.CultureInfo.InvariantCulture), "5", "inventory-any");
+            read.Any = 5;
+            CheckEqual(XmlSerializer.Serialize(read, AppXmlContext.Default.Inventory), expected, "inventory-roundtrip");
+            return xml;
         }
 
         /// <summary>
@@ -150,6 +193,12 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
             if (XmlSerializer.IsReflectionEnabledByDefault)
             {
                 throw new InvalidOperationException("IsReflectionEnabledByDefault must be false in the AOT smoke.");
+            }
+
+            // A generated context does not map a type it does not list: it has no answer for one.
+            if (AppXmlContext.Default.GetTypeInfo(typeof(Unregistered)) is not null)
+            {
+                throw new InvalidOperationException("A generated context must not answer for a type it does not list.");
             }
 
             try

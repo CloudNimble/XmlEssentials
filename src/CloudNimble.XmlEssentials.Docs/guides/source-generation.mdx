@@ -25,7 +25,7 @@ The generator is part of the `XmlEssentials` package. There's no second package 
     Create a class that derives from [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) and mark it `partial`. Leave the body empty. The generator writes the other half.
 
     ```csharp OrderXmlContext.cs
-    [XmlSerializable(typeof(Order))]
+    [XmlSerializable<Order>]
     public partial class OrderXmlContext : XmlSerializerContext
     {
     }
@@ -34,7 +34,7 @@ The generator is part of the `XmlEssentials` package. There's no second package 
     The class can be `public` or `internal`.
   </Step>
   <Step title="List your root types">
-    Add one [`[XmlSerializable]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializableAttribute) attribute for each type you pass to the serializer. The generator follows the properties of each type, so `Order` brings in `OrderLine` without a second attribute.
+    Add one [`[XmlSerializable]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializableAttribute) attribute for each type you pass to the serializer. The generator follows the properties of each type, so `Order` brings in `OrderLine` without a second attribute. The type is a type argument of the attribute, as in `[XmlSerializable<Order>]`, so the compiler checks it. It can be any closed type, including an array (`[XmlSerializable<Order[]>]`) or a collection (`[XmlSerializable<List<Order>>]`).
 
     ```csharp Order.cs
     public sealed class Order
@@ -99,7 +99,7 @@ For a context named `OrderXmlContext` that lists `Order`, the generated half of 
 To give a property a different name, for example when two listed types share a name, set `TypeInfoPropertyName`:
 
 ```csharp OrderLineXmlContext.cs
-[XmlSerializable(typeof(OrderLine), TypeInfoPropertyName = "Line")]
+[XmlSerializable<OrderLine>(TypeInfoPropertyName = "Line")]
 public partial class OrderLineXmlContext : XmlSerializerContext
 {
 }
@@ -142,7 +142,7 @@ Order 1042 for Ada: 2 lines
 Prefer the type info overloads when you know the type at compile time. They skip the lookup, and a type that isn't in the context is a compiler error instead of a surprise at run time.
 
 <Warning>
-A generated context answers `GetTypeInfo` for a type it doesn't list by asking the reflection resolver. The call succeeds in an ordinary application and isn't safe in a trimmed or Native AOT application. List every type you serialize.
+A generated context answers `GetTypeInfo` for the types it lists and for every type reachable from them: classes, structs, and records, and the collection, dictionary, enumeration, and nullable types their members use. It also answers for a built-in value, an XML value such as `XmlElement`, `object`, and a type with `[XmlConverter]`. For any other type it returns `null`, and the serializer throws `NotSupportedException`. It never uses reflection, so list every class, struct, and record you serialize, and list a collection or array type too when you serialize it as the document element.
 </Warning>
 
 ## Set options
@@ -157,7 +157,7 @@ Add [`[XmlSourceGenerationOptions]`](/api-reference/CloudNimble/Text/Xml/Seriali
 [XmlSourceGenerationOptions(
     OmitXmlDeclaration = true,
     PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class CamelCaseOrderXmlContext : XmlSerializerContext
 {
 }
@@ -185,10 +185,13 @@ The generator applies the following properties of the attribute:
 | `OmitXmlDeclaration` | Sets `XmlSerializerOptions.OmitXmlDeclaration` on the default options. |
 | `DefaultNamespace` | Sets `XmlSerializerOptions.DefaultNamespace` on the default options. |
 | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy` | Set the same options, and fix the member names in the generated converters. |
+| `DefaultPropertyMapping` | Sets `XmlSerializerOptions.DefaultPropertyMapping`, and decides which members the generated converters write as attributes. |
+| `DefaultIgnoreCondition` | Set the same option. Generated converters read it when they run. |
+| `RespectNullableAnnotations`, `PreferredObjectCreationHandling`, `UnknownTypeHandling` | Set the same options. They are read when a converter runs. |
 | `IncludeFields` | Sets `XmlSerializerOptions.IncludeFields`, and includes public fields in the generated converters. |
 
 <Note>
-The attribute has more properties, among them `NilHandling`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `EnumHandling`, `MaxDepth`, `EmitByteOrderMark`, and `XmlVersion`. The generator doesn't copy these to the default options, and generated converters don't act on them. Use a context in [metadata mode](/guides/source-generation-modes) with your own `XmlSerializerOptions` when you need them.
+The attribute has more properties, among them `EnumHandling`, `MaxDepth`, `EmitByteOrderMark`, and `XmlVersion`. The generator doesn't copy these to the default options. Pass your own `XmlSerializerOptions` to the context's constructor when you need them.
 </Note>
 
 ### At run time
@@ -228,15 +231,19 @@ Create the context once and keep it, as you would an options instance. The const
 
 ### Which options generated converters apply
 
-A generated converter is written before your options exist, so it can't act on all of them:
+A generated converter is written before your options exist. It reads some settings from the options when it runs, and it has others compiled in. When your options ask for something a converter was not compiled with, creating the type info throws `NotSupportedException` and names the setting, so a generated converter never writes a different document than the reflection resolver would for the same options.
 
 | Setting | In a generated converter |
 | --- | --- |
 | `WriteIndented`, `NewLine`, `OmitXmlDeclaration` | Applied. |
 | `DefaultNamespace` | Applied to the document element. |
-| Naming policies | Member names are fixed at compile time from `[XmlSourceGenerationOptions]`. The name of the document element follows the options at run time. Set the same policy in both places when you pass your own options. |
-| `NilHandling`, `DefaultIgnoreCondition` | Not applied. A `null` reference member is always written as an element with `xsi:nil="true"`. |
-| `Converters` | Applied to enumeration members. Not applied to members whose type is a class, a struct, or a built-in value such as `int`. |
+| Naming policies, `DefaultPropertyMapping`, `IncludeFields` | Compiled in from `[XmlSourceGenerationOptions]`. Options with a different value throw `NotSupportedException`. Set the same value in both places when you pass your own options. |
+| `IgnoreReadOnlyProperties`, `IgnoreReadOnlyFields` | Compiled as `false`. Options that set either one throw `NotSupportedException`. |
+| `DefaultIgnoreCondition`, `[XmlIgnore(Condition = ...)]` | Applied when the converter runs. |
+| `PropertyNameCaseInsensitive`, `NumberHandling`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`, `UnmappedMemberHandling` | Applied when the converter runs. |
+| `PreferredObjectCreationHandling`, `[XmlObjectCreationHandling]` | Applied to collections and dictionaries when the converter runs. A converter can't populate an object that already exists: it throws a `NotSupportedException` when the options ask it to, and the attribute on such a member is the error `XMLXE016`. |
+| `Converters` | Applied to members whose type the runtime reads and writes: enumerations, collections, dictionaries, and types the context doesn't generate a converter for. A converter for a built-in value that the generated code writes directly, such as `int` or `string`, throws `NotSupportedException`. |
+| `[XmlConverter]` | On a type: applied, and the type may then be an attribute or text. On a member: compile-time error `XMLXE009`. |
 | `ReferenceHandler` | Not supported. The converter throws `NotSupportedException`. |
 
 A context in [metadata mode](/guides/source-generation-modes) has none of these limits, because it uses the run-time resolver. The price is that it isn't safe for Native AOT.
@@ -262,7 +269,7 @@ The code produces the following output:
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/32_UseSourceGeneration.cs)
 
 <Warning>
-Don't combine generated contexts by adding them to `XmlSerializerOptions.TypeInfoResolverChain`. A generated context answers for every type, listed or not, so the first context in the chain answers every request and the others are never asked. The type info it returns is also bound to that context's own options, not to the options that hold the chain. When one options instance has to serve several types, list those types on one context.
+You can add several generated contexts to `XmlSerializerOptions.TypeInfoResolverChain`. Each context answers for the types it lists and returns `null` for the others, so the next context in the chain is asked. The options that hold the chain decide how every type is written: each context creates its type info for those options, not for its own. The same rule about compiled-in settings applies, so options that ask for a naming policy a context was not compiled with throw `NotSupportedException`.
 </Warning>
 
 ## Understand the diagnostics
@@ -273,16 +280,21 @@ The generator reports problems as compiler diagnostics in the `XmlEssentials` ca
 | --- | --- | --- |
 | `XMLXE001` | '*type*' must be a partial class that inherits XmlSerializerContext | A class has `[XmlSerializable]` but isn't `partial` or doesn't derive from `XmlSerializerContext`. Add the modifier or the base class. |
 | `XMLXE002` | The type '*type*' cannot be serialized by XmlEssentials | The type is a pointer, `IntPtr`, `UIntPtr`, or an open generic type, or the generator can't call a constructor: the `[XmlConstructor]` constructor isn't accessible, a constructor parameter that no member fills has no default value, or a class has neither a parameterless constructor nor one whose parameters all match members. |
-| `XMLXE003` | Member '*type*.*member*' is mapped as an XML attribute | A member with `[XmlAttribute]` has a type that isn't a simple value. Map it as an element. |
+| `XMLXE003` | Member '*type*.*member*' is mapped as an XML attribute | A member with `[XmlAttribute]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
 | `XMLXE004` | The type '*type*' has more than one [XmlText] or [XmlCData] | An element has one text content. Keep the attribute on one member. |
 | `XMLXE005` | The type '*type*' has more than one constructor that can bind its members | Two constructors are marked `[XmlConstructor]`, or none is marked and two public constructors bind the same number of members. Mark one. |
 | `XMLXE006` | The XML name '*name*' on '*member*' is not a valid XML Name | The name of a member, after the naming policy, can't be an element or attribute name. Rename it with `[XmlElement]`, `[XmlAttribute]`, or `[XmlPropertyName]`. |
 | `XMLXE007` | The type '*type*' uses XmlIncludeAttribute; use [XmlDerivedType] for known derived types | The type or one of its members carries `System.Xml.Serialization.XmlIncludeAttribute`, which this library doesn't read. Declare derived types with `[XmlDerivedType]`. |
 | `XMLXE008` | '*type*' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it | Generated converters don't handle polymorphism. Remove the type from the context and serialize it with reflection. See [Polymorphism](/guides/polymorphism). |
+| `XMLXE009` | '*member*' names a converter with [XmlConverter]; a generated converter would not call it, so put the attribute on the member's type or use the reflection resolver for the declaring type | A converter on a property or field is used by the reflection resolver only. Put `[XmlConverter]` on the type of the member, which a generated context does honor. |
 | `XMLXE010` | Varies | A schema file has a DTD, isn't well formed, or includes or imports a schema that isn't an `AdditionalFiles` item. See [Generate types from an XSD](/guides/xsd-source-generation). |
 | `XMLXE011` | Varies | Information only. A schema uses a construct the generator ignores or simplifies. |
 | `XMLXE012` | The generated C# name '*name*' is used more than once | Two schema components produce the same class or enumeration name. |
 | `XMLXE013` | The XML name '*name*' is not a valid XML Name | A schema names an element or attribute with a name that isn't a valid XML name. |
+| `XMLXE014` | '*member*' is marked [XmlMixed]; a generated converter would not read or write mixed content, so use the reflection resolver for the declaring type | Generated converters don't handle mixed content. Remove the type from the context and serialize it with reflection. See [Mixed content](/guides/mixed-content). |
+| `XMLXE015` | Member '*type*.*member*' is mapped as XML text, and its type is not a single value | A member with `[XmlText]` or `[XmlCData]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
+| `XMLXE016` | '*member*' is marked with XmlObjectCreationHandling.Populate, *reason* | A member, or its type, is marked `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` and a generated converter can't populate it: its type can't be populated, its type is created through a constructor with parameters, or it holds an object. Remove the attribute, or read the type through the reflection resolver. |
+| `XMLXE017` | '*member*' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read | A required member is marked `[XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]`. Remove one of the two. |
 
 There is no `XMLXE009`.
 

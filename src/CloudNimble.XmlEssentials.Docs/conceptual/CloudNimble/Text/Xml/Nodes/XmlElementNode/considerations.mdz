@@ -1,5 +1,5 @@
 - `ValueKind` is always `Element`. The tree doesn't distinguish `<e/>` from `<e></e>`: an element with no children is written as an empty-element tag, and an element with children is written with an end tag.
-- The one-argument indexer and `SetAttribute(name, value)` match a local name in any namespace. The overloads that take a namespace URI match that namespace only; pass an empty string for no namespace.
+- The one-argument indexer matches a local name in any namespace. `SetAttribute(name, value)` sets the attribute in no namespace. The overloads that take a namespace URI match that namespace only; pass an empty string for no namespace.
 - The indexers return `null` when nothing matches. They search direct children only.
 - `SetAttribute` stores a `null` value as an empty string. It doesn't remove the attribute.
 - Setting `InnerText` removes every child, including child elements and comments, and adds one text node. Setting it to `null` or an empty string leaves the element empty.

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 
 namespace CloudNimble.Text.Xml
@@ -602,6 +603,72 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Parses <c>xs:integer</c> with no limit on its size: an optional <c>+</c> or <c>-</c> followed by decimal digits.
+        /// </summary>
+        /// <param name="utf8">The lexical value.</param>
+        /// <param name="value">When this method returns true, the parsed value.</param>
+        /// <returns><see langword="true"/> if the value is an integer.</returns>
+        public static bool TryParseBigInteger(ReadOnlySpan<byte> utf8, out BigInteger value)
+        {
+            var s = Collapse(utf8);
+            value = default;
+            if (!IsIntegerLexical(s))
+            {
+                return false;
+            }
+
+            // The form has been checked, so every byte is an ASCII sign or digit and widens to a character.
+            var rented = ArrayPool<char>.Shared.Rent(s.Length);
+            try
+            {
+                Encoding.ASCII.GetChars(s, rented);
+                return BigInteger.TryParse(rented.AsSpan(0, s.Length), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out value);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(rented);
+            }
+        }
+
+        /// <summary>
+        /// Parses a half-precision number: the <c>xs:float</c> lexical space, rounded to half precision.
+        /// </summary>
+        /// <param name="utf8">The lexical value.</param>
+        /// <param name="value">When this method returns true, the parsed value.</param>
+        /// <returns><see langword="true"/> if the value is a float.</returns>
+        /// <remarks>
+        /// A number too large for the type reads as infinity, as it does for <c>xs:float</c> and <c>xs:double</c>.
+        /// </remarks>
+        public static bool TryParseHalf(ReadOnlySpan<byte> utf8, out Half value)
+        {
+            var s = Collapse(utf8);
+            if (TryParseNamedFloat(s, out var named))
+            {
+                value = (Half)named;
+                return true;
+            }
+
+            // The digits are parsed straight to half precision. Going through a double would round twice,
+            // and a value just above the midpoint of two halves would land on the lower one.
+            var body = StripPlus(s);
+            value = default;
+            return IsFloatLexical(s, body) && Half.TryParse(body, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        }
+
+        /// <summary>
+        /// Parses a 128-bit signed integer: an optional <c>+</c> or <c>-</c> followed by decimal digits.
+        /// </summary>
+        /// <param name="utf8">The lexical value.</param>
+        /// <param name="value">When this method returns true, the parsed value.</param>
+        /// <returns><see langword="true"/> if the value is in range.</returns>
+        public static bool TryParseInt128(ReadOnlySpan<byte> utf8, out Int128 value)
+        {
+            var s = Collapse(utf8);
+            value = default;
+            return IsIntegerLexical(s) && Int128.TryParse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out value);
+        }
+
+        /// <summary>
         /// Parses <c>xs:byte</c>.
         /// </summary>
         /// <param name="utf8">The lexical value.</param>
@@ -692,9 +759,44 @@ namespace CloudNimble.Text.Xml
             return parsed;
         }
 
+        /// <summary>
+        /// Parses a 128-bit unsigned integer: an optional <c>+</c> followed by decimal digits. <c>-0</c> is zero.
+        /// </summary>
+        /// <param name="utf8">The lexical value.</param>
+        /// <param name="value">When this method returns true, the parsed value.</param>
+        /// <returns><see langword="true"/> if the value is in range.</returns>
+        public static bool TryParseUInt128(ReadOnlySpan<byte> utf8, out UInt128 value)
+        {
+            var s = Collapse(utf8);
+            value = default;
+            if (!IsIntegerLexical(s))
+            {
+                return false;
+            }
+
+            if (s[0] is (byte)'-')
+            {
+                // The only negative number an unsigned type holds is minus zero.
+                return s[1..].IndexOfAnyExcept((byte)'0') < 0;
+            }
+
+            return UInt128.TryParse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out value);
+        }
+
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Checks the <c>xs:integer</c> lexical form: an optional sign and at least one decimal digit.
+        /// </summary>
+        /// <param name="collapsed">The collapsed value.</param>
+        /// <returns><see langword="true"/> if the form is legal.</returns>
+        internal static bool IsIntegerLexical(ReadOnlySpan<byte> collapsed)
+        {
+            var digits = collapsed.Length > 0 && collapsed[0] is (byte)'+' or (byte)'-' ? collapsed[1..] : collapsed;
+            return !digits.IsEmpty && digits.IndexOfAnyExceptInRange((byte)'0', (byte)'9') < 0;
+        }
 
         /// <summary>
         /// Checks the <c>xs:double</c> lexical form: a decimal mantissa and an optional integer exponent.

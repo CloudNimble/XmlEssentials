@@ -93,7 +93,8 @@ boiler: 73
 
 Know the following about the wrapped form:
 
-- The document element is named `ArrayOf` followed by the root name of `T`. Each value is written under the root name of `T`. You can't change the wrapper's name, and `XmlSerializerOptions.DefaultNamespace` applies to each value but not to the wrapper.
+- The document element is named `ArrayOf` followed by the root name of `T`. Each value is written under the root name of `T`. You can't change the wrapper's name. The wrapper is in the same namespace as the values, so `XmlSerializerOptions.DefaultNamespace` is declared once, on the wrapper.
+- With a `ReferenceHandler`, the values of the document share one set of references: an object that two values hold is written once, and it is read back as one object. With `topLevelValues` each value is a document of its own, with references of its own.
 - `DeserializeAsyncEnumerable` reads every child of the document element as a `T`. It doesn't check the name of the document element or the names of its children, so it can read a sequence that another system wrapped in an element of its own, such as `<Feed>`.
 - `Deserialize<List<T>>` and `Deserialize<T[]>` can't read this document. They expect the root names `ListOf...` and `...Array`, and they throw an `XmlException` for `ArrayOf...`. Read a document written by `SerializeAsyncEnumerable` with `DeserializeAsyncEnumerable`.
 - An empty sequence writes an empty document element, and reading it produces no values.
@@ -231,7 +232,7 @@ When a write is canceled, or fails for any other reason, the bytes that were alr
 - **Reading a sequence.** After each read from the stream, `DeserializeAsyncEnumerable` returns every value that is now complete and keeps only the unfinished tail. The buffer holds one read plus at most one partial value. It starts at `XmlSerializerOptions.DefaultBufferSize` and doubles only when a single value is larger than the buffer. The buffer comes from the shared array pool and goes back when the enumeration ends, so dispose the enumerator if you stop early. `await foreach` does that for you.
 - **Writing a sequence.** Each value is written into the writer's buffer and passed to the stream between values, never in the middle of one, unless a single value is larger than the buffer.
 - **Malformed input.** A value that can't be read throws `XmlException` when the reader reaches it. The values before it have already been returned to your loop.
-- **Reference handling.** The sequence methods don't apply [`XmlReferenceHandler`](/guides/preserve-references). Each value is written in full, with no `id` or `ref` attributes, even when the options have `ReferenceHandler` set to `Preserve`.
+- **Reference handling.** The sequence methods apply [`XmlReferenceHandler`](/guides/preserve-references). In the wrapped form the values share one set of references, so a value may hold a `ref` to an object that an earlier value defined. Read the values in order and keep them if you rely on that. With `topLevelValues`, each value has its own references.
 
 ## Performance
 

@@ -267,7 +267,7 @@ Exact: 0, (null)
 Case-insensitive: 1042, Contoso
 ```
 
-With the default options, `id` and `CUSTOMER` match no member and are skipped like any other unknown element. The comparison ignores the case of ASCII letters only. The option applies to members: the name of the document element is always matched with case.
+With the default options, `id` and `CUSTOMER` match no member and are skipped like any other unknown element. The comparison ignores the case of ASCII letters only: a name that holds any other character matches only when it is exactly the same. The option also applies to the name of the document element.
 
 ## Handle invalid XML
 
@@ -310,7 +310,7 @@ Unless you change it with options or attributes, `XmlSerializer` behaves as foll
 
 - Names are matched with case. A member that is mapped to a namespace is matched by the namespace URI, never by the prefix. See [Namespaces](/guides/namespaces).
 - A member is set when it has a setter, including an `init` setter, or when it is a parameter of the constructor the serializer uses. See [Immutable types](/guides/immutable-types).
-- A property with no setter is left alone, even when the XML has an element for it. A collection property with no setter isn't filled.
+- A property with no setter is left alone, even when the XML has an element for it. To add to the collection, dictionary, or object it holds, use `XmlObjectCreationHandling.Populate`. See [Serialize collections](/guides/collections#populate-a-collection-that-already-holds-a-value).
 - When an element appears twice for a member that isn't a collection, the last one wins. Set `AllowDuplicateProperties` to `false` to throw instead.
 - An empty element, such as `<Customer/>`, is the empty string for a `string` member. Only `xsi:nil="true"` reads as `null`. See [Handle null values](/guides/null-and-nil).
 - White space inside a text value is kept. Character references, entity references such as `&amp;`, and CDATA sections are decoded.

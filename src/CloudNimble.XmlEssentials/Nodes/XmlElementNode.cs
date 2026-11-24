@@ -281,7 +281,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// </summary>
         /// <param name="localName">The local name of the attribute, without a prefix.</param>
         /// <param name="value">The value of the attribute. <see langword="null"/> is stored as an empty string.</param>
-        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> to match the first attribute that has <paramref name="localName"/> in any namespace. The default is <see langword="null"/>.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for an attribute in no namespace. The default is <see langword="null"/>.</param>
         /// <returns>
         /// The attribute that was changed, or the new attribute that was added.
         /// </returns>
@@ -292,14 +292,15 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <paramref name="localName"/> is empty or consists only of white-space characters.
         /// </exception>
         /// <remarks>
-        /// An attribute that this method adds has no prefix. When <paramref name="namespaceUri"/> is
+        /// The attribute is found by its local name and its namespace together, so an attribute with the same local
+        /// name in another namespace is left as it is. An attribute that this method adds has no prefix. When <paramref name="namespaceUri"/> is
         /// <see langword="null"/>, the new attribute is in no namespace.
         /// </remarks>
         public XmlAttributeNode SetAttribute(string localName, string? value, string? namespaceUri = null)
         {
-            var existing = namespaceUri is null
-                ? Attributes[localName]
-                : Attributes[localName, namespaceUri];
+            // To set an attribute is to name it exactly. With no namespace given, that is the attribute in no
+            // namespace, not the first one in any namespace that happens to share the local name.
+            var existing = Attributes[localName, namespaceUri ?? string.Empty];
             if (existing is not null)
             {
                 existing.Value = value ?? string.Empty;

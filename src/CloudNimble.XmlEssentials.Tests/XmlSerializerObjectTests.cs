@@ -891,14 +891,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void StackOfInt32_CannotPopulateOnRead()
-        {
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<Stack<int>>("<StackOfInt32><Int32>1</Int32></StackOfInt32>"))
-                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
-                    "Cannot populate collection type 'System.Collections.Generic.Stack`1[System.Int32]'.");
-        }
-
-        [TestMethod]
         public void TextPlusElement_ThrowsAtTypeInfo()
         {
             FluentActions.Invoking(() => Bare.GetTypeInfo<TextPlusElement>())
@@ -1009,12 +1001,15 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void NilHandling_EmptyElementAndOmit()
+        public void NullMember_IsNil_UnlessTheIgnoreConditionLeavesItOut()
         {
-            var empty = new XmlSerializerOptions { OmitXmlDeclaration = true, NilHandling = XmlNilHandling.WriteEmptyElement };
-            XmlSerializer.Serialize(new Person { Age = 1 }, empty).Should().Be("<Person><Name/><Age>1</Age></Person>");
-            var omit = new XmlSerializerOptions { OmitXmlDeclaration = true, NilHandling = XmlNilHandling.Omit };
-            XmlSerializer.Serialize(new Person { Age = 1 }, omit).Should().Be("<Person><Age>1</Age></Person>");
+            XmlSerializer.Serialize(new Person { Age = 1 }, new XmlSerializerOptions { OmitXmlDeclaration = true }).Should().Be(
+                "<Person><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Age>1</Age></Person>");
+            var whenNull = new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
+            XmlSerializer.Serialize(new Person { Age = 1 }, whenNull).Should().Be("<Person><Age>1</Age></Person>");
+            var whenDefault = new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingDefault };
+            XmlSerializer.Serialize(new Person { Age = 1 }, whenDefault).Should().Be("<Person><Age>1</Age></Person>");
+            XmlSerializer.Serialize(new Person(), whenDefault).Should().Be("<Person/>");
         }
 
         [TestMethod]

@@ -144,12 +144,12 @@ while (reader.Read())
 The XmlEssentials code produces the following output:
 
 ```text
-Item at depth 2 with 2 attributes
+Item at depth 1 with 2 attributes
   Sku: KB-01
   Discontinued: False
   Name: Keyboard
   Price: 49.90
-Item at depth 2 with 2 attributes
+Item at depth 1 with 2 attributes
   Sku: MS-02
   Discontinued: True
   Name: Mouse
@@ -160,8 +160,6 @@ The loop has the same shape in both. Three things are different:
 
 - Names are compared with `LocalNameEquals` and `NamespaceUriEquals`, against UTF-8 literals (`"Item"u8`). No string is created for a name.
 - A value is read with a typed method, `GetBoolean` or `TryGetDecimal`, that parses the XSD lexical form. You don't call `XmlConvert`.
-- The `System.Xml` version prints `Item at depth 1`. See [Depth](#depth).
-
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/41_MigrateFromXmlReader.cs)
 
 ## Reader members
@@ -183,8 +181,8 @@ The loop has the same shape in both. Three things are different:
 | `MoveToFirstAttribute()`, `MoveToAttribute(name)`, `GetAttribute(name)` | No counterpart | Loop with `MoveToNextAttribute` and compare names. |
 | `AttributeCount`, `HasAttributes` | `AttributeCount`, `HasAttributes` | |
 | `IsEmptyElement` | `IsEmptyElement` | As with `XmlReader`, an empty element (`<Item/>`) has no `EndElement` token. |
-| `Depth` | `CurrentDepth` | Different on a start tag. See [Depth](#depth). |
-| `Skip()` | `Skip()`, `TrySkip()` | `TrySkip` returns `false` when the rest of the element isn't in the buffer yet. |
+| `Depth` | `CurrentDepth` | The same values for elements, text, comments, and processing instructions. An attribute is at the depth of its element. See [Depth](#depth). |
+| `Skip()` | `Skip()`, `TrySkip()` | On a start tag, the reader stops on the matching end tag; `XmlReader.Skip` moves past it. On any other token, `Skip` does nothing, where `XmlReader.Skip` reads the next node. `TrySkip` returns `false` when the rest of the element isn't in the buffer yet. |
 | `ReadSubtree()`, `ReadOuterXml()` | `XmlDocument.ParseValue(ref reader)`, `XmlNode.ParseValue(ref reader)` | Reads the current element into a DOM. See [Use XmlDocument](/guides/use-xmldocument). |
 | `ReadToFollowing`, `ReadToDescendant`, `IsStartElement`, `MoveToContent` | No counterpart | Write the loop. |
 | `IXmlLineInfo.LineNumber`, `LinePosition` | `XmlException.LineNumber`, `LinePosition`, `BytePosition` | The reader has `TokenStartIndex` and `BytesConsumed`, which are byte offsets. |
@@ -193,7 +191,7 @@ The loop has the same shape in both. Three things are different:
 
 ### Depth
 
-`CurrentDepth` counts the elements that are open after the token is read. `XmlReader.Depth` doesn't count the element the reader is on. The values differ on the start tag of an element that has content.
+`CurrentDepth` counts the elements the token is inside, as `XmlReader.Depth` does. The root element is at depth 0, and a start tag, its end tag, and an empty element in the same place are at the same depth.
 
 The following code prints every token of a small document:
 
@@ -220,11 +218,11 @@ The code produces the following output:
 
 ```text
 XmlDeclaration at depth 0
-StartElement at depth 1: Order, empty: False
+StartElement at depth 0: Order, empty: False
 Text at depth 1: ' '
 Comment at depth 1
 StartElement at depth 1: Item, empty: True
-StartElement at depth 2: Note, empty: False
+StartElement at depth 1: Note, empty: False
 Text at depth 2: 'Fragile & heavy'
 EndElement at depth 1: Note
 EndElement at depth 0: Order
@@ -232,7 +230,7 @@ EndElement at depth 0: Order
 
 What to notice:
 
-- `Order` and `Note` report a depth one higher than `XmlReader.Depth` would (0 and 1). The empty `Item` element reports 1, the same as `XmlReader`.
+- Every depth is the one `XmlReader.Depth` reports. The empty `Item` element and the `Note` start tag are both children of `Order`, so both are at depth 1.
 - The white space after `<Order>` and the comment are reported, as `XmlReader` reports them by default. White space is a `Text` token; there is no separate `Whitespace` token type.
 - `Item` has one token. Check `IsEmptyElement` before you wait for an end tag.
 - `GetString` returns `Fragile & heavy`, with the entity reference resolved.

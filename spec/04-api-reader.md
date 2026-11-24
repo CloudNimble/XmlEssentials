@@ -161,7 +161,7 @@ Internal fields are not public. Tests must resume across a buffer split **inside
 
 ## Utf8XmlReader
 
-`ref struct`. Analogous to `Utf8JsonReader`. Empty elements: `TokenType == StartElement` and `IsEmptyElement == true`. **No synthesized `EndElement` token.** Callers must check `IsEmptyElement`. `Skip()` consumes the whole element including children.
+`ref struct`. Analogous to `Utf8JsonReader`. Empty elements: `TokenType == StartElement` and `IsEmptyElement == true`. **No synthesized `EndElement` token.** Callers must check `IsEmptyElement`. `Skip()` on a start tag moves to its end tag, past its children; on any other token, and on an empty element, it does nothing. `CurrentDepth` is the number of elements the current token is inside: 0 for the root element, the same for a start tag, its end tag and an empty element in the same place.
 
 `Version` is set when the XML declaration is read (or remains `Version10` if there is none). Char / Name / EOL / `xmlns:prefix=""` use that flag for the rest of the document. The caller does not pass a version discriminator. Snapshot `CurrentState` **must** include `Version` ([implementation contract](#xmlreaderstate-implementation-contract)).
 

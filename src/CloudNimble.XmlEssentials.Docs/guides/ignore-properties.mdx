@@ -55,6 +55,8 @@ Set the `Condition` property of `[XmlIgnore]` to one of the [`XmlIgnoreCondition
 | `Never` | Always written and read, whatever `DefaultIgnoreCondition` says. |
 | `WhenWritingNull` | Left out when its value is `null`. |
 | `WhenWritingDefault` | Left out when its value is `null` or the default value of its type, such as `0` or `false`. |
+| `WhenWriting` | Never written. Still read. |
+| `WhenReading` | Never read. Still written. The XML may have the element or attribute; what it holds is skipped. |
 
 ```csharp UserProfile.cs
 public sealed class UserProfile
@@ -90,7 +92,7 @@ The code produces the following output:
 
 In the first document, `Bio` and `SignInCount` are gone. `Website` has no condition, so its `null` is written as an element marked `xsi:nil="true"`, which is the default for a `null` member. See [Handle null values](/guides/null-and-nil).
 
-A collection that is wrapped with `[XmlArray]` is an exception. Only `WhenWritingNull` leaves out a `null` wrapped collection. With `WhenWritingDefault`, it is still written as a wrapper element marked `xsi:nil="true"`. See [Empty and null collections](/guides/collections#empty-and-null-collections).
+A `null` collection that is wrapped with `[XmlArray]` is left out by both conditions, as any other `null` member is. See [Empty and null collections](/guides/collections#empty-and-null-collections).
 
 The two `WhenWriting` conditions affect writing only. The member is still read when the XML has it:
 
@@ -160,10 +162,9 @@ The code produces the following output:
 An `[XmlIgnore]` attribute on a member overrides the option for that member. For example, `[XmlIgnore(Condition = XmlIgnoreCondition.Never)]` keeps one member in every document while the option removes the rest.
 
 <Note>
-Setting `DefaultIgnoreCondition` to `XmlIgnoreCondition.Always` has no effect: every member is still written. `Always` only means something on the `[XmlIgnore]` attribute.
+Setting `DefaultIgnoreCondition` to `XmlIgnoreCondition.Always` throws an `ArgumentException`, because it would leave out every member. `Always` only means something on the `[XmlIgnore]` attribute.
 </Note>
 
-`XmlNilHandling.Omit` is another way to leave out `null` members. It is described in [Handle null values](/guides/null-and-nil).
 
 ## Read-only properties
 
@@ -207,7 +208,7 @@ When reading, a read-only property can't be set, so the `Area` element in the la
 Keep these details in mind:
 
 - A property with an `init` setter or a non-public setter isn't read-only. The serializer writes it and sets it, including through a `private` setter. This differs from System.Text.Json, which ignores non-public setters unless you opt in.
-- A read-only collection property, such as `public List<string> Tags { get; } = [];`, is written, but it isn't filled when reading. Give the property a setter or an `init` accessor.
+- A read-only collection property, such as `public List<string> Tags { get; } = [];`, is written, and it is filled when reading: the items are added to the list it holds. Setting `IgnoreReadOnlyProperties` leaves it out in both directions.
 - `IgnoreReadOnlyProperties` also removes a read-only property that a constructor parameter sets. Don't combine the option with types that are created through a [constructor with parameters](/guides/immutable-types), unless their properties have `init` accessors, as record properties do.
 
 ## Include fields

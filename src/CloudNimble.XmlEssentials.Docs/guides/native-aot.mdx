@@ -25,7 +25,7 @@ Only `XmlSerializer` needs care, because its default way of learning about a typ
     In your project, add a partial class that derives from `XmlSerializerContext`, with one `[XmlSerializable]` attribute for each root type. Keep the default generation mode.
 
     ```csharp OrderXmlContext.cs
-    [XmlSerializable(typeof(Order))]
+    [XmlSerializable<Order>]
     public partial class OrderXmlContext : XmlSerializerContext
     {
     }
@@ -156,7 +156,7 @@ When it's `false`:
 Setting the switch in the project file with `Trim="true"` also tells the trimmer the value, so it can treat the property as a constant.
 
 <Warning>
-The switch covers options that have no resolver. It doesn't stop a generated context from using reflection for a type the context doesn't list: `GetTypeInfo` and the context overloads fall back to the reflection resolver for such a type, even when the switch is `false`. That fallback isn't safe under Native AOT. List every type you pass to the serializer on a context, and prefer the `XmlTypeInfo<T>` overloads, which can only name a listed type.
+The switch covers options that have no resolver. A generated context uses no reflection either. It creates every type it lists or reaches with generated code: classes, structs, and records, and the collection, dictionary, enumeration, and nullable types their members use. For a type it neither lists nor reaches, `GetTypeInfo` returns `null` and the serializer throws `NotSupportedException`, unless the type is a built-in value, an XML value such as `XmlElement`, or `object`. That includes a collection type no listed type uses, such as a `List<int>` that you serialize as the document element. List every type you pass to the serializer on a context, collections and arrays included, and prefer the `XmlTypeInfo<T>` overloads, which can only name a listed type.
 </Warning>
 
 ## What the package adds to your build
@@ -174,7 +174,7 @@ The package doesn't set `PublishAot`, `PublishTrimmed`, or the reflection switch
 ## Limits to know about
 
 - **Use the default generation mode.** A context in [metadata mode](/guides/source-generation-modes) gets its type info from the reflection resolver.
-- **Collections as root types use the run-time resolver.** For `[XmlSerializable(typeof(List<Order>))]`, the generator writes no converter for the list itself. Put the collection in a property of a class and list the class.
+- **Collections as root types use the run-time resolver.** For `[XmlSerializable<List<Order>>]`, the generator writes no converter for the list itself. Put the collection in a property of a class and list the class.
 - **Generated converters don't cover everything reflection does.** They don't handle `[XmlDerivedType]`, `ReferenceHandler`, or custom converters on class and struct members. See [Which options generated converters apply](/guides/source-generation#which-options-generated-converters-apply).
 - **Custom converter factories often need reflection themselves.** A factory that calls `MakeGenericType` isn't safe. See [Custom converters](/guides/custom-converters#write-a-converter-factory).
 - **Schemas stay at build time.** Types generated from an `.xsd` file come with their own context, and the schema isn't read at run time. See [Generate types from an XSD](/guides/xsd-source-generation).

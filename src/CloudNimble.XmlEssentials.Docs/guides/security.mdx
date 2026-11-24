@@ -302,7 +302,7 @@ Two APIs turn that protection off:
 
 | API | What it skips |
 | --- | --- |
-| `Utf8XmlWriter.WriteRawValue` | Everything. The input is copied to the output without escaping and without checking. The `skipInputValidation` parameter has no effect: the input is never validated, whether you pass `true` or `false`. |
+| `Utf8XmlWriter.WriteRawValue` | Escaping, always. With `skipInputValidation: true`, also the check that the input is well formed where it is written. That check is on by default. |
 | `XmlWriterOptions.SkipValidation = true` | The checks on names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, and the check for unclosed elements. Values are still escaped. |
 
 Never pass text from an untrusted source to `WriteRawValue`, and never use it as an element or attribute name when `SkipValidation` is `true`.

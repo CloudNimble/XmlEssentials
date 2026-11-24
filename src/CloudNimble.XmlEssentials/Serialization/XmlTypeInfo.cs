@@ -51,7 +51,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </value>
         /// <remarks>
         /// Only a nillable type can be read from an element marked <c>xsi:nil="true"</c> or written from a <see langword="null"/> value.
-        /// How a <see langword="null"/> value is written depends on <see cref="XmlSerializerOptions.NilHandling"/>.
+        /// A <see langword="null"/> value that is written is an element marked <c>xsi:nil="true"</c>.
         /// </remarks>
         public bool IsNillable { get; }
 
@@ -150,7 +150,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="reader">The reader.</param>
         internal void CheckRoot(ref Utf8XmlReader reader)
         {
-            if (!reader.LocalNameEquals(_rootLocalName))
+            if (!XmlBoundProperty.NameEquals(ref reader, _rootLocalName, Options.PropertyNameCaseInsensitive))
             {
                 throw new XmlException($"The root element does not match '{RootName.LocalName}'.");
             }
@@ -206,17 +206,8 @@ namespace CloudNimble.Text.Xml.Serialization
                 throw new InvalidOperationException($"Type '{Type}' cannot be null.");
             }
 
-            if (Options.NilHandling is XmlNilHandling.Omit)
-            {
-                throw new InvalidOperationException("A null document root cannot be omitted.");
-            }
-
             WriteStartRoot(writer);
-            if (Options.NilHandling is XmlNilHandling.WriteXsiNil)
-            {
-                writer.WriteNilValue();
-            }
-
+            writer.WriteNilValue();
             writer.WriteEndElement();
         }
 

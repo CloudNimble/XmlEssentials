@@ -6,7 +6,7 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Advanced
     /// <summary>
     /// A position on the map. <see cref="GeoPointConverter"/> reads and writes it wherever it appears.
     /// </summary>
-    [XmlConverter(typeof(GeoPointConverter))]
+    [XmlConverter<GeoPointConverter>]
     public readonly struct GeoPoint
     {
 

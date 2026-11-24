@@ -118,7 +118,7 @@ The tree holds the root element and what's inside it. Compare the output with th
 - **Dropped:** the XML declaration, and the comments, processing instructions, and white space before and after the root element.
 - **Changed:** `<Notes></Notes>` comes back as `<Notes/>`. The tree doesn't record which form an empty element had.
 
-`Parse` returns the root as an `XmlNode?`, but it never returns `null`; cast the result to `XmlElementNode` to reach the element members. Input that isn't a well-formed document throws an `XmlException`. `Parse` takes no options and has no `Stream` overload. When you need limits, a tree without the white space, or a stream, parse with [`XmlDocument`](/guides/use-xmldocument) and call `CloneNode` on the element you want:
+`Parse` returns the root as an `XmlNode`; cast the result to `XmlElementNode` to reach the element members. Input that isn't a well-formed document throws an `XmlException`. `Parse` takes no options and has no `Stream` overload. When you need limits, a tree without the white space, or a stream, parse with [`XmlDocument`](/guides/use-xmldocument) and call `CloneNode` on the element you want:
 
 ```csharp
 XmlElementNode product;
@@ -390,7 +390,7 @@ The code produces the following output:
 What to notice:
 
 - Attributes are written in list order. A changed attribute keeps its position, and a new one goes last.
-- `SetAttribute(name, value)` matches the first attribute with that local name in any namespace. Pass the namespace URI as the third argument to match one namespace.
+- `SetAttribute(name, value)` sets the attribute with that local name in no namespace, and leaves an attribute with the same local name in another namespace as it is. Pass the namespace URI as the third argument for an attribute in a namespace.
 - A `null` value is stored as an empty string. To delete an attribute, remove it from the list.
 - `Attributes.Add` doesn't check for a duplicate name. Two attributes with the same name fail when the tree is written, with "Duplicate attribute.". `SetAttribute` avoids the problem.
 
@@ -550,7 +550,7 @@ The code produces the following output:
 The first writer adds the XML declaration itself, which is what you want in most cases. The second part shows `XmlDeclarationNode`, for when you need to state the declaration yourself.
 
 <Warning>
-`XmlDeclarationNode.WriteTo` writes its text directly, and the writer doesn't know that a declaration is already there. Write the node first, and create the writer with `OmitXmlDeclaration = true`. With a writer that adds its own declaration, the output has two declarations and isn't well formed. A declaration node also isn't something to add to an element's `Children`.
+`XmlDeclarationNode.WriteTo` writes the declaration and tells the writer that one is there, so the writer doesn't add its own, whatever `OmitXmlDeclaration` is set to. Write the node first. A declaration node can't be added to an element's `Children`: that throws an `XmlException`.
 </Warning>
 
 `XmlNode.Parse` never produces an `XmlDeclarationNode`, and a tree has no document node to hold one. The declaration of a parsed document is available on [`XmlDocument.Declaration`](/guides/use-xmldocument#read-the-xml-declaration).

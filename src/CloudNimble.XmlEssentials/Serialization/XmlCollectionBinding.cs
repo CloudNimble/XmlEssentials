@@ -95,6 +95,21 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Adds the items of a builder to the collection a member already holds.
+        /// </summary>
+        /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>
+        /// <param name="target">The collection the member holds.</param>
+        /// <returns><see langword="true"/> when the items were added; <see langword="false"/> when the collection cannot take items.</returns>
+        internal abstract bool AddItemsTo(object builder, object target);
+
+        /// <summary>
+        /// Returns whether a member declared as <paramref name="collectionType"/> can have items added to the collection it holds.
+        /// </summary>
+        /// <param name="collectionType">The declared collection type.</param>
+        /// <returns><see langword="true"/> when the declared type takes items.</returns>
+        internal abstract bool CanPopulate(Type collectionType);
+
+        /// <summary>
         /// Adds <paramref name="item"/> to a builder.
         /// </summary>
         /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>

@@ -60,9 +60,16 @@ namespace CloudNimble.Text.Xml.Serialization
         public abstract XmlTypeInfo? GetTypeInfo(Type type);
 
         /// <inheritdoc />
+        /// <remarks>
+        /// When other options ask, as they do when the context is one of several in
+        /// <see cref="XmlSerializerOptions.TypeInfoResolverChain"/>, a type whose converter exists already (a built-in
+        /// scalar, an XML value, <see cref="object"/>) is answered for the options that ask.
+        /// </remarks>
         XmlTypeInfo? IXmlTypeInfoResolver.GetTypeInfo(Type type, XmlSerializerOptions options)
         {
-            return GetTypeInfo(type);
+            return ReferenceEquals(options, Options)
+                ? GetTypeInfo(type)
+                : XmlMetadataServices.GetBuiltInTypeInfo(type, options) ?? GetTypeInfo(type);
         }
 
         #endregion

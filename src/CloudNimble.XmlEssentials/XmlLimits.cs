@@ -66,6 +66,27 @@ namespace CloudNimble.Text.Xml
             return value == 0 ? defaultValue : value;
         }
 
+        /// <summary>
+        /// Throws when <paramref name="value"/> cannot be used to indent XML.
+        /// </summary>
+        /// <param name="value">The indent character an option is being set to.</param>
+        /// <param name="paramName">The name of the caller's parameter.</param>
+        /// <exception cref="System.ArgumentOutOfRangeException">
+        /// <paramref name="value"/> is not a space, a tab, or the null character that stands for a space.
+        /// </exception>
+        /// <remarks>
+        /// Indentation is added between elements, where only white space leaves the document's content as it
+        /// was. A line end is written by <c>NewLine</c>, so that leaves the space and the tab, which is also
+        /// what <c>System.Text.Json</c> allows.
+        /// </remarks>
+        public static void ThrowIfNotIndentCharacter(char value, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(value))] string? paramName = null)
+        {
+            if (value is not (' ' or '\t' or '\0'))
+            {
+                throw new System.ArgumentOutOfRangeException(paramName, value, "The indent character must be a space or a tab.");
+            }
+        }
+
         #endregion
 
     }

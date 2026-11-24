@@ -14,7 +14,12 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Fields
 
         private readonly bool _acceptsList;
-        private readonly Type _collectionType;
+
+        /// <summary>
+        /// Creates the declared collection from the items read, or null when the list or an array of them is the collection.
+        /// </summary>
+        private readonly Func<List<TElement>, object>? _create;
+
         private readonly bool _isArray;
         private readonly XmlTypeInfo<TElement>? _itemInfo;
         private readonly XmlValueConverter<TElement>? _itemValueConverter;
@@ -34,9 +39,9 @@ namespace CloudNimble.Text.Xml.Serialization
         public XmlCollectionBinding(Type collectionType, bool wrapped, byte[] utf8ItemName, XmlTypeInfo itemTypeInfo, bool mixed)
             : base(wrapped, utf8ItemName, itemTypeInfo, mixed)
         {
-            _collectionType = collectionType;
             _isArray = collectionType.IsArray;
             _acceptsList = collectionType.IsAssignableFrom(typeof(List<TElement>));
+            _create = _isArray || _acceptsList ? null : XmlCollectionShape.CreateCollectionFactory<TElement>(collectionType);
             _itemInfo = itemTypeInfo as XmlTypeInfo<TElement>;
             _itemValueConverter = _itemInfo?.Converter as XmlValueConverter<TElement>;
         }
@@ -49,6 +54,18 @@ namespace CloudNimble.Text.Xml.Serialization
         internal override void AddItem(object builder, object? item)
         {
             ((List<TElement>)builder).Add((TElement)item!);
+        }
+
+        /// <inheritdoc />
+        internal override bool AddItemsTo(object builder, object target)
+        {
+            return XmlCollectionShape.AddItems((List<TElement>)builder, target);
+        }
+
+        /// <inheritdoc />
+        internal override bool CanPopulate(Type collectionType)
+        {
+            return !Mixed && XmlCollectionShape.CanPopulate<TElement>(collectionType);
         }
 
         /// <inheritdoc />
@@ -66,7 +83,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return list.ToArray();
             }
 
-            return _acceptsList ? list : XmlCollectionShape.Populate(_collectionType, typeof(TElement), list);
+            return _create is null ? list : _create(list);
         }
 
         /// <inheritdoc />
@@ -125,7 +142,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 _itemInfo!.Converter.Write(writer, item, _itemInfo.Options);
             }
-            else if (options.NilHandling is XmlNilHandling.WriteXsiNil)
+            else
             {
                 writer.WriteNilValue();
             }

@@ -1596,6 +1596,11 @@ namespace CloudNimble.Text.Xml
             var state = new XmlReaderState(options);
             var scope = default(XmlReaderState);
             var values = new List<TValue?>();
+
+            // The values of one document share one set of references. Each top-level value is a document of
+            // its own, and gets its own.
+            var handler = xmlTypeInfo.Options.ReferenceHandler;
+            var shared = topLevelValues ? null : handler?.CreateResolver();
             var buffer = ArrayPool<byte>.Shared.Rent(XmlLimits.Resolve(xmlTypeInfo.Options.DefaultBufferSize, XmlLimits.DefaultBufferSize));
             var length = 0;
             try
@@ -1619,8 +1624,8 @@ namespace CloudNimble.Text.Xml
                     try
                     {
                         used = topLevelValues
-                            ? ReadAvailableDocuments(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, options, values)
-                            : ReadAvailableChildren(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, ref state, ref scope, values);
+                            ? ReadAvailableDocuments(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, options, handler, values)
+                            : ReadAvailableChildren(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, ref state, ref scope, shared, values);
                     }
                     catch (XmlException exception)
                     {

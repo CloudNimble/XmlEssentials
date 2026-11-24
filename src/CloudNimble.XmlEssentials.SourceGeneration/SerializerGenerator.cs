@@ -34,7 +34,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             var contextResults = context.SyntaxProvider.ForAttributeWithMetadataName(
-                SymbolHelpers.SerializableAttribute,
+                SymbolHelpers.SerializableAttributeMetadataName,
                 static (node, _) => node is ClassDeclarationSyntax,
                 static (syntaxContext, token) => TransformContext(syntaxContext, token));
             context.RegisterSourceOutput(contextResults.Collect(), static (production, results) => EmitContexts(production, results));

@@ -177,8 +177,8 @@ One default differs from what the proposal's examples show. A collection member 
 | `IList<XmlDataConverter> Converters` | `IList<XmlConverter> Converters` | Renamed. |
 | `XmlDataSerializerContext? TypeInfoResolver` | `IXmlTypeInfoResolver? TypeInfoResolver` | Different shape. The property takes the interface that `XmlSerializerContext` implements, as `JsonSerializerOptions.TypeInfoResolver` takes `IJsonTypeInfoResolver`. `TypeInfoResolverChain` combines several. |
 | | `Default`, `Web`, `Strict`, the constructors that take `XmlSerializerDefaults` or another options instance, `MakeReadOnly`, `IsReadOnly`, `GetTypeInfo`, `TryGetTypeInfo`, `GetConverter` | Added. Counterparts of the `JsonSerializerOptions` members. |
-| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DictionaryKeyPolicy`, `PropertyNameCaseInsensitive`, `DefaultIgnoreCondition`, `PreferredObjectCreationHandling`, `ReferenceHandler`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`, `UnknownTypeHandling`, `AllowDuplicateProperties`, `AllowOutOfOrderMetadataProperties`, `ReadCommentHandling`, `DefaultBufferSize` | Added. Counterparts of the `JsonSerializerOptions` members. |
-| | `DefaultPropertyMapping`, `NilHandling`, `EnumHandling`, `InferClosedTypePolymorphism`, `WhitespaceHandling`, `XmlVersion`, `EmitByteOrderMark`, `MaxAttributeCount`, `MaxCommentByteCount`, `MaxDocumentByteCount`, `MaxNameByteCount`, `MaxTextByteCount` | Added. XML-specific settings and input limits. |
+| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DictionaryKeyPolicy`, `PropertyNameCaseInsensitive`, `DefaultIgnoreCondition`, `ReferenceHandler`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`, `AllowDuplicateProperties`, `ReadCommentHandling`, `DefaultBufferSize` | Added. Counterparts of the `JsonSerializerOptions` members. |
+| | `DefaultPropertyMapping`, `EnumHandling`, `InferClosedTypePolymorphism`, `WhitespaceHandling`, `XmlVersion`, `EmitByteOrderMark`, `MaxAttributeCount`, `MaxCommentByteCount`, `MaxDocumentByteCount`, `MaxNameByteCount`, `MaxTextByteCount` | Added. XML-specific settings and input limits. |
 
 ## Serializer
 
@@ -224,9 +224,9 @@ The overloads that take options use reflection and are marked with `RequiresUnre
 | `abstract class XmlDataSerializerContext` | [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) | Renamed. Implements `IXmlTypeInfoResolver`. Has a protected constructor that takes options. |
 | `Options` | `Options` | Same. |
 | `abstract XmlTypeInfo? GetTypeInfo(Type type)` | The same member | Same. |
-| `XmlDataSerializableAttribute(Type)` with `TypeInfoPropertyName` | `XmlSerializableAttribute(Type)` with `TypeInfoPropertyName` | Renamed. Adds `Type` and `GenerationMode`. |
+| `XmlDataSerializableAttribute(Type)` with `TypeInfoPropertyName` | `XmlSerializableAttribute<T>` with `TypeInfoPropertyName` | Renamed, and the type is a type argument, not a constructor argument. Adds `GenerationMode`. |
 | `XmlDataSourceGenerationOptionsAttribute` with `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, `IncludeFields`, `IgnoreReadOnlyProperties`, `IgnoreReadOnlyFields` | `XmlSourceGenerationOptionsAttribute` with the same six properties | Renamed. |
-| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `DiscriminatorPlacement`, `EmitByteOrderMark`, `EnumHandling`, `GenerationMode`, `MaxDepth`, `NilHandling`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `UseStringEnumConverter`, `XmlVersion` on the options attribute | Added. |
+| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `DiscriminatorPlacement`, `EmitByteOrderMark`, `EnumHandling`, `GenerationMode`, `MaxDepth`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `UseStringEnumConverter`, `XmlVersion` on the options attribute | Added. |
 | | `XmlSourceGenerationMode`, `XmlKnownNamingPolicy`, `XmlMetadataServices`, `DefaultXmlTypeInfoResolver`, `XmlPropertyInfo` | Added. |
 
 ## Beyond the proposal
@@ -329,11 +329,11 @@ while (end < xml.Length)
 The code produces the following output:
 
 ```text
-Token: StartElement, Depth: 1, Consumed: 17
-Token: StartElement, Depth: 2, Consumed: 23
+Token: StartElement, Depth: 0, Consumed: 17
+Token: StartElement, Depth: 1, Consumed: 23
 Token: Text, Depth: 2, Consumed: 8
 Token: EndElement, Depth: 1, Consumed: 15
-Token: StartElement, Depth: 2, Consumed: 21
+Token: StartElement, Depth: 1, Consumed: 21
 Token: Text, Depth: 2, Consumed: 5
 Token: EndElement, Depth: 1, Consumed: 12
 Token: EndElement, Depth: 0, Consumed: 20
@@ -532,7 +532,7 @@ The method calls are the proposal's, and the XML is the proposal's expected outp
 ### Source generation
 
 ```csharp MigrationXmlContext.cs
-[XmlSerializable(typeof(OrderLine))]
+[XmlSerializable<OrderLine>]
 internal sealed partial class MigrationXmlContext : XmlSerializerContext
 {
 }

@@ -22,12 +22,12 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(ReadTokensAndValues.Run).Should().Be(
                 "XmlDeclaration (depth 0)\n" +
-                "StartElement Order (depth 1)\n" +
-                "StartElement Item (depth 2)\n" +
+                "StartElement Order (depth 0)\n" +
+                "StartElement Item (depth 1)\n" +
                 "Text \"Keyboard\" (depth 2)\n" +
                 "EndElement Item (depth 1)\n" +
                 "StartElement Gift (depth 1)\n" +
-                "StartElement Note (depth 2)\n" +
+                "StartElement Note (depth 1)\n" +
                 "CData \"Leave at <door>\" (depth 2)\n" +
                 "EndElement Note (depth 1)\n" +
                 "EndElement Order (depth 0)");
@@ -325,8 +325,11 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample24_WriteNamespacesAndMarkup_WriteMarkup()
         {
             SampleOutput.Capture(WriteNamespacesAndMarkup.WriteMarkup).Should().Be(
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?><?xml-stylesheet href=\"order.xsl\" type=\"text/xsl\"?><!-- Exported by the order service -->\n" +
-                "<Order><!-- One line per item -->\n" +
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<?xml-stylesheet href=\"order.xsl\" type=\"text/xsl\"?>\n" +
+                "<!-- Exported by the order service -->\n" +
+                "<Order>\n" +
+                "  <!-- One line per item -->\n" +
                 "  <Script><![CDATA[if (a < b && b > c) { ship(); }]]></Script>\n" +
                 "  <Address><City>London</City><Country>UK</Country></Address>\n" +
                 "</Order>");

@@ -45,6 +45,11 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
+        /// Gets the document this element is a cursor into, or <see langword="null"/> for a default element.
+        /// </summary>
+        internal XmlDocument? Document => _document;
+
+        /// <summary>
         /// Gets the number of attributes on this element.
         /// </summary>
         /// <value>

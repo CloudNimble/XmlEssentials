@@ -4,7 +4,7 @@ Apply `[XmlSourceGenerationOptions]` to a source-generated context to set the op
 [XmlSourceGenerationOptions(
     OmitXmlDeclaration = true,
     PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class CamelCaseOrderXmlContext : XmlSerializerContext
 {
 }

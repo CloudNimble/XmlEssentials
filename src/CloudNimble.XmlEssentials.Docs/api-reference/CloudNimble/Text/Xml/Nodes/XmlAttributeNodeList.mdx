@@ -1,6 +1,6 @@
 ---
 title: XmlAttributeNodeList
-description: "An ordered list of [XmlAttributeNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode) instances on an element."
+description: "Represents the ordered list of attributes of an [XmlElementNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlElementNode). This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList', 'CloudNimble.Text.Xml.Nodes', 'class', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNode', 'CloudNimble.Text.Xml.Nodes.XmlElementNode', 'CloudNimble.Text.Xml.Nodes.XmlNodeList']
@@ -20,7 +20,7 @@ CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList
 
 ## Summary
 
-An ordered list of [XmlAttributeNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlAttributeNode) instances on an element.
+Represents the ordered list of attributes of an [XmlElementNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlElementNode). This class cannot be inherited.
 
 ## Usage
 
@@ -48,6 +48,13 @@ The code produces the following output:
 You don't create a list. Every `XmlElementNode` has one.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
+
+## Remarks
+
+An attribute can belong to one list at a time. Adding, inserting, or assigning an attribute that
+already has a parent throws an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException), and [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) throws an
+[ArgumentNullException](https://learn.microsoft.com/dotnet/api/system.argumentnullexception). An attribute that is removed or replaced has no parent afterward.
+The list does not check for duplicate names.
 
 ## Considerations
 
@@ -110,7 +117,7 @@ Type: `CloudNimble.Text.Xml.Nodes.XmlAttributeNode`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> this[]
 
-Gets the first attribute with *localName*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+Gets the first attribute that has the specified local name, in any namespace.
 
 #### Syntax
 
@@ -121,10 +128,17 @@ public CloudNimble.Text.Xml.Nodes.XmlAttributeNode this { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlAttributeNode?`
+The first attribute that has the specified local name, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if there is none.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *localName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> this[]
 
-Gets the first attribute with *localName* in *namespaceUri*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+Gets the first attribute that has the specified local name and namespace URI.
 
 #### Syntax
 
@@ -135,6 +149,14 @@ public CloudNimble.Text.Xml.Nodes.XmlAttributeNode this { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Nodes.XmlAttributeNode?`
+The first attribute that has the specified local name and namespace URI, or
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if there is none.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *localName* or *namespaceUri* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 
 ## Methods
 

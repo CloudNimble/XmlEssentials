@@ -39,14 +39,25 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 foreach (var type in context.Types)
                 {
-                    builder.Append(indent).Append("[XmlSerializable(typeof(").Append(type.ClrTypeName).AppendLine("))]");
+                    // A type the runtime library reads and writes is found through GetTypeInfo. It is not a root.
+                    if (type.Kind == 5)
+                    {
+                        continue;
+                    }
+
+                    builder.Append(indent).Append("[XmlSerializable<").Append(type.ClrTypeName).AppendLine(">]");
                 }
             }
 
             builder.Append(indent).Append(context.Accessibility).Append(" partial class ").Append(context.Name);
             if (context.EmitInheritance)
             {
-                builder.Append(" : XmlSerializerContext");
+                builder.Append(" : XmlSerializerContext, IXmlTypeInfoResolver");
+            }
+            else
+            {
+                // The context answers the resolver interface itself, so that it can answer for the options that ask.
+                builder.Append(" : IXmlTypeInfoResolver");
             }
 
             builder.AppendLine();
@@ -85,25 +96,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 builder.Append(indent).Append("    /// <summary>").AppendLine();
                 builder.Append(indent).Append("    /// Gets type info for <see cref=\"").Append(type.ClrTypeName).Append("\"/>.").AppendLine();
                 builder.Append(indent).Append("    /// </summary>").AppendLine();
-                builder.Append(indent).Append("    public XmlTypeInfo<").Append(type.ClrTypeName).Append("> ").Append(type.PropertyName).AppendLine();
+                builder.Append(indent).Append(type.Kind == 5 ? "    private XmlTypeInfo<" : "    public XmlTypeInfo<").Append(type.ClrTypeName).Append("> ").Append(type.PropertyName).AppendLine();
                 builder.Append(indent).AppendLine("    {");
                 builder.Append(indent).AppendLine("        get");
                 builder.Append(indent).AppendLine("        {");
                 builder.Append(indent).Append("            return _").Append(type.PropertyName).Append(" ??= ");
-                if (type.EmitSerialization)
-                {
-                    builder.Append("XmlMetadataServices.CreateValueInfo<").Append(type.ClrTypeName).Append(">(Options, new ").Append(type.PropertyName).Append("XmlConverter());");
-                }
-                else if (type.Kind == 3)
-                {
-                    builder.Append("XmlMetadataServices.CreateValueInfo<").Append(type.ClrTypeName).Append(">(Options, XmlMetadataServices.CreateEnumConverter<").Append(type.ClrTypeName).Append(">());");
-                }
-                else
-                {
-                    builder.Append("(XmlTypeInfo<").Append(type.ClrTypeName).Append(">)(DefaultXmlTypeInfoResolver.Instance.GetTypeInfo(typeof(").Append(type.ClrTypeName).Append("), Options)");
-                    builder.Append(" ?? throw new NotSupportedException(\"The type '").Append(type.ClrTypeName).Append("' is not supported.\"))");
-                    builder.Append(";");
-                }
+                builder.Append(CreateExpression(type, "Options")).Append(';');
 
                 builder.AppendLine();
                 builder.Append(indent).AppendLine("        }");
@@ -119,7 +117,23 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 builder.Append(indent).Append("        if (type == typeof(").Append(type.ClrTypeName).Append(")) return ").Append(type.PropertyName).AppendLine(";");
             }
 
-            builder.Append(indent).AppendLine("        return DefaultXmlTypeInfoResolver.Instance.GetTypeInfo(type, Options);");
+            // A type the context neither lists nor reaches is answered only when its converter exists already. Anything else
+            // is left to the next resolver, so the context never maps the members of a type through reflection.
+            builder.Append(indent).AppendLine("        return XmlMetadataServices.GetBuiltInTypeInfo(type, Options);");
+            builder.Append(indent).AppendLine("    }");
+            builder.AppendLine();
+            // Other options ask when the context is one of several resolvers. Type info belongs to the options
+            // it was created for, so each type is created again for the options that ask; they keep it.
+            builder.Append(indent).AppendLine("    /// <inheritdoc />");
+            builder.Append(indent).AppendLine("    XmlTypeInfo? IXmlTypeInfoResolver.GetTypeInfo(Type type, XmlSerializerOptions options)");
+            builder.Append(indent).AppendLine("    {");
+            builder.Append(indent).AppendLine("        if (ReferenceEquals(options, Options)) return GetTypeInfo(type);");
+            foreach (var type in context.Types)
+            {
+                builder.Append(indent).Append("        if (type == typeof(").Append(type.ClrTypeName).Append(")) return ").Append(CreateExpression(type, "options")).AppendLine(";");
+            }
+
+            builder.Append(indent).AppendLine("        return XmlMetadataServices.GetBuiltInTypeInfo(type, options);");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
             builder.Append(indent).AppendLine("    private static XmlSerializerOptions Apply(XmlSerializerOptions? options)");
@@ -153,11 +167,55 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 {
                     builder.Append(indent).AppendLine("        seeded.IncludeFields = true;");
                 }
+
+                if (context.Options.RespectNullableAnnotations)
+                {
+                    builder.Append(indent).AppendLine("        seeded.RespectNullableAnnotations = true;");
+                }
+
+                if (context.Options.PreferredObjectCreationHandling != 0)
+                {
+                    builder.Append(indent).Append("        seeded.PreferredObjectCreationHandling = (XmlObjectCreationHandling)").Append(context.Options.PreferredObjectCreationHandling).AppendLine(";");
+                }
+
+                if (context.Options.UnknownTypeHandling != 0)
+                {
+                    builder.Append(indent).Append("        seeded.UnknownTypeHandling = (XmlUnknownTypeHandling)").Append(context.Options.UnknownTypeHandling).AppendLine(";");
+                }
+
+                // The generated converters read the ignore condition from the options when they run, and the mapping
+                // is checked against them, so the seed sets both.
+                if (context.Options.DefaultIgnoreCondition != 0)
+                {
+                    builder.Append(indent).Append("        seeded.DefaultIgnoreCondition = (XmlIgnoreCondition)").Append(context.Options.DefaultIgnoreCondition).AppendLine(";");
+                }
+
+                if (context.Options.DefaultPropertyMapping != 0)
+                {
+                    builder.Append(indent).Append("        seeded.DefaultPropertyMapping = (XmlPropertyMapping)").Append(context.Options.DefaultPropertyMapping).AppendLine(";");
+                }
             }
 
             builder.Append(indent).AppendLine("        return seeded;");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
+            EmitVerified(builder, indent, context);
+
+            // A number that is not finite is refused when NumberHandling is Strict, as the built-in converters refuse it.
+            foreach (var number in new[] { "float", "double" })
+            {
+                builder.Append(indent).Append("    private static ").Append(number).Append(" __Finite(").Append(number).AppendLine(" value, XmlSerializerOptions options)");
+                builder.Append(indent).AppendLine("    {");
+                builder.Append(indent).Append("        if (options.NumberHandling is XmlNumberHandling.Strict && !").Append(number).AppendLine(".IsFinite(value))");
+                builder.Append(indent).AppendLine("        {");
+                builder.Append(indent).AppendLine("            throw new XmlException(\"Named floating-point literals are not allowed when NumberHandling is Strict.\");");
+                builder.Append(indent).AppendLine("        }");
+                builder.AppendLine();
+                builder.Append(indent).AppendLine("        return value;");
+                builder.Append(indent).AppendLine("    }");
+                builder.AppendLine();
+            }
+
             // The type info of a member's type is the same for every object read with the same options, so it
             // is resolved once and kept. The pair is replaced as one object, so a reader never sees the
             // type info of one options instance next to another.
@@ -178,7 +236,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.Append(indent).AppendLine("        var held = __Held<T>.Last;");
             builder.Append(indent).AppendLine("        if (held is null || !ReferenceEquals(held.Options, options))");
             builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            held = new __Held<T>(options, (XmlTypeInfo<T>)(options.TypeInfoResolver!.GetTypeInfo(typeof(T), options) ?? throw new NotSupportedException()));");
+            builder.Append(indent).AppendLine("            held = new __Held<T>(options, options.GetTypeInfo<T>());");
             builder.Append(indent).AppendLine("            __Held<T>.Last = held;");
             builder.Append(indent).AppendLine("        }");
             builder.AppendLine();
@@ -217,49 +275,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.Append(indent).AppendLine("            }");
             builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.Text or XmlTokenType.CData)");
             builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                value = reader.GetString();");
-            builder.Append(indent).AppendLine("            }");
-            builder.Append(indent).AppendLine("        }");
-            builder.Append(indent).AppendLine("        return value;");
-            builder.Append(indent).AppendLine("    }");
-            builder.AppendLine();
-            builder.Append(indent).AppendLine("    private static int ReadInt32Element(ref Utf8XmlReader reader)");
-            builder.Append(indent).AppendLine("    {");
-            builder.Append(indent).AppendLine("        if (reader.IsEmptyElement)");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            return 0;");
-            builder.Append(indent).AppendLine("        }");
-            builder.Append(indent).AppendLine("        var value = 0;");
-            builder.Append(indent).AppendLine("        while (reader.Read())");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.EndElement)");
-            builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                break;");
-            builder.Append(indent).AppendLine("            }");
-            builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.Text or XmlTokenType.CData)");
-            builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                value = reader.GetInt32();");
-            builder.Append(indent).AppendLine("            }");
-            builder.Append(indent).AppendLine("        }");
-            builder.Append(indent).AppendLine("        return value;");
-            builder.Append(indent).AppendLine("    }");
-            builder.AppendLine();
-            builder.Append(indent).AppendLine("    private static decimal ReadDecimalElement(ref Utf8XmlReader reader)");
-            builder.Append(indent).AppendLine("    {");
-            builder.Append(indent).AppendLine("        if (reader.IsEmptyElement)");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            return 0;");
-            builder.Append(indent).AppendLine("        }");
-            builder.Append(indent).AppendLine("        decimal value = 0;");
-            builder.Append(indent).AppendLine("        while (reader.Read())");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.EndElement)");
-            builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                break;");
-            builder.Append(indent).AppendLine("            }");
-            builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.Text or XmlTokenType.CData)");
-            builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                value = reader.GetDecimal();");
+            builder.Append(indent).AppendLine("                value += reader.GetString();");
             builder.Append(indent).AppendLine("            }");
             builder.Append(indent).AppendLine("        }");
             builder.Append(indent).AppendLine("        return value;");
@@ -296,7 +312,104 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="policy">The policy value.</param>
         internal static void EmitNaming(StringBuilder builder, string indent, string property, int policy)
         {
-            var value = policy switch
+            var value = NamingPolicy(policy);
+            if (value is null)
+            {
+                return;
+            }
+
+            builder.Append(indent).Append("        seeded.").Append(property).Append(" = ").Append(value).AppendLine(";");
+        }
+
+        /// <summary>
+        /// Emits the method that creates type info for a generated converter, after checking that the options
+        /// of the context agree with the settings the converters were compiled with.
+        /// </summary>
+        /// <param name="builder">The source.</param>
+        /// <param name="indent">The type indent.</param>
+        /// <param name="context">The context.</param>
+        /// <remarks>
+        /// The names and the choice of members are compiled in, and the scalar types named here are read and
+        /// written without a converter. Options that ask for something else are reported when the type info
+        /// is first created, instead of producing a document the reflection resolver would not.
+        /// </remarks>
+        internal static void EmitVerified(StringBuilder builder, string indent, ContextSpec context)
+        {
+            var direct = new System.Collections.Generic.List<string>();
+            foreach (var type in context.Types)
+            {
+                if (!type.EmitSerialization)
+                {
+                    continue;
+                }
+
+                foreach (var member in type.Members)
+                {
+                    var name = member.IsCollection ? member.ItemTypeName : member.ClrTypeName;
+                    var core = name.EndsWith("?", System.StringComparison.Ordinal) ? name.Substring(0, name.Length - 1) : name;
+                    if (ConverterEmitter.IsLeafScalar(core) && !direct.Contains(core))
+                    {
+                        direct.Add(core);
+                    }
+                }
+            }
+
+            builder.Append(indent).AppendLine("    private static XmlTypeInfo<T> __Verified<T>(XmlSerializerOptions options, XmlConverter<T> converter)");
+            builder.Append(indent).AppendLine("    {");
+            builder.Append(indent).Append("        XmlMetadataServices.VerifyGeneratedOptions(options, ")
+                .Append(NamingPolicy(TypeGraphWalker.ElementPolicy(context.Options)) ?? "null").Append(", ")
+                .Append(NamingPolicy(TypeGraphWalker.AttributePolicy(context.Options)) ?? "null").Append(", ")
+                .Append("(XmlPropertyMapping)").Append(context.Options.DefaultPropertyMapping).Append(", ")
+                .Append(context.Options.IncludeFields ? "true" : "false")
+                .Append(", typeof(T)");
+            foreach (var name in direct)
+            {
+                builder.Append(", typeof(").Append(name).Append(')');
+            }
+
+            builder.AppendLine(");");
+            builder.Append(indent).AppendLine("        return XmlMetadataServices.CreateValueInfo<T>(options, converter);");
+            builder.Append(indent).AppendLine("    }");
+            builder.AppendLine();
+        }
+
+        /// <summary>
+        /// Returns the expression that creates type info for <paramref name="type"/>, bound to the given options.
+        /// </summary>
+        /// <param name="type">The type spec.</param>
+        /// <param name="options">The expression for the options: the context's own, or the ones that ask.</param>
+        /// <returns>The expression, typed as the type info of the type.</returns>
+        internal static string CreateExpression(TypeSpec type, string options)
+        {
+            if (type.EmitSerialization)
+            {
+                return "__Verified(" + options + ", new " + type.PropertyName + "XmlConverter())";
+            }
+
+            if (type.Factory.Length > 0)
+            {
+                // A collection, a dictionary, an enumeration, or a nullable value: every type argument is
+                // named here, so nothing is closed over a type at run time, which Native AOT cannot do.
+                return type.Factory.Replace("(Options)", "(" + options + ")");
+            }
+
+            if (type.Kind == 3)
+            {
+                return "XmlMetadataServices.CreateEnumInfo<" + type.ClrTypeName + ">(" + options + ")";
+            }
+
+            return "(XmlTypeInfo<" + type.ClrTypeName + ">)(DefaultXmlTypeInfoResolver.Instance.GetTypeInfo(typeof(" + type.ClrTypeName + "), " + options + ")"
+                + " ?? throw new NotSupportedException(\"The type '" + type.ClrTypeName + "' is not supported.\"))";
+        }
+
+        /// <summary>
+        /// Returns the C# expression for a known naming policy.
+        /// </summary>
+        /// <param name="policy">The policy value.</param>
+        /// <returns>The expression, or null when no policy is set.</returns>
+        internal static string? NamingPolicy(int policy)
+        {
+            return policy switch
             {
                 1 => "XmlNamingPolicy.CamelCase",
                 2 => "XmlNamingPolicy.SnakeCaseLower",
@@ -306,12 +419,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 6 => "XmlNamingPolicy.PascalCase",
                 _ => null,
             };
-            if (value is null)
-            {
-                return;
-            }
-
-            builder.Append(indent).Append("        seeded.").Append(property).Append(" = ").Append(value).AppendLine(";");
         }
 
         /// <summary>

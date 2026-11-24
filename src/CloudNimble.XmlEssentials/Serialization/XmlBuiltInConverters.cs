@@ -2,6 +2,9 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using CloudNimble.Text.Xml.Nodes;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -13,6 +16,24 @@ namespace CloudNimble.Text.Xml.Serialization
     {
 
         #region Fields
+
+        /// <summary>
+        /// The converters for values that are not one text value and not mapped member by member: values that
+        /// are XML already, and <see cref="object"/>.
+        /// </summary>
+        /// <remarks>
+        /// They are kept apart from the scalar converters because a scalar can be an attribute or text, and
+        /// these cannot. They are looked up before the collection converters because an
+        /// <see cref="XmlElementNode"/> enumerates its children.
+        /// </remarks>
+        private static readonly FrozenDictionary<Type, XmlConverter> s_contentConverters = new Dictionary<Type, XmlConverter>
+        {
+            [typeof(object)] = XmlRuntimeObjectConverter.Instance,
+            [typeof(XmlDocument)] = XmlDocumentFragmentConverter.Instance,
+            [typeof(XmlElement)] = XmlElementFragmentConverter.Instance,
+            [typeof(XmlElementNode)] = XmlNodeFragmentConverter<XmlElementNode>.Instance,
+            [typeof(XmlNode)] = XmlNodeFragmentConverter<XmlNode>.Instance,
+        }.ToFrozenDictionary();
 
         private static readonly FrozenDictionary<Type, XmlConverter> s_converters = new Dictionary<Type, XmlConverter>
         {
@@ -39,6 +60,12 @@ namespace CloudNimble.Text.Xml.Serialization
             [typeof(byte[])] = XmlByteArrayConverter.Instance,
             [typeof(Uri)] = XmlUriConverter.Instance,
             [typeof(Version)] = XmlVersionConverter.Instance,
+            [typeof(Int128)] = XmlInt128Converter.Instance,
+            [typeof(UInt128)] = XmlUInt128Converter.Instance,
+            [typeof(Half)] = XmlHalfConverter.Instance,
+            [typeof(BigInteger)] = XmlBigIntegerConverter.Instance,
+            [typeof(Memory<byte>)] = XmlMemoryConverter.Instance,
+            [typeof(ReadOnlyMemory<byte>)] = XmlReadOnlyMemoryConverter.Instance,
             [typeof(bool?)] = new XmlNullableValueConverter<bool>(XmlBooleanConverter.Instance),
             [typeof(byte?)] = new XmlNullableValueConverter<byte>(XmlByteConverter.Instance),
             [typeof(sbyte?)] = new XmlNullableValueConverter<sbyte>(XmlSByteConverter.Instance),
@@ -58,11 +85,33 @@ namespace CloudNimble.Text.Xml.Serialization
             [typeof(DateOnly?)] = new XmlNullableValueConverter<DateOnly>(XmlDateOnlyConverter.Instance),
             [typeof(TimeOnly?)] = new XmlNullableValueConverter<TimeOnly>(XmlTimeOnlyConverter.Instance),
             [typeof(TimeSpan?)] = new XmlNullableValueConverter<TimeSpan>(XmlTimeSpanConverter.Instance),
+            [typeof(Int128?)] = new XmlNullableValueConverter<Int128>(XmlInt128Converter.Instance),
+            [typeof(UInt128?)] = new XmlNullableValueConverter<UInt128>(XmlUInt128Converter.Instance),
+            [typeof(Half?)] = new XmlNullableValueConverter<Half>(XmlHalfConverter.Instance),
+            [typeof(BigInteger?)] = new XmlNullableValueConverter<BigInteger>(XmlBigIntegerConverter.Instance),
+            [typeof(Memory<byte>?)] = new XmlNullableValueConverter<Memory<byte>>(XmlMemoryConverter.Instance),
+            [typeof(ReadOnlyMemory<byte>?)] = new XmlNullableValueConverter<ReadOnlyMemory<byte>>(XmlReadOnlyMemoryConverter.Instance),
         }.ToFrozenDictionary();
 
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Returns whether the built-in converter for <paramref name="type"/> exists already, so that getting it
+        /// closes no generic type at run time.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns>
+        /// <see langword="true"/> for the built-in scalars and their nullable forms, the XML values, and
+        /// <see cref="object"/>. <see langword="false"/> for enumerations, collections, dictionaries, the
+        /// nullable form of any other value type, and types mapped member by member: each of those needs a
+        /// converter made for it.
+        /// </returns>
+        internal static bool IsReadyMade(Type type)
+        {
+            return s_converters.ContainsKey(type) || s_contentConverters.ContainsKey(type);
+        }
 
         /// <summary>
         /// Returns whether <paramref name="type"/> is a built-in scalar (or nullable scalar or enum) that can be
@@ -119,6 +168,11 @@ namespace CloudNimble.Text.Xml.Serialization
                 return (XmlConverter)Activator.CreateInstance(typeof(XmlEnumConverter<>).MakeGenericType(type))!;
             }
 
+            if (s_contentConverters.TryGetValue(type, out var content))
+            {
+                return content;
+            }
+
             if (XmlCollectionConverterFactory.Instance.CanConvert(type))
             {
                 return XmlCollectionConverterFactory.Instance.CreateConverter(type, options);
@@ -138,6 +192,13 @@ namespace CloudNimble.Text.Xml.Serialization
         internal static string GetXmlTypeName(Type type)
         {
             var root = Nullable.GetUnderlyingType(type) ?? type;
+            if (root.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false) && root.Name.Contains("AnonymousType", StringComparison.Ordinal))
+            {
+                // The compiler names an anonymous type with characters no XML name may hold, and the name
+                // changes from one build to the next. Every anonymous type shares this one.
+                return "AnonymousType";
+            }
+
             if (root.IsArray)
             {
                 return root == typeof(byte[])

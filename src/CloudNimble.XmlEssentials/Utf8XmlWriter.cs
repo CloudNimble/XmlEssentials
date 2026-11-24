@@ -38,8 +38,8 @@ namespace CloudNimble.Text.Xml
     /// </para>
     /// <para>
     /// <see cref="Dispose"/> and <see cref="DisposeAsync"/> flush the output. If elements are still open and
-    /// <see cref="XmlWriterOptions.SkipValidation"/> is <see langword="false"/>, they throw an <see cref="XmlException"/>
-    /// instead and do not flush.
+    /// <see cref="XmlWriterOptions.SkipValidation"/> is <see langword="false"/>, they then throw an
+    /// <see cref="XmlException"/>, so the output written so far is not lost with the error.
     /// </para>
     /// </remarks>
     public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
@@ -193,12 +193,12 @@ namespace CloudNimble.Text.Xml
 
             try
             {
+                // What has been written goes out first, so the caller has both the error and the output so far.
+                Flush();
                 if (!_options.SkipValidation && _depth > 0)
                 {
                     throw new XmlException("The document has unclosed elements.");
                 }
-
-                Flush();
             }
             finally
             {
@@ -217,12 +217,11 @@ namespace CloudNimble.Text.Xml
 
             try
             {
+                await FlushAsync().ConfigureAwait(false);
                 if (!_options.SkipValidation && _depth > 0)
                 {
                     throw new XmlException("The document has unclosed elements.");
                 }
-
-                await FlushAsync().ConfigureAwait(false);
             }
             finally
             {
@@ -2908,6 +2907,8 @@ namespace CloudNimble.Text.Xml
                 EnsureDeclaration();
             }
 
+            // A comment between elements gets a line of its own, as an element does.
+            WriteElementIndent(_depth);
             WriteRaw("<!--"u8);
             WriteRaw(utf8Value);
             WriteRaw("-->"u8);
@@ -2944,23 +2945,35 @@ namespace CloudNimble.Text.Xml
 
         /// <summary>
         /// Writes the input as XML content, with the input specified as a read-only span of UTF-8 bytes. The
-        /// input is copied to the output without escaping and without validation.
+        /// input is copied to the output without escaping.
         /// </summary>
         /// <param name="utf8Xml">The UTF-8 encoded XML text to write.</param>
-        /// <param name="skipInputValidation">This parameter is not used. The input is never validated, whether the value is <see langword="true"/> or <see langword="false"/>. The default is <see langword="false"/>.</param>
+        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
+        /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The caller is responsible for the input being well formed in the place where it is written. Inside an
-        /// element, the input counts as text of that element, so the element's end tag is not indented. At the
-        /// document level, the writer does not write the XML declaration before the input.
+        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
+        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
+        /// throws if the document would not be well formed: inside an element the input must be element content
+        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
+        /// mark, and at the document level it must be comments, processing instructions, white space, and at
+        /// most the one root element. Inside an element, the input counts as text of that element, so the
+        /// element's end tag is not indented. At the document level, the writer does not write the XML
+        /// declaration before the input.
         /// </remarks>
         public void WriteRawValue(ReadOnlySpan<byte> utf8Xml, bool skipInputValidation = false)
         {
-            _ = skipInputValidation;
             ThrowIfDisposed();
-            if (_depth > 0)
+            if (!skipInputValidation && !_options.SkipValidation)
+            {
+                ValidateRawValue(utf8Xml);
+            }
+
+            if (_depth > 0 && !_inAttribute)
             {
                 CloseStartTag();
                 MarkText();
@@ -2971,17 +2984,25 @@ namespace CloudNimble.Text.Xml
 
         /// <summary>
         /// Writes the input as XML content, with the input specified as a read-only span of characters. The
-        /// input is copied to the output without escaping and without validation.
+        /// input is copied to the output without escaping.
         /// </summary>
         /// <param name="xml">The XML text to write.</param>
-        /// <param name="skipInputValidation">This parameter is not used. The input is never validated, whether the value is <see langword="true"/> or <see langword="false"/>. The default is <see langword="false"/>.</param>
+        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
+        /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The caller is responsible for the input being well formed in the place where it is written. Inside an
-        /// element, the input counts as text of that element, so the element's end tag is not indented. At the
-        /// document level, the writer does not write the XML declaration before the input.
+        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
+        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
+        /// throws if the document would not be well formed: inside an element the input must be element content
+        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
+        /// mark, and at the document level it must be comments, processing instructions, white space, and at
+        /// most the one root element. Inside an element, the input counts as text of that element, so the
+        /// element's end tag is not indented. At the document level, the writer does not write the XML
+        /// declaration before the input.
         /// </remarks>
         public void WriteRawValue(ReadOnlySpan<char> xml, bool skipInputValidation = false)
         {
@@ -2990,10 +3011,13 @@ namespace CloudNimble.Text.Xml
 
         /// <summary>
         /// Writes the input as XML content, with the input specified as a string. The input is copied to the
-        /// output without escaping and without validation.
+        /// output without escaping.
         /// </summary>
         /// <param name="xml">The XML text to write.</param>
-        /// <param name="skipInputValidation">This parameter is not used. The input is never validated, whether the value is <see langword="true"/> or <see langword="false"/>. The default is <see langword="false"/>.</param>
+        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
+        /// </exception>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
@@ -3001,9 +3025,14 @@ namespace CloudNimble.Text.Xml
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The caller is responsible for the input being well formed in the place where it is written. Inside an
-        /// element, the input counts as text of that element, so the element's end tag is not indented. At the
-        /// document level, the writer does not write the XML declaration before the input.
+        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
+        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
+        /// throws if the document would not be well formed: inside an element the input must be element content
+        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
+        /// mark, and at the document level it must be comments, processing instructions, white space, and at
+        /// most the one root element. Inside an element, the input counts as text of that element, so the
+        /// element's end tag is not indented. At the document level, the writer does not write the XML
+        /// declaration before the input.
         /// </remarks>
         public void WriteRawValue(string xml, bool skipInputValidation = false)
         {
@@ -3058,8 +3087,29 @@ namespace CloudNimble.Text.Xml
         internal static byte[] EncodeChars(ReadOnlySpan<char> value)
         {
             var utf8 = new byte[Encoding.UTF8.GetByteCount(value)];
-            Encoding.UTF8.GetBytes(value, utf8);
+            Transcode(value, utf8);
             return utf8;
+        }
+
+        /// <summary>
+        /// Encodes <paramref name="value"/> as UTF-8 into <paramref name="destination"/>.
+        /// </summary>
+        /// <param name="value">The characters.</param>
+        /// <param name="destination">Room for the whole of <paramref name="value"/> in UTF-8.</param>
+        /// <returns>The number of bytes written.</returns>
+        /// <exception cref="XmlException"><paramref name="value"/> holds half of a surrogate pair.</exception>
+        /// <remarks>
+        /// Half a surrogate pair is not a character. An encoder would put U+FFFD in its place, and the
+        /// document would then read back as text the caller never wrote.
+        /// </remarks>
+        internal static int Transcode(ReadOnlySpan<char> value, Span<byte> destination)
+        {
+            if (Utf8.FromUtf16(value, destination, out _, out var written, replaceInvalidSequences: false) is not OperationStatus.Done)
+            {
+                throw new XmlException("The text contains half of a surrogate pair.");
+            }
+
+            return written;
         }
 
         /// <summary>
@@ -3080,7 +3130,7 @@ namespace CloudNimble.Text.Xml
             var max = Encoding.UTF8.GetMaxByteCount(value.Length);
             if (max <= scratch.Length)
             {
-                var written = Encoding.UTF8.GetBytes(value, scratch);
+                var written = Transcode(value, scratch);
                 return scratch[..written];
             }
 
@@ -3689,6 +3739,8 @@ namespace CloudNimble.Text.Xml
                 EnsureDeclaration();
             }
 
+            // A processing instruction between elements gets a line of its own, as an element does.
+            WriteElementIndent(_depth);
             WriteRaw("<?"u8);
             WriteRaw(utf8Target);
             if (!utf8Data.IsEmpty)
@@ -3758,6 +3810,9 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal void RequireOpenTag()
         {
+            // Every attribute, namespace declaration and nil marker starts here, so this is also where a
+            // disposed writer and an open segmented value are caught for the paths that write names directly.
+            ObjectDisposedException.ThrowIf(_disposed, this);
             if (_segment is not XmlWriterSegment.None)
             {
                 ThrowSegmentOpen();
@@ -4292,6 +4347,171 @@ namespace CloudNimble.Text.Xml
 
             _bracketRun = bracket;
             _bracketEnd = _committed + _buffered;
+        }
+
+        /// <summary>
+        /// Checks that raw input is well formed in the place it is about to be written.
+        /// </summary>
+        /// <param name="utf8Xml">The raw input.</param>
+        /// <exception cref="XmlException">The document would not be well formed with the input in it.</exception>
+        /// <remarks>
+        /// The input is read, with the reader this library has, inside the smallest document that puts it in
+        /// the same place: the element that is open, with the namespace declarations in scope; an attribute of
+        /// an element; or nothing at all at the document level. The reader's limits are lifted, because the
+        /// question is whether the input is XML, not how large it is.
+        /// </remarks>
+        internal void ValidateRawValue(ReadOnlySpan<byte> utf8Xml)
+        {
+            var document = new ArrayBufferWriter<byte>(utf8Xml.Length + 128);
+            var hasDeclaration = utf8Xml.StartsWith("<?xml"u8) && utf8Xml.Length > 5 && XmlChars.IsWhiteSpace(utf8Xml[5]);
+            if (_version is XmlVersion.Version11 && !hasDeclaration)
+            {
+                document.Write("<?xml version=\"1.1\"?>"u8);
+            }
+
+            if (_inAttribute)
+            {
+                if (utf8Xml.IndexOfAny((byte)'"', (byte)'<') >= 0)
+                {
+                    // Either one could end the value and start something else, which a reader would then accept.
+                    throw new XmlException("The raw XML is not well formed: An attribute value must not contain a quotation mark or '<'.");
+                }
+
+                document.Write("<r a=\""u8);
+                document.Write(utf8Xml);
+                document.Write("\"/>"u8);
+            }
+            else if (_depth > 0)
+            {
+                ref var frame = ref CurrentFrame();
+                document.Write("<"u8);
+                AppendFrameName(document, frame);
+                AppendNamespacesInScope(document);
+                document.Write(">"u8);
+                document.Write(utf8Xml);
+                document.Write("</"u8);
+                AppendFrameName(document, frame);
+                document.Write(">"u8);
+            }
+            else
+            {
+                if (hasDeclaration && _committed + _buffered > 0)
+                {
+                    throw new XmlException("The raw XML is not well formed: An XML declaration is allowed only at the start of the document.");
+                }
+
+                document.Write(utf8Xml);
+            }
+
+            var options = new XmlReaderOptions
+            {
+                AllowMultipleRoots = _depth == 0,
+                MaxAttributeCount = int.MaxValue,
+                MaxCommentByteCount = int.MaxValue,
+                MaxDepth = int.MaxValue,
+                MaxNameByteCount = int.MaxValue,
+                MaxTextByteCount = int.MaxValue,
+            };
+            var roots = 0;
+            try
+            {
+                var reader = new Utf8XmlReader(document.WrittenSpan, options);
+                while (reader.Read())
+                {
+                    if (reader.TokenType is XmlTokenType.StartElement && reader.CurrentDepth == 0)
+                    {
+                        roots++;
+                    }
+                }
+            }
+            catch (XmlException ex)
+            {
+                throw new XmlException("The raw XML is not well formed: " + ex.Message, ex);
+            }
+
+            if (_depth > 0)
+            {
+                return;
+            }
+
+            if (roots + (_seenRoot ? 1 : 0) > 1)
+            {
+                throw new XmlException("The raw XML is not well formed: Multiple root elements are not allowed.");
+            }
+
+            _seenRoot |= roots == 1;
+        }
+
+        /// <summary>
+        /// Appends the name of an open element, as its start tag has it.
+        /// </summary>
+        /// <param name="destination">The destination.</param>
+        /// <param name="frame">The element.</param>
+        internal void AppendFrameName(ArrayBufferWriter<byte> destination, in XmlWriterFrame frame)
+        {
+            if (frame.PrefixChars is { Length: > 0 } prefixChars)
+            {
+                Encoding.UTF8.GetBytes(prefixChars, destination);
+                destination.Write(":"u8);
+            }
+            else if (frame.Prefix.Length > 0)
+            {
+                destination.Write(NameSpan(frame.Prefix));
+                destination.Write(":"u8);
+            }
+
+            if (frame.LocalChars is not null)
+            {
+                Encoding.UTF8.GetBytes(frame.LocalChars, destination);
+                return;
+            }
+
+            destination.Write(NameSpan(frame.Local));
+        }
+
+        /// <summary>
+        /// Appends a declaration for every namespace binding that is in effect, so that text read on its own
+        /// sees the prefixes it would see in the document.
+        /// </summary>
+        /// <param name="destination">The destination, inside a start tag.</param>
+        internal void AppendNamespacesInScope(ArrayBufferWriter<byte> destination)
+        {
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                var binding = NsAt(i);
+                var hidden = false;
+                for (var inner = i + 1; inner < _nsCount && !hidden; inner++)
+                {
+                    hidden = binding.Prefix.AsSpan().SequenceEqual(NsAt(inner).Prefix);
+                }
+
+                if (hidden || binding.Uri.Length == 0)
+                {
+                    // Hidden by a declaration on an element further in, or a declaration that removes a binding.
+                    continue;
+                }
+
+                destination.Write(" xmlns"u8);
+                if (binding.Prefix.Length > 0)
+                {
+                    destination.Write(":"u8);
+                    destination.Write(binding.Prefix);
+                }
+
+                destination.Write("=\""u8);
+                foreach (var b in binding.Uri)
+                {
+                    switch (b)
+                    {
+                        case (byte)'&': destination.Write("&amp;"u8); break;
+                        case (byte)'<': destination.Write("&lt;"u8); break;
+                        case (byte)'"': destination.Write("&quot;"u8); break;
+                        default: destination.Write([b]); break;
+                    }
+                }
+
+                destination.Write("\""u8);
+            }
         }
 
         /// <summary>

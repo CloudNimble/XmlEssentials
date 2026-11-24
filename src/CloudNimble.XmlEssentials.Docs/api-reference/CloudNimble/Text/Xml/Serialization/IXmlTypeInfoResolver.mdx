@@ -1,6 +1,6 @@
 ---
 title: IXmlTypeInfoResolver
-description: "Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type."
+description: "Defines a resolver of the XML serialization contract for requested types."
 icon: plug
 keywords: ['IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization', 'interface', 'CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializer']
 ---
@@ -19,7 +19,7 @@ CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver
 
 ## Summary
 
-Resolves [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) for a CLR type.
+Defines a resolver of the XML serialization contract for requested types.
 
 ## Usage
 
@@ -68,7 +68,7 @@ The interface is the counterpart of `IJsonTypeInfoResolver` in System.Text.Json.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo <Badge color="orange">Abstract</Badge>
 
-Returns type info for *type*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this resolver does not handle it.
+Resolves an [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) contract for the requested type and options.
 
 #### Syntax
 
@@ -80,13 +80,13 @@ CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(System.Type type, Clo
 
 | Name | Type | Description |
 |------|------|-------------|
-| `type` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serializer options. |
+| `type` | `System.Type` | The type to resolve a contract for. |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The options that the contract is resolved for. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?`
-The type info, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+The contract that matches *type*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if this resolver does not handle the type.
 
 ## Related APIs
 

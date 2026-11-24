@@ -68,11 +68,23 @@ public sealed class XmlIgnoreAttribute : Attribute
     public XmlIgnoreCondition Condition { get; set; } // default Always
 }
 
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
-public sealed class XmlConverterAttribute : Attribute
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public sealed class XmlObjectCreationHandlingAttribute : Attribute
 {
-    public XmlConverterAttribute(Type converterType);
-    public Type ConverterType { get; }
+    public XmlObjectCreationHandlingAttribute(XmlObjectCreationHandling handling);
+    public XmlObjectCreationHandling Handling { get; }
+}
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public abstract class XmlConverterAttribute : Attribute
+{
+    public abstract Type ConverterType { get; }
+}
+
+public sealed class XmlConverterAttribute<TConverter> : XmlConverterAttribute
+    where TConverter : XmlConverter, new()
+{
+    public override Type ConverterType { get; }   // typeof(TConverter)
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]

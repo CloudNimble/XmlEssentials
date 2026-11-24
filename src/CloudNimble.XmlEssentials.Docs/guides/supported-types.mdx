@@ -108,6 +108,9 @@ The element name of a value that is the document element is the .NET type name, 
 | `float` | `float` | The shortest text that reads back as the same value, such as `3.14` or `3.4028235E+38`. `NaN`, `INF`, `-INF` for the values that aren't finite. | A decimal number with an optional exponent (`1e3`, `+.5`), or `NaN`, `INF`, `-INF` in any letter case. |
 | `double` | `double` | The same as `float`: `0.1`, `1E-07`, `1E+300`, `NaN`, `INF`, `-INF` | The same as `float`. |
 | `decimal` | `decimal` | Digits with an optional fraction and no exponent. Trailing zeros are kept: `19.990m` is written as `19.990`. | An optional sign, digits, and an optional fraction (`12`, `+12.50`, `.5`, `5.`). An exponent is rejected. |
+| `Int128`, `UInt128` | None. The lexical form of `integer`. | Decimal digits, with `-` for a negative value | The same as the other integers. The value must be in the range of the type. |
+| `System.Numerics.BigInteger` | `integer` | Decimal digits, with `-` for a negative value | An optional `+` or `-` followed by digits, of any length. |
+| `Half` | None. The lexical form of `float`. | The same as `float` | The same as `float`. A number too large for the type reads as infinity. |
 
 Things to notice:
 
@@ -151,15 +154,11 @@ Rules that hold for all date and time types:
 | .NET type | Written as | Accepted on read |
 | --- | --- | --- |
 | `string` | The text, with `&`, `<`, and other characters escaped as [XML requires](/guides/xml-conformance#what-the-writer-escapes). An empty string is written as an element with no content. | The text of the element, with its whitespace kept. `<String> a </String>` is `" a "`. An empty element is an empty string, not `null`. |
-| `char` | The character | Exactly one UTF-16 code unit, after leading and trailing whitespace is removed. A character outside the Basic Multilingual Plane is rejected, because it doesn't fit in one `char`. |
+| `char` | The character. A tab, line feed, or carriage return in an attribute is written as a character reference, so that it isn't normalized to a space. | Exactly one UTF-16 code unit. Whitespace around a character that isn't whitespace is removed; a value that is one whitespace character is that character. A character outside the Basic Multilingual Plane is rejected, because it doesn't fit in one `char`. |
 | `Guid` | The .NET `D` format: 32 lowercase hexadecimal digits in five groups | The `D`, `N`, `B`, and `P` formats, in either letter case |
-| `byte[]` | Base64 (`base64Binary`). An empty array is written as an element with no content. | Base64. Whitespace inside the value is allowed. An empty element is an empty array. |
+| `byte[]`, `Memory<byte>`, `ReadOnlyMemory<byte>` | Base64 (`base64Binary`). An empty value is written as an element with no content. | Base64. Whitespace inside the value is allowed. An empty element is an empty value. |
 | `Uri` | `Uri.OriginalString`, for a relative or an absolute URI | Any text that `Uri.TryCreate` accepts with `UriKind.RelativeOrAbsolute` |
 | `Version` | `major.minor`, `major.minor.build`, or `major.minor.build.revision` | Any text that `Version.TryParse` accepts. A single number, such as `1`, is rejected. |
-
-<Warning>
-Because whitespace around a `char` value is removed before the value is read, a `char` that is itself a space, tab, or line end doesn't read back. Use a `string` for such a value.
-</Warning>
 
 For every type except `string`, leading and trailing spaces, tabs, and line ends are removed before the value is parsed. XML Schema calls this the `collapse` whitespace rule.
 
@@ -316,30 +315,52 @@ A dictionary entry whose key is a string that is also a valid XML name made of A
 
 This page shows the shape only. To name the items, wrap or unwrap a collection property, and populate read-only collection properties, see [Serialize collections](/guides/collections).
 
-The following table shows which collection types are supported in each direction.
+Every collection and dictionary that can be written can be read. The following table shows what a member of each declared type holds after it is read.
 
-| Type | Serialize | Deserialize |
-| --- | --- | --- |
-| `T[]`, including arrays of arrays (`T[][]`) | Yes | Yes |
-| `List<T>` | Yes | Yes |
-| `IEnumerable<T>`, `ICollection<T>`, `IList<T>`, `IReadOnlyCollection<T>`, `IReadOnlyList<T>` | Yes | Yes, as a `List<T>` |
-| `HashSet<T>`, `SortedSet<T>` | Yes | Yes |
-| `Collection<T>`, `ObservableCollection<T>` | Yes | Yes |
-| `Dictionary<TKey, TValue>`, `SortedDictionary<TKey, TValue>` | Yes | Yes |
-| `IDictionary<TKey, TValue>` | Yes | Yes, as a `Dictionary<TKey, TValue>` |
-| `Queue<T>`, `Stack<T>`, `LinkedList<T>` | Yes | No. Throws `NotSupportedException`. |
-| `ISet<T>`, `ReadOnlyCollection<T>` | Yes | No. Throws `MissingMethodException`. |
-| `ImmutableArray<T>`, `ImmutableList<T>`, `ImmutableDictionary<TKey, TValue>` | Yes | No. Throws an exception. |
-| `IReadOnlyDictionary<TKey, TValue>` | As a list of `KeyValuePair` elements, not as a dictionary | No. Throws `MissingMethodException`. |
-| Multidimensional arrays (`T[,]`) | No. Throws `NotSupportedException`. | No |
+| Declared type | Read as |
+| --- | --- |
+| `T[]`, including arrays of arrays (`T[][]`) | An array |
+| `List<T>` | A `List<T>` |
+| `IEnumerable<T>`, `ICollection<T>`, `IList<T>`, `IReadOnlyCollection<T>`, `IReadOnlyList<T>` | A `List<T>` |
+| `ISet<T>`, `IReadOnlySet<T>` | A `HashSet<T>` |
+| `HashSet<T>`, `SortedSet<T>`, `LinkedList<T>`, `Collection<T>`, `ObservableCollection<T>` | The declared type |
+| `Queue<T>`, `Stack<T>`, `ReadOnlyCollection<T>`, `ConcurrentQueue<T>`, `ConcurrentStack<T>` | The declared type |
+| `ImmutableArray<T>`, `ImmutableList<T>`, `ImmutableHashSet<T>`, `ImmutableSortedSet<T>`, `ImmutableQueue<T>`, `ImmutableStack<T>`, `FrozenSet<T>` | The declared type |
+| `IImmutableList<T>`, `IImmutableSet<T>`, `IImmutableQueue<T>`, `IImmutableStack<T>` | The matching immutable class |
+| `Dictionary<TKey, TValue>`, `SortedDictionary<TKey, TValue>`, `SortedList<TKey, TValue>`, `ConcurrentDictionary<TKey, TValue>`, `ReadOnlyDictionary<TKey, TValue>` | The declared type |
+| `IDictionary<TKey, TValue>`, `IReadOnlyDictionary<TKey, TValue>` | A `Dictionary<TKey, TValue>` |
+| `ImmutableDictionary<TKey, TValue>`, `ImmutableSortedDictionary<TKey, TValue>`, `FrozenDictionary<TKey, TValue>`, `IImmutableDictionary<TKey, TValue>` | The declared type, or `ImmutableDictionary<TKey, TValue>` for the interface |
+| Multidimensional arrays (`T[,]`) | Not supported. Throws `NotSupportedException`. |
 
-A type in the "Yes" rows is any type that fits the same pattern: a concrete collection with a public parameterless constructor that implements `IList` or has a public `Add` method that takes one item, or a concrete type that implements `IDictionary<TKey, TValue>` and has a public parameterless constructor.
+Your own collection type is supported when the serializer can create it. It needs one of the following:
 
-Items, keys, and values can be any supported type, including other collections and your own classes. A `null` item is written with `xsi:nil="true"`. A `null` dictionary value is written as an empty element.
+- A public parameterless constructor, and either `ICollection<T>` or a public `Add` method that takes one item.
+- A public constructor that takes `IEnumerable<T>` or `IList<T>`.
+- For a dictionary, a public parameterless constructor and `IDictionary<TKey, TValue>`, or a public constructor that takes `IDictionary<TKey, TValue>`.
+
+A type with none of these is written, because writing only enumerates it. Reading it throws `NotSupportedException` with a message that names the type and what it needs.
+
+Items are read in document order. A stack is written from its top down, and it is read back with the same top, so a stack survives a round trip unchanged.
+
+Items, keys, and values can be any supported type, including other collections and your own classes. A `null` item is written with `xsi:nil="true"`. A `null` dictionary value is written the same way and reads back as `null`. See [Handle null values](/guides/null-and-nil).
 
 ## Classes, structs, and records
 
 A concrete class or struct that isn't in the tables above is mapped as an object: each public property becomes a child element. See [Serialize .NET objects as XML](/guides/serialize), [Use immutable types and records](/guides/immutable-types), and [Polymorphism](/guides/polymorphism).
+
+## XML values, object, and anonymous types
+
+A value that is XML already is written as the XML it is. `XmlElement`, `XmlDocument`, `XmlNode`, and `XmlElementNode` are such types.
+
+- As the value you serialize, it is the document. `XmlSerializer.Serialize(element)` writes the element under its own name, and `Deserialize<XmlElement>` reads any document element.
+- As a member, it is the one element inside the member's element. A member named `Payload` that holds `<order id="7"/>` is written as `<Payload><order id="7"/></Payload>`.
+- Only an element can be the value. Serializing a text node throws `NotSupportedException`.
+- An `XmlDocument` is written as its document element. Its XML declaration and any comment outside the document element aren't written.
+- An element, document, or node that the serializer reads holds no pooled memory, so you don't have to dispose it.
+
+A value declared as `object` is written as the type it has. `XmlSerializer.Serialize<object>(42)` writes `<Int32>42</Int32>`, and a member declared as `object` writes the value inside the member's element. A document doesn't record which type wrote an element, so a value declared as `object` is read as an `XmlElement`. Read it as the type you expect with `XmlSerializer.Deserialize<T>(element)`. To read an `XmlNode` that can be changed instead, set `XmlSerializerOptions.UnknownTypeHandling` to `XmlUnknownTypeHandling.XmlNode`.
+
+An anonymous type is written under the element name `AnonymousType`, and each property becomes a child element. It can be read back through its constructor when you have a value of the type to infer it from.
 
 ## Types that aren't supported
 
@@ -348,7 +369,7 @@ The serializer throws `NotSupportedException` for a type that it has no converte
 ```csharp
 try
 {
-    XmlSerializer.Serialize<object>(42);
+    XmlSerializer.Serialize(IntPtr.Zero);
 }
 catch (NotSupportedException ex)
 {
@@ -368,7 +389,7 @@ catch (NotSupportedException ex)
 The code produces the following output:
 
 ```text
-The type 'System.Object' is not supported.
+The type 'System.IntPtr' is not supported.
 The type 'System.Int32[,]' is not supported.
 ```
 
@@ -376,15 +397,14 @@ The type 'System.Int32[,]' is not supported.
 
 | Type | What happens |
 | --- | --- |
-| `object` | `NotSupportedException`. The serializer doesn't write the runtime type of a value declared as `object`, and it doesn't read one. Declare the real type, or declare the derived types as described in [Polymorphism](/guides/polymorphism). |
-| `nint`, `nuint`, `System.Type` | `NotSupportedException`. |
+| `nint`, `nuint`, `System.Type`, delegates | `NotSupportedException`. |
 | Multidimensional arrays | `NotSupportedException`. Use an array of arrays. |
-| `Memory<byte>`, `ReadOnlyMemory<byte>` | An exception when the type is first used. Use `byte[]`. |
-| `XmlNode` passed to `XmlSerializer.Serialize` | `NotSupportedException`. Write a node with its own `WriteTo` method. See [Use XmlNode](/guides/use-xmlnode). |
+| An abstract class or an interface with no `[XmlDerivedType]` | `NotSupportedException`. See [Polymorphism](/guides/polymorphism). |
+| A collection type that the serializer can't create | It is written. Reading it throws `NotSupportedException`. See [Collections and dictionaries](#collections-and-dictionaries). |
 
-<Warning>
-Some framework types have no built-in converter and aren't rejected either, because they are structs or classes and are therefore mapped as objects. `Int128`, `Half`, and `System.Numerics.BigInteger` are examples. Their numeric value isn't one of their public properties, so it isn't written: `XmlSerializer.Serialize((Int128)5)` produces `<Int128/>`. A `ValueTuple` is written as an empty element unless `IncludeFields` is `true`, because its items are fields. `Tuple<T1, T2>` is written but can't be read back, and a `KeyValuePair<TKey, TValue>` is written but reads back as its default value. Write a [custom converter](/guides/custom-converters) for any of these types before you rely on it.
-</Warning>
+<Note>
+A `ValueTuple` is written as an empty element unless `IncludeFields` is `true`, because its items are fields. `Tuple<T1, T2>` and `KeyValuePair<TKey, TValue>` are written with their properties and read back through their constructors.
+</Note>
 
 To support a type that isn't listed here, or to change the text a listed type is written as, write a custom converter. A converter in `XmlSerializerOptions.Converters` is used before the built-in one. See [Write custom converters](/guides/custom-converters).
 

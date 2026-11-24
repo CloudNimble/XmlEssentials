@@ -55,7 +55,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var options = ReadOptions(optionsAttr);
             var generationMode = optionsAttr is null ? 0 : SymbolHelpers.GetInt(optionsAttr, "GenerationMode", 0);
             var emitSerialization = generationMode is 0 or 2 or 3;
-            var roots = new List<(INamedTypeSymbol Type, string PropertyName)>();
+            var roots = new List<(ITypeSymbol Type, string PropertyName)>();
             var names = new HashSet<string>();
             foreach (var attribute in type.GetAttributes())
             {
@@ -64,7 +64,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     continue;
                 }
 
-                var target = SymbolHelpers.GetConstructorType(attribute, 0) as INamedTypeSymbol;
+                // The type is the attribute's type argument, so it may be any closed type: an array or a
+                // collection is listed like any other. One without a name of its own is named after its parts.
+                var target = attribute.AttributeClass is { TypeArguments.Length: 1 } attributeClass ? attributeClass.TypeArguments[0] : null;
                 if (target is null)
                 {
                     continue;
@@ -73,7 +75,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 var propertyName = SymbolHelpers.GetString(attribute, "TypeInfoPropertyName");
                 if (string.IsNullOrEmpty(propertyName))
                 {
-                    propertyName = target.Name;
+                    propertyName = TypeGraphWalker.PropertyNameOf(target);
                 }
 
                 if (!names.Add(propertyName!))
@@ -112,7 +114,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         {
             if (attribute is null)
             {
-                return new OptionsSpec(false, false, false, "", 0, 0, 0, 0, 0, false, 0);
+                return new OptionsSpec(false, false, false, "", 0, 0, 0, 0, 0, false, false, 0, 0);
             }
 
             return new OptionsSpec(
@@ -126,7 +128,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 SymbolHelpers.GetInt(attribute, "DefaultIgnoreCondition", 0),
                 SymbolHelpers.GetInt(attribute, "DefaultPropertyMapping", 0),
                 SymbolHelpers.GetBool(attribute, "IncludeFields"),
-                SymbolHelpers.GetInt(attribute, "NilHandling", 0));
+                SymbolHelpers.GetBool(attribute, "RespectNullableAnnotations"),
+                SymbolHelpers.GetInt(attribute, "PreferredObjectCreationHandling", 0),
+                SymbolHelpers.GetInt(attribute, "UnknownTypeHandling", 0));
         }
 
         #endregion

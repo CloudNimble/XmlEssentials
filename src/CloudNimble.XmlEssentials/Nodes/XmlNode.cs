@@ -74,8 +74,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// </summary>
         /// <param name="xml">The XML text to parse.</param>
         /// <returns>
-        /// An <see cref="XmlNode"/> representation of the document element. This method does not return
-        /// <see langword="null"/>.
+        /// An <see cref="XmlNode"/> representation of the document element.
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="xml"/> is <see langword="null"/>.
@@ -89,7 +88,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// Comments inside the document element are kept. The XML declaration and any comments or processing
         /// instructions outside the document element are not part of the returned tree.
         /// </remarks>
-        public static XmlNode? Parse(string xml)
+        public static XmlNode Parse(string xml)
         {
             ArgumentNullException.ThrowIfNull(xml);
             using var document = XmlDocument.Parse(xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
@@ -101,8 +100,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// </summary>
         /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
         /// <returns>
-        /// An <see cref="XmlNode"/> representation of the document element. This method does not return
-        /// <see langword="null"/>.
+        /// An <see cref="XmlNode"/> representation of the document element.
         /// </returns>
         /// <exception cref="XmlException">
         /// <paramref name="utf8Xml"/> is not a well-formed XML document.
@@ -113,7 +111,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// Comments inside the document element are kept. The XML declaration and any comments or processing
         /// instructions outside the document element are not part of the returned tree.
         /// </remarks>
-        public static XmlNode? Parse(ReadOnlySpan<byte> utf8Xml)
+        public static XmlNode Parse(ReadOnlySpan<byte> utf8Xml)
         {
             using var document = XmlDocument.Parse(utf8Xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
             return document.RootElement.CloneNode();
@@ -125,7 +123,6 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <param name="reader">The reader to read. It is positioned on or before the start tag of the element.</param>
         /// <returns>
         /// An <see cref="XmlNode"/> representation of the element (and nested nodes) read from the reader.
-        /// This method does not return <see langword="null"/>.
         /// </returns>
         /// <exception cref="XmlException">
         /// <paramref name="reader"/> reaches an end tag before it reaches a start tag.
@@ -138,7 +135,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// When this method returns, the reader is positioned on the end tag of the element, or on the
         /// element itself if it is an empty-element tag. Comments are kept only if the reader reports them.
         /// </remarks>
-        public static XmlNode? ParseValue(ref Utf8XmlReader reader)
+        public static XmlNode ParseValue(ref Utf8XmlReader reader)
         {
             using var document = XmlDocument.ParseValue(ref reader);
             return document.RootElement.CloneNode();
@@ -165,7 +162,9 @@ namespace CloudNimble.Text.Xml.Nodes
         public override string ToString()
         {
             var buffer = new ArrayBufferWriter<byte>();
-            var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            // A node does not know which XML version it was parsed from. XML 1.1 can carry every character
+            // either version allows, and writes the ones it restricts or normalizes as references.
+            var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version11 });
             try
             {
                 WriteTo(writer);

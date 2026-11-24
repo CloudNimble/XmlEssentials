@@ -2,18 +2,25 @@ namespace CloudNimble.Text.Xml.Serialization
 {
 
     /// <summary>
-    /// Specifies how a value declared as <see cref="object"/> that has no converter is handled during deserialization.
+    /// Defines how <see cref="XmlSerializer"/> reads an element into a value declared as <see cref="object"/>.
     /// </summary>
+    /// <remarks>
+    /// A document does not record the type a value had when it was written, so a value declared as
+    /// <see cref="object"/> is read as XML. This is the counterpart of
+    /// <c>System.Text.Json.Serialization.JsonUnknownTypeHandling</c>, whose values are <c>JsonElement</c> and
+    /// <c>JsonNode</c>.
+    /// </remarks>
     public enum XmlUnknownTypeHandling
     {
 
         /// <summary>
-        /// Deserialization as a <see cref="CloudNimble.Text.Xml.XmlElement"/>.
+        /// The element is read as an <see cref="CloudNimble.Text.Xml.XmlElement"/>, which is read-only.
         /// </summary>
         XmlElement = 0,
 
         /// <summary>
-        /// Deserialization as a <see cref="CloudNimble.Text.Xml.Nodes.XmlNode"/>.
+        /// The element is read as an <see cref="CloudNimble.Text.Xml.Nodes.XmlNode"/>, which can be changed. The node is an
+        /// <see cref="CloudNimble.Text.Xml.Nodes.XmlElementNode"/>.
         /// </summary>
         XmlNode = 1,
 

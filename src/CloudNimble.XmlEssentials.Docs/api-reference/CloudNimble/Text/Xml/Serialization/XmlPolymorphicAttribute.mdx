@@ -1,6 +1,6 @@
 ---
 title: XmlPolymorphicAttribute
-description: "Declares that a type is serialized with a derived-type discriminator."
+description: "Indicates, when placed on a type, that the type is serialized polymorphically, and specifies how its type discriminator is written. This class cannot be inhe..."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling', 'CloudNimble.Text.Xml.XmlDiscriminatorPlacement', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializerOptions']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute
 
 ## Summary
 
-Declares that a type is serialized with a derived-type discriminator.
+Indicates, when placed on a type, that the type is serialized polymorphically, and specifies how its type discriminator
+is written. This class cannot be inherited.
 
 ## Usage
 
@@ -185,7 +186,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DiscriminatorPlacement
 
-Gets or sets where the discriminator is written.
+Gets or sets where the type discriminator is written.
 
 #### Syntax
 
@@ -196,10 +197,13 @@ public CloudNimble.Text.Xml.XmlDiscriminatorPlacement DiscriminatorPlacement { g
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlDiscriminatorPlacement`
+One of the enumeration values that specifies where the type discriminator is written. The default is
+[XmlDiscriminatorPlacement.ElementName](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InferClosedTypePolymorphism
 
-Gets or sets whether closed derived types are inferred when no [XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) is present.
+Gets or sets a value that indicates whether closed derived types are inferred when the type has no
+[XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute).
 
 #### Syntax
 
@@ -210,10 +214,15 @@ public bool InferClosedTypePolymorphism { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if closed derived types are inferred; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Remarks
+
+The serializer does not read this property.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeDiscriminatorPropertyName
 
-Gets or sets the discriminator attribute or element name when placement is not the element name itself.
+Gets or sets the local name of the attribute that holds the type discriminator.
 
 #### Syntax
 
@@ -224,6 +233,13 @@ public string TypeDiscriminatorPropertyName { get; set; }
 #### Property Value
 
 Type: `string?`
+The local name of the discriminator attribute. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+
+#### Remarks
+
+The name is required when [XmlPolymorphicAttribute.DiscriminatorPlacement](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPolymorphicAttribute#discriminatorplacement) is [XmlDiscriminatorPlacement.Attribute](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement):
+the reflection-based serializer throws a [NotSupportedException](https://learn.microsoft.com/dotnet/api/system.notsupportedexception) for the annotated type if the value is
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null), empty, or white space. The name is not used for the other placements.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -241,7 +257,7 @@ Type: `object`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnknownDerivedTypeHandling
 
-Gets or sets how unknown derived types are handled.
+Gets or sets the behavior when serializing or deserializing a derived type that is not declared.
 
 #### Syntax
 
@@ -252,6 +268,8 @@ public CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling UnknownD
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling`
+One of the enumeration values that specifies how an undeclared derived type is handled. The default is
+[XmlUnknownDerivedTypeHandling.FailSerialization](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnknownDerivedTypeHandling).
 
 ## Methods
 

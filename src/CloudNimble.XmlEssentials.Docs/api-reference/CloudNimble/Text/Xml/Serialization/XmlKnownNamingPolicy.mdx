@@ -1,6 +1,6 @@
 ---
 title: XmlKnownNamingPolicy
-description: "Built-in naming policies selectable from source-generation options."
+description: "Specifies the built-in [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) that a source-generated context uses at run time."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.XmlSerializerOptions']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy
 
 ## Summary
 
-Built-in naming policies selectable from source-generation options.
+Specifies the built-in [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) that a source-generated context uses at run time.
 
 ## Usage
 
@@ -42,17 +42,21 @@ It is the type of the `PropertyNamingPolicy`, `ElementNamingPolicy`, and `Attrib
 
 When you set options in code instead, assign an `XmlNamingPolicy` to `XmlSerializerOptions` directly. See [Use source generation](/guides/source-generation) and [Customize names and shape](/guides/customize-names#use-a-naming-policy-for-all-names).
 
+## Remarks
+
+The values are selected through the naming policy properties of [XmlSourceGenerationOptionsAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute).
+
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Unspecified` | 0 | Leave names unchanged. |
-| `CamelCase` | 1 | [XmlNamingPolicy.CamelCase](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#camelcase). |
-| `SnakeCaseLower` | 2 | [XmlNamingPolicy.SnakeCaseLower](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#snakecaselower). |
-| `SnakeCaseUpper` | 3 | [XmlNamingPolicy.SnakeCaseUpper](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#snakecaseupper). |
-| `KebabCaseLower` | 4 | [XmlNamingPolicy.KebabCaseLower](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#kebabcaselower). |
-| `KebabCaseUpper` | 5 | [XmlNamingPolicy.KebabCaseUpper](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#kebabcaseupper). |
-| `PascalCase` | 6 | [XmlNamingPolicy.PascalCase](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#pascalcase). |
+| `Unspecified` | 0 | No naming policy. Names are not converted. |
+| `CamelCase` | 1 | The built-in [XmlNamingPolicy.CamelCase](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#camelcase) naming policy. |
+| `SnakeCaseLower` | 2 | The built-in [XmlNamingPolicy.SnakeCaseLower](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#snakecaselower) naming policy. |
+| `SnakeCaseUpper` | 3 | The built-in [XmlNamingPolicy.SnakeCaseUpper](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#snakecaseupper) naming policy. |
+| `KebabCaseLower` | 4 | The built-in [XmlNamingPolicy.KebabCaseLower](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#kebabcaselower) naming policy. |
+| `KebabCaseUpper` | 5 | The built-in [XmlNamingPolicy.KebabCaseUpper](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#kebabcaseupper) naming policy. |
+| `PascalCase` | 6 | The built-in [XmlNamingPolicy.PascalCase](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy#pascalcase) naming policy. |
 
 ## Related APIs
 

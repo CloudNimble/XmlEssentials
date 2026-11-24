@@ -131,7 +131,6 @@ namespace CloudNimble.XmlEssentials.Samples
             var options = new XmlSerializerOptions();
 
             output.WriteLine($"AllowDuplicateProperties = {options.AllowDuplicateProperties}");
-            output.WriteLine($"AllowOutOfOrderMetadataProperties = {options.AllowOutOfOrderMetadataProperties}");
             output.WriteLine($"AttributeNamingPolicy = {options.AttributeNamingPolicy?.ToString() ?? "null"}");
             output.WriteLine($"Converters.Count = {options.Converters.Count}");
             output.WriteLine($"DefaultBufferSize = {options.DefaultBufferSize}");
@@ -156,7 +155,6 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine($"MaxNameByteCount = {options.MaxNameByteCount}");
             output.WriteLine($"MaxTextByteCount = {options.MaxTextByteCount}");
             output.WriteLine($"NewLine is Environment.NewLine = {options.NewLine == Environment.NewLine}");
-            output.WriteLine($"NilHandling = {options.NilHandling}");
             output.WriteLine($"NumberHandling = {options.NumberHandling}");
             output.WriteLine($"OmitXmlDeclaration = {options.OmitXmlDeclaration}");
             output.WriteLine($"PreferredObjectCreationHandling = {options.PreferredObjectCreationHandling}");

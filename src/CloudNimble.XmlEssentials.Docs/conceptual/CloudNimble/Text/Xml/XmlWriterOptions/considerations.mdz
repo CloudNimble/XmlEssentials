@@ -27,7 +27,7 @@ A limit of 0 selects its default. There's no value that turns a limit off. `MaxA
 
 ### What indentation does
 
-`Indented` adds a line break and indentation before elements only. An element that holds text is written on one line, with any child elements, so that no value changes. Comments and processing instructions get no line break of their own.
+`Indented` adds a line break and indentation before elements, comments, and processing instructions. An element that holds text is written on one line, with any child elements, so that no value changes.
 
 ### What SkipValidation skips
 

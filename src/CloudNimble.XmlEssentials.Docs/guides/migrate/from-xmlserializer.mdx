@@ -301,35 +301,34 @@ XmlEssentials reads and writes UTF-8 and nothing else. Three things follow from 
 
 - A string that `XmlSerializer.Serialize` returns has `encoding="utf-8"` in its declaration, even though a .NET string is UTF-16 in memory. The declaration describes the bytes you get when you save the text as UTF-8.
 - There's no `Encoding` setting. To produce another encoding, transcode the UTF-8 output yourself.
-- A document whose declaration names another encoding is rejected, even when you pass it as a `string`.
+- Bytes whose declaration names another encoding are rejected. A `string` or a span of characters has no encoding of its own, so the encoding its declaration names isn't checked.
 
-The last point matters for XML that the old serializer wrote to a `StringWriter` and that you stored as text: its declaration says `utf-16`.
+The last point matters for XML that the old serializer wrote to a `StringWriter` and that you stored as text: its declaration says `utf-16`. You can read that text as it is.
 
 ```csharp Program.cs
 const string xml = """<?xml version="1.0" encoding="utf-16"?><Shipment><Carrier>Contoso Freight</Carrier></Shipment>""";
 
+Shipment? shipment = XmlSerializer.Deserialize<Shipment>(xml);
+output.WriteLine(shipment!.Carrier);
+
 try
 {
-    XmlSerializer.Deserialize<Shipment>(xml);
+    XmlSerializer.Deserialize<Shipment>(Encoding.UTF8.GetBytes(xml));
 }
 catch (XmlException ex)
 {
     output.WriteLine(ex.Message);
 }
-
-string withoutDeclaration = xml[(xml.IndexOf("?>", StringComparison.Ordinal) + 2)..];
-Shipment? shipment = XmlSerializer.Deserialize<Shipment>(withoutDeclaration);
-output.WriteLine(shipment!.Carrier);
 ```
 
 The code produces the following output:
 
 ```text
-XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.
 Contoso Freight
+XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.
 ```
 
-Remove the declaration from stored text, as the sample does, or rewrite it to say `utf-8`. A file that is really encoded as UTF-16 has to be transcoded to UTF-8 before XmlEssentials can read it.
+If you save such text as UTF-8 bytes, remove the declaration or rewrite it to say `utf-8` first. A file that is really encoded as UTF-16 has to be transcoded to UTF-8 before XmlEssentials can read it; the reader reports `XmlEssentials is UTF-8 only. The input is UTF-16 or UTF-32.`
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/40_MigrateFromXmlSerializer.cs)
 
@@ -546,7 +545,7 @@ XmlEssentials has a Roslyn source generator, with the same model as System.Text.
 ```csharp MigrationXmlContext.cs
 using CloudNimble.Text.Xml.Serialization;
 
-[XmlSerializable(typeof(OrderLine))]
+[XmlSerializable<OrderLine>]
 internal sealed partial class MigrationXmlContext : XmlSerializerContext
 {
 }
@@ -591,8 +590,9 @@ These features of `System.Xml.Serialization` have no counterpart in XmlEssential
 | `XmlAttributeOverrides`, `XmlRootAttribute` passed to the constructor | Not supported | Put the attributes on the type, or use a custom converter. |
 | `[DefaultValue]` | Ignored | `XmlIgnoreCondition.WhenWritingDefault` leaves out a member that has the default value of its type. |
 | `ShouldSerializeX()` and `XSpecified` | Ignored | Use `[XmlIgnore(Condition = ...)]`. |
+| A collection property with no setter is filled when it is read | Not read by default | Mark the property `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]`, or set `PreferredObjectCreationHandling` to `Populate`. See [Collections](/guides/collections#populate-a-collection-that-already-holds-a-value). |
 | `UnknownElement`, `UnknownAttribute`, and `UnknownNode` events | No events | Use `[XmlExtensionData]` to keep unmapped content, or `UnmappedMemberHandling` to reject it. |
-| `Serialize<object>` with the runtime type in `xsi:type` | `NotSupportedException` | Call the overload that takes a `Type`, or declare the base type with `[XmlDerivedType<T>]`. |
+| `Serialize<object>` with the runtime type in `xsi:type` | The value is written as the type it has, with no `xsi:type`. It is read back as an `XmlElement`, or as an `XmlNode` when `UnknownTypeHandling` says so. | To read the type back, declare the base type with `[XmlDerivedType<T>]`. |
 | SOAP encoding (`SoapAttribute`, `SoapReflectionImporter`) | Not supported | No replacement. |
 | Encodings other than UTF-8 | Rejected on read, not written | Transcode. See [Encoding](#encoding). |
 | DTDs and entity declarations | A document with `<!DOCTYPE` is an `XmlException` | Remove the DTD. Only the five predefined entities and character references are read. See [Security](/guides/security). |

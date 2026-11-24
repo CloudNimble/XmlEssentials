@@ -135,6 +135,27 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Reads the element the reader is on as the derived type the document identified.
+        /// </summary>
+        /// <param name="reader">The reader, on the start tag.</param>
+        /// <param name="derived">The derived type the element name or discriminator identified.</param>
+        /// <returns>The value.</returns>
+        /// <exception cref="XmlException">The identified type is not the declared type or one derived from it.</exception>
+        /// <remarks>
+        /// A derived type inherits the list its base declares, so the list of a derived type names its siblings
+        /// too. A sibling is a known type and the wrong one for the declared type.
+        /// </remarks>
+        internal object? ReadDerived(ref Utf8XmlReader reader, XmlDerivedBinding derived)
+        {
+            if (!DeclaredType.IsAssignableFrom(derived.Type))
+            {
+                throw new XmlException($"The element identifies the type '{derived.Type}', which is not a '{DeclaredType}'.");
+            }
+
+            return derived.Info.ReadElementAsObject(ref reader);
+        }
+
+        /// <summary>
         /// Reads the element the reader is on as the declared type or one of its derived types.
         /// </summary>
         /// <param name="reader">The reader, on the start tag.</param>
@@ -149,7 +170,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 {
                     if (FindByDiscriminator(discriminator) is { } typed)
                     {
-                        return typed.Info.ReadElementAsObject(ref reader);
+                        return ReadDerived(ref reader, typed);
                     }
 
                     if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
@@ -163,7 +184,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (FindByElementName(ref reader) is { } derived)
             {
-                return derived.Info.ReadElementAsObject(ref reader);
+                return ReadDerived(ref reader, derived);
             }
 
             return fallback.ReadElementAsObject(ref reader);

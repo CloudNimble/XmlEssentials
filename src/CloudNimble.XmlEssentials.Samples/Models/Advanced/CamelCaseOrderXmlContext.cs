@@ -10,7 +10,7 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Advanced
     [XmlSourceGenerationOptions(
         OmitXmlDeclaration = true,
         PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-    [XmlSerializable(typeof(Order))]
+    [XmlSerializable<Order>]
     public partial class CamelCaseOrderXmlContext : XmlSerializerContext
     {
     }

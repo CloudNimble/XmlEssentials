@@ -188,7 +188,7 @@ Namespace declarations: if the caller writes an element in a URI that is not in 
 
 `WriteStringValueSegment` and `WriteBase64StringSegment` write one value from several buffers. The segments together produce exactly what one call with the whole value produces, wherever they are cut:
 
-- A UTF-8 segment may end inside a multi-byte character, and a character segment between the halves of a surrogate pair. The writer keeps the incomplete character (at most three bytes, or one `char`) and writes it with the next segment. Text that ends inside a character at the final segment is `XmlException` ("Invalid UTF-8 in XML value."), as it is in one call; half a surrogate pair is written as one call writes it.
+- A UTF-8 segment may end inside a multi-byte character, and a character segment between the halves of a surrogate pair. The writer keeps the incomplete character (at most three bytes, or one `char`) and writes it with the next segment. Text that ends inside a character at the final segment is `XmlException` ("Invalid UTF-8 in XML value."), as it is in one call; half a surrogate pair with no other half is `XmlException` ("The text contains half of a surrogate pair."), as it is in one call.
 - A base64 segment may be any length. The writer keeps the one or two bytes that do not fill a group of three, and pads only at the end of the value.
 - After a segment with `isFinalSegment: false`, the next call must be the next segment of the same kind. `Flush` and `FlushAsync` are allowed in between. Anything else is `XmlException` ("A value is being written in segments. Write its final segment before anything else."). `Reset` discards an open value.
 
@@ -213,7 +213,7 @@ A character outside the `Char` production of the output version throws in every 
 
 Namespace declarations: `xmlns:xmlns` throws; `xmlns:xml` must name the XML namespace; no other prefix, and no default declaration, may name the `xml` or `xmlns` namespace.
 
-`Indented` inserts whitespace between elements only. An element that holds character data is written on one line.
+`Indented` puts each element, comment and processing instruction on a line of its own. An element that holds character data is written on one line, with everything in it. `IndentCharacter` is a space or a tab; anything else is `ArgumentOutOfRangeException`, as is a negative limit or indent size. `Dispose` flushes and then throws when elements are open. `WriteRawValue` checks that its input is well formed where it is written unless `skipInputValidation` is `true` or `SkipValidation` is set.
 
 `XmlWriterOptions.SkipValidation` turns the name, namespace, and character checks off. Escaping still happens.
 

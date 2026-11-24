@@ -1,6 +1,6 @@
 ---
 title: XmlSourceGenerationOptionsAttribute
-description: "Default options for a source-generated [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext). Analogous to `JsonSour..."
+description: "Specifies compile-time source generator configuration when applied to [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerC..."
 icon: lock
 sidebarTitle: XmlSourceGenerationOptionsAttribute
 tag: "SEALED"
@@ -23,9 +23,8 @@ CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute
 
 ## Summary
 
-Default options for a source-generated [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext). Analogous to
-`JsonSourceGenerationOptionsAttribute`. Constructor [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) win when
-the consumer passes `new AppXmlContext(options)`.
+Specifies compile-time source generator configuration when applied to [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) class declarations.
+This class cannot be inherited.
 
 ## Usage
 
@@ -35,7 +34,7 @@ Apply `[XmlSourceGenerationOptions]` to a source-generated context to set the op
 [XmlSourceGenerationOptions(
     OmitXmlDeclaration = true,
     PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class CamelCaseOrderXmlContext : XmlSerializerContext
 {
 }
@@ -58,10 +57,25 @@ The attribute is the counterpart of `JsonSourceGenerationOptionsAttribute` in Sy
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/32_UseSourceGeneration.cs)
 
+## Remarks
+
+The values are the default options of the generated context. They apply when the context is created without options.
+When the caller passes an [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) instance to the constructor, as in
+`new AppXmlContext(options)`, that instance is used as it is and takes precedence over this attribute.
+
+The source generator reads [XmlSourceGenerationOptionsAttribute.AttributeNamingPolicy](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#attributenamingpolicy), [XmlSourceGenerationOptionsAttribute.DefaultIgnoreCondition](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#defaultignorecondition),
+[XmlSourceGenerationOptionsAttribute.DefaultNamespace](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#defaultnamespace), [XmlSourceGenerationOptionsAttribute.DefaultPropertyMapping](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#defaultpropertymapping), [XmlSourceGenerationOptionsAttribute.ElementNamingPolicy](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#elementnamingpolicy),
+[XmlSourceGenerationOptionsAttribute.GenerationMode](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#generationmode), [XmlSourceGenerationOptionsAttribute.IncludeFields](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#includefields),
+[XmlSourceGenerationOptionsAttribute.OmitXmlDeclaration](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#omitxmldeclaration), [XmlSourceGenerationOptionsAttribute.PreferredObjectCreationHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#preferredobjectcreationhandling), [XmlSourceGenerationOptionsAttribute.PropertyNamingPolicy](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#propertynamingpolicy),
+[XmlSourceGenerationOptionsAttribute.RespectNullableAnnotations](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#respectnullableannotations), [XmlSourceGenerationOptionsAttribute.UnknownTypeHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#unknowntypehandling), and [XmlSourceGenerationOptionsAttribute.WriteIndented](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#writeindented).
+It does not read the other properties.
+
+This attribute is analogous to `JsonSourceGenerationOptionsAttribute` in `System.Text.Json`.
+
 ## Considerations
 
 - **The generator acts on some of the properties.** `GenerationMode`, `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, and `IncludeFields` take effect.
-- **The other properties aren't copied to the options.** Setting `NilHandling`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `DiscriminatorPlacement`, `EnumHandling`, `EmitByteOrderMark`, `IgnoreReadOnlyFields`, `IgnoreReadOnlyProperties`, `MaxDepth`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `UseStringEnumConverter`, or `XmlVersion` leaves the options of `Default` at their defaults. To use those settings, pass an `XmlSerializerOptions` instance to the constructor of a context in metadata mode.
+- **The other properties aren't copied to the options.** Setting `DiscriminatorPlacement`, `EnumHandling`, `EmitByteOrderMark`, `IgnoreReadOnlyFields`, `IgnoreReadOnlyProperties`, `MaxDepth`, `PropertyNameCaseInsensitive`, `UseStringEnumConverter`, or `XmlVersion` leaves the options of `Default` at their defaults. To use those settings, pass an `XmlSerializerOptions` instance to the constructor of a context in metadata mode.
 - **Naming policies are applied twice.** The generator fixes member names in the generated converters at compile time, and sets the policy on the default options, which name the document element at run time. If you pass your own options to the constructor, set the same policy on them, or the document element and its members follow different policies.
 - **Indented output uses `Environment.NewLine`.** The attribute has no `NewLine` property. Pass options to the constructor to choose the line ending.
 
@@ -99,7 +113,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeNamingPolicy
 
-Gets or sets the naming policy for attributes.
+Gets or sets the built-in naming policy that converts member names to XML attribute names.
 
 #### Syntax
 
@@ -110,10 +124,11 @@ public CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy AttributeNamingPo
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy`
+One of the enumeration values that specifies the naming policy for attributes. The default is [XmlKnownNamingPolicy.Unspecified](/api-reference/CloudNimble/Text/Xml/Serialization/XmlKnownNamingPolicy).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultIgnoreCondition
 
-Gets or sets the default ignore condition.
+Gets or sets the default condition that determines when members are ignored.
 
 #### Syntax
 
@@ -124,10 +139,11 @@ public CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition DefaultIgnoreCondit
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition`
+One of the enumeration values that specifies when members are ignored. The default is [XmlIgnoreCondition.Never](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultNamespace
 
-Gets or sets the default namespace URI of serialized documents.
+Gets or sets the default namespace URI of the document element.
 
 #### Syntax
 
@@ -138,10 +154,11 @@ public string DefaultNamespace { get; set; }
 #### Property Value
 
 Type: `string?`
+The default namespace URI, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for no namespace. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultPropertyMapping
 
-Gets or sets the default property mapping (element or attribute).
+Gets or sets the default mapping of a member that has no mapping attribute: a child element or an XML attribute.
 
 #### Syntax
 
@@ -152,10 +169,11 @@ public CloudNimble.Text.Xml.XmlPropertyMapping DefaultPropertyMapping { get; set
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlPropertyMapping`
+One of the enumeration values that specifies the default mapping of members. The default is [XmlPropertyMapping.Element](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DiscriminatorPlacement
 
-Gets or sets where a polymorphic discriminator is written.
+Gets or sets where the type discriminator of a polymorphic type is written.
 
 #### Syntax
 
@@ -166,10 +184,12 @@ public CloudNimble.Text.Xml.XmlDiscriminatorPlacement DiscriminatorPlacement { g
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlDiscriminatorPlacement`
+One of the enumeration values that specifies where the type discriminator is written. The default is
+[XmlDiscriminatorPlacement.ElementName](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementNamingPolicy
 
-Gets or sets the naming policy for elements.
+Gets or sets the built-in naming policy that converts type and member names to XML element names.
 
 #### Syntax
 
@@ -180,10 +200,11 @@ public CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy ElementNamingPoli
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy`
+One of the enumeration values that specifies the naming policy for elements. The default is [XmlKnownNamingPolicy.Unspecified](/api-reference/CloudNimble/Text/Xml/Serialization/XmlKnownNamingPolicy).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmitByteOrderMark
 
-Gets or sets whether a UTF-8 BOM is written.
+Gets or sets a value that indicates whether a UTF-8 byte order mark is written.
 
 #### Syntax
 
@@ -194,10 +215,11 @@ public bool EmitByteOrderMark { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if a UTF-8 byte order mark is written; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumHandling
 
-Gets or sets how enumerations are written.
+Gets or sets how enumeration values are written.
 
 #### Syntax
 
@@ -208,10 +230,11 @@ public CloudNimble.Text.Xml.XmlEnumHandling EnumHandling { get; set; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlEnumHandling`
+One of the enumeration values that specifies how enumeration values are written. The default is [XmlEnumHandling.Name](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GenerationMode
 
-Gets or sets the generation mode. [XmlSourceGenerationMode.Default](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode) emits metadata and serialization.
+Gets or sets the source generation mode for the types of the context.
 
 #### Syntax
 
@@ -222,10 +245,12 @@ public CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode GenerationMode
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode`
+A bitwise combination of the enumeration values that specifies what the source generator generates. The default is
+[XmlSourceGenerationMode.Default](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode), which generates both type metadata and serialization logic.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyFields
 
-Gets or sets whether read-only fields are omitted.
+Gets or sets a value that indicates whether read-only fields are ignored.
 
 #### Syntax
 
@@ -236,10 +261,11 @@ public bool IgnoreReadOnlyFields { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if read-only fields are ignored; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyProperties
 
-Gets or sets whether read-only properties are omitted.
+Gets or sets a value that indicates whether read-only properties are ignored.
 
 #### Syntax
 
@@ -250,10 +276,11 @@ public bool IgnoreReadOnlyProperties { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if read-only properties are ignored; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IncludeFields
 
-Gets or sets whether public fields are serialized.
+Gets or sets a value that indicates whether fields are serialized and deserialized.
 
 #### Syntax
 
@@ -264,10 +291,11 @@ public bool IncludeFields { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if public fields are serialized and deserialized; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
 
-Gets or sets the maximum object graph depth.
+Gets or sets the maximum depth of nested elements.
 
 #### Syntax
 
@@ -278,24 +306,11 @@ public int MaxDepth { get; set; }
 #### Property Value
 
 Type: `int`
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NilHandling
-
-Gets or sets how null values are written.
-
-#### Syntax
-
-```csharp
-public CloudNimble.Text.Xml.XmlNilHandling NilHandling { get; set; }
-```
-
-#### Property Value
-
-Type: `CloudNimble.Text.Xml.XmlNilHandling`
+The maximum element depth. A value of 0 selects the default limit. The default is 0.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
 
-Gets or sets whether the XML declaration is omitted.
+Gets or sets a value that indicates whether the XML declaration is omitted.
 
 #### Syntax
 
@@ -306,10 +321,26 @@ public bool OmitXmlDeclaration { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the XML declaration is omitted; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PreferredObjectCreationHandling
+
+Gets or sets whether a member that already holds a value is given a new one or has its value populated when it is read.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling`
+One of the enumeration values. The default is [XmlObjectCreationHandling.Replace](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectCreationHandling).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyNameCaseInsensitive
 
-Gets or sets whether property names are compared without regard to case.
+Gets or sets a value that indicates whether element and attribute names are matched to members without regard to case on deserialization.
 
 #### Syntax
 
@@ -320,10 +351,12 @@ public bool PropertyNameCaseInsensitive { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if names are compared without regard to case; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyNamingPolicy
 
-Gets or sets the naming policy for properties.
+Gets or sets the built-in naming policy that converts names to XML names when [XmlSourceGenerationOptionsAttribute.ElementNamingPolicy](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#elementnamingpolicy)
+or [XmlSourceGenerationOptionsAttribute.AttributeNamingPolicy](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#attributenamingpolicy) is not set.
 
 #### Syntax
 
@@ -334,10 +367,11 @@ public CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy PropertyNamingPol
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy`
+One of the enumeration values that specifies the naming policy for members. The default is [XmlKnownNamingPolicy.Unspecified](/api-reference/CloudNimble/Text/Xml/Serialization/XmlKnownNamingPolicy).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RespectNullableAnnotations
 
-Gets or sets whether nullable annotations are respected.
+Gets or sets a value that indicates whether a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) is refused for a member or constructor parameter annotated non-nullable.
 
 #### Syntax
 
@@ -348,6 +382,7 @@ public bool RespectNullableAnnotations { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if nullable annotations are respected; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -363,9 +398,25 @@ public virtual object TypeId { get; }
 
 Type: `object`
 
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UnknownTypeHandling
+
+Gets or sets what an element is read as when the declared type is [Object](https://learn.microsoft.com/dotnet/api/system.object).
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling`
+One of the enumeration values. The default is [XmlUnknownTypeHandling.XmlElement](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnknownTypeHandling).
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UseStringEnumConverter
 
-Gets or sets whether enums are written as names even when [XmlSourceGenerationOptionsAttribute.EnumHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#enumhandling) is integer.
+Gets or sets a value that indicates whether enumeration values are written as names even when
+[XmlSourceGenerationOptionsAttribute.EnumHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#enumhandling) is [XmlEnumHandling.Integer](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling).
 
 #### Syntax
 
@@ -376,10 +427,11 @@ public bool UseStringEnumConverter { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if enumeration values are always written as names; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteIndented
 
-Gets or sets whether output is indented.
+Gets or sets a value that indicates whether the output is indented.
 
 #### Syntax
 
@@ -390,10 +442,11 @@ public bool WriteIndented { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the output is indented; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> XmlVersion
 
-Gets or sets the XML version written in the declaration.
+Gets or sets the XML version that is written in the XML declaration.
 
 #### Syntax
 
@@ -404,6 +457,7 @@ public CloudNimble.Text.Xml.XmlVersion XmlVersion { get; set; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlVersion`
+One of the enumeration values that specifies the XML version. The default is [XmlVersion.Version10](/api-reference/CloudNimble/Text/Xml/XmlVersion).
 
 ## Methods
 

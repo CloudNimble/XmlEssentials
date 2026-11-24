@@ -1,6 +1,6 @@
 ---
 title: XmlReferenceResolver
-description: "Maps objects to reference ids for one serialize or deserialize operation."
+description: "Defines the core behavior of preserving references on serialization and deserialization and provides a base for resolvers that map objects to reference ident..."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamespaces']
@@ -20,7 +20,8 @@ CloudNimble.Text.Xml.Serialization.XmlReferenceResolver
 
 ## Summary
 
-Maps objects to reference ids for one serialize or deserialize operation.
+Defines the core behavior of preserving references on serialization and deserialization and provides a base for
+resolvers that map objects to reference identifiers during one operation.
 
 ## Usage
 
@@ -134,7 +135,7 @@ public Object()
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AddReference <Badge color="orange">Abstract</Badge>
 
-Records *value* under *referenceId* for later resolve.
+When overridden in a derived class, adds an entry to the bag of references by using the specified identifier and value.
 
 #### Syntax
 
@@ -146,8 +147,12 @@ public abstract void AddReference(string referenceId, object value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `referenceId` | `string` | The id. |
-| `value` | `object` | The object. |
+| `referenceId` | `string` | The identifier of the object. |
+| `value` | `object` | The object that results from reading the XML element. |
+
+#### Remarks
+
+The serializer calls this method when it reads an element that carries a reference identifier.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -206,7 +211,7 @@ Type: `int`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetReference <Badge color="orange">Abstract</Badge>
 
-Returns the id for *value* and whether it was already seen.
+When overridden in a derived class, gets the reference identifier of the specified value if one exists; otherwise, assigns a new identifier.
 
 #### Syntax
 
@@ -218,13 +223,20 @@ public abstract string GetReference(object value, out bool alreadyExists)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `object` | The object. |
-| `alreadyExists` | `bool` | When this method returns, whether the object was already assigned an id. |
+| `value` | `object` | The object to get an identifier for. |
+| `alreadyExists` | `bool` | When this method returns, contains [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if a reference to *value* already exists; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). This parameter is treated as uninitialized. |
 
 #### Returns
 
 Type: `string`
-The id.
+The reference identifier for *value*.
+
+#### Remarks
+
+The serializer calls this method before it writes an object, to decide whether to write the object or a reference to it.
+For a new object, it writes the returned identifier as an `id` attribute. For an object that already exists, it
+writes the identifier as a `ref` attribute on an empty element. When the identifier is an empty string, it writes
+no `id`, and writes `xsi:nil="true"` in place of an object that already exists.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
 
@@ -277,7 +289,7 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ResolveReference <Badge color="orange">Abstract</Badge>
 
-Returns the object previously recorded under *referenceId*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+When overridden in a derived class, returns the object related to the specified reference identifier.
 
 #### Syntax
 
@@ -289,12 +301,16 @@ public abstract object ResolveReference(string referenceId)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `referenceId` | `string` | The id. |
+| `referenceId` | `string` | The reference identifier related to the returned object. |
 
 #### Returns
 
 Type: `object?`
-The object, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+The object that was added under *referenceId*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if there is none.
+
+#### Remarks
+
+The serializer calls this method when it reads an element that refers to another object by identifier.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

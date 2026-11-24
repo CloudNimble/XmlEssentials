@@ -80,7 +80,7 @@ namespace CloudNimble.XmlEssentials.Samples
             {
                 ReferenceHandler = XmlReferenceHandler.Preserve,
                 OmitXmlDeclaration = true,
-                NilHandling = XmlNilHandling.Omit,
+                DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull,
             };
 
             string xml = XmlSerializer.Serialize(project, preserve);
@@ -89,7 +89,7 @@ namespace CloudNimble.XmlEssentials.Samples
             Project? shared = XmlSerializer.Deserialize<Project>(xml, preserve);
             output.WriteLine(ReferenceEquals(shared!.Owner, shared.Reviewer));
 
-            var plain = new XmlSerializerOptions { OmitXmlDeclaration = true, NilHandling = XmlNilHandling.Omit };
+            var plain = new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
             xml = XmlSerializer.Serialize(project, plain);
             output.WriteLine(xml);
 

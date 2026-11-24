@@ -1,6 +1,6 @@
 ---
 title: XmlPropertyMapping
-description: "How an unannotated property or field is mapped: child element or XML attribute."
+description: "Specifies how a property or field without a mapping attribute is mapped: as a child element or as an XML attribute."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlPropertyMapping', 'CloudNimble.Text.Xml.XmlPropertyMapping', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlPropertyMapping
 
 ## Summary
 
-How an unannotated property or field is mapped: child element or XML attribute.
+Specifies how a property or field without a mapping attribute is mapped: as a child element or as an XML attribute.
 
 ## Usage
 
@@ -74,10 +74,10 @@ The code produces the following output:
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Element` | 0 | Write the member as a child element. This is the default. |
-| `Attribute` | 1 | Write unannotated simple members as XML attributes. Nested objects stay child elements, and their
+| `Element` | 0 | A child element for each member. This is the default. |
+| `Attribute` | 1 | An XML attribute for each unannotated simple member. Nested objects stay child elements, and their
 unannotated simple members are also attributes (the option applies at every type). Collections stay
-child elements. Per-member `[XmlElement]`, `[XmlAttribute]`, or `[XmlText]` still wins. |
+child elements. A per-member `[XmlElement]`, `[XmlAttribute]`, or `[XmlText]` takes precedence. |
 
 ## Related APIs
 

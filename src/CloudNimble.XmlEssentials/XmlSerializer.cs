@@ -123,7 +123,7 @@ namespace CloudNimble.Text.Xml
         internal static TValue? Read<TValue>(ReadOnlySpan<byte> utf8Xml, XmlTypeInfo typeInfo)
         {
             Span<byte> scratch = stackalloc byte[ReaderScratchByteCount];
-            return Read<TValue>(utf8Xml, scratch, typeInfo);
+            return Read<TValue>(utf8Xml, scratch, typeInfo, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>
@@ -133,12 +133,33 @@ namespace CloudNimble.Text.Xml
         /// <param name="utf8Xml">The UTF-8 document.</param>
         /// <param name="scratch">Working memory for the reader.</param>
         /// <param name="typeInfo">The type info.</param>
+        /// <param name="ignoreDeclaredEncoding">Whether the bytes were transcoded from characters, so the encoding the declaration names is not checked.</param>
         /// <returns>The value.</returns>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static TValue? Read<TValue>(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, XmlTypeInfo typeInfo)
+        internal static TValue? Read<TValue>(ReadOnlySpan<byte> utf8Xml, Span<byte> scratch, XmlTypeInfo typeInfo, bool ignoreDeclaredEncoding)
         {
-            var reader = new Utf8XmlReader(utf8Xml, scratch, typeInfo.Options.ToReaderOptions());
+            var options = typeInfo.Options.ToReaderOptions();
+            options.IgnoreDeclaredEncoding = ignoreDeclaredEncoding;
+            var reader = new Utf8XmlReader(utf8Xml, scratch, options);
             return ReadDocument<TValue>(ref reader, typeInfo);
+        }
+
+        /// <summary>
+        /// Reads one document from UTF-8 that was transcoded from characters.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
+        /// <param name="utf8Xml">The UTF-8 document.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <returns>The value.</returns>
+        /// <remarks>
+        /// A declaration in the document may name the encoding the characters once had, as <c>encoding="utf-16"</c>
+        /// does in what <c>System.Xml</c> writes to a string. It says nothing about these bytes and is not checked.
+        /// </remarks>
+        [SkipLocalsInit]
+        internal static TValue? ReadTranscoded<TValue>(ReadOnlySpan<byte> utf8Xml, XmlTypeInfo typeInfo)
+        {
+            Span<byte> scratch = stackalloc byte[ReaderScratchByteCount];
+            return Read<TValue>(utf8Xml, scratch, typeInfo, ignoreDeclaredEncoding: true);
         }
 
         /// <summary>
@@ -182,7 +203,7 @@ namespace CloudNimble.Text.Xml
             try
             {
                 length = Encoding.UTF8.GetBytes(xml, rented);
-                return Read<TValue>(rented.AsSpan(0, length), typeInfo);
+                return ReadTranscoded<TValue>(rented.AsSpan(0, length), typeInfo);
             }
             finally
             {
@@ -380,6 +401,7 @@ namespace CloudNimble.Text.Xml
         /// The state captured at the start tag of the document element, or a state with no snapshot until that
         /// tag has been read. Every child value starts in this scope.
         /// </param>
+        /// <param name="resolver">The reference resolver shared by the values of this document, or null when references are not tracked.</param>
         /// <param name="values">Receives the values, in order.</param>
         /// <returns>The number of bytes used. Bytes after it belong to a value or token that is not complete yet.</returns>
         /// <remarks>
@@ -388,7 +410,7 @@ namespace CloudNimble.Text.Xml
         /// moved to where the last complete value ended. Tracking that costs three numbers per value; no
         /// reader is copied and no snapshot is captured per value.
         /// </remarks>
-        internal static int ReadAvailableChildren<TValue>(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlTypeInfo<TValue> typeInfo, ref XmlReaderState state, ref XmlReaderState scope, List<TValue?> values)
+        internal static int ReadAvailableChildren<TValue>(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlTypeInfo<TValue> typeInfo, ref XmlReaderState state, ref XmlReaderState scope, XmlReferenceResolver? resolver, List<TValue?> values)
         {
             var reader = new Utf8XmlReader(utf8Xml, isFinalBlock, state);
             reader.GetResumePoint(out var start, out var lineNumber, out var lineStart);
@@ -407,7 +429,7 @@ namespace CloudNimble.Text.Xml
                 }
                 else
                 {
-                    valueIsPartial = !typeInfo.TryReadElement(ref reader, out var value);
+                    valueIsPartial = !TryReadStreamedValue(ref reader, typeInfo, resolver, out var value);
                     if (valueIsPartial)
                     {
                         continue;
@@ -442,13 +464,14 @@ namespace CloudNimble.Text.Xml
         /// <param name="isFinalBlock"><see langword="true"/> when the stream has ended.</param>
         /// <param name="typeInfo">The type info.</param>
         /// <param name="options">The reader options, with <see cref="XmlReaderOptions.AllowMultipleRoots"/> set so a tail with no element is not an error.</param>
+        /// <param name="handler">The reference handler, which creates a resolver for each document, or null when references are not tracked.</param>
         /// <param name="values">Receives the values, in order.</param>
         /// <returns>The number of bytes used. Bytes after it are the start of a document that is not complete yet.</returns>
         /// <remarks>
         /// Every document gets its own reader, so each may carry an XML declaration, and white space between
         /// documents is skipped here.
         /// </remarks>
-        internal static int ReadAvailableDocuments<TValue>(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlTypeInfo<TValue> typeInfo, XmlReaderOptions options, List<TValue?> values)
+        internal static int ReadAvailableDocuments<TValue>(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlTypeInfo<TValue> typeInfo, XmlReaderOptions options, XmlReferenceHandler? handler, List<TValue?> values)
         {
             var used = 0;
             while (true)
@@ -461,13 +484,41 @@ namespace CloudNimble.Text.Xml
                 }
 
                 typeInfo.CheckRoot(ref reader);
-                if (!typeInfo.TryReadElement(ref reader, out var value))
+                if (!TryReadStreamedValue(ref reader, typeInfo, handler?.CreateResolver(), out var value))
                 {
                     return used;
                 }
 
                 values.Add(value);
                 used += (int)reader.BytesConsumed;
+            }
+        }
+
+        /// <summary>
+        /// Reads one value of an asynchronous sequence if all of it has arrived, tracking references with
+        /// <paramref name="resolver"/>.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type.</typeparam>
+        /// <param name="reader">The reader, on the start tag of the value.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <param name="resolver">The resolver for the document the value belongs to, or null when references are not tracked.</param>
+        /// <param name="value">When this method returns true, the value.</param>
+        /// <returns><see langword="false"/> if the end of the value is not in the buffer yet.</returns>
+        /// <remarks>
+        /// An object is read only once all of it has arrived, so the resolver sees each identifier once
+        /// however the stream is cut up. The resolver is current only during the call.
+        /// </remarks>
+        internal static bool TryReadStreamedValue<TValue>(ref Utf8XmlReader reader, XmlTypeInfo<TValue> typeInfo, XmlReferenceResolver? resolver, out TValue? value)
+        {
+            var previous = XmlReferenceScope.Current;
+            XmlReferenceScope.Current = resolver;
+            try
+            {
+                return typeInfo.TryReadElement(ref reader, out value);
+            }
+            finally
+            {
+                XmlReferenceScope.Current = previous;
             }
         }
 
@@ -576,6 +627,24 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Writes one document and returns its root element, in a document that holds no pooled memory.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <returns>The root element.</returns>
+        /// <remarks>
+        /// The caller gets an element and has no document to dispose, so the document behind it gives its
+        /// rented arrays back here and keeps copies of its own.
+        /// </remarks>
+        internal static XmlElement WriteElement<TValue>(TValue value, XmlTypeInfo typeInfo)
+        {
+            var document = WriteDocument(value, typeInfo);
+            document.MoveOutOfPool();
+            return document.RootElement;
+        }
+
+        /// <summary>
         /// Writes one document and parses it into a mutable <see cref="XmlNode"/>.
         /// </summary>
         /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
@@ -612,6 +681,32 @@ namespace CloudNimble.Text.Xml
             }
 
             typeInfo.WriteRootAsObject(writer, value);
+        }
+
+        /// <summary>
+        /// Writes one value of an asynchronous sequence, tracking references with <paramref name="resolver"/>.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type.</typeparam>
+        /// <param name="writer">The writer.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="typeInfo">The type info.</param>
+        /// <param name="resolver">The resolver for the document the value belongs to, or null when references are not tracked.</param>
+        /// <remarks>
+        /// The resolver is current only while the value is written. Nothing is awaited in between, so it is
+        /// not seen by the code that produces the next value or by the stream.
+        /// </remarks>
+        internal static void WriteStreamedValue<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo<TValue> typeInfo, XmlReferenceResolver? resolver)
+        {
+            var previous = XmlReferenceScope.Current;
+            XmlReferenceScope.Current = resolver;
+            try
+            {
+                typeInfo.WriteRoot(writer, value);
+            }
+            finally
+            {
+                XmlReferenceScope.Current = previous;
+            }
         }
 
         /// <summary>

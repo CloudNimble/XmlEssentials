@@ -1,6 +1,6 @@
 ---
 title: XmlSerializerContext
-description: "Base class for source-generated serialization metadata. Analogous to `JsonSerializerContext`."
+description: "Provides metadata about a set of types that is relevant to XML serialization, and provides a base for source-generated contexts."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo', 'CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver']
@@ -20,14 +20,14 @@ CloudNimble.Text.Xml.Serialization.XmlSerializerContext
 
 ## Summary
 
-Base class for source-generated serialization metadata. Analogous to `JsonSerializerContext`.
+Provides metadata about a set of types that is relevant to XML serialization, and provides a base for source-generated contexts.
 
 ## Usage
 
 You don't use `XmlSerializerContext` directly. You declare a partial class that derives from it, list your types with `[XmlSerializable]`, and the source generator in the `XmlEssentials` package writes the rest of the class.
 
 ```csharp
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class OrderXmlContext : XmlSerializerContext
 {
 }
@@ -44,6 +44,10 @@ Order? copy = XmlSerializer.Deserialize(xml, OrderXmlContext.Default.Order);
 A context is bound to one `XmlSerializerOptions` instance, available from `Options`. The constructor makes the context the `TypeInfoResolver` of those options.
 
 The class is the counterpart of `JsonSerializerContext` in System.Text.Json. For the full procedure, see [How to use source generation](/guides/source-generation).
+
+## Remarks
+
+This class is analogous to `JsonSerializerContext` in `System.Text.Json`.
 
 ## Examples
 
@@ -103,17 +107,17 @@ The code produces the following output:
 
 - **Use `Default` unless you need other options.** It's created once and shared. When you do pass options to the constructor, create that context once and keep it.
 - **Prefer the `XmlTypeInfo<T>` properties to the context overloads.** `OrderXmlContext.Default.Order` fails to compile when the type isn't in the context. `XmlSerializer.Serialize(value, context)` finds out at run time.
-- **List every root type.** A generated context answers for a type it doesn't list by using the reflection resolver, which isn't safe in a trimmed or Native AOT application.
+- **List every root type.** A generated context uses no reflection: a type that it doesn't list and can't reach from a listed type is a `NotSupportedException`, unless it is a built-in value. That includes a collection or array type that you serialize as the document element, so list it too.
 - **Set naming policies with `[XmlSourceGenerationOptions]`.** Generated converters fix member names at compile time, so a policy set only on run-time options changes the name of the document element and nothing else.
-- **Put a type that needs custom converters in a metadata-mode context,** or serialize it with reflection. Default-mode converters don't apply custom converters to class and struct members.
+- **Give a type that needs a custom converter the `[XmlConverter]` attribute.** A generated context then uses the converter for that type. A converter in `XmlSerializerOptions.Converters` for a type the context generates code for throws `NotSupportedException`; put such a type in a metadata-mode context, or serialize it with reflection.
 - **Serialize a type that declares `[XmlDerivedType]` with reflection.** The generator reports `XMLXE008` for it in every mode.
 
 ## Considerations
 
 - **The constructor changes the options you pass.** It sets `TypeInfoResolver` on them, and throws `InvalidOperationException` when they're read-only. `XmlSerializerOptions.Default`, `Web`, and `Strict` are read-only. If you pass the same options to two contexts, the second one becomes the resolver.
 - **Type info belongs to the context's options.** `OrderXmlContext.Default.Order.Options` is the options of `Default`, whichever options instance asked for it.
-- **Contexts don't combine through `TypeInfoResolverChain`.** A generated `GetTypeInfo` never returns `null` for a type the reflection resolver can map, so the first context in a chain answers every request.
-- **A generated converter applies a subset of the options.** `WriteIndented`, `NewLine`, `OmitXmlDeclaration`, and `DefaultNamespace` apply. `NilHandling`, `DefaultIgnoreCondition`, and converters for class, struct, and built-in member types don't. A `ReferenceHandler` makes the converter throw `NotSupportedException`.
+- **Contexts combine through `TypeInfoResolverChain`.** A generated `GetTypeInfo` returns `null` for a type the context neither lists nor reaches, unless the type is a built-in value, an XML value, or `object`, so the next context in the chain is asked. The options that hold the chain decide how each type is written: a generated context creates type info for the options that ask. A context you write by hand answers with whatever its `GetTypeInfo(Type)` returns.
+- **A generated converter follows an option or refuses it.** It reads `DefaultIgnoreCondition`, `PropertyNameCaseInsensitive`, and `NumberHandling` from the options when it runs. The naming policies, `DefaultPropertyMapping`, and `IncludeFields` are compiled in from `[XmlSourceGenerationOptions]`; options that ask for anything else, or that set `IgnoreReadOnlyProperties`, `IgnoreReadOnlyFields`, or a converter for a type the generated code writes itself, make the context throw `NotSupportedException` when it creates the type info. A `ReferenceHandler` makes the converter throw `NotSupportedException`.
 - **Interceptors route other calls to the context.** With the package's build file in effect, `XmlSerializer.Serialize<T>(value)` and `XmlSerializer.Deserialize<T>(input)` for a listed type are rewritten to use the context's `Default` instance. A call that passes an `XmlSerializerOptions` argument is never rewritten. See [Interceptors](/guides/reflection-vs-source-generation#interceptors).
 - **Unlike `JsonSerializerContext`,** the class has no `GeneratedSerializerOptions` member. The generated code is a constructor and properties.
 
@@ -133,7 +137,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Options
 
-Gets the options bound to this context. Their [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) is this context.
+Gets the run-time specified options of the context.
 
 #### Syntax
 
@@ -144,6 +148,11 @@ public CloudNimble.Text.Xml.XmlSerializerOptions Options { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
+The options bound to the context. If no options were passed when the context was created, a new instance is bound and returned.
+
+#### Remarks
+
+The [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) of the options is this context.
 
 ## Methods
 
@@ -218,7 +227,7 @@ Type: `System.Type`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetTypeInfo <Badge color="orange">Abstract</Badge>
 
-Returns type info for *type*.
+When overridden in a derived class, gets metadata for the specified type.
 
 #### Syntax
 
@@ -230,12 +239,12 @@ public abstract CloudNimble.Text.Xml.Serialization.XmlTypeInfo GetTypeInfo(Syste
 
 | Name | Type | Description |
 |------|------|-------------|
-| `type` | `System.Type` | The CLR type. |
+| `type` | `System.Type` | The type to fetch metadata about. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo?`
-The type info, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when this context does not know the type.
+The metadata for *type*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the context has no metadata for the type.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
 

@@ -147,25 +147,25 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
-        /// Reads a string whose XML declaration names UTF-16, which the old serializer writes to a <see cref="StringWriter"/>.
+        /// Reads a string whose XML declaration names UTF-16, which the old serializer writes to a <see cref="StringWriter"/>,
+        /// and shows that the same declaration in UTF-8 bytes is an error.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
-        public static void Utf16DeclarationIsRejected(TextWriter output)
+        public static void Utf16Declaration(TextWriter output)
         {
             const string xml = """<?xml version="1.0" encoding="utf-16"?><Shipment><Carrier>Contoso Freight</Carrier></Shipment>""";
 
+            Shipment? shipment = XmlSerializer.Deserialize<Shipment>(xml);
+            output.WriteLine(shipment!.Carrier);
+
             try
             {
-                XmlSerializer.Deserialize<Shipment>(xml);
+                XmlSerializer.Deserialize<Shipment>(Encoding.UTF8.GetBytes(xml));
             }
             catch (XmlException ex)
             {
                 output.WriteLine(ex.Message);
             }
-
-            string withoutDeclaration = xml[(xml.IndexOf("?>", StringComparison.Ordinal) + 2)..];
-            Shipment? shipment = XmlSerializer.Deserialize<Shipment>(withoutDeclaration);
-            output.WriteLine(shipment!.Carrier);
         }
 
         /// <summary>

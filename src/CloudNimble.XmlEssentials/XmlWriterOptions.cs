@@ -33,7 +33,15 @@ namespace CloudNimble.Text.Xml
         /// The indent character. The default is a space. The null character (<c>'\0'</c>), which is the value in
         /// <c>default(XmlWriterOptions)</c>, also means a space.
         /// </value>
-        public char IndentCharacter { get; set; } = ' ';
+        public char IndentCharacter
+        {
+            get;
+            set
+            {
+                XmlLimits.ThrowIfNotIndentCharacter(value);
+                field = value;
+            }
+        } = ' ';
 
         /// <summary>
         /// Gets or sets the number of <see cref="IndentCharacter"/> characters written for each level of depth
@@ -42,7 +50,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The number of indent characters for each level. The default is 0, which means 2.
         /// </value>
-        public int IndentSize { get; set; }
+        public int IndentSize
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets a value that indicates whether the writer formats the output with new lines and indentation.
@@ -59,7 +75,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum number of attributes on one element. The default is 0, which means 1000.
         /// </value>
-        public int MaxAttributeCount { get; set; }
+        public int MaxAttributeCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum depth of nested elements.
@@ -67,7 +91,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum element depth. The default is 0, which means 64.
         /// </value>
-        public int MaxDepth { get; set; }
+        public int MaxDepth
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the maximum length of an element name, an attribute name, or a prefix, in UTF-8 bytes.
@@ -75,7 +107,15 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// The maximum name length, in UTF-8 bytes. The default is 0, which means 1024.
         /// </value>
-        public int MaxNameByteCount { get; set; }
+        public int MaxNameByteCount
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the line ending written before each indented line when <see cref="Indented"/> is <see langword="true"/>.

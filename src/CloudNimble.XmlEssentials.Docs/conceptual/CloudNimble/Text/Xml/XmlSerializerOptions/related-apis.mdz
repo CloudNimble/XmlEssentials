@@ -2,7 +2,6 @@ CloudNimble.Text.Xml.XmlSerializer
 CloudNimble.Text.Xml.XmlSerializerDefaults
 CloudNimble.Text.Xml.XmlNamingPolicy
 CloudNimble.Text.Xml.XmlPropertyMapping
-CloudNimble.Text.Xml.XmlNilHandling
 CloudNimble.Text.Xml.XmlEnumHandling
 CloudNimble.Text.Xml.XmlCommentHandling
 CloudNimble.Text.Xml.XmlWhitespaceHandling

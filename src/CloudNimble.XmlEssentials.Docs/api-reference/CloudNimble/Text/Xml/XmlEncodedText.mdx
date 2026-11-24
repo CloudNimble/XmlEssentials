@@ -1,6 +1,6 @@
 ---
 title: XmlEncodedText
-description: "Cached escaped UTF-8 for hot element and attribute names."
+description: "Represents an XML name that is already encoded as UTF-8, so that a [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) can write it many times..."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlEncodedText', 'CloudNimble.Text.Xml.XmlEncodedText', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml.XmlName']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.XmlEncodedText
 
 ## Summary
 
-Cached escaped UTF-8 for hot element and attribute names.
+Represents an XML name that is already encoded as UTF-8, so that a [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) can write it
+many times without encoding it again.
 
 ## Usage
 
@@ -74,6 +75,12 @@ Item is 4 bytes
 
 `Encode` accepts a `string`, a `ReadOnlySpan<char>`, or UTF-8 bytes. `EncodedUtf8Bytes` returns the stored bytes, and `ToString` returns the name as a string.
 
+## Remarks
+
+Create a value once with [XmlEncodedText.Encode](/api-reference/CloudNimble/Text/Xml/XmlEncodedText#encode) and reuse it for a name that is written often.
+Encoding converts the name to UTF-8. It does not escape or check the name. The writer checks the name
+when it writes it.
+
 ## Best Practices
 
 - **Encode once and keep the value.** A `static readonly` field on the type that writes the element is the usual place. Calling `Encode` each time you write gains nothing.
@@ -115,7 +122,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EncodedUtf8Bytes
 
-Gets the encoded UTF-8 bytes.
+Gets the UTF-8 encoded representation of the name.
 
 #### Syntax
 
@@ -126,12 +133,13 @@ public System.ReadOnlySpan<byte> EncodedUtf8Bytes { get; }
 #### Property Value
 
 Type: `System.ReadOnlySpan<byte>`
+The UTF-8 bytes of the name. The span is empty for a default [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText).
 
 ## Methods
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
 
-Encodes *value* as UTF-8 name bytes.
+Encodes a name specified as a string to UTF-8.
 
 #### Syntax
 
@@ -143,16 +151,22 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(string value)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `string` | The name. |
+| `value` | `string` | The name to encode. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
-The encoded name.
+The UTF-8 encoded name.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *value* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
 
-Encodes *value* as UTF-8 name bytes.
+Encodes a name specified as a read-only span of characters to UTF-8.
 
 #### Syntax
 
@@ -164,16 +178,16 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<cha
 
 | Name | Type | Description |
 |------|------|-------------|
-| `value` | `System.ReadOnlySpan<char>` | The name. |
+| `value` | `System.ReadOnlySpan<char>` | The name to encode. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
-The encoded name.
+The UTF-8 encoded name.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Encode
 
-Encodes *utf8Value* as UTF-8 name bytes.
+Creates an encoded name from a name specified as a read-only span of UTF-8 bytes.
 
 #### Syntax
 
@@ -185,12 +199,12 @@ public static CloudNimble.Text.Xml.XmlEncodedText Encode(System.ReadOnlySpan<byt
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 name. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded name. The bytes are copied. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.XmlEncodedText`
-The encoded name.
+The UTF-8 encoded name.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals
 

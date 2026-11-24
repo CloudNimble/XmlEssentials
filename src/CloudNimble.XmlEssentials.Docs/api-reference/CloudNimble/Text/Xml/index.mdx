@@ -290,41 +290,40 @@ For what the library accepts and rejects, see [XML conformance](/guides/xml-conf
 
 | Name | Summary |
 | ---- | ------- |
-| [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | A UTF-8 XML writer analogous to `Utf8JsonWriter`. |
-| [XmlAttributes](/api-reference/CloudNimble/Text/Xml/XmlAttributes) | Well-known XML attribute local names used by XmlEssentials. |
-| [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) | An immutable pooled parse of a UTF-8 XML document, analogous to `JsonDocument`. |
-| [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) | Thrown when XML is not well-formed or a DoS limit is exceeded. |
-| [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) | Well-known XML namespace URIs used by XmlEssentials. |
-| [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) | Converts CLR member and type names to XML local names. |
-| [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | Serializes CLR values to UTF-8 XML and back. Analogous to `JsonSerializer`. |
-| [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) | Options for [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). Analogous to `JsonSerializerOptions`. |
+| [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) | Provides a forward-only, non-cached writer for UTF-8 encoded XML text. This class cannot be inherited. |
+| [XmlAttributes](/api-reference/CloudNimble/Text/Xml/XmlAttributes) | Provides the local names of the XML Schema instance attributes that XmlEssentials reads and writes.  This class cannot be inherited. |
+| [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) | Provides a mechanism for examining the structural content of an XML document without automatically  instantiating data values. This class cannot be inherited. |
+| [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) | The exception that is thrown when XML is not well formed, a reader limit is exceeded, or a value  cannot be read as the requested type. This class cannot be inherited. |
+| [XmlNamespaces](/api-reference/CloudNimble/Text/Xml/XmlNamespaces) | Provides the well-known XML namespace URIs that XmlEssentials uses. This class cannot be inherited. |
+| [XmlNamingPolicy](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) | Defines the core behavior of policies that convert CLR type and member names to XML local names and provides a base for derived classes. |
+| [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | Provides functionality to serialize objects or value types to XML and to deserialize XML into objects or value types.  This class cannot be inherited. |
+| [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) | Provides options to be used with [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer). This class cannot be inherited. |
 
 ### <Icon icon="cubes" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Structs
 
 | Name | Summary |
 | ---- | ------- |
-| [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | A `ref struct` UTF-8 XML tokenizer analogous to `Utf8JsonReader`. |
-| [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) | Immutable XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed. |
-| [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) | Options for [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse). |
-| [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) | A struct cursor into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), analogous to `JsonElement`. |
-| [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) | Cached escaped UTF-8 for hot element and attribute names. |
-| [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) | A namespace-qualified XML name: local name, namespace URI, and optional prefix. |
-| [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) | Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
-| [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) | Opaque resume state for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader). |
-| [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) | Options for [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter). |
+| [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) | Provides a high-performance API for forward-only, read-only access to UTF-8 encoded XML text. |
+| [XmlDeclarationInfo](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo) | Represents the XML declaration captured when an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) is parsed. |
+| [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) | Provides the ability for the user to define custom behavior when parsing XML to create an  [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument). |
+| [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) | Represents a specific XML node within an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument). |
+| [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) | Represents an XML name that is already encoded as UTF-8, so that a [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) can write it  many times without encoding it again. |
+| [XmlName](/api-reference/CloudNimble/Text/Xml/XmlName) | Represents a namespace-qualified XML name: a local name, a namespace URI, and an optional prefix. |
+| [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) | Provides options that control how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) reads XML. |
+| [XmlReaderState](/api-reference/CloudNimble/Text/Xml/XmlReaderState) | Represents the state a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) needs to continue reading a document with more data. |
+| [XmlWriterOptions](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) | Provides the options that control how a [Utf8XmlWriter](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter) formats and checks the XML it writes. |
 
 ### <Icon icon="list-ol" iconType="duotone" color="#419AC5" size={24} style={{ paddingRight: '8px' }} /> Enums
 
 | Name | Summary |
 | ---- | ------- |
-| [XmlCommentHandling](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats comment tokens. |
-| [XmlDiscriminatorPlacement](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement) | Where a polymorphic type discriminator is written. |
-| [XmlEnumHandling](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling) | How enum values are written. |
-| [XmlNilHandling](/api-reference/CloudNimble/Text/Xml/XmlNilHandling) | How a nillable null value is written. |
-| [XmlPropertyMapping](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping) | How an unannotated property or field is mapped: child element or XML attribute. |
-| [XmlSerializerDefaults](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults) | Named default sets for [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions). |
-| [XmlTokenType](/api-reference/CloudNimble/Text/Xml/XmlTokenType) | Token produced by [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) as it walks a UTF-8 XML document. |
-| [XmlValueKind](/api-reference/CloudNimble/Text/Xml/XmlValueKind) | Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree. |
-| [XmlVersion](/api-reference/CloudNimble/Text/Xml/XmlVersion) | XML recommendation version in force for the current document. |
-| [XmlWhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) | How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements. |
+| [XmlCommentHandling](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) | Specifies how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) handles comments. |
+| [XmlDiscriminatorPlacement](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement) | Specifies where a polymorphic type discriminator is written. |
+| [XmlEnumHandling](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling) | Specifies how enumeration values are written. |
+| [XmlPropertyMapping](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping) | Specifies how a property or field without a mapping attribute is mapped: as a child element or as an XML attribute. |
+| [XmlSerializerDefaults](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults) | Specifies the predefined sets of options that an [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) instance can be created with. |
+| [XmlTokenType](/api-reference/CloudNimble/Text/Xml/XmlTokenType) | Specifies the type of token that a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) is positioned on in a UTF-8 XML document. |
+| [XmlValueKind](/api-reference/CloudNimble/Text/Xml/XmlValueKind) | Specifies the kind of XML node that an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) or a  [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) represents. |
+| [XmlVersion](/api-reference/CloudNimble/Text/Xml/XmlVersion) | Specifies the version of the XML recommendation that is in force for a document. |
+| [XmlWhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) | Specifies how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) handles whitespace-only text between elements. |
 

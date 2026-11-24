@@ -64,7 +64,7 @@ Primary library csproj:
 
 ## Generator behavior
 
-1. Find partial classes inheriting `XmlSerializerContext` with `[XmlSerializable(typeof(T))]`.
+1. Find partial classes inheriting `XmlSerializerContext` with `[XmlSerializable<T>]`.
 2. Walk T's closure (properties, fields, collection elements, derived types, constructor params).
 3. Emit `public static TContext Default { get; }` and `XmlTypeInfo<T>` properties (`Default.Person`).
 4. In **Serialization** mode, emit serialize/deserialize implementations that call `Utf8XmlWriter`/`Utf8XmlReader` with no reflection.
@@ -76,10 +76,23 @@ Primary library csproj:
    - XMLXE008: a type or member declares `[XmlDerivedType]`. Generated converters read and write only the declared type, so this is an error until they handle derived types; use the reflection resolver for such a type.
    - XMLXE005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, two public constructors that bind the same number of members)
    - Constructor choice follows the reflection resolver: the marked constructor, else the public one with the most parameters among those whose every parameter is named like a member. The converter calls it with named arguments, so a parameter no member fills is left out and takes its default. XMLXE002 is also reported when no constructor can be called from generated code: the marked one is private or protected, a parameter no member fills has no default, or a class has no parameterless constructor and none that binds.
+   - XMLXE009: a member names a converter with `[XmlConverter]`. A generated converter would not call it, so it is an error; put the attribute on the member's type, or use the reflection resolver for the declaring type.
+   - XMLXE014: a member is marked `[XmlMixed]`. Generated converters do not read or write mixed content.
+   - XMLXE015: a text member (`[XmlText]`, `[XmlCData]`) whose type is not a single value and has no `[XmlConverter]`.
+   - XMLXE017: a required member is marked `[XmlIgnore(Condition = WhenReading)]`, so it would never be read.
+   - XMLXE016: a member, or its type, is marked `[XmlObjectCreationHandling(Populate)]` and a generated converter cannot populate it: its type cannot be populated, the type is created through a constructor with parameters, or the member holds an object or is set as the object is created.
    - XMLXE006: invalid XML name after policy
    - XMLXE007: `System.Xml.Serialization.XmlIncludeAttribute` present on this type graph (class or member). Message: use `[XmlDerivedType]`. Also diagnose our `[XmlInclude]` applied to a **type** (invalid target). Looking at BCL `XmlIncludeAttribute` on the **consumer** compilation is allowed and required; the runtime library still has zero BCL XML references.
 
-`[XmlSourceGenerationOptions]` is a **default seed**; context ctor `XmlSerializerOptions` win. Include `NilHandling`, `EnumHandling`, `MaxDepth`, `DiscriminatorPlacement` on the attribute ([07](07-api-serializer.md#type-info--context)).
+`[XmlSourceGenerationOptions]` is a **default seed**; context ctor `XmlSerializerOptions` win. Include `EnumHandling`, `MaxDepth`, `DiscriminatorPlacement` on the attribute ([07](07-api-serializer.md#type-info--context)).
+
+**A generated converter follows an option or refuses it.** It writes what the reflection resolver writes for the same options, or it says it cannot.
+
+- Read from the options when the converter runs: `PreferredObjectCreationHandling` (for collections and dictionaries; see [object mapping](09-object-mapping.md#object-creation-handling)), `DefaultIgnoreCondition` (and `[XmlIgnore(Condition = …)]` on a member), `PropertyNameCaseInsensitive`, `NumberHandling`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`. `UnknownTypeHandling` is read by the runtime library, which reads every value declared as `object`.
+- Compiled in from the attribute: the element and attribute naming policies, `DefaultPropertyMapping`, `IncludeFields`. `IgnoreReadOnlyProperties` and `IgnoreReadOnlyFields` are compiled as off. When the options of a context ask for anything else, creating the type info throws `NotSupportedException` and names the setting. So does a converter in `options.Converters` for a scalar type the generated code writes directly.
+- `ReferenceHandler` and derived types are refused, as before.
+
+**A context answers for the types it lists, the types it reaches, and types whose converter exists already.** The walker lists every type reachable from a listed type, through members (inherited ones too), collections and dictionaries at any depth: object types get a generated converter, and collections, dictionaries, enumerations and nullable values get an entry that creates their type info with every type argument named (`XmlMetadataServices.CreateCollectionInfo`, `CreateArrayInfo`, `CreateDictionaryInfo`, `CreateEnumInfo`, `CreateNullableInfo`). Types whose converter exists already are the built-in scalars and their nullable forms, the XML values, `object`, and a type the caller supplied a converter for; `XmlMetadataServices.GetBuiltInTypeInfo` answers for those. For any other type `GetTypeInfo` returns null, so the next resolver in `TypeInfoResolverChain` is asked and a type nobody lists is `NotSupportedException`. That includes a collection, a dictionary or an enumeration that no listed type uses: list it on the context, as an array type can be too. A context never maps members through reflection and never closes a generic type at run time, which Native AOT cannot do for a value-type argument; `XmlAotPublishTests` proves it for a dictionary, a queue, a set, an immutable array, an array, a collection with no setter that is marked to be populated, an `XmlElement` and an `object` member. The generated code creates the declared type of a collection member through `XmlMetadataServices.CreateCollection`, which makes what the reflection resolver makes.
 
 XSD files as `AdditionalFiles` are a **second generator class in this same analyzer DLL**. They emit POCOs + context + serialize/deserialize via shared emit APIs — they do **not** depend on seeing another generator’s output in the same compilation. Details: [11](11-xsd-source-generation.md).
 

@@ -6,7 +6,7 @@ The output is always UTF-8. With an `IBufferWriter<byte>`, the writer writes int
 
 ### Dispose and open elements
 
-`Dispose` and `DisposeAsync` flush. If an element is still open and `SkipValidation` is `false`, they throw an `XmlException` and don't flush. In a `using` statement, that exception replaces an exception that was already on its way out, so the message you catch can be `The document has unclosed elements.` when the real cause came earlier.
+`Dispose` and `DisposeAsync` flush. If an element is still open and `SkipValidation` is `false`, they flush and then throw an `XmlException`. In a `using` statement, that exception replaces an exception that was already on its way out, so the message you catch can be `The document has unclosed elements.` when the real cause came earlier.
 
 ### Thread safety
 
@@ -22,11 +22,12 @@ The writer tracks the namespaces in scope and declares what's missing: a default
 
 ### Indentation
 
-With `Indented` set, only elements get a line break and indentation. An element that holds text is written on one line. Comments and processing instructions are written where the writer is, with no line break before them.
+With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text is written on one line, with everything in it.
 
 ### What isn't checked
 
-- `WriteRawValue` copies its input without checking or escaping it. The `skipInputValidation` parameter has no effect.
+- `WriteRawValue` copies its input without escaping it. It checks that the input is well formed where it is written only when `skipInputValidation` is `false` and the writer does not have `SkipValidation` set.
+
 ### Differences from Utf8JsonWriter
 
 - There's no property-name step. Structure comes from `WriteStartElement` and `WriteEndElement`, and attributes are written on the open start tag.

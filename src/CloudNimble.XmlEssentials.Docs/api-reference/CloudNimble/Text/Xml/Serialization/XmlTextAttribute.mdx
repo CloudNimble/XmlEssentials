@@ -1,6 +1,6 @@
 ---
 title: XmlTextAttribute
-description: "Maps a member to the simple content of the current element."
+description: "Specifies that a member is serialized as the text content of the element for its containing type. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlTextAttribute
 
 ## Summary
 
-Maps a member to the simple content of the current element.
+Specifies that a member is serialized as the text content of the element for its containing type. This class cannot be inherited.
 
 ## Usage
 
@@ -59,6 +59,12 @@ The code produces the following output:
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+## Remarks
+
+The member must have a simple type: a type with a built-in value converter, an enumeration, or the nullable form of
+either. A type can map one member with this attribute or [XmlCDataAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlCDataAttribute), and that type cannot also
+map members to child elements.
 
 ## Considerations
 

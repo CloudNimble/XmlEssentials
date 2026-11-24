@@ -267,18 +267,18 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow("D83D", "0078", "FFFD0078", DisplayName = "a high surrogate, then a character that is not its other half")]
-        [DataRow("D83D", "", "FFFD", DisplayName = "a high surrogate at the end of the value")]
-        [DataRow("DE00", "0078", "FFFD0078", DisplayName = "a low surrogate with nothing before it")]
-        [DataRow("D83D", "D83DDE00", "FFFDD83DDE00", DisplayName = "a high surrogate, then a whole pair")]
-        [DataRow("0061D83D", "D83D0062", "0061FFFDFFFD0062", DisplayName = "two high surrogates, one at the end of each segment")]
-        public void CharSegments_UnpairedSurrogate_IsWrittenAsOneCallWritesIt(string firstUnits, string secondUnits, string expectedUnits)
+        [DataRow("D83D", "0078", DisplayName = "a high surrogate, then a character that is not its other half")]
+        [DataRow("D83D", "", DisplayName = "a high surrogate at the end of the value")]
+        [DataRow("DE00", "0078", DisplayName = "a low surrogate with nothing before it")]
+        [DataRow("D83D", "D83DDE00", DisplayName = "a high surrogate, then a whole pair")]
+        [DataRow("0061D83D", "D83D0062", DisplayName = "two high surrogates, one at the end of each segment")]
+        public void CharSegments_UnpairedSurrogate_IsRejectedAsOneCallRejectsIt(string firstUnits, string secondUnits)
         {
             // An attribute argument cannot hold half of a surrogate pair, so the rows give UTF-16 code units
-            // in hexadecimal. One call writes U+FFFD for the half that has no partner, and so do segments.
+            // in hexadecimal. Half a pair is not a character, in one call or across segments.
             var first = Units(firstUnits);
             var second = Units(secondUnits);
-            var expected = "<e>" + Units(expectedUnits) + "</e>";
+            const string expected = "XmlException: The text contains half of a surrogate pair.";
             Outcome(w => InValue(w, false, () => w.WriteStringValue((first + second).AsSpan())), XmlVersion.Version10).Should().Be(expected);
             Outcome(w => InValue(w, false, () =>
             {

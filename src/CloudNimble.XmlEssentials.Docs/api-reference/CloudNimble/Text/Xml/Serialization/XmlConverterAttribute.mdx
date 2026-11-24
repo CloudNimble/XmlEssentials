@@ -1,9 +1,9 @@
 ---
 title: XmlConverterAttribute
-description: "Specifies a converter for a type or member."
-icon: lock
+description: "Specifies the converter type to use when placed on a property, field, or type. This class cannot be inherited."
+icon: code-branch
 tag: "SEALED"
-keywords: ['XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlConverter', 'CloudNimble.Text.Xml.Serialization.XmlConverterFactory', 'CloudNimble.Text.Xml.XmlSerializerOptions']
+keywords: ['XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConverterAttribute<TConverter>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConverter', 'CloudNimble.Text.Xml.Serialization.XmlConverterFactory', 'CloudNimble.Text.Xml.XmlSerializerOptions']
 ---
 
 ## Definition
@@ -12,24 +12,24 @@ keywords: ['XmlConverterAttribute', 'CloudNimble.Text.Xml.Serialization.XmlConve
 
 **Namespace:** CloudNimble.Text.Xml.Serialization
 
-**Inheritance:** System.Attribute
+**Inheritance:** CloudNimble.Text.Xml.Serialization.XmlConverterAttribute
 
 ## Syntax
 
 ```csharp
-CloudNimble.Text.Xml.Serialization.XmlConverterAttribute
+CloudNimble.Text.Xml.Serialization.XmlConverterAttribute<TConverter>
 ```
 
 ## Summary
 
-Specifies a converter for a type or member.
+Specifies the converter type to use when placed on a property, field, or type. This class cannot be inherited.
 
 ## Usage
 
 Apply `[XmlConverter]` to a class, struct, or enumeration to name the converter the serializer uses for it. Every `XmlSerializerOptions` instance then uses that converter, with nothing to register.
 
 ```csharp
-[XmlConverter(typeof(GeoPointConverter))]
+[XmlConverter<GeoPointConverter>]
 public readonly struct GeoPoint
 {
     public GeoPoint(double latitude, double longitude)
@@ -66,32 +66,60 @@ The converter type must derive from `XmlConverter<T>` or `XmlConverterFactory` a
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
 
+## Remarks
+
+On a type, the converter reads and writes every value of the type, unless [XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters)
+holds a converter for it. On a property or field, the converter reads and writes that member only, and comes before
+both. It handles the whole value of the member: a collection is not taken apart into items, the member may be an
+attribute or text, and a converter for `T` serves a member of type `T?`. A source-generated context reads the
+attribute on a type, and reports it on a member as the error XMLXE009. The converter is a type argument, so the
+compiler checks that it is a converter and can be created, and no reflection is needed to create it.
+
+## Type Parameters
+
+- `TConverter` - The type of the converter. It derives from [XmlConverter](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter) and has a public parameterless constructor.
+
+## Examples
+
+```csharp
+[XmlConverter<MoneyConverter>]
+public readonly record struct Money(decimal Amount, string Currency);
+```
+
 ## Considerations
 
-- **On a property or field, the attribute isn't read.** The attribute can be applied there and the code compiles, but the serializer looks for it on types only. This differs from `[JsonConverter]` in System.Text.Json. To convert one member differently, give it a type of its own.
-- **A converter in the options wins.** `XmlSerializerOptions.Converters` is searched before the attribute, so a caller can override the converter a type names.
+- **On a property or field, the converter serves that member only.** It reads and writes the whole value of the member, as `[JsonConverter]` does in System.Text.Json: a collection isn't taken apart into items, the member may be an attribute or text, and a converter for `T` serves a member of type `T?`. A member attribute comes before `XmlSerializerOptions.Converters` and before an attribute on the type.
+- **A converter in the options wins over the attribute on a type.** `XmlSerializerOptions.Converters` is searched before the attribute on the type, so a caller can override the converter a type names. It doesn't override an attribute on a member.
 - **One instance for each options instance.** The serializer creates the converter the first time the options need it and keeps it.
-- **A wrong converter type fails at run time.** If the type doesn't derive from `XmlConverter`, the serializer throws `InvalidOperationException` when it first needs a converter for the annotated type.
-- **Generated converters don't read the attribute.** In a context in the default generation mode, a member whose type carries `[XmlConverter]` is read and written member by member instead. Use a context in metadata mode, or the reflection path, for such a type.
-- **The constructor is kept when trimming.** The attribute marks the converter type so that the trimmer keeps its public parameterless constructor.
+- **The converter is a type argument.** `[XmlConverter<MoneyConverter>]` names the converter, and the compiler checks that it derives from `XmlConverter` and has a public parameterless constructor. A converter that can't convert the annotated type still fails at run time: the serializer throws `InvalidOperationException` when it first needs it.
+- **Source generation reads the attribute on a type, not on a member.** A generated context reads and writes a type that carries `[XmlConverter]` with that converter, and writes no converter of its own for it. On a property or field the attribute is the compile-time error `XMLXE009`, because the generated code wouldn't call the converter.
+- **The converter is created without reflection.** The converter type is a type argument with a `new()` constraint, so the attribute creates it directly and trimming and Native AOT need nothing extra.
 
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute.
+#### Syntax
+
+```csharp
+public XmlConverterAttribute()
+```
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverterAttribute`</Note>
+
+Initializes a new instance of the [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute) class.
 
 #### Syntax
 
 ```csharp
-public XmlConverterAttribute(System.Type converterType)
+protected XmlConverterAttribute()
 ```
 
-#### Parameters
+#### Remarks
 
-| Name | Type | Description |
-|------|------|-------------|
-| `converterType` | `System.Type` | A type that derives from [XmlConverter](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter). |
+Only `XmlConverterAttribute`1` derives from this class: a class outside this library cannot.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -115,19 +143,34 @@ public Object()
 
 ## Properties
 
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConverterType
-
-Gets the converter type.
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConverterType <Badge color="blue">Override</Badge>
 
 #### Syntax
 
 ```csharp
-public System.Type ConverterType { get; }
+public override System.Type ConverterType { get; }
 ```
 
 #### Property Value
 
 Type: `System.Type`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ConverterType <Badge color="gray">Inherited</Badge> <Badge color="orange">Abstract</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverterAttribute`</Note>
+
+When overridden in a derived class, gets the type of the converter to use.
+
+#### Syntax
+
+```csharp
+public abstract System.Type ConverterType { get; }
+```
+
+#### Property Value
+
+Type: `System.Type`
+The type of the converter, which derives from [XmlConverter](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -144,6 +187,23 @@ public virtual object TypeId { get; }
 Type: `object`
 
 ## Methods
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateConverter <Badge color="gray">Inherited</Badge> <Badge color="orange">Abstract</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverterAttribute`</Note>
+
+Creates the converter the attribute names.
+
+#### Syntax
+
+```csharp
+internal abstract CloudNimble.Text.Xml.Serialization.XmlConverter CreateConverter()
+```
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlConverter`
+A new converter.
 
 ### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
 

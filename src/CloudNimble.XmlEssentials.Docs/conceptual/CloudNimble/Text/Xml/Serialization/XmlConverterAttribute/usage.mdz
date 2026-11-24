@@ -1,7 +1,7 @@
 Apply `[XmlConverter]` to a class, struct, or enumeration to name the converter the serializer uses for it. Every `XmlSerializerOptions` instance then uses that converter, with nothing to register.
 
 ```csharp
-[XmlConverter(typeof(GeoPointConverter))]
+[XmlConverter<GeoPointConverter>]
 public readonly struct GeoPoint
 {
     public GeoPoint(double latitude, double longitude)

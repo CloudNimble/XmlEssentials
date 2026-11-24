@@ -68,6 +68,9 @@ namespace CloudNimble.Text.Xml.Nodes
                 ? flag ? " standalone=\"yes\"" : " standalone=\"no\""
                 : string.Empty;
             writer.WriteRawValue($"<?xml version=\"{Version}\" encoding=\"{Encoding}\"{standalone}?>", skipInputValidation: true);
+
+            // The writer would otherwise write a declaration of its own before the first element.
+            writer.MarkDeclarationWritten();
         }
 
         #endregion

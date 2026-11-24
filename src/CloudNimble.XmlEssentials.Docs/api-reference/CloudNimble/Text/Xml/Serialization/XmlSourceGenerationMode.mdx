@@ -1,6 +1,6 @@
 ---
 title: XmlSourceGenerationMode
-description: "What the source generator emits for a context."
+description: "Specifies the generation mode for the XmlEssentials source generator."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.DefaultXmlTypeInfoResolver']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode
 
 ## Summary
 
-What the source generator emits for a context.
+Specifies the generation mode for the XmlEssentials source generator.
 
 ## Usage
 
@@ -30,7 +30,7 @@ Set the mode with the `GenerationMode` property of `[XmlSourceGenerationOptions]
 
 ```csharp
 [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class MetadataOrderXmlContext : XmlSerializerContext
 {
 }
@@ -75,9 +75,10 @@ The names match `JsonSourceGenerationMode` in System.Text.Json, but metadata mod
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Default` | 0 | Metadata and serialization (`Metadata | Serialization`). |
-| `Metadata` | 1 | Type info only. |
-| `Serialization` | 2 | Serialize and deserialize methods. |
+| `Default` | 0 | The default mode, in which both type metadata and serialization logic are generated. The result is the same as
+combining [XmlSourceGenerationMode.Metadata](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode) and [XmlSourceGenerationMode.Serialization](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode). |
+| `Metadata` | 1 | Type-metadata initialization logic only. No converters are generated. |
+| `Serialization` | 2 | Generated converters that serialize and deserialize the types of the context. |
 
 ## Related APIs
 

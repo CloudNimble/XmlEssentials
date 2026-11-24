@@ -15,12 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <typeparam name="TValue">The value type.</typeparam>
     /// <remarks>
     /// Keys and values are read, held, and written as their own types, so neither is boxed. A member declared as
-    /// <see cref="IDictionary{TKey, TValue}"/> is read into a <see cref="Dictionary{TKey, TValue}"/>. The key
+    /// <see cref="IDictionary{TKey, TValue}"/> or <see cref="IReadOnlyDictionary{TKey, TValue}"/> is read into a
+    /// <see cref="Dictionary{TKey, TValue}"/>, and an immutable, frozen, or read-only dictionary is built from one. The key
     /// <c>Key</c> itself is written in the pair form, because an element named <c>Key</c> starts a pair when
     /// the document is read.
     /// </remarks>
-    internal sealed class XmlDictionaryConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] TDictionary, TKey, TValue> : XmlConverter<TDictionary>
-        where TDictionary : IDictionary<TKey, TValue>
+    internal sealed class XmlDictionaryConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDictionary, TKey, TValue> : XmlConverter<TDictionary>
+        where TDictionary : IEnumerable<KeyValuePair<TKey, TValue>>
         where TKey : notnull
     {
 
@@ -31,7 +32,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         internal const int MaxLeafKeyLength = 32;
 
-        private readonly bool _isInterface;
+        private static readonly bool s_canPopulate = XmlCollectionShape.CanPopulateDictionary<TDictionary, TKey, TValue>();
+        private readonly Func<IDictionary<TKey, TValue>> _create;
+        private readonly Func<IDictionary<TKey, TValue>, TDictionary> _finish;
         private readonly XmlTypeInfo<TKey> _keyInfo;
         private readonly XmlTypeInfo<TValue> _valueInfo;
 
@@ -50,7 +53,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="options">The serializer options.</param>
         public XmlDictionaryConverter(XmlSerializerOptions options)
         {
-            _isInterface = typeof(TDictionary).IsInterface;
+            _create = XmlCollectionShape.CreateDictionaryFactory<TDictionary, TKey, TValue>(out _finish);
             _keyInfo = options.GetTypeInfo<TKey>();
             _valueInfo = options.GetTypeInfo<TValue>();
             _valueLeafConverter = _valueInfo.Converter as XmlValueConverter<TValue>;
@@ -63,7 +66,62 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         public override TDictionary? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
         {
-            var map = _isInterface ? (TDictionary)(object)new Dictionary<TKey, TValue>() : Activator.CreateInstance<TDictionary>();
+            var map = _create();
+            ReadEntries(ref reader, map);
+            return _finish(map);
+        }
+
+        /// <inheritdoc />
+        public override void Write(Utf8XmlWriter writer, TDictionary value, XmlSerializerOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            var policy = options.DictionaryKeyPolicy ?? options.PropertyNamingPolicy;
+            if (value is Dictionary<TKey, TValue> dictionary)
+            {
+                foreach (var entry in dictionary)
+                {
+                    WriteEntry(writer, entry.Key, entry.Value, policy, options);
+                }
+
+                return;
+            }
+
+            foreach (var entry in value)
+            {
+                WriteEntry(writer, entry.Key, entry.Value, policy, options);
+            }
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Entries can be added to a dictionary declared as <see cref="IDictionary{TKey, TValue}"/>, or as a class
+        /// that implements it and has a public parameterless constructor. An immutable, frozen or read-only
+        /// dictionary cannot take them.
+        /// </remarks>
+        internal override bool CanPopulate => s_canPopulate;
+
+        /// <inheritdoc />
+        internal override void Populate(ref Utf8XmlReader reader, object existing, XmlSerializerOptions options)
+        {
+            if (existing is not IDictionary<TKey, TValue> { IsReadOnly: false } map)
+            {
+                throw new NotSupportedException($"The dictionary of type '{existing.GetType()}' is read-only and cannot be populated.");
+            }
+
+            ReadEntries(ref reader, map);
+        }
+
+        /// <summary>
+        /// Reads the entries of the element <paramref name="reader"/> is on into <paramref name="map"/>.
+        /// </summary>
+        /// <param name="reader">The reader, on the start tag of the dictionary.</param>
+        /// <param name="map">The dictionary that takes the entries. An entry whose key it already holds is given the value that was read.</param>
+        internal void ReadEntries(ref Utf8XmlReader reader, IDictionary<TKey, TValue> map)
+        {
             if (!reader.IsEmptyElement)
             {
                 while (reader.Read())
@@ -104,34 +162,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     map[named] = _valueInfo.ReadElement(ref reader)!;
                 }
             }
-
-            return map;
         }
-
-        /// <inheritdoc />
-        public override void Write(Utf8XmlWriter writer, TDictionary value, XmlSerializerOptions options)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            var policy = options.DictionaryKeyPolicy ?? options.PropertyNamingPolicy;
-            if (value is Dictionary<TKey, TValue> dictionary)
-            {
-                foreach (var entry in dictionary)
-                {
-                    WriteEntry(writer, entry.Key, entry.Value, policy, options);
-                }
-
-                return;
-            }
-
-            foreach (var entry in value)
-            {
-                WriteEntry(writer, entry.Key, entry.Value, policy, options);
-            }
-        }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Writes one entry: an element named for the key, or a <c>Key</c> and <c>Value</c> pair.
@@ -207,7 +238,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="options">The serializer options.</param>
         internal void WriteValue(Utf8XmlWriter writer, TValue value, XmlSerializerOptions options)
         {
-            if (!XmlConverterHelpers.IsNull(value))
+            if (XmlConverterHelpers.IsNull(value))
+            {
+                // A null value is an entry marked nil. Without the mark a null string would read back as an
+                // empty one, and a null number would not read at all.
+                writer.WriteNilValue();
+            }
+            else
             {
                 _valueInfo.Converter.Write(writer, value, options);
             }

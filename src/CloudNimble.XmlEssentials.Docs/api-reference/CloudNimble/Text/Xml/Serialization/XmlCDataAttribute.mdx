@@ -1,6 +1,6 @@
 ---
 title: XmlCDataAttribute
-description: "Maps a member to the simple content of the current element, written as a CDATA section."
+description: "Specifies that a member is serialized as the text content of the element for its containing type, written as a CDATA section. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute', 'CloudNimble.Text.Xml.Utf8XmlWriter']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlCDataAttribute
 
 ## Summary
 
-Maps a member to the simple content of the current element, written as a CDATA section.
+Specifies that a member is serialized as the text content of the element for its containing type, written as a CDATA section. This class cannot be inherited.
 
 ## Usage
 
@@ -60,6 +60,12 @@ if (a < b && b > 0) { run(); }
 The member doesn't get an element of its own: `Code` is the content of `<Script>`. The other members of the type are attributes.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)
+
+## Remarks
+
+The member must have a simple type: a type with a built-in value converter, an enumeration, or the nullable form of
+either. A type can map one member with this attribute or [XmlTextAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTextAttribute), and that type cannot also
+map members to child elements.
 
 ## Considerations
 

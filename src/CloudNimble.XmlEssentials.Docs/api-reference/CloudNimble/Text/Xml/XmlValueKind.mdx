@@ -1,6 +1,6 @@
 ---
 title: XmlValueKind
-description: "Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree."
+description: "Specifies the kind of XML node that an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) or a [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/..."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlValueKind', 'CloudNimble.Text.Xml.XmlValueKind', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml.XmlDocument', 'CloudNimble.Text.Xml.Nodes.XmlNode']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.XmlValueKind
 
 ## Summary
 
-Discriminator for an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) cursor or an `XmlNode` in the mutable tree.
+Specifies the kind of XML node that an [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) or a
+[XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) represents.
 
 ## Usage
 
@@ -88,17 +89,17 @@ Not every value is reported by both DOMs:
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Undefined` | 0 | No node is selected. |
-| `Document` | 1 | The document node (immutable [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) only). |
-| `Element` | 2 | An element with a start and end tag. |
-| `EmptyElement` | 3 | An empty element (`<e/>`). |
+| `Undefined` | 0 | No node. This is the kind of a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement). |
+| `Document` | 1 | A document node. Neither [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) nor the mutable tree reports this kind. |
+| `Element` | 2 | An element with a start tag and an end tag. |
+| `EmptyElement` | 3 | An empty-element tag (`<e/>`). |
 | `Attribute` | 4 | An attribute. |
 | `Text` | 5 | Character data. |
 | `CData` | 6 | A CDATA section. |
 | `Comment` | 7 | A comment. |
 | `ProcessingInstruction` | 8 | A processing instruction other than the XML declaration. |
-| `XmlDeclaration` | 9 | The XML declaration. |
-| `Nil` | 10 | An element with `xsi:nil="true"`. |
+| `XmlDeclaration` | 9 | The XML declaration. Only [XmlDeclarationNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlDeclarationNode) reports this kind. |
+| `Nil` | 10 | An element whose `xsi:nil` attribute is `true` or `1`. Only [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) reports this kind. |
 
 ## Related APIs
 

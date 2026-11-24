@@ -1,6 +1,6 @@
 ---
 title: XmlUnmappedMemberHandling
-description: "How unknown elements and attributes are treated on deserialize."
+description: "Specifies how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles XML elements and attributes that cannot be mapped to a specific .NET..."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlSerializerDefaults', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
 
 ## Summary
 
-How unknown elements and attributes are treated on deserialize.
+Specifies how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles XML elements and attributes that cannot be mapped to a specific
+.NET member when deserializing object types.
 
 ## Usage
 
@@ -69,6 +70,11 @@ Disallow: Unknown attribute 'source'.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)
 
+## Remarks
+
+When the type has a member marked with [XmlExtensionDataAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionDataAttribute), or a member marked with
+[XmlMixedAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlMixedAttribute) for elements, that member captures the unmapped content and neither value applies.
+
 ## Considerations
 
 - The setting is on the options and applies to every type in the object graph. There is no attribute that sets it for one type.
@@ -82,8 +88,8 @@ Disallow: Unknown attribute 'source'.
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Skip` | 0 | Ignore members that are not mapped, unless an extension-data bag captures them. |
-| `Disallow` | 1 | Throw [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) when an unmapped member is present. |
+| `Skip` | 0 | Silent skipping of any unmapped element or attribute. This is the default behavior. |
+| `Disallow` | 1 | Rejection of any unmapped element or attribute with an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException). |
 
 ## Related APIs
 

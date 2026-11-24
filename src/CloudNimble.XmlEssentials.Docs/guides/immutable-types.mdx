@@ -217,9 +217,9 @@ True
 
 ## What to watch for
 
-- **Every constructor parameter needs a member.** If you exclude a positional record property with `[property: XmlIgnore]`, its parameter no longer has a serialized member, and the record can't be deserialized.
+- **A constructor parameter whose property is ignored gets its default value.** If you exclude a positional record property with `[property: XmlIgnore]`, the record is still read through its constructor, and that parameter is passed `default`. A parameter that has no property or field at all must have a default value.
 - **Don't set `IgnoreReadOnlyProperties` for these types.** The option removes get-only properties from the mapping, including the ones a constructor sets. Record properties are unaffected, because they have `init` accessors.
-- **A read-only collection property isn't filled.** A property such as `public List<string> Tags { get; } = [];` is written but not read. Pass the collection through the constructor, or give the property an `init` accessor. Immutable collection types such as `ImmutableArray<T>` can be written but not read. See [Serialize collections](/guides/collections#collection-types).
+- **A collection property with no setter isn't read by default.** A property such as `public List<string> Tags { get; } = [];` is written. To have the items added to the list it holds when it is read, mark it `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` or set `PreferredObjectCreationHandling`. Immutable collection types such as `ImmutableArray<T>` are created from the items that were read, so they need a setter, an `init` accessor, or a constructor parameter. See [Serialize collections](/guides/collections#collection-types).
 - **Trimming and Native AOT.** The examples here find and call constructors through reflection. For a trimmed or Native AOT application, see [Use source generation](/guides/source-generation).
 
 ## See also

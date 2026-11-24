@@ -38,8 +38,15 @@ namespace CloudNimble.Text.Xml.Nodes
             set
             {
                 ArgumentNullException.ThrowIfNull(value);
-                Detach(_items[index]);
+                var old = _items[index];
+                if (ReferenceEquals(old, value))
+                {
+                    return;
+                }
+
+                // The new node is checked first. If it is refused, the old one is still in its place.
                 Attach(value);
+                Detach(old);
                 _items[index] = value;
             }
         }
@@ -147,6 +154,18 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <param name="node">The node.</param>
         internal void Attach(XmlNode node)
         {
+            // Neither can be content. An attribute among the children would be written as an attribute, and
+            // a declaration inside an element is not well formed.
+            if (node is XmlAttributeNode)
+            {
+                throw new XmlException("An attribute cannot be a child of an element. Add it to Attributes.");
+            }
+
+            if (node is XmlDeclarationNode)
+            {
+                throw new XmlException("An XML declaration cannot be a child of an element.");
+            }
+
             if (node.Parent is not null)
             {
                 throw new XmlException("The node already has a parent.");

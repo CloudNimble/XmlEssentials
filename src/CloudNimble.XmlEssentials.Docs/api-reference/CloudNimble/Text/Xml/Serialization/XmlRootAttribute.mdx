@@ -1,6 +1,6 @@
 ---
 title: XmlRootAttribute
-description: "Sets the document element name and namespace of a type."
+description: "Specifies the name and namespace of the document element that a type is serialized as. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRootAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlSerializer', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamingPolicy', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlRootAttribute
 
 ## Summary
 
-Sets the document element name and namespace of a type.
+Specifies the name and namespace of the document element that a type is serialized as. This class cannot be inherited.
 
 ## Usage
 
@@ -68,7 +68,7 @@ Set `Namespace` to put the document element in an XML namespace. See [Namespaces
 ## Considerations
 
 - The name is used exactly as written. A naming policy doesn't convert it.
-- When reading, the document element must have this name, matched with case, or the serializer throws an `XmlException`. `PropertyNameCaseInsensitive` doesn't apply to the document element.
+- When reading, the document element must have this name, or the serializer throws an `XmlException`. The name is matched with case unless `PropertyNameCaseInsensitive` is set, which ignores the case of ASCII letters for the document element as it does for members.
 - The attribute names the type as a document element. When the type is the type of a member of another object, the element is named after that member.
 - When `Namespace` is `null`, `XmlSerializerOptions.DefaultNamespace` is used.
 - The serializer doesn't read `IsNullable`. A `null` reference at the root is written as the document element marked `xsi:nil="true"` whatever its value.
@@ -77,7 +77,7 @@ Set `Namespace` to put the document element in an XML namespace. See [Namespaces
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute with the type name as the document element.
+Initializes a new instance of the [XmlRootAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute) class that uses the name of the type as the document element name.
 
 #### Syntax
 
@@ -87,7 +87,7 @@ public XmlRootAttribute()
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute.
+Initializes a new instance of the [XmlRootAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute) class with the specified document element name.
 
 #### Syntax
 
@@ -99,7 +99,14 @@ public XmlRootAttribute(string elementName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `elementName` | `string` | The document element local name. |
+| `elementName` | `string` | The local name of the document element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *elementName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentException` | *elementName* is empty or consists only of white-space characters. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -125,7 +132,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementName
 
-Gets or sets the document element local name. When null or empty, the CLR type name is used.
+Gets or sets the local name of the document element.
 
 #### Syntax
 
@@ -136,10 +143,12 @@ public string ElementName { get; set; }
 #### Property Value
 
 Type: `string?`
+The local name of the document element. If the value is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or empty, the name of the type is used,
+converted by the element naming policy. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNullable
 
-Gets or sets whether a null value of this type is nillable. When unset, nillability follows the CLR type.
+Gets or sets a value that indicates whether a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) value of the type is nillable.
 
 #### Syntax
 
@@ -150,6 +159,11 @@ public bool IsNullable { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) value of the type is nillable; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Remarks
+
+The serializer does not read this property. Nillability follows the type: a reference type or a [Nullable`1](https://learn.microsoft.com/dotnet/api/system.nullable-1) is nillable.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
 
@@ -164,6 +178,8 @@ public string Namespace { get; set; }
 #### Property Value
 
 Type: `string?`
+The namespace URI of the document element. If the value is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null), [XmlSerializerOptions.DefaultNamespace](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#defaultnamespace) is used.
+The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

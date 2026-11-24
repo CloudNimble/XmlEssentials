@@ -1,9 +1,9 @@
 ---
 title: XmlSerializableAttribute
-description: "Declares a type that a source-generated [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) can serialize. Analogo..."
-icon: lock
+description: "Instructs the XmlEssentials source generator to generate source code for serializing and deserializing instances of the specified type and the types in its o..."
+icon: code-branch
 tag: "SEALED"
-keywords: ['XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo']
+keywords: ['XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute<T>', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlSerializerContext', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo']
 ---
 
 ## Definition
@@ -17,20 +17,20 @@ keywords: ['XmlSerializableAttribute', 'CloudNimble.Text.Xml.Serialization.XmlSe
 ## Syntax
 
 ```csharp
-CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute
+CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute<T>
 ```
 
 ## Summary
 
-Declares a type that a source-generated [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) can serialize.
-Analogous to `JsonSerializableAttribute`.
+Instructs the XmlEssentials source generator to generate source code for serializing and deserializing instances of
+the specified type and the types in its object graph. This class cannot be inherited.
 
 ## Usage
 
 Apply `[XmlSerializable]` to a partial class that derives from `XmlSerializerContext`, once for each type you pass to the serializer. The source generator reads the attributes at compile time and adds a matching `XmlTypeInfo<T>` property to the class.
 
 ```csharp
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class OrderXmlContext : XmlSerializerContext
 {
 }
@@ -41,7 +41,7 @@ List the root types only. The generator follows the properties of each type, so 
 The generated property is named after the type. Set `TypeInfoPropertyName` to choose another name, for example when two listed types have the same name in different namespaces:
 
 ```csharp
-[XmlSerializable(typeof(OrderLine), TypeInfoPropertyName = "Line")]
+[XmlSerializable<OrderLine>(TypeInfoPropertyName = "Line")]
 public partial class OrderLineXmlContext : XmlSerializerContext
 {
 }
@@ -64,10 +64,23 @@ The code produces the following output:
 
 The attribute is the counterpart of `JsonSerializableAttribute` in System.Text.Json.
 
+## Remarks
+
+Place the attribute on a partial class that derives from [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext). The type is a type
+argument, so the compiler checks it and it may be any closed type, an array or a collection included. This attribute
+is analogous to `JsonSerializableAttribute` in `System.Text.Json`, which takes the type as a constructor
+argument.
+
+## Type Parameters
+
+- `T` - The type to generate source code for.
+
 ## Examples
 
 ```csharp
-[XmlSerializable(typeof(Person))]
+[XmlSerializable<Person>]
+[XmlSerializable<Person[]>]
+[XmlSerializable<Dictionary<string, Person>>(TypeInfoPropertyName = "PeopleByName")]
 internal partial class AppXmlContext : XmlSerializerContext
 {
 }
@@ -85,19 +98,11 @@ internal partial class AppXmlContext : XmlSerializerContext
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute.
-
 #### Syntax
 
 ```csharp
-public XmlSerializableAttribute(System.Type type)
+public XmlSerializableAttribute()
 ```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `type` | `System.Type` | The CLR type to serialize. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -123,8 +128,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GenerationMode
 
-Gets or sets the generation mode for this type. When [XmlSourceGenerationMode.Default](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode),
-the context's [XmlSourceGenerationOptionsAttribute.GenerationMode](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#generationmode) is used.
+Gets or sets the mode that indicates what the source generator generates for the type.
 
 #### Syntax
 
@@ -135,10 +139,17 @@ public CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode GenerationMode
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode`
+A bitwise combination of the enumeration values that specifies what is generated for the type. The default is
+[XmlSourceGenerationMode.Default](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationMode).
+
+#### Remarks
+
+The source generator does not use this property. The [XmlSourceGenerationOptionsAttribute.GenerationMode](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#generationmode)
+of the context applies to every type.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Type
 
-Gets the CLR type to serialize.
+Gets the type to generate source code for.
 
 #### Syntax
 
@@ -149,6 +160,7 @@ public System.Type Type { get; }
 #### Property Value
 
 Type: `System.Type`
+The type that the context can serialize and deserialize, which is *T*.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -166,7 +178,8 @@ Type: `object`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeInfoPropertyName
 
-Gets or sets the generated `XmlTypeInfo<T>` property name. When null, the type name is used.
+Gets or sets the name of the property for the generated `XmlTypeInfo`1` for the type on the generated,
+derived [XmlSerializerContext](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) type.
 
 #### Syntax
 
@@ -177,6 +190,8 @@ public string TypeInfoPropertyName { get; set; }
 #### Property Value
 
 Type: `string?`
+The name of the generated property. If the value is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or empty, the name is made from the
+name of the type and the names of its type arguments. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ## Methods
 

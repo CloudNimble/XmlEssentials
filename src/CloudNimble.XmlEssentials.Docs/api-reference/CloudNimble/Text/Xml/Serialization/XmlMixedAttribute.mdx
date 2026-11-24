@@ -1,6 +1,6 @@
 ---
 title: XmlMixedAttribute
-description: "Maps a member as mixed content (interleaved text and child elements)."
+description: "Specifies that a member holds the mixed content of the element for its containing type: text interleaved with child elements. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlMixedAttribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlMixedContentItem', 'CloudNimble.Text.Xml.Serialization.XmlMixedText', 'CloudNimble.Text.Xml.Serialization.XmlMixedElement', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlCDataAttribute']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
 
 ## Summary
 
-Maps a member as mixed content (interleaved text and child elements).
+Specifies that a member holds the mixed content of the element for its containing type: text interleaved with child elements. This class cannot be inherited.
 
 ## Usage
 
@@ -39,6 +39,11 @@ public sealed class Paragraph
 Deserializing `<Paragraph>Press <Key>Ctrl</Key> and <Key>S</Key> to save.</Paragraph>` into this type gives five items: the text `Press `, a `Key` element, the text ` and `, a second `Key` element, and the text ` to save.`
 
 See [Mixed content and overflow](/guides/mixed-content) for the complete example, and the [mixed content sample](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs).
+
+## Remarks
+
+The member is a collection of [XmlMixedContentItem](/api-reference/CloudNimble/Text/Xml/Serialization/XmlMixedContentItem). A type can have one member with this attribute, and
+that type cannot also map members to child elements or to text content.
 
 ## Considerations
 

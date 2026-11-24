@@ -55,29 +55,6 @@ namespace CloudNimble.Text.Xml
         } = true;
 
         /// <summary>
-        /// Gets or sets a value that indicates whether metadata properties can appear after regular properties in an object being deserialized.
-        /// </summary>
-        /// <value>
-        /// <see langword="true"/> if metadata properties can appear out of order; otherwise, <see langword="false"/>.
-        /// The default is <see langword="false"/>. The serializer does not currently act on this value.
-        /// </value>
-        /// <exception cref="InvalidOperationException">
-        /// The property is set after this instance has become read-only.
-        /// </exception>
-        /// <remarks>
-        /// The value is stored and copied by the copy constructor, but the serializer does not currently read it.
-        /// </remarks>
-        public bool AllowOutOfOrderMetadataProperties
-        {
-            get;
-            set
-            {
-                VerifyMutable();
-                field = value;
-            }
-        }
-
-        /// <summary>
         /// Gets or sets the policy used to convert a member's name to an XML attribute name.
         /// </summary>
         /// <value>
@@ -136,6 +113,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -147,11 +125,17 @@ namespace CloudNimble.Text.Xml
         /// One of the enumeration values that specifies when a member is ignored. The default is
         /// <see cref="XmlIgnoreCondition.Never"/>.
         /// </value>
+        /// <exception cref="ArgumentException">
+        /// The value is <see cref="XmlIgnoreCondition.Always"/>, which would ignore every member.
+        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// An <see cref="XmlIgnoreAttribute"/> on a member overrides this value for that member.
+        /// An <see cref="XmlIgnoreAttribute"/> on a member overrides this value for that member. Every value but
+        /// <see cref="XmlIgnoreCondition.Always"/> is accepted. <see cref="XmlIgnoreCondition.WhenWriting"/> and
+        /// <see cref="XmlIgnoreCondition.WhenReading"/> have no effect as the default for every member, as in
+        /// System.Text.Json: they apply only where an <see cref="XmlIgnoreAttribute"/> gives them.
         /// </remarks>
         public XmlIgnoreCondition DefaultIgnoreCondition
         {
@@ -159,6 +143,11 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                if (value is XmlIgnoreCondition.Always)
+                {
+                    throw new ArgumentException($"{nameof(DefaultIgnoreCondition)} cannot be {nameof(XmlIgnoreCondition.Always)}, which would ignore every member. Use [XmlIgnore] on the members to leave out.", nameof(value));
+                }
+
                 field = value;
             }
         }
@@ -375,6 +364,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                XmlLimits.ThrowIfNotIndentCharacter(value);
                 field = value;
             }
         } = ' ';
@@ -394,6 +384,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -445,6 +436,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -464,6 +456,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -483,6 +476,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -502,6 +496,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -521,6 +516,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -540,6 +536,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
                 field = value;
             }
         }
@@ -566,26 +563,6 @@ namespace CloudNimble.Text.Xml
                 field = value;
             }
         } = Environment.NewLine;
-
-        /// <summary>
-        /// Gets or sets a value that specifies how <see langword="null"/> values are written.
-        /// </summary>
-        /// <value>
-        /// One of the enumeration values that specifies how a <see langword="null"/> value is written. The default is
-        /// <see cref="XmlNilHandling.WriteXsiNil"/>.
-        /// </value>
-        /// <exception cref="InvalidOperationException">
-        /// The property is set after this instance has become read-only.
-        /// </exception>
-        public XmlNilHandling NilHandling
-        {
-            get;
-            set
-            {
-                VerifyMutable();
-                field = value;
-            }
-        }
 
         /// <summary>
         /// Gets or sets a value that specifies whether the named floating-point literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are read and written.
@@ -631,14 +608,31 @@ namespace CloudNimble.Text.Xml
         /// Gets or sets the preferred object creation handling for members when deserializing XML.
         /// </summary>
         /// <value>
-        /// One of the enumeration values that specifies whether an existing member value is replaced or populated.
-        /// The default is <see cref="XmlObjectCreationHandling.Replace"/>. The serializer does not currently act on this value.
+        /// One of the enumeration values that specifies whether a member that already holds a value is given a new
+        /// one or has the value it holds populated. The default is <see cref="XmlObjectCreationHandling.Replace"/>.
         /// </value>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// The value is stored and copied by the copy constructor, but the serializer does not currently read it.
+        /// <para>
+        /// The rules are those of <c>JsonSerializerOptions.PreferredObjectCreationHandling</c>. Under
+        /// <see cref="XmlObjectCreationHandling.Replace"/> a member with no setter is not read. Under
+        /// <see cref="XmlObjectCreationHandling.Populate"/> the items of a collection and the entries of a dictionary
+        /// are added to the instance the member holds, and the members of an object are set on it, whether or not the
+        /// member has a setter. A member that holds <see langword="null"/> is given a new instance when it has a setter.
+        /// </para>
+        /// <para>
+        /// The option applies only where a member can be populated. An array, an immutable or read-only collection, a
+        /// polymorphic type, a value with a custom converter, a value type with no setter, and every member of a type
+        /// that is created through a constructor with parameters are handled as under
+        /// <see cref="XmlObjectCreationHandling.Replace"/>. <see cref="XmlObjectCreationHandlingAttribute"/> sets the
+        /// handling of one member or one type and takes precedence.
+        /// </para>
+        /// <para>
+        /// <see cref="XmlObjectCreationHandling.Populate"/> cannot be combined with <see cref="ReferenceHandler"/>: a
+        /// type with a member to populate throws an <see cref="InvalidOperationException"/> when it is first used.
+        /// </para>
         /// </remarks>
         public XmlObjectCreationHandling PreferredObjectCreationHandling
         {
@@ -734,17 +728,29 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets a value that indicates whether nullability annotations should be respected during serialization and deserialization.
+        /// Gets or sets a value that indicates whether a <see langword="null"/> is refused for a member or constructor parameter annotated non-nullable.
         /// </summary>
         /// <value>
         /// <see langword="true"/> if nullability annotations are respected; otherwise, <see langword="false"/>.
-        /// The default is <see langword="false"/>. The serializer does not currently act on this value.
+        /// The default is <see langword="false"/>.
         /// </value>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// The value is stored and copied by the copy constructor, but the serializer does not currently read it.
+        /// <para>
+        /// When this is <see langword="true"/>, an element marked <c>xsi:nil="true"</c> for a member or constructor
+        /// parameter that does not accept <see langword="null"/> throws an <see cref="XmlException"/> when it is read, and
+        /// a member annotated as never returning <see langword="null"/> that holds one throws when it is written. A
+        /// <see langword="null"/> that the ignore condition leaves out is not written and is not refused.
+        /// </para>
+        /// <para>
+        /// The rules are those of <c>JsonSerializerOptions.RespectNullableAnnotations</c>. The annotation of the member
+        /// decides, together with <c>[AllowNull]</c>, <c>[DisallowNull]</c>, <c>[MaybeNull]</c> and <c>[NotNull]</c>. A
+        /// member the document leaves out is not checked. The items of a collection, the values of a dictionary, the
+        /// document root, a member compiled without nullable annotations, and a member whose type is an unconstrained
+        /// type parameter are not checked either.
+        /// </para>
         /// </remarks>
         public bool RespectNullableAnnotations
         {
@@ -823,17 +829,20 @@ namespace CloudNimble.Text.Xml
         public IList<IXmlTypeInfoResolver> TypeInfoResolverChain => _typeInfoResolverChain ??= new XmlTypeInfoResolverChain(this, _typeInfoResolver);
 
         /// <summary>
-        /// Gets or sets a value that specifies how a member declared as <see cref="object"/> that has no converter is handled during deserialization.
+        /// Gets or sets a value that specifies how an element is read into a value declared as <see cref="object"/>.
         /// </summary>
         /// <value>
-        /// One of the enumeration values that specifies the type such a member is deserialized as. The default is
-        /// <see cref="XmlUnknownTypeHandling.XmlElement"/>. The serializer does not currently act on this value.
+        /// One of the enumeration values that specifies whether the element is read as an <see cref="XmlElement"/> or
+        /// as an <see cref="Nodes.XmlNode"/>. The default is <see cref="XmlUnknownTypeHandling.XmlElement"/>.
         /// </value>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// The value is stored and copied by the copy constructor, but the serializer does not currently read it.
+        /// This is the counterpart of <c>JsonSerializerOptions.UnknownTypeHandling</c>. It applies wherever the
+        /// declared type is <see cref="object"/>: a member, an item of a collection, a value of a dictionary, and the
+        /// document root. An element marked <c>xsi:nil="true"</c> is read as <see langword="null"/> under both values.
+        /// Writing is not affected: a value declared as <see cref="object"/> is written as the type it has.
         /// </remarks>
         public XmlUnknownTypeHandling UnknownTypeHandling
         {
@@ -963,6 +972,7 @@ namespace CloudNimble.Text.Xml
             else if (defaults is XmlSerializerDefaults.Strict)
             {
                 AllowDuplicateProperties = false;
+                RespectNullableAnnotations = true;
                 ReadCommentHandling = XmlCommentHandling.Disallow;
                 UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow;
             }
@@ -982,7 +992,6 @@ namespace CloudNimble.Text.Xml
         {
             ArgumentNullException.ThrowIfNull(options);
             AllowDuplicateProperties = options.AllowDuplicateProperties;
-            AllowOutOfOrderMetadataProperties = options.AllowOutOfOrderMetadataProperties;
             AttributeNamingPolicy = options.AttributeNamingPolicy;
             Converters = new XmlConverterList(this, options.Converters);
             DefaultBufferSize = options.DefaultBufferSize;
@@ -1006,7 +1015,6 @@ namespace CloudNimble.Text.Xml
             MaxNameByteCount = options.MaxNameByteCount;
             MaxTextByteCount = options.MaxTextByteCount;
             NewLine = options.NewLine;
-            NilHandling = options.NilHandling;
             NumberHandling = options.NumberHandling;
             OmitXmlDeclaration = options.OmitXmlDeclaration;
             PreferredObjectCreationHandling = options.PreferredObjectCreationHandling;
@@ -1296,6 +1304,25 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Returns whether the caller supplied a converter for <paramref name="type"/>, in
+        /// <see cref="Converters"/> or with <see cref="XmlConverterAttribute"/> on the type.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns><see langword="true"/> if a converter other than a built-in one handles the type.</returns>
+        internal bool HasCustomConverter(Type type)
+        {
+            foreach (var converter in (XmlConverterList)Converters)
+            {
+                if (converter.CanConvert(type))
+                {
+                    return true;
+                }
+            }
+
+            return type.GetCustomAttribute<XmlConverterAttribute>() is not null;
+        }
+
+        /// <summary>
         /// Finds the converter for <paramref name="type"/> without the cache.
         /// </summary>
         /// <param name="type">The CLR type.</param>
@@ -1315,12 +1342,7 @@ namespace CloudNimble.Text.Xml
                 return XmlBuiltInConverters.Get(type, this);
             }
 
-            if (!typeof(XmlConverter).IsAssignableFrom(attribute.ConverterType))
-            {
-                throw new InvalidOperationException($"Type '{attribute.ConverterType}' is not an XmlConverter.");
-            }
-
-            return ((XmlConverter)Activator.CreateInstance(attribute.ConverterType)!).Resolve(type, this);
+            return attribute.CreateConverter().Resolve(type, this);
         }
 
         /// <summary>

@@ -2,4 +2,3 @@ CloudNimble.Text.Xml.Serialization.XmlIgnoreCondition
 CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute
 CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
 CloudNimble.Text.Xml.XmlSerializerOptions
-CloudNimble.Text.Xml.XmlNilHandling

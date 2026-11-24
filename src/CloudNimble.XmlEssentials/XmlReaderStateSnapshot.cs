@@ -64,6 +64,12 @@ namespace CloudNimble.Text.Xml
         public required bool IsEmptyElement { get; init; }
 
         /// <summary>
+        /// Gets whether the reader is on the start tag of an element that is now open, which is reported one
+        /// level above its content.
+        /// </summary>
+        public required bool IsOnOpenStartTag { get; init; }
+
+        /// <summary>
         /// Gets the 1-based line number.
         /// </summary>
         public required long LineNumber { get; init; }
@@ -147,6 +153,9 @@ namespace CloudNimble.Text.Xml
                 ElementNamespaceUris = ElementNamespaceUris,
                 Finished = Finished,
                 IsEmptyElement = IsEmptyElement,
+
+                // The new position is after a complete token, so it is inside the open elements, not on a start tag.
+                IsOnOpenStartTag = false,
                 LineNumber = lineNumber,
                 LineStart = lineStart,
                 NamespaceDepths = NamespaceDepths,

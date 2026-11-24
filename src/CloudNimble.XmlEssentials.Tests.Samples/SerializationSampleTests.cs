@@ -541,7 +541,6 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(ConfigureOptions.Defaults).Should().Be(
                 "AllowDuplicateProperties = True\n" +
-                "AllowOutOfOrderMetadataProperties = False\n" +
                 "AttributeNamingPolicy = null\n" +
                 "Converters.Count = 0\n" +
                 "DefaultBufferSize = 0\n" +
@@ -566,7 +565,6 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "MaxNameByteCount = 0\n" +
                 "MaxTextByteCount = 0\n" +
                 "NewLine is Environment.NewLine = True\n" +
-                "NilHandling = WriteXsiNil\n" +
                 "NumberHandling = AllowNamedFloatingPointLiterals\n" +
                 "OmitXmlDeclaration = False\n" +
                 "PreferredObjectCreationHandling = Replace\n" +

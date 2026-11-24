@@ -351,7 +351,7 @@ The code produces the following output:
 
 ## What isn't supported
 
-- **Members of type `object`.** A member declared as `object` has no contract to serialize. Without a [custom converter](/guides/custom-converters), the serializer throws `NotSupportedException`: `The type 'System.Object' is not supported.` The `XmlSerializerOptions.UnknownTypeHandling` property exists, but the serializer doesn't read it in this release.
+- **Members of type `object`.** A member declared as `object` is written as the type its value has, with no discriminator, so the document doesn't say which type wrote it. It is read back as an `XmlElement`, which you can read as the type you expect with `XmlSerializer.Deserialize<T>(element)`. Set `UnknownTypeHandling` to `XmlUnknownTypeHandling.XmlNode` to read an `XmlNode` you can change instead. To get the derived type back when reading, declare the member as a base type with `[XmlDerivedType]`.
 - **Inferred derived types.** `InferClosedTypePolymorphism`, on the attribute and on the options, is not read in this release. List each derived type with `[XmlDerivedType<T>]`.
 - **A namespace per derived type.** `XmlDerivedTypeAttribute.Namespace` is not read. A derived type's element is written in the namespace that is in scope.
 - **Configuring polymorphism at run time.** The attributes are the only way to declare derived types. There is no contract-customization API for it.

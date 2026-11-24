@@ -50,10 +50,85 @@ namespace CloudNimble.Text.Xml.Serialization
                 throw new XmlException($"The type '{typeof(T)}' is abstract or an interface, so the element must identify one of its derived types.");
             }
 
+            return (T)ReadInto(ref reader, null, options);
+        }
+
+        /// <inheritdoc />
+        public override void Write(Utf8XmlWriter writer, T value, XmlSerializerOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            // A value type is copied wherever it is held, so it has no identity to repeat or to form a cycle with.
+            if (typeof(T).IsValueType || options.ReferenceHandler is null || XmlReferenceScope.Current is not { } resolver)
+            {
+                WriteMembers(writer, value, options);
+                return;
+            }
+
+            if (resolver is XmlIgnoreCyclesReferenceResolver cycles)
+            {
+                // Only an object that is still being written is a cycle. One that was written earlier and
+                // finished is written again in full.
+                if (!cycles.TryEnter(value))
+                {
+                    writer.WriteNilValue();
+                    return;
+                }
+
+                WriteMembers(writer, value, options);
+                cycles.Exit(value);
+                return;
+            }
+
+            // The element is already open, whether it is the root, a member, or a collection item, so every
+            // place an object can be written gets the same id and the same reference back to it.
+            var id = resolver.GetReference(value, out var alreadyExists);
+            if (alreadyExists)
+            {
+                WriteReference(writer, id);
+                return;
+            }
+
+            if (id.Length > 0)
+            {
+                writer.WriteStartAttribute(null, "id", XmlNamespaces.Refs);
+                writer.WriteStringValue(id);
+                writer.WriteEndAttribute();
+            }
+
+            WriteMembers(writer, value, options);
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <inheritdoc />
+        internal override bool CanPopulate => !typeof(T).IsAbstract;
+
+        /// <inheritdoc />
+        internal override void Populate(ref Utf8XmlReader reader, object existing, XmlSerializerOptions options)
+        {
+            ReadInto(ref reader, existing, options);
+        }
+
+        /// <summary>
+        /// Reads the element <paramref name="reader"/> is on into a new object, or into one that already exists.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <param name="existing">The object to set the members on, boxed when it is a value type, or null to create one.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The object: <paramref name="existing"/> when one was given.</returns>
+        /// <remarks>
+        /// An existing object is never constructed again, so a member that only a constructor parameter can set is
+        /// left as it is.
+        /// </remarks>
+        internal object ReadInto(ref Utf8XmlReader reader, object? existing, XmlSerializerOptions options)
+        {
             var binding = _typeInfo.Binding;
             Span<bool> seen = stackalloc bool[binding.SlotCount];
             XmlObjectReadState state = default;
-            state.Instance = binding.CreateObject?.Invoke();
+            state.Instance = existing ?? binding.CreateObject?.Invoke();
             if (state.Instance is null)
             {
                 state.Values = binding.RentValues();
@@ -138,58 +213,8 @@ namespace CloudNimble.Text.Xml.Serialization
                 StoreExtensionData(binding.ExtensionData!, instance, extra);
             }
 
-            return (T)instance;
+            return instance;
         }
-
-        /// <inheritdoc />
-        public override void Write(Utf8XmlWriter writer, T value, XmlSerializerOptions options)
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            // A value type is copied wherever it is held, so it has no identity to repeat or to form a cycle with.
-            if (typeof(T).IsValueType || options.ReferenceHandler is null || XmlReferenceScope.Current is not { } resolver)
-            {
-                WriteMembers(writer, value, options);
-                return;
-            }
-
-            if (resolver is XmlIgnoreCyclesReferenceResolver cycles)
-            {
-                // Only an object that is still being written is a cycle. One that was written earlier and
-                // finished is written again in full.
-                if (!cycles.TryEnter(value))
-                {
-                    writer.WriteNilValue();
-                    return;
-                }
-
-                WriteMembers(writer, value, options);
-                cycles.Exit(value);
-                return;
-            }
-
-            // The element is already open, whether it is the root, a member, or a collection item, so every
-            // place an object can be written gets the same id and the same reference back to it.
-            var id = resolver.GetReference(value, out var alreadyExists);
-            if (alreadyExists)
-            {
-                WriteReference(writer, id);
-                return;
-            }
-
-            if (id.Length > 0)
-            {
-                writer.WriteStartAttribute(null, "id", XmlNamespaces.Refs);
-                writer.WriteStringValue(id);
-                writer.WriteEndAttribute();
-            }
-
-            WriteMembers(writer, value, options);
-        }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Writes, on the open start tag of an element, what stands for an object that was already written: a
@@ -562,6 +587,14 @@ namespace CloudNimble.Text.Xml.Serialization
 
                         if (property.IsUnwrappedCollection)
                         {
+                            if (property.NeverStored && !property.Populates)
+                            {
+                                // Nothing can be done with the item, so it is passed over without being read.
+                                reader.Skip();
+                                seen[property.Index] = true;
+                                break;
+                            }
+
                             property.ReadItem(ref reader, GetBuilder(binding, property, ref state));
                             seen[property.Index] = true;
                             break;

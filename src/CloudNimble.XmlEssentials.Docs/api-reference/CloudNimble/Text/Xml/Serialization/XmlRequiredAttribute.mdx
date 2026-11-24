@@ -1,6 +1,6 @@
 ---
 title: XmlRequiredAttribute
-description: "Requires the member to be present when deserializing. Analogous to `JsonRequiredAttribute`."
+description: "Indicates that the annotated member must be present in the XML on deserialization. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute', 'CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute
 
 ## Summary
 
-Requires the member to be present when deserializing. Analogous to `JsonRequiredAttribute`.
+Indicates that the annotated member must be present in the XML on deserialization. This class cannot be inherited.
 
 ## Usage
 
@@ -71,6 +71,10 @@ The required member 'Plan' is missing.
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)
+
+## Remarks
+
+This attribute is analogous to `JsonRequiredAttribute` in `System.Text.Json`.
 
 ## Considerations
 

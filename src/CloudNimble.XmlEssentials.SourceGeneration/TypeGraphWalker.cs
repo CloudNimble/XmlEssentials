@@ -22,7 +22,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="diagnostics">Diagnostics to report.</param>
         /// <returns>The type specs.</returns>
         internal static EquatableArray<TypeSpec> Walk(
-            List<(INamedTypeSymbol Type, string PropertyName)> roots,
+            List<(ITypeSymbol Type, string PropertyName)> roots,
             OptionsSpec options,
             bool emitSerialization,
             List<Diagnostic> diagnostics)
@@ -31,15 +31,138 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var specs = new List<TypeSpec>();
             foreach (var root in roots)
             {
+                // A root that an earlier root already reached was listed as a type the runtime library handles.
+                // It is listed again as a root, so that it gets its property on the context.
+                var rootName = SymbolHelpers.FullName(SymbolHelpers.UnwrapNullable(root.Type));
+                var reached = specs.FindIndex(spec => spec.Kind == 5 && spec.ClrTypeName == rootName);
+                if (reached >= 0)
+                {
+                    specs.RemoveAt(reached);
+                    seen.Remove(rootName);
+                }
+
                 Visit(root.Type, root.PropertyName, options, emitSerialization, seen, specs, diagnostics);
             }
 
+            NameTypes(roots, specs);
             return new EquatableArray<TypeSpec>(specs.ToArray());
         }
 
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Gives every type its final property name: a root keeps the name it was listed under, and no two
+        /// types share a name.
+        /// </summary>
+        /// <param name="roots">The types listed on the context, with their property names.</param>
+        /// <param name="specs">The specs, renamed in place.</param>
+        /// <remarks>
+        /// The name is the property on the context and the name of the generated converter. A type reached
+        /// before it is visited as a root has the name it was reached under, and two types in different
+        /// namespaces, or two closed forms of one generic type, may want the same name. Root names are
+        /// settled first; every other type that would repeat a name gets a number.
+        /// </remarks>
+        internal static void NameTypes(List<(ITypeSymbol Type, string PropertyName)> roots, List<TypeSpec> specs)
+        {
+            var used = new HashSet<string>(System.StringComparer.Ordinal);
+            var isRoot = new HashSet<string>(System.StringComparer.Ordinal);
+            foreach (var root in roots)
+            {
+                var clrName = SymbolHelpers.FullName(SymbolHelpers.UnwrapNullable(root.Type));
+                var index = specs.FindIndex(spec => spec.ClrTypeName == clrName);
+                if (index < 0 || !isRoot.Add(clrName))
+                {
+                    continue;
+                }
+
+                specs[index] = specs[index].WithPropertyName(root.PropertyName);
+                used.Add(root.PropertyName);
+            }
+
+            for (var i = 0; i < specs.Count; i++)
+            {
+                if (isRoot.Contains(specs[i].ClrTypeName))
+                {
+                    continue;
+                }
+
+                var name = specs[i].PropertyName;
+                for (var suffix = 2; !used.Add(name); suffix++)
+                {
+                    name = specs[i].PropertyName + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                specs[i] = specs[i].WithPropertyName(name);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is not a closed type: an unbound generic type, a type
+        /// parameter, a type the compiler could not resolve, or a type built from one of those.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns><see langword="true"/> when no converter can be generated for the type.</returns>
+        internal static bool IsOpen(ITypeSymbol type)
+        {
+            if (type.TypeKind is TypeKind.TypeParameter or TypeKind.Error)
+            {
+                return true;
+            }
+
+            if (type is IArrayTypeSymbol array)
+            {
+                return IsOpen(array.ElementType);
+            }
+
+            if (type is not INamedTypeSymbol named)
+            {
+                return false;
+            }
+
+            if (named.IsUnboundGenericType)
+            {
+                return true;
+            }
+
+            foreach (var argument in named.TypeArguments)
+            {
+                if (IsOpen(argument))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the default property name of a type: its name, followed by the names of its type
+        /// arguments, or by <c>Array</c> for an array.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The name, such as <c>Order</c>, <c>PairInt32String</c>, or <c>OrderArray</c>.</returns>
+        internal static string PropertyNameOf(ITypeSymbol type)
+        {
+            if (type is IArrayTypeSymbol array)
+            {
+                return PropertyNameOf(array.ElementType) + "Array";
+            }
+
+            if (type is not INamedTypeSymbol { IsGenericType: true } generic)
+            {
+                return type.Name;
+            }
+
+            var builder = new System.Text.StringBuilder(generic.Name);
+            foreach (var argument in generic.TypeArguments)
+            {
+                builder.Append(PropertyNameOf(argument));
+            }
+
+            return builder.ToString();
+        }
 
         /// <summary>
         /// Visits <paramref name="type"/> if it has not been seen.
@@ -74,7 +197,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return;
             }
 
-            if (type is INamedTypeSymbol named && named.IsUnboundGenericType)
+            // The language refuses an unbound generic type as a type argument, and the compiler still hands the
+            // generator the attribute. Nothing is generated from a type that is not closed.
+            if (IsOpen(type))
             {
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, location, type.ToDisplayString()));
                 return;
@@ -95,8 +220,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var rootName = RootName(type, options);
             var rootAttr = SymbolHelpers.GetAttribute(type, SymbolHelpers.RootAttribute);
             var rootNs = rootAttr is null ? options.DefaultNamespace ?? "" : SymbolHelpers.GetString(rootAttr, "Namespace") ?? options.DefaultNamespace ?? "";
+            var constructorTail = "";
+            var populateRefusal = "";
             var members = kind == 0 && type is INamedTypeSymbol objectType
-                ? BindMembers(objectType, options, diagnostics)
+                ? BindMembers(objectType, options, diagnostics, out constructorTail, out populateRefusal)
                 : new EquatableArray<MemberSpec>([]);
 
             specs.Add(new TypeSpec(
@@ -108,35 +235,233 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 type.IsValueType,
                 !type.IsValueType || type.OriginalDefinition.SpecialType is SpecialType.System_Nullable_T,
                 emitSerialization && kind == 0,
-                members));
+                members,
+                constructorTail,
+                RuntimeFactory(type.WithNullableAnnotation(NullableAnnotation.NotAnnotated)) ?? "",
+                populateRefusal));
+
+            if (kind == 2)
+            {
+                // A collection or a dictionary listed on the context is read and written by the runtime, which
+                // asks the context for the types it holds. They are listed too, so that it has an answer.
+                VisitReachable(type, options, emitSerialization, seen, specs, diagnostics);
+            }
 
             if (kind == 0 && type is INamedTypeSymbol declaring)
             {
-                foreach (var member in declaring.GetMembers())
+                // Inherited members are serialized too, so their types are reachable as well.
+                for (INamedTypeSymbol? current = declaring; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
                 {
-                    ITypeSymbol? nested = member switch
+                    foreach (var member in current.GetMembers())
                     {
-                        IPropertySymbol property => property.Type,
-                        IFieldSymbol field => field.Type,
-                        _ => null,
-                    };
-                    if (nested is null || member.IsStatic || member.IsImplicitlyDeclared || IsUnsupported(nested, SymbolHelpers.FullName(nested)))
-                    {
-                        continue;
-                    }
+                        ITypeSymbol? nested = member switch
+                        {
+                            IPropertySymbol property => property.Type,
+                            IFieldSymbol field => field.Type,
+                            _ => null,
+                        };
+                        if (nested is null || member.IsStatic || member.IsImplicitlyDeclared || IsUnsupported(nested, SymbolHelpers.FullName(nested)))
+                        {
+                            continue;
+                        }
 
-                    if (TryCollectionElement(nested, out var element) && KindOf(element) == 0)
-                    {
-                        Visit(element, element.Name, options, emitSerialization, seen, specs, diagnostics);
-                        continue;
-                    }
-
-                    if (KindOf(nested) == 0)
-                    {
-                        Visit(nested, SymbolHelpers.UnwrapNullable(nested).Name, options, emitSerialization, seen, specs, diagnostics);
+                        VisitReachable(nested, options, emitSerialization, seen, specs, diagnostics);
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Visits the object types a member's value can hold: the type itself, or the types inside a
+        /// collection or a dictionary, at any depth.
+        /// </summary>
+        /// <param name="type">The member type.</param>
+        /// <param name="options">The options.</param>
+        /// <param name="emitSerialization">Whether converters should be emitted.</param>
+        /// <param name="seen">Visited CLR type names.</param>
+        /// <param name="specs">The specs.</param>
+        /// <param name="diagnostics">Diagnostics to report.</param>
+        internal static void VisitReachable(
+            ITypeSymbol type,
+            OptionsSpec options,
+            bool emitSerialization,
+            HashSet<string> seen,
+            List<TypeSpec> specs,
+            List<Diagnostic> diagnostics)
+        {
+            // The nullable form of an enumeration or a struct has a converter of its own, which wraps the
+            // one for the value. The built-in scalars have theirs ready-made.
+            if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable)
+            {
+                var underlying = nullable.TypeArguments[0];
+                if (!IsUnsupported(underlying, SymbolHelpers.FullName(underlying)) && (underlying.TypeKind is TypeKind.Enum || !SymbolHelpers.IsScalar(underlying)))
+                {
+                    AddRuntimeType(type, "XmlMetadataServices.CreateNullableInfo<" + SymbolHelpers.FullName(underlying) + ">(Options)", seen, specs);
+                }
+            }
+
+            type = SymbolHelpers.UnwrapNullable(type).WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+            if (IsUnsupported(type, SymbolHelpers.FullName(type)))
+            {
+                return;
+            }
+
+            if (TryDictionaryTypes(type, out var keyType, out var valueType))
+            {
+                VisitReachable(keyType, options, emitSerialization, seen, specs, diagnostics);
+                VisitReachable(valueType, options, emitSerialization, seen, specs, diagnostics);
+                AddRuntimeType(type, RuntimeFactory(type)!, seen, specs);
+                return;
+            }
+
+            if (TryCollectionElement(type, out var element))
+            {
+                VisitReachable(element, options, emitSerialization, seen, specs, diagnostics);
+                AddRuntimeType(type, RuntimeFactory(type)!, seen, specs);
+                return;
+            }
+
+            var kind = KindOf(type);
+            if (kind == 3)
+            {
+                AddRuntimeType(type, RuntimeFactory(type)!, seen, specs);
+            }
+            else if (kind == 0)
+            {
+                Visit(type, PropertyNameOf(type), options, emitSerialization, seen, specs, diagnostics);
+            }
+        }
+
+        /// <summary>
+        /// Lists a type that the runtime library reads and writes, with the expression that creates its type
+        /// info, so that the context answers for it without reflection.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="factory">The expression that creates the type info.</param>
+        /// <param name="seen">Visited CLR type names.</param>
+        /// <param name="specs">The specs.</param>
+        /// <remarks>
+        /// Such a type gets no property on the context. It is found through <c>GetTypeInfo</c>, which is how a
+        /// generated converter and the runtime library ask for the type of a member, an item, or a value.
+        /// </remarks>
+        internal static void AddRuntimeType(ITypeSymbol type, string factory, HashSet<string> seen, List<TypeSpec> specs)
+        {
+            var clrName = SymbolHelpers.FullName(type);
+            if (!seen.Add(clrName))
+            {
+                return;
+            }
+
+            specs.Add(new TypeSpec(clrName, RuntimeName(clrName), "", "", 5, type.IsValueType, true, false, new EquatableArray<MemberSpec>([]), "", factory));
+        }
+
+        /// <summary>
+        /// Makes the name of the private member that holds the type info of a type the context does not list as a root.
+        /// </summary>
+        /// <param name="clrName">The fully qualified type name.</param>
+        /// <returns>An identifier that is the same for the same type in every build, and differs between types.</returns>
+        internal static string RuntimeName(string clrName)
+        {
+            var builder = new System.Text.StringBuilder("__Runtime_");
+            var hash = 2166136261u;
+            foreach (var character in clrName)
+            {
+                builder.Append(char.IsLetterOrDigit(character) ? character : '_');
+                hash = (hash ^ character) * 16777619u;
+            }
+
+            return builder.Append('_').Append(hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture)).ToString();
+        }
+
+        /// <summary>
+        /// Returns the expression that creates type info for a dictionary, a collection, or an enumeration
+        /// with every type argument named, so that no generic type is closed at run time.
+        /// </summary>
+        /// <param name="type">The type, with no nullable annotation.</param>
+        /// <returns>The expression, or null for any other kind of type.</returns>
+        internal static string? RuntimeFactory(ITypeSymbol type)
+        {
+            var name = SymbolHelpers.FullName(type);
+            if (TryDictionaryTypes(type, out var keyType, out var valueType))
+            {
+                return "XmlMetadataServices.CreateDictionaryInfo<" + name + ", " + SymbolHelpers.FullName(keyType) + ", " + SymbolHelpers.FullName(valueType) + ">(Options)";
+            }
+
+            if (TryCollectionElement(type, out var element))
+            {
+                // An array has its own entry point: the one for other collection types keeps their
+                // constructors and methods for the trimmer, and an array's include ones Native AOT refuses.
+                return type is IArrayTypeSymbol
+                    ? "XmlMetadataServices.CreateArrayInfo<" + SymbolHelpers.FullName(element) + ">(Options)"
+                    : "XmlMetadataServices.CreateCollectionInfo<" + name + ", " + SymbolHelpers.FullName(element) + ">(Options)";
+            }
+
+            return type.TypeKind is TypeKind.Enum && KindOf(type) == 3
+                ? "XmlMetadataServices.CreateEnumInfo<" + name + ">(Options)"
+                : null;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is read and written by the runtime library whatever a
+        /// context lists: <see cref="object"/>, the types that hold XML, and a type with its own converter.
+        /// </summary>
+        /// <param name="type">The type, with <c>Nullable&lt;T&gt;</c> removed.</param>
+        /// <returns><see langword="true"/> when no converter is generated for the type and none of its members are walked.</returns>
+        internal static bool IsRuntimeType(ITypeSymbol type)
+        {
+            return type.SpecialType is SpecialType.System_Object
+                || SymbolHelpers.FullName(type) is "global::CloudNimble.Text.Xml.XmlElement"
+                    or "global::CloudNimble.Text.Xml.XmlDocument"
+                    or "global::CloudNimble.Text.Xml.Nodes.XmlNode"
+                    or "global::CloudNimble.Text.Xml.Nodes.XmlElementNode"
+                || SymbolHelpers.GetAttribute(type, SymbolHelpers.ConverterAttribute) is not null;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a dictionary, and its key and value types.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="keyType">The key type.</param>
+        /// <param name="valueType">The value type.</param>
+        /// <returns><see langword="true"/> for a type that is or implements <c>IDictionary&lt;TKey, TValue&gt;</c> or <c>IReadOnlyDictionary&lt;TKey, TValue&gt;</c>.</returns>
+        internal static bool TryDictionaryTypes(ITypeSymbol type, out ITypeSymbol keyType, out ITypeSymbol valueType)
+        {
+            keyType = type;
+            valueType = type;
+            if (type is not INamedTypeSymbol named)
+            {
+                return false;
+            }
+
+            if (IsDictionaryInterface(named))
+            {
+                keyType = named.TypeArguments[0];
+                valueType = named.TypeArguments[1];
+                return true;
+            }
+
+            foreach (var implemented in named.AllInterfaces)
+            {
+                if (IsDictionaryInterface(implemented))
+                {
+                    keyType = implemented.TypeArguments[0];
+                    valueType = implemented.TypeArguments[1];
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is one of the two generic dictionary interfaces.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns><see langword="true"/> for <c>IDictionary&lt;TKey, TValue&gt;</c> and <c>IReadOnlyDictionary&lt;TKey, TValue&gt;</c>.</returns>
+        internal static bool IsDictionaryInterface(INamedTypeSymbol type)
+        {
+            return type.TypeArguments.Length == 2
+                && type.OriginalDefinition.ToDisplayString() is "System.Collections.Generic.IDictionary<TKey, TValue>" or "System.Collections.Generic.IReadOnlyDictionary<TKey, TValue>";
         }
 
         /// <summary>
@@ -161,13 +486,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
-        /// Returns 0 for objects, 1 for scalars, 2 for collections, 3 for enums.
+        /// Returns 0 for objects, 1 for scalars, 2 for collections and dictionaries, 3 for enums, and 4 for
+        /// the types the runtime library reads and writes itself.
         /// </summary>
         /// <param name="type">The type.</param>
         /// <returns>The kind.</returns>
         internal static int KindOf(ITypeSymbol type)
         {
             var root = SymbolHelpers.UnwrapNullable(type);
+
+            // A type with its own converter is the runtime library's whatever else it is, an enumeration included.
+            if (IsRuntimeType(root))
+            {
+                return 4;
+            }
+
             if (root.TypeKind is TypeKind.Enum)
             {
                 return 3;
@@ -266,8 +599,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="type">The CLR type.</param>
         /// <param name="options">The options.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
+        /// <param name="constructorTail">The named arguments for constructor parameters whose members are ignored, each with a leading comma, or empty.</param>
+        /// <param name="populateRefusal">The name of a member the reflection resolver would populate and a generated converter cannot, or empty.</param>
         /// <returns>The members in write order.</returns>
-        internal static EquatableArray<MemberSpec> BindMembers(INamedTypeSymbol type, OptionsSpec options, List<Diagnostic> diagnostics)
+        internal static EquatableArray<MemberSpec> BindMembers(INamedTypeSymbol type, OptionsSpec options, List<Diagnostic> diagnostics, out string constructorTail, out string populateRefusal)
         {
             var members = new List<MemberSpec>();
             var stack = new Stack<INamedTypeSymbol>();
@@ -304,19 +639,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.MultipleTextMembers, type.Locations[0], type.ToDisplayString()));
             }
 
-            members.Sort(static (left, right) =>
-            {
-                var rank = Rank(left).CompareTo(Rank(right));
-                if (rank != 0)
-                {
-                    return rank;
-                }
-
-                var leftOrder = left.Order >= 0 ? left.Order : int.MaxValue;
-                var rightOrder = right.Order >= 0 ? right.Order : int.MaxValue;
-                var compared = leftOrder.CompareTo(rightOrder);
-                return compared != 0 ? compared : 0;
-            });
+            // The sort is stable, so members that tie keep the order they were declared in, as the reflection
+            // resolver has it. List<T>.Sort is not stable, and reorders ties once a type has more than a few members.
+            var sorted = System.Linq.Enumerable.ToList(
+                System.Linq.Enumerable.ThenBy(
+                    System.Linq.Enumerable.OrderBy(members, static member => Rank(member)),
+                    static member => member.Order >= 0 ? member.Order : int.MaxValue));
+            members.Clear();
+            members.AddRange(sorted);
 
             foreach (var member in members)
             {
@@ -326,7 +656,64 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
             }
 
-            BindConstructor(type, members, diagnostics);
+            constructorTail = BindConstructor(type, members, diagnostics, out var hasParameters);
+
+            // Whether each member populates the value it holds, by the rules of the reflection resolver: the
+            // attribute on the member, then the one on the type, then the options. A generated converter adds to a
+            // collection and to a dictionary. It cannot set members on an object that exists, or populate a member it
+            // sets as the object is created, so it reports the attribute and refuses the option for those.
+            populateRefusal = "";
+            var typeMark = SymbolHelpers.CreationHandlingOf(type);
+            for (var i = 0; i < members.Count; i++)
+            {
+                var member = members[i];
+                if (member.IsExtensionData)
+                {
+                    continue;
+                }
+
+                var owner = type.ToDisplayString() + "." + member.ClrName;
+                // A member that is never read takes nothing from the document: it cannot be required, and it is not
+                // populated. A constructor parameter of the same name is still filled.
+                var neverRead = member.IgnoreCondition == 5 && member.ConstructorParameter is null;
+                if (neverRead && member.IsRequired)
+                {
+                    diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.RequiredMemberNeverRead, type.Locations[0], owner));
+                }
+
+                var mark = member.PopulateMark >= 0 ? member.PopulateMark : typeMark;
+                var kind = neverRead ? 0 : member.PopulateKind;
+                var populate = 0;
+                if (hasParameters)
+                {
+                    if (mark == 1)
+                    {
+                        diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.PopulateNotGenerated, type.Locations[0], owner, "which is not supported in a type created through a constructor with parameters"));
+                    }
+                }
+                else if (mark != 0 && kind == 0)
+                {
+                    if (member.PopulateMark == 1)
+                    {
+                        diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.PopulateNotGenerated, type.Locations[0], owner, "but its type cannot be populated"));
+                    }
+                }
+                else if (mark != 0 && kind is 1 or 2 && !member.IsInitOnly && !(member.IsRequired && member.CanSet))
+                {
+                    populate = mark == 1 ? 1 : -1;
+                }
+                else if (mark == 1)
+                {
+                    diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.PopulateNotGenerated, type.Locations[0], owner, "which a generated converter cannot do for this member; read the type through the reflection resolver"));
+                }
+                else if (mark != 0 && populateRefusal.Length == 0)
+                {
+                    populateRefusal = member.ClrName;
+                }
+
+                members[i] = new MemberSpec(member, populate, member.PopulateKind, member.PopulateMark, member.PopulateEntryTypes);
+            }
+
             return new EquatableArray<MemberSpec>(members.ToArray());
         }
 
@@ -336,15 +723,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         /// <param name="type">The type.</param>
         /// <param name="members">The members. A member that fills a parameter is replaced by a copy that says so.</param>
+        /// <param name="hasParameters">Whether the chosen constructor has parameters.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
+        /// <returns>The named arguments for constructor parameters whose members are ignored, each with a leading comma, or empty.</returns>
         /// <remarks>
         /// A constructor marked <c>[XmlConstructor]</c> is used. Otherwise the public constructor with the most
         /// parameters is used, among those whose every parameter is named like a member. A parameter no
         /// member fills must have a default value. XMLXE005 is reported when the choice is ambiguous, and
         /// XMLXE002 when the chosen constructor cannot be called from generated code.
         /// </remarks>
-        internal static void BindConstructor(INamedTypeSymbol type, List<MemberSpec> members, List<Diagnostic> diagnostics)
+        internal static string BindConstructor(INamedTypeSymbol type, List<MemberSpec> members, List<Diagnostic> diagnostics, out bool hasParameters)
         {
+            hasParameters = false;
             // A parameter fills the member with the same C# name or XML name, without regard to case, as the
             // reflection resolver has it: a parameter is conventionally "name" where its property is "Name".
             var names = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
@@ -354,6 +744,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 names.Add(member.LocalName);
             }
 
+            var ignored = IgnoredMembers(type);
+            var tail = new System.Text.StringBuilder();
             IMethodSymbol? marked = null;
             var markedCount = 0;
             IMethodSymbol? best = null;
@@ -375,7 +767,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 var bindable = true;
                 foreach (var parameter in constructor.Parameters)
                 {
-                    if (!names.Contains(parameter.Name))
+                    if (!names.Contains(parameter.Name) && !ignored.Contains(parameter.Name))
                     {
                         bindable = false;
                         break;
@@ -403,7 +795,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             if (markedCount > 1 || (marked is null && bestTies > 1))
             {
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.AmbiguousConstructors, type.Locations[0], type.ToDisplayString()));
-                return;
+                return "";
             }
 
             var chosen = marked ?? best;
@@ -419,18 +811,19 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 // Every public constructor has a parameter that is not a member, and there is no parameterless
                 // one the generated code may call, so there is nothing the converter can use.
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
-                return;
+                return "";
             }
 
+            hasParameters = chosen is { Parameters.Length: > 0 };
             if (chosen is null || chosen.Parameters.Length == 0)
             {
-                return;
+                return "";
             }
 
             if (chosen.DeclaredAccessibility is Accessibility.Private or Accessibility.Protected or Accessibility.ProtectedAndInternal)
             {
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
-                return;
+                return "";
             }
 
             foreach (var parameter in chosen.Parameters)
@@ -445,6 +838,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                         && member.ConstructorParameter is null);
                 }
 
+                if (index < 0 && ignored.Contains(parameter.Name) && !names.Contains(parameter.Name))
+                {
+                    // The parameter belongs to a member that is never serialized, so the document cannot
+                    // supply it. It takes the default of its type, as the reflection resolver passes it.
+                    tail.Append(", @").Append(parameter.Name).Append(": default(").Append(SymbolHelpers.FullName(parameter.Type)).Append(parameter.Type.IsValueType ? ")" : ")!");
+                    continue;
+                }
+
                 if (index < 0)
                 {
                     // No member fills it, or the member already fills an earlier parameter. It is left out
@@ -452,7 +853,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     if (!parameter.HasExplicitDefaultValue)
                     {
                         diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
-                        return;
+                        return "";
                     }
 
                     continue;
@@ -463,8 +864,38 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     parameter.Name,
                     parameter.Ordinal,
                     parameter.HasExplicitDefaultValue ? DefaultExpression(parameter) : null,
-                    members[index].IsInitOnly);
+                    members[index].IsInitOnly,
+                    members[index].NullGetOwner,
+                    members[index].NullSetOwner,
+                    SymbolHelpers.RefusesNull(parameter, parameter.Type, parameter.OriginalDefinition.Type, forRead: false));
             }
+
+            return tail.ToString();
+        }
+
+        /// <summary>
+        /// Collects the names of the properties and fields of <paramref name="type"/> and its base types that
+        /// are marked <c>[XmlIgnore]</c> with no condition, so they are never serialized.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <returns>The names, compared without regard to case as constructor parameters are.</returns>
+        internal static HashSet<string> IgnoredMembers(INamedTypeSymbol type)
+        {
+            var ignored = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+            for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            {
+                foreach (var member in current.GetMembers())
+                {
+                    if (member is IPropertySymbol or IFieldSymbol
+                        && SymbolHelpers.GetAttribute(member, SymbolHelpers.IgnoreAttribute) is { } attribute
+                        && SymbolHelpers.GetInt(attribute, "Condition", 1) == 1)
+                    {
+                        ignored.Add(member.Name);
+                    }
+                }
+            }
+
+            return ignored;
         }
 
         /// <summary>
@@ -573,6 +1004,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.DerivedTypesNotGenerated, member.Locations[0], member.ContainingType.ToDisplayString() + "." + member.Name));
             }
 
+            if (SymbolHelpers.GetAttribute(member, SymbolHelpers.ConverterAttribute) is not null)
+            {
+                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.MemberConverterNotGenerated, member.Locations[0], member.ContainingType.ToDisplayString() + "." + member.Name));
+            }
+
             if (SymbolHelpers.GetAttribute(member, SymbolHelpers.BclXmlInclude) is not null)
             {
                 var owner = member.ContainingType?.ToDisplayString() ?? member.Name;
@@ -592,7 +1028,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             var ignore = SymbolHelpers.GetAttribute(member, SymbolHelpers.IgnoreAttribute);
-            var ignoreCondition = ignore is null ? options.DefaultIgnoreCondition : SymbolHelpers.GetInt(ignore, "Condition", 1);
+            // A member with no attribute follows DefaultIgnoreCondition, which is read from the options when the
+            // converter runs. That is recorded as -1.
+            var ignoreCondition = ignore is null ? -1 : SymbolHelpers.GetInt(ignore, "Condition", 1);
             if (ignoreCondition == 1)
             {
                 return false;
@@ -609,9 +1047,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var element = SymbolHelpers.GetAttribute(member, SymbolHelpers.ElementAttribute);
             var attribute = SymbolHelpers.GetAttribute(member, SymbolHelpers.AttributeAttribute);
             var mixed = SymbolHelpers.GetAttribute(member, SymbolHelpers.MixedAttribute) is not null;
-            if (attribute is not null && !SymbolHelpers.IsScalar(memberType!))
+            if (attribute is not null && !SymbolHelpers.IsScalar(memberType!) && SymbolHelpers.GetAttribute(SymbolHelpers.UnwrapNullable(memberType!), SymbolHelpers.ConverterAttribute) is null)
             {
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.ComplexTypeAsAttribute, member.Locations[0], member.ContainingType?.ToDisplayString() ?? "", member.Name));
+                return false;
+            }
+
+            if (mixed)
+            {
+                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.MixedContentNotGenerated, member.Locations[0], (member.ContainingType?.ToDisplayString() ?? "") + "." + member.Name));
+                return false;
+            }
+
+            if ((text is not null || cdata is not null) && !SymbolHelpers.IsScalar(memberType!) && SymbolHelpers.GetAttribute(SymbolHelpers.UnwrapNullable(memberType!), SymbolHelpers.ConverterAttribute) is null)
+            {
+                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.ComplexTypeAsText, member.Locations[0], member.ContainingType?.ToDisplayString() ?? "", member.Name));
                 return false;
             }
 
@@ -717,7 +1167,46 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 order,
                 false,
                 mixed);
-            spec = new MemberSpec(spec, null, -1, null, member is IPropertySymbol { SetMethod: { IsInitOnly: true, DeclaredAccessibility: Accessibility.Public } });
+            // What the annotations say is recorded whatever the options are: the generated converter reads
+            // RespectNullableAnnotations when it runs.
+            var originalType = member.OriginalDefinition is IPropertySymbol originalProperty ? originalProperty.Type : ((IFieldSymbol)member.OriginalDefinition).Type;
+            var declaringType = SymbolHelpers.FullName(member.ContainingType!);
+            spec = new MemberSpec(
+                spec,
+                null,
+                -1,
+                null,
+                member is IPropertySymbol { SetMethod: { IsInitOnly: true, DeclaredAccessibility: Accessibility.Public } },
+                SymbolHelpers.RefusesNull(member, memberType, originalType, forRead: true) ? declaringType : null,
+                member is IPropertySymbol { SetMethod: null } ? null : SymbolHelpers.RefusesNull(member, memberType, originalType, forRead: false) ? declaringType : null,
+                false);
+
+            // What the reflection resolver could populate for this member. Whether it is populated is decided once
+            // the constructor is known, in BindMembers.
+            var populateKind = 0;
+            string? entryTypes = null;
+            if (isCollection)
+            {
+                populateKind = !mixed && TryCollectionElement(memberType, out var itemType) && SymbolHelpers.CanPopulateCollection(memberType, itemType) ? 1 : 0;
+            }
+            else if (!isAttribute && !isText)
+            {
+                var valueType = SymbolHelpers.UnwrapNullable(memberType);
+                if (TryDictionaryTypes(memberType, out var keyType, out var entryValueType))
+                {
+                    if (SymbolHelpers.CanPopulateDictionary(memberType, keyType))
+                    {
+                        populateKind = 2;
+                        entryTypes = SymbolHelpers.FullName(keyType) + ", " + SymbolHelpers.FullName(entryValueType);
+                    }
+                }
+                else if (KindOf(valueType) == 0 && !valueType.IsAbstract && (!valueType.IsValueType || canSet))
+                {
+                    populateKind = 3;
+                }
+            }
+
+            spec = new MemberSpec(spec, 0, populateKind, SymbolHelpers.CreationHandlingOf(member), entryTypes);
             return true;
         }
 
@@ -730,7 +1219,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal static bool TryCollectionElement(ITypeSymbol type, out ITypeSymbol elementType)
         {
             elementType = type;
-            if (type.SpecialType is SpecialType.System_String || SymbolHelpers.FullName(type) is "global::System.Byte[]")
+            if (type.SpecialType is SpecialType.System_String || SymbolHelpers.IsScalar(type))
+            {
+                return false;
+            }
+
+            // A dictionary enumerates pairs and an element node enumerates its children. Neither is written
+            // as a list of them: the runtime library writes each as what it is.
+            if (TryDictionaryTypes(type, out _, out _) || IsRuntimeType(SymbolHelpers.UnwrapNullable(type)))
             {
                 return false;
             }
@@ -746,12 +1242,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 if (implemented.OriginalDefinition.ToDisplayString() is "System.Collections.Generic.IEnumerable<T>"
                     && implemented.TypeArguments.Length == 1)
                 {
-                    if (implemented.ToDisplayString().StartsWith("System.Collections.Generic.IDictionary")
-                        || type.OriginalDefinition.ToDisplayString().StartsWith("System.Collections.Generic.IDictionary"))
-                    {
-                        return false;
-                    }
-
                     elementType = implemented.TypeArguments[0];
                     return true;
                 }

@@ -814,7 +814,7 @@ namespace CloudNimble.Text.Xml
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static XmlElement SerializeToElement<TValue>(TValue value, XmlSerializerOptions? options = null)
         {
-            return WriteDocument(value, GetTypeInfo(typeof(TValue), options)).RootElement;
+            return WriteElement(value, GetTypeInfo(typeof(TValue), options));
         }
 
         /// <summary>
@@ -834,7 +834,7 @@ namespace CloudNimble.Text.Xml
         public static XmlElement SerializeToElement<TValue>(TValue value, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            return WriteDocument(value, xmlTypeInfo).RootElement;
+            return WriteElement(value, xmlTypeInfo);
         }
 
         /// <summary>
@@ -856,7 +856,7 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         public static XmlElement SerializeToElement<TValue>(TValue value, XmlSerializerContext context)
         {
-            return WriteDocument(value, GetTypeInfo(typeof(TValue), context)).RootElement;
+            return WriteElement(value, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
@@ -881,7 +881,7 @@ namespace CloudNimble.Text.Xml
         public static XmlElement SerializeToElement(object? value, Type inputType, XmlSerializerOptions? options = null)
         {
             ArgumentNullException.ThrowIfNull(inputType);
-            return WriteDocument(value, GetTypeInfo(inputType, options)).RootElement;
+            return WriteElement(value, GetTypeInfo(inputType, options));
         }
 
         /// <summary>
@@ -902,7 +902,7 @@ namespace CloudNimble.Text.Xml
         public static XmlElement SerializeToElement(object? value, Type inputType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(inputType);
-            return WriteDocument(value, GetTypeInfo(inputType, context)).RootElement;
+            return WriteElement(value, GetTypeInfo(inputType, context));
         }
 
         /// <summary>
@@ -1126,7 +1126,9 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         /// <remarks>
         /// The <c>ArrayOf*</c> document element is named <c>ArrayOf</c> followed by the local name of the root
-        /// element of <typeparamref name="TValue"/>.
+        /// element of <typeparamref name="TValue"/>, and it is in the same namespace as that element.
+        /// When the options have a <see cref="XmlSerializerOptions.ReferenceHandler"/>, the values of one document share one
+        /// set of references, and each top-level value has its own.
         /// The stream is written to between values, never while one value is half written, unless a single
         /// value is larger than the writer's buffer. If a value fails to serialize, what was buffered is
         /// dropped; values already written to the stream stay there.
@@ -1139,15 +1141,20 @@ namespace CloudNimble.Text.Xml
             var writer = new Utf8XmlWriter(utf8Xml, xmlTypeInfo.Options.ToWriterOptions());
             try
             {
+                // The values of one document share one set of references, so an object that two values hold is
+                // written once. Each top-level value is a document of its own, with references of its own.
+                var handler = xmlTypeInfo.Options.ReferenceHandler;
+                var shared = topLevelValues ? null : handler?.CreateResolver();
                 if (!topLevelValues)
                 {
-                    writer.WriteStartElement(string.Concat("ArrayOf", xmlTypeInfo.RootName.LocalName));
+                    // The array element is in the namespace of its items, so they do not each declare it again.
+                    writer.WriteStartElement(string.Concat("ArrayOf", xmlTypeInfo.RootName.LocalName), xmlTypeInfo.RootName.NamespaceUri);
                 }
 
                 await foreach (var value in values.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    xmlTypeInfo.WriteRoot(writer, value);
+                    WriteStreamedValue(writer, value, xmlTypeInfo, shared ?? handler?.CreateResolver());
                     if (topLevelValues)
                     {
                         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);

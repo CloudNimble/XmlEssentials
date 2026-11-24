@@ -121,6 +121,47 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         internal bool IsInitOnly { get; }
 
+        /// <summary>
+        /// Gets the fully qualified name of the type that declares the member, when the member is annotated as
+        /// never reading null; otherwise null. A null it holds is refused when it is written under
+        /// <c>RespectNullableAnnotations</c>.
+        /// </summary>
+        internal string? NullGetOwner { get; }
+
+        /// <summary>
+        /// Gets the fully qualified name of the type that declares the member, when the member is annotated as
+        /// not accepting null; otherwise null. A null the document gives it is refused under
+        /// <c>RespectNullableAnnotations</c>.
+        /// </summary>
+        internal string? NullSetOwner { get; }
+
+        /// <summary>
+        /// Gets whether the constructor parameter this member fills is annotated as not accepting null.
+        /// </summary>
+        internal bool ParameterRefusesNull { get; }
+
+        /// <summary>
+        /// Gets whether the value the member already holds is populated when the member is read: 1 always, 0 never,
+        /// and -1 when <c>PreferredObjectCreationHandling</c> decides as the converter runs.
+        /// </summary>
+        internal int Populate { get; }
+
+        /// <summary>
+        /// Gets the key and value type names of a dictionary member that can be populated, separated by a comma, or null.
+        /// </summary>
+        internal string? PopulateEntryTypes { get; }
+
+        /// <summary>
+        /// Gets what the reflection resolver can populate for the member: 0 nothing, 1 a collection, 2 a dictionary,
+        /// 3 an object or a value type.
+        /// </summary>
+        internal int PopulateKind { get; }
+
+        /// <summary>
+        /// Gets what <c>[XmlObjectCreationHandling]</c> on the member says: 1 populate, 0 replace, -1 when it is absent.
+        /// </summary>
+        internal int PopulateMark { get; }
+
 
         #endregion
 
@@ -195,7 +236,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="constructorOrder">The position of that parameter, or <c>-1</c>.</param>
         /// <param name="constructorDefault">The C# expression for the parameter's default value, or null.</param>
         /// <param name="isInitOnly">Whether the member has a public <see langword="init"/> accessor.</param>
-        internal MemberSpec(MemberSpec source, string? constructorParameter, int constructorOrder, string? constructorDefault, bool isInitOnly)
+        /// <param name="nullGetOwner">The declaring type, when the member never reads null; otherwise null.</param>
+        /// <param name="nullSetOwner">The declaring type, when the member does not accept null; otherwise null.</param>
+        /// <param name="parameterRefusesNull">Whether the constructor parameter does not accept null.</param>
+        internal MemberSpec(MemberSpec source, string? constructorParameter, int constructorOrder, string? constructorDefault, bool isInitOnly, string? nullGetOwner, string? nullSetOwner, bool parameterRefusesNull)
             : this(
                 source.ClrName,
                 source.ClrTypeName,
@@ -220,6 +264,30 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             ConstructorOrder = constructorOrder;
             ConstructorDefault = constructorDefault;
             IsInitOnly = isInitOnly;
+            NullGetOwner = nullGetOwner;
+            NullSetOwner = nullSetOwner;
+            ParameterRefusesNull = parameterRefusesNull;
+            Populate = source.Populate;
+            PopulateEntryTypes = source.PopulateEntryTypes;
+            PopulateKind = source.PopulateKind;
+            PopulateMark = source.PopulateMark;
+        }
+
+        /// <summary>
+        /// Copies <paramref name="source"/> with what is known about populating the value the member holds.
+        /// </summary>
+        /// <param name="source">The member.</param>
+        /// <param name="populate">Whether the member is populated: 1 always, 0 never, -1 when the options decide.</param>
+        /// <param name="populateKind">What the reflection resolver can populate for the member.</param>
+        /// <param name="populateMark">What the attribute on the member says, or -1.</param>
+        /// <param name="populateEntryTypes">The key and value type names of a dictionary, or null.</param>
+        internal MemberSpec(MemberSpec source, int populate, int populateKind, int populateMark, string? populateEntryTypes)
+            : this(source, source.ConstructorParameter, source.ConstructorOrder, source.ConstructorDefault, source.IsInitOnly, source.NullGetOwner, source.NullSetOwner, source.ParameterRefusesNull)
+        {
+            Populate = populate;
+            PopulateEntryTypes = populateEntryTypes;
+            PopulateKind = populateKind;
+            PopulateMark = populateMark;
         }
 
 
@@ -251,7 +319,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 && ConstructorParameter == other.ConstructorParameter
                 && ConstructorOrder == other.ConstructorOrder
                 && ConstructorDefault == other.ConstructorDefault
-                && IsInitOnly == other.IsInitOnly;
+                && IsInitOnly == other.IsInitOnly
+                && NullGetOwner == other.NullGetOwner
+                && NullSetOwner == other.NullSetOwner
+                && ParameterRefusesNull == other.ParameterRefusesNull
+                && Populate == other.Populate
+                && PopulateEntryTypes == other.PopulateEntryTypes
+                && PopulateKind == other.PopulateKind
+                && PopulateMark == other.PopulateMark;
         }
 
         /// <inheritdoc />

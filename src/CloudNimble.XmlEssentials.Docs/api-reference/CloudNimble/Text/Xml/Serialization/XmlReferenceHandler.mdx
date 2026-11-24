@@ -1,9 +1,9 @@
 ---
 title: XmlReferenceHandler
-description: "Creates resolvers that track object identity across a serialize or deserialize operation."
+description: "Defines how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) deals with references on serialization and deserialization, and provides a bas..."
 icon: shapes
 tag: "ABSTRACT"
-keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute']
+keywords: ['XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlReferenceResolver', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute']
 ---
 
 ## Definition
@@ -20,7 +20,8 @@ CloudNimble.Text.Xml.Serialization.XmlReferenceHandler
 
 ## Summary
 
-Creates resolvers that track object identity across a serialize or deserialize operation.
+Defines how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) deals with references on serialization and deserialization, and provides a base
+for handlers that create an [XmlReferenceResolver](/api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceResolver) for each operation.
 
 ## Usage
 
@@ -160,7 +161,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreCycles
 
-Gets a handler that omits already-seen objects as empty nillable elements.
+Gets a handler that ignores an object when it is reached again from inside itself during serialization.
 
 #### Syntax
 
@@ -171,11 +172,17 @@ public static CloudNimble.Text.Xml.Serialization.XmlReferenceHandler IgnoreCycle
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler`
+A handler that writes an empty element marked `xsi:nil="true"` in place of an object that is still being
+written, which is the object that closes a cycle.
+
+#### Remarks
+
+Only a cycle is replaced. An object that is held in two places without a cycle, such as two members or two items
+of a list, is written in full each time, as it is by `ReferenceHandler.IgnoreCycles` in `System.Text.Json`.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Preserve
 
-Gets a handler that writes `id` / `ref` attributes in
-`urn:CloudNimble.Text.Xml:refs`.
+Gets a handler that preserves references by writing identifier attributes on serialization and honoring them on deserialization.
 
 #### Syntax
 
@@ -186,12 +193,19 @@ public static CloudNimble.Text.Xml.Serialization.XmlReferenceHandler Preserve { 
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceHandler`
+A handler that writes an `id` attribute on each object and a `ref` attribute in place of an object that
+was already written. Both attributes are in the `urn:CloudNimble.Text.Xml:refs` namespace.
+
+#### Remarks
+
+A repeated object is replaced wherever it appears: as the document element, as the value of a member, and as an
+item of a collection. Value types and collections have no identifier.
 
 ## Methods
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateResolver <Badge color="orange">Abstract</Badge>
 
-Creates a resolver for one serialize or deserialize operation.
+When overridden in a derived class, returns the [XmlReferenceResolver](/api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceResolver) used for one serialization or deserialization call.
 
 #### Syntax
 
@@ -202,7 +216,7 @@ public abstract CloudNimble.Text.Xml.Serialization.XmlReferenceResolver CreateRe
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlReferenceResolver`
-A new resolver.
+The resolver to use for the operation.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -327,6 +341,5 @@ Type: `string?`
 - CloudNimble.Text.Xml.Serialization.XmlReferenceResolver
 - CloudNimble.Text.Xml.XmlSerializerOptions
 - CloudNimble.Text.Xml.XmlNamespaces
-- CloudNimble.Text.Xml.XmlNilHandling
 - CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
 

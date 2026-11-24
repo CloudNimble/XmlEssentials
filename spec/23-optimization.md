@@ -592,6 +592,10 @@ The remaining object-graph columns (first call, source-generated context) come w
 - Reporting benches as `~30µs / 0.76×`. Use the table.
 - Decompiling `System.Private.Xml`. Use the GitHub tag.
 
+## Not yet measured
+
+The tables on this page are from before the [doc findings resolution](24-doc-findings-resolution.md). Slices 1 and 2 of that task changed hot paths in the reader, the writer, and both serializer paths, and no benchmark was run for either. The paths are listed there under "Hot paths changed", with the checks that decisions 45 to 48 added to every member read and write. Run the benchmarks and regenerate the tables before any number here is quoted, and before the next optimization pass uses them as a baseline.
+
 ---
 
 [Index](README.md) · [Previous: PR plan](22-pr-plan.md) · [Next: Doc findings resolution](24-doc-findings-resolution.md)

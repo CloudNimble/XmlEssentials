@@ -82,7 +82,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "  int? Qty",
                 "  System.Collections.Generic.List<XmlEssentials.Generated.Order_Line>? Line",
                 "  " + S + ".XmlExtensionData? Extra [" + S + ".XmlExtensionDataAttribute]",
-                "class XmlEssentials.Generated.OrderXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute(typeof(XmlEssentials.Generated.Status)), " + S + ".XmlSerializableAttribute(typeof(XmlEssentials.Generated.Order_Line)), " + S + ".XmlSerializableAttribute(typeof(XmlEssentials.Generated.Order))]",
+                "class XmlEssentials.Generated.OrderXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Status>, " + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Order_Line>, " + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Order>]",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Status> Status",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Order_Line> Order_Line",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Order> Order");
@@ -166,7 +166,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "  XmlEssentials.Generated.Address? Home",
                 "class XmlEssentials.Generated.Address [" + S + ".XmlRootAttribute(\"Address\", Namespace = \"urn:order\")]",
                 "  string? City",
-                "class XmlEssentials.Generated.OrderXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute(typeof(XmlEssentials.Generated.Customer)), " + S + ".XmlSerializableAttribute(typeof(XmlEssentials.Generated.Address))]",
+                "class XmlEssentials.Generated.OrderXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Customer>, " + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Address>]",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Customer> Customer",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Address> Address");
         }
@@ -309,6 +309,113 @@ namespace CloudNimble.XmlEssentials.Tests
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
             diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE013");
+        }
+
+        [TestMethod]
+        public void ClassNames_AreSharedOnlyWithinOneNamespace()
+        {
+            const string first = """
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:first">
+                  <xs:element name="Order">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element name="Id" type="xs:string"/>
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:schema>
+                """;
+            const string second = """
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:second">
+                  <xs:element name="Order">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element name="Total" type="xs:int"/>
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                </xs:schema>
+                """;
+
+            // Two schema files that generate into different namespaces may each have a class called Order.
+            var options = new TestAnalyzerConfigOptionsProvider(
+                TestAnalyzerConfigOptions.Empty,
+                new Dictionary<string, AnalyzerConfigOptions>
+                {
+                    ["first.xsd"] = new TestAnalyzerConfigOptions(new Dictionary<string, string> { ["build_metadata.AdditionalFiles.XmlEssentialsNamespace"] = "App.First" }),
+                    ["second.xsd"] = new TestAnalyzerConfigOptions(new Dictionary<string, string> { ["build_metadata.AdditionalFiles.XmlEssentialsNamespace"] = "App.Second" }),
+                });
+            var (compilation, diagnostics, generated) = GeneratorTestHost.Run(
+                "public static class Marker { }",
+                [new TestAdditionalText("first.xsd", first), new TestAdditionalText("second.xsd", second)],
+                options);
+            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().BeEmpty();
+            XmlSerializerGeneratorTests.Declared(compilation, generated).Should().Equal(
+                "class App.First.Order [" + S + ".XmlRootAttribute(\"Order\", Namespace = \"urn:first\")]",
+                "  string? Id",
+                "class App.Second.Order [" + S + ".XmlRootAttribute(\"Order\", Namespace = \"urn:second\")]",
+                "  int Total",
+                "class App.First.FirstXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<App.First.Order>]",
+                "  " + S + ".XmlTypeInfo<App.First.Order> Order",
+                "class App.Second.SecondXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<App.Second.Order>]",
+                "  " + S + ".XmlTypeInfo<App.Second.Order> Order");
+            compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
+
+            // In one namespace the second class cannot be generated, and that is reported.
+            var (_, sameNamespace, _) = GeneratorTestHost.Run(
+                "public static class Marker { }",
+                [new TestAdditionalText("first.xsd", first), new TestAdditionalText("second.xsd", second)],
+                null);
+            sameNamespace.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id + ": " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
+                .Should().Equal("XMLXE012: The generated C# name 'Order' is used more than once");
+        }
+
+        [TestMethod]
+        public void OrderSchema_KeepsItsTargetNamespace_WhenTheCallerSuppliesOptions()
+        {
+            const string source = """
+                using CloudNimble.Text.Xml;
+                using XmlEssentials.Generated;
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var context = new OrderXmlContext(new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        var order = new Order { currency = "USD", Id = "A-1", Status = Status.Open, Line = [new Order_Line { Sku = "sku", Qty = 1 }] };
+                        var xml = XmlSerializer.Serialize(order, context.Order);
+                        var read = XmlSerializer.Deserialize(xml, context.Order)!;
+                        var reflected = XmlSerializer.Serialize(order, new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        string wrong;
+                        try
+                        {
+                            wrong = XmlSerializer.Deserialize("<Order><Id>A-1</Id></Order>", context.Order)!.Id!;
+                        }
+                        catch (XmlException ex)
+                        {
+                            wrong = ex.Message;
+                        }
+
+                        return xml + "\n" + (xml == reflected ? "same" : "reflection: " + reflected) + "\n" + read.Id + ":" + read.Line![0].Sku + "\n" + wrong;
+                    }
+                }
+                """;
+            var (compilation, diagnostics, _) = GeneratorTestHost.Run(
+                source,
+                [new TestAdditionalText("order.xsd", OrderSchema)],
+                null);
+            diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
+            using var stream = new System.IO.MemoryStream();
+            var emit = compilation.Emit(stream);
+            emit.Success.Should().BeTrue(string.Join("\n", emit.Diagnostics.Select(d => d.ToString())));
+            stream.Position = 0;
+            var loadContext = new System.Runtime.Loader.AssemblyLoadContext("XsdOrderOptions", isCollectible: true);
+            var assembly = loadContext.LoadFromStream(stream);
+            var result = (string)assembly.GetType("Use")!.GetMethod("Run")!.Invoke(null, null)!;
+            loadContext.Unload();
+            result.Should().Be(
+                "<Order xmlns=\"urn:order\" currency=\"USD\"><Id>A-1</Id><Status>Open</Status><Qty xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Line><Sku>sku</Sku><Qty>1</Qty></Line></Order>\n" +
+                "same\nA-1:sku\nThe root element is not in namespace 'urn:order'.");
         }
 
         [TestMethod]

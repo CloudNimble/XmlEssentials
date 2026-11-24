@@ -1,6 +1,6 @@
 ---
 title: XmlReaderOptions
-description: "Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader)."
+description: "Provides options that control how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) reads XML."
 icon: cubes
 tag: "SEALED"
 keywords: ['XmlReaderOptions', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml', 'struct', 'System.ValueType', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlReaderState', 'CloudNimble.Text.Xml.XmlCommentHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlDocumentOptions']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlReaderOptions
 
 ## Summary
 
-Options for [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader).
+Provides options that control how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) reads XML.
 
 ## Usage
 
@@ -54,9 +54,13 @@ When you read in blocks, the options travel in the [`XmlReaderState`](/api-refer
 
 ## Remarks
 
-A max-* of 0 means the default from the DoS table, except [XmlReaderOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#maxdocumentbytecount)
-which stays unbounded. Construct with `new XmlReaderOptions()` so
-[XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) defaults to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+A limit property set to 0 uses the default limit stated on that property, except
+[XmlReaderOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#maxdocumentbytecount), where 0 means no limit.
+`default` and `new XmlReaderOptions()` are the same options. By default, the reader
+reports comments and whitespace-only text between elements, so that XML that is read and written back
+keeps its comments and its layout. For a read loop that wants data only, set
+[XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) and
+[XmlReaderOptions.WhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#whitespacehandling) to [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
 
 ## Examples
 
@@ -155,14 +159,20 @@ These options are for `Utf8XmlReader`. `XmlDocument` and `XmlSerializer` have th
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates options with [XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) set to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling)
-and every max-* at 0 (table defaults).
+Initializes a new instance of the [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) struct.
 
 #### Syntax
 
 ```csharp
 public XmlReaderOptions()
 ```
+
+#### Remarks
+
+The result is the same as `default`: [XmlReaderOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#commenthandling) is
+[XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling), [XmlReaderOptions.WhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#whitespacehandling) is
+[XmlWhitespaceHandling.Significant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling), and every limit property is 0, which selects
+its default limit.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -188,8 +198,8 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AllowMultipleRoots
 
-Gets or sets whether multiple top-level elements are allowed (document fragments).
-Default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+Gets or sets a value that indicates whether the reader accepts a document fragment, which can
+have more than one top-level element or none.
 
 #### Syntax
 
@@ -200,11 +210,12 @@ public bool AllowMultipleRoots { get; set; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if more than one top-level element, or none, is allowed; otherwise,
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CommentHandling
 
-Gets or sets how comments are handled.
-Default is [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) when constructed with [XmlReaderOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions#.ctor).
+Gets or sets a value that defines how the reader handles comments.
 
 #### Syntax
 
@@ -215,11 +226,19 @@ public CloudNimble.Text.Xml.XmlCommentHandling CommentHandling { get; set; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlCommentHandling`
+One of the enumeration values that indicates how comments are handled. The default is
+[XmlCommentHandling.Allow](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling).
+
+#### Remarks
+
+Comments are reported by default so that XML that is read and written back does not lose them.
+Set this property to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling) when your code does not want to
+see [XmlTokenType.Comment](/api-reference/CloudNimble/Text/Xml/XmlTokenType) tokens.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxAttributeCount
 
-Gets or sets the maximum attributes on one element, including xmlns*.
-0 means 1000.
+Gets or sets the maximum number of attributes allowed on one element, including namespace
+declarations.
 
 #### Syntax
 
@@ -230,11 +249,11 @@ public int MaxAttributeCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum number of attributes on one element. The default is 0, which means a maximum of 1000.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxCommentByteCount
 
-Gets or sets the maximum comment payload in UTF-8 bytes.
-0 means 1,048,576.
+Gets or sets the maximum size of the content of a comment.
 
 #### Syntax
 
@@ -245,11 +264,12 @@ public int MaxCommentByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum size of a comment's content, in UTF-8 bytes. The default is 0, which means a maximum
+of 1,048,576.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDepth
 
-Gets or sets the maximum element depth.
-0 means 64.
+Gets or sets the maximum depth of nested elements allowed when reading XML.
 
 #### Syntax
 
@@ -260,11 +280,11 @@ public int MaxDepth { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum element depth. The default is 0, which means a maximum depth of 64.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxDocumentByteCount
 
-Gets or sets the maximum document size in bytes.
-0 means unbounded.
+Gets or sets the maximum size of the document.
 
 #### Syntax
 
@@ -275,11 +295,11 @@ public int MaxDocumentByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum size of the document, in bytes. The default is 0, which means no limit.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxNameByteCount
 
-Gets or sets the maximum UTF-8 byte length of an element or attribute name.
-0 means 1024.
+Gets or sets the maximum length of an element or attribute name.
 
 #### Syntax
 
@@ -290,11 +310,11 @@ public int MaxNameByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum length of a name, in UTF-8 bytes. The default is 0, which means a maximum of 1024.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
 
-Gets or sets the maximum UTF-8 byte length of a text or CDATA node.
-0 means 16,777,216.
+Gets or sets the maximum length of a text or CDATA node.
 
 #### Syntax
 
@@ -305,11 +325,12 @@ public int MaxTextByteCount { get; set; }
 #### Property Value
 
 Type: `int`
+The maximum length of a text or CDATA node, in UTF-8 bytes. The default is 0, which means a
+maximum of 16,777,216.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
 
-Gets or sets how whitespace-only text between elements is handled.
-Default is [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
+Gets or sets a value that defines how the reader handles whitespace-only text between elements.
 
 #### Syntax
 
@@ -320,6 +341,14 @@ public CloudNimble.Text.Xml.XmlWhitespaceHandling WhitespaceHandling { get; set;
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlWhitespaceHandling`
+One of the enumeration values that indicates how whitespace-only text is handled. The default is
+[XmlWhitespaceHandling.Significant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling).
+
+#### Remarks
+
+Whitespace-only text between elements is reported by default so that XML that is read and written
+back does not change its layout. Set this property to [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling)
+when your code does not want to see those [XmlTokenType.Text](/api-reference/CloudNimble/Text/Xml/XmlTokenType) tokens.
 
 ## Methods
 

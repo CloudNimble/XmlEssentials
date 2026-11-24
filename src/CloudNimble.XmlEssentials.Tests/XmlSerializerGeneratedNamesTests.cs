@@ -71,7 +71,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public List<string> Lines { get; set; } = new();
                 }
 
-                [XmlSerializable(typeof(Order))]
+                [XmlSerializable<Order>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -103,7 +103,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public int Total { get; set; }
                 }
 
-                [XmlSerializable(typeof(Order))]
+                [XmlSerializable<Order>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -141,7 +141,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public int N { get; set; }
                 }
 
-                [XmlSerializable(typeof(Thing))]
+                [XmlSerializable<Thing>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -167,7 +167,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public string? Name { get; set; }
                 }
 
-                [XmlSerializable(typeof(Employee))]
+                [XmlSerializable<Employee>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }
@@ -194,7 +194,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     public int N { get; set; }
                 }
 
-                [XmlSerializable(typeof(Order))]
+                [XmlSerializable<Order>]
                 internal partial class AppXmlContext : XmlSerializerContext
                 {
                 }

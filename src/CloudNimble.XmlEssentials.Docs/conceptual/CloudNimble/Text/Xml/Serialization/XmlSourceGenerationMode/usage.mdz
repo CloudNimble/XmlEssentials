@@ -2,7 +2,7 @@ Set the mode with the `GenerationMode` property of `[XmlSourceGenerationOptions]
 
 ```csharp
 [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class MetadataOrderXmlContext : XmlSerializerContext
 {
 }

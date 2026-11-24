@@ -14,14 +14,14 @@ Each instance caches the converter and the type metadata for every type it has b
 
 ### Options that have no effect
 
-The serializer doesn't read `AllowOutOfOrderMetadataProperties`, `InferClosedTypePolymorphism`, `PreferredObjectCreationHandling`, `RespectNullableAnnotations`, or `UnknownTypeHandling` in version 1.0. They can be set and copied, but they change nothing.
+The serializer doesn't read `InferClosedTypePolymorphism` in version 1.0. It can be set and copied, but it changes nothing.
 
 ### Differences from JsonSerializerOptions
 
 - `XmlSerializerDefaults.Web` sets only `PropertyNamingPolicy` to camelCase and `OmitXmlDeclaration` to `true`. It doesn't turn on case-insensitive matching.
 - `RespectRequiredConstructorParameters` defaults to `true`.
 - There are three naming policies for members instead of one: `PropertyNamingPolicy`, and `ElementNamingPolicy` and `AttributeNamingPolicy`, which override it for their kind of name.
-- XML has options that JSON has no use for, such as `DefaultPropertyMapping`, `NilHandling`, `DefaultNamespace`, `OmitXmlDeclaration`, and `XmlVersion`.
+- XML has options that JSON has no use for, such as `DefaultPropertyMapping`, `DefaultNamespace`, `OmitXmlDeclaration`, and `XmlVersion`.
 
 ### Thread safety
 

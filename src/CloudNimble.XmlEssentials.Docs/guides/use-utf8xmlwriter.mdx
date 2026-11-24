@@ -505,7 +505,7 @@ Indentation never changes a value. An element that holds text, such as `Note`, i
 | --- | --- | --- |
 | `Indented` | `true` puts each element on its own line and indents it. | `false` |
 | `IndentSize` | How many indent characters each level gets. | 0, which means 2 |
-| `IndentCharacter` | The character to indent with, such as `' '` or `'\t'`. | A space |
+| `IndentCharacter` | The character to indent with: a space (`' '`) or a tab (`'\t'`). Any other character throws `ArgumentOutOfRangeException`. | A space |
 | `NewLine` | The line ending. | `Environment.NewLine` |
 
 <Tip>
@@ -544,9 +544,11 @@ output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
 
 The code produces the following output:
 
-```xml
-<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet href="order.xsl" type="text/xsl"?><!-- Exported by the order service -->
-<Order><!-- One line per item -->
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet href="order.xsl" type="text/xsl"?>
+<!-- Exported by the order service -->
+<Order>
+  <!-- One line per item -->
   <Script><![CDATA[if (a < b && b > c) { ship(); }]]></Script>
   <Address><City>London</City><Country>UK</Country></Address>
 </Order>
@@ -559,16 +561,16 @@ The code produces the following output:
 | `WriteComment` | `<!--value-->`, inside an element or at the document level. | A value that contains `--` or ends with `-`. |
 | `WriteCData` | `<![CDATA[text]]>`, inside an element. | A value that contains `]]>`, and a CDATA section at the document level. |
 | `WriteProcessingInstruction` | `<?target data?>`, inside an element or at the document level. | The target `xml` in any letter case, and data that contains `?>`. |
-| `WriteRawValue` | The bytes or characters you pass, as they are. | Nothing. |
+| `WriteRawValue` | The bytes or characters you pass, as they are. | Input that isn't well formed where it's written, unless you pass `skipInputValidation: true`. |
 
 What to notice:
 
-- **Indentation applies to elements only.** A comment or a processing instruction is written where the writer is, with no line break before it, even when `Indented` is `true`. If you want one on its own line in indented output, the writer can't do that for you.
+- **Comments and processing instructions are indented like elements.** With `Indented` set, each gets a line of its own, unless the element it's in holds text.
 - **A CDATA section isn't escaped.** That's its purpose. Like text, it keeps its element on one line.
 - **The text of a comment isn't padded.** Include the spaces you want inside the delimiters.
 
 <Warning>
-`WriteRawValue` copies your input to the output without checking it and without escaping it. The `skipInputValidation` parameter has no effect: the input is never validated. If the input isn't well-formed XML, the document isn't either. Never pass text that came from a user or from another system. Use it only for XML that your own code produced.
+`WriteRawValue` copies your input to the output without escaping it. By default the writer first reads the input and throws `XmlException` if the document wouldn't be well formed with it: inside an element the input must be element content that uses only prefixes in scope, in an attribute it must be an attribute value, and at the document level it can hold at most the one root element. That check costs a second pass over the input. If you pass `skipInputValidation: true`, or the writer has `SkipValidation` set, nothing is checked, and input that isn't well-formed XML makes a document that isn't either. Being well formed doesn't make input safe: never pass text that came from a user or from another system.
 </Warning>
 
 ## Write XML 1.1
@@ -898,7 +900,7 @@ XmlException: The document has unclosed elements.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
 
-The last line is the one to remember: `Dispose` throws when an element is still open, and in that case it doesn't flush. The writer never closes elements for you, because a document that was cut short shouldn't look complete.
+The last line is the one to remember: `Dispose` throws when an element is still open, after it has flushed what was written. The writer never closes elements for you, because a document that was cut short shouldn't look complete.
 
 The writer throws three kinds of exception:
 

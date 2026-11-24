@@ -1,6 +1,6 @@
 ---
 title: XmlConverterFactory
-description: "Creates converters for a family of types, such as every enum or every closed form of a generic type."
+description: "Supports converting several types by using a factory pattern."
 icon: shapes
 tag: "ABSTRACT"
 keywords: ['XmlConverterFactory', 'CloudNimble.Text.Xml.Serialization.XmlConverterFactory', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlConverter', 'CloudNimble.Text.Xml.Serialization.XmlConverterAttribute', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.XmlNamingPolicy']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlConverterFactory
 
 ## Summary
 
-Creates converters for a family of types, such as every enum or every closed form of a generic type.
+Supports converting several types by using a factory pattern.
 
 ## Usage
 
@@ -47,6 +47,10 @@ public sealed class KebabCaseEnumConverterFactory : XmlConverterFactory
 Register a factory as you would a converter: add an instance to `XmlSerializerOptions.Converters`, or name the factory type in `[XmlConverter]`.
 
 `CreateConverter` must return an `XmlConverter<T>` whose `T` is exactly `typeToConvert`. The class is the counterpart of `JsonConverterFactory` in System.Text.Json.
+
+## Remarks
+
+Use a factory for a family of types, such as every enumeration or every closed form of a generic type.
 
 ## Examples
 
@@ -161,6 +165,24 @@ public Object()
 
 ## Properties
 
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CanPopulate <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverter`</Note>
+
+Gets whether the converter can read an element into a value that already exists.
+
+#### Syntax
+
+```csharp
+internal virtual bool CanPopulate { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) for the converters of objects and dictionaries that the library creates; otherwise,
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). A converter the caller wrote creates its value, so a member it reads is replaced.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsValueConverter <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverter`</Note>
@@ -184,7 +206,7 @@ Type: `bool`
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverter`</Note>
 
-Returns whether this converter handles *typeToConvert*.
+When overridden in a derived class, determines whether the converter instance can convert the specified type.
 
 #### Syntax
 
@@ -196,16 +218,16 @@ public abstract bool CanConvert(System.Type typeToConvert)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `typeToConvert` | `System.Type` | The CLR type. |
+| `typeToConvert` | `System.Type` | The type to check. |
 
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this converter can convert the type.
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the instance can convert *typeToConvert*; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateConverter <Badge color="orange">Abstract</Badge>
 
-Creates a converter for *typeToConvert*.
+When overridden in a derived class, creates a converter for the specified type.
 
 #### Syntax
 
@@ -217,13 +239,14 @@ public abstract CloudNimble.Text.Xml.Serialization.XmlConverter CreateConverter(
 
 | Name | Type | Description |
 |------|------|-------------|
-| `typeToConvert` | `System.Type` | The CLR type. |
-| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serializer options. |
+| `typeToConvert` | `System.Type` | The type handled by the converter. |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serialization options to use. |
 
 #### Returns
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlConverter?`
-The converter. It must be an `XmlConverter`1` for exactly *typeToConvert*.
+A converter that derives from `XmlConverter`1` for exactly *typeToConvert*. The serializer throws an
+[InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception) if the factory returns [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateTypeInfo <Badge color="gray">Inherited</Badge> <Badge color="orange">Abstract</Badge>
 
@@ -331,6 +354,32 @@ protected internal object MemberwiseClone()
 #### Returns
 
 Type: `object`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Populate <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlConverter`</Note>
+
+Reads the element *reader* is on into *existing*.
+
+#### Syntax
+
+```csharp
+internal virtual void Populate(ref CloudNimble.Text.Xml.Utf8XmlReader reader, object existing, CloudNimble.Text.Xml.XmlSerializerOptions options)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, on a start tag that is not marked nil. |
+| `existing` | `object` | The value to populate. A value type is boxed, and the box is what is changed. |
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The serializer options. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `NotSupportedException` | The converter cannot populate: [XmlConverter.CanPopulate](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterFactory#canpopulate) is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
 

@@ -1,9 +1,9 @@
 ---
 title: XmlAttributes
-description: "Well-known XML attribute local names used by XmlEssentials."
+description: "Provides the local names of the XML Schema instance attributes that XmlEssentials reads and writes. This class cannot be inherited."
 icon: bolt
 tag: "STATIC"
-keywords: ['XmlAttributes', 'CloudNimble.Text.Xml.XmlAttributes', 'CloudNimble.Text.Xml', 'class', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml.XmlNilHandling', 'CloudNimble.Text.Xml.Utf8XmlWriter']
+keywords: ['XmlAttributes', 'CloudNimble.Text.Xml.XmlAttributes', 'CloudNimble.Text.Xml', 'class', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml.XmlElement', 'CloudNimble.Text.Xml.Utf8XmlWriter']
 ---
 
 ## Definition
@@ -20,7 +20,8 @@ CloudNimble.Text.Xml.XmlAttributes
 
 ## Summary
 
-Well-known XML attribute local names used by XmlEssentials.
+Provides the local names of the XML Schema instance attributes that XmlEssentials reads and writes.
+This class cannot be inherited.
 
 ## Usage
 
@@ -72,13 +73,12 @@ To find out whether an element is nil, read `XmlElement.IsNil` instead of lookin
 
 ## Remarks
 
-These are local names only. Bind them to [XmlNamespaces.Xsi](/api-reference/CloudNimble/Text/Xml/XmlNamespaces#xsi) when writing
-`xsi:nil` or `xsi:type`.
+The constants are local names only. Bind them to the [XmlNamespaces.Xsi](/api-reference/CloudNimble/Text/Xml/XmlNamespaces#xsi) namespace
+when you write `xsi:nil` or `xsi:type`.
 
 ## Related APIs
 
 - CloudNimble.Text.Xml.XmlNamespaces
 - CloudNimble.Text.Xml.XmlElement
-- CloudNimble.Text.Xml.XmlNilHandling
 - CloudNimble.Text.Xml.Utf8XmlWriter
 

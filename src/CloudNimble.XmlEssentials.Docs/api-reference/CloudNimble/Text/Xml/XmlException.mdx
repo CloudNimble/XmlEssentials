@@ -1,6 +1,6 @@
 ---
 title: XmlException
-description: "Thrown when XML is not well-formed or a DoS limit is exceeded."
+description: "The exception that is thrown when XML is not well formed, a reader limit is exceeded, or a value cannot be read as the requested type. This class cannot be i..."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlException', 'CloudNimble.Text.Xml.XmlException', 'CloudNimble.Text.Xml', 'class', 'System.Exception', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlWriterOptions', 'CloudNimble.Text.Xml.XmlDocument']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.XmlException
 
 ## Summary
 
-Thrown when XML is not well-formed or a DoS limit is exceeded.
+The exception that is thrown when XML is not well formed, a reader limit is exceeded, or a value
+cannot be read as the requested type. This class cannot be inherited.
 
 ## Usage
 
@@ -66,8 +67,8 @@ Path: (not set)
 
 ## Remarks
 
-This type is not `System.Xml.XmlException` and does not wrap it. Location properties
-are optional; they are set when the reader knows the byte offset and line.
+This type is not `System.Xml.XmlException` and does not wrap it. The location properties
+are optional. They are set when the reader knows the byte offset and line.
 
 ## Best Practices
 
@@ -93,7 +94,8 @@ are optional; they are set when the reader knows the byte offset and line.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates an exception with a message and no location.
+Initializes a new instance of the [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) class with a specified error message
+and no location.
 
 #### Syntax
 
@@ -105,11 +107,12 @@ public XmlException(string message)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `string` | The error message. |
+| `message` | `string` | The message that describes the error. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates an exception with a message and an inner exception.
+Initializes a new instance of the [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) class with a specified error message
+and a reference to the inner exception that is the cause of this exception.
 
 #### Syntax
 
@@ -121,12 +124,13 @@ public XmlException(string message, System.Exception innerException)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `string` | The error message. |
-| `innerException` | `System.Exception?` | The inner exception, or null. |
+| `message` | `string` | The message that describes the error. |
+| `innerException` | `System.Exception?` | The exception that is the cause of the current exception, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if there is none. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates an exception with parse location.
+Initializes a new instance of the [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) class with a specified error message
+and the location of the error in the document.
 
 #### Syntax
 
@@ -138,11 +142,11 @@ public XmlException(string message, long? bytePosition, long? lineNumber, long? 
 
 | Name | Type | Description |
 |------|------|-------------|
-| `message` | `string` | The error message. |
-| `bytePosition` | `long?` | 0-based byte offset in the UTF-8 document, if known. |
-| `lineNumber` | `long?` | 1-based line after end-of-line normalization, if known. |
-| `linePosition` | `long?` | 1-based UTF-8 byte offset in the current line, if known. |
-| `path` | `string?` | Document path such as `/Person/@id`, if known. |
+| `message` | `string` | The message that describes the error. |
+| `bytePosition` | `long?` | The zero-based byte offset in the UTF-8 document, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known. |
+| `lineNumber` | `long?` | The one-based line number, counted after end-of-line normalization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known. |
+| `linePosition` | `long?` | The one-based UTF-8 byte offset in the line, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known. |
+| `path` | `string?` | The document path, such as `/Person/@id`, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -218,7 +222,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BytePosition
 
-Gets the 0-based byte offset in the UTF-8 document, if known.
+Gets the zero-based byte offset in the UTF-8 document at which the error occurred.
 
 #### Syntax
 
@@ -229,6 +233,7 @@ public long? BytePosition { get; }
 #### Property Value
 
 Type: `long?`
+The zero-based byte offset in the UTF-8 document, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Data <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -288,7 +293,7 @@ Type: `System.Exception?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LineNumber
 
-Gets the 1-based line number after end-of-line normalization, if known.
+Gets the one-based number of the line on which the error occurred.
 
 #### Syntax
 
@@ -299,10 +304,12 @@ public long? LineNumber { get; }
 #### Property Value
 
 Type: `long?`
+The one-based line number, counted after end-of-line normalization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if
+it is not known.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LinePosition
 
-Gets the 1-based UTF-8 byte offset in the current line, if known.
+Gets the one-based byte position within the line at which the error occurred.
 
 #### Syntax
 
@@ -313,6 +320,7 @@ public long? LinePosition { get; }
 #### Property Value
 
 Type: `long?`
+The one-based UTF-8 byte offset in the line, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Message <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
@@ -330,7 +338,7 @@ Type: `string`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Path
 
-Gets the document path such as `/Person/@id`, if known.
+Gets the path in the document at which the error occurred.
 
 #### Syntax
 
@@ -341,6 +349,7 @@ public string Path { get; }
 #### Property Value
 
 Type: `string?`
+The document path, such as `/Person/@id`, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Source <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

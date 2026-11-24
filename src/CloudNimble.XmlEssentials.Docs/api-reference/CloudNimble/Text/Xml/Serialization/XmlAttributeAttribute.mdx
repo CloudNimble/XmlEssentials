@@ -1,6 +1,6 @@
 ---
 title: XmlAttributeAttribute
-description: "Maps a member to an XML attribute. Simple types only."
+description: "Specifies that a member is serialized as an XML attribute. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.XmlPropertyMapping', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute
 
 ## Summary
 
-Maps a member to an XML attribute. Simple types only.
+Specifies that a member is serialized as an XML attribute. This class cannot be inherited.
 
 ## Usage
 
@@ -69,10 +69,15 @@ The code produces the following output:
 
 To write every simple member as an attribute without annotating each one, set `XmlSerializerOptions.DefaultPropertyMapping` to `XmlPropertyMapping.Attribute`.
 
+## Remarks
+
+The member must have a simple type: a type with a built-in value converter, an enumeration, or the nullable form of
+either. A member of any other type cannot be serialized as an XML attribute.
+
 ## Considerations
 
 - Only a simple value can be an XML attribute: a string, a number, a Boolean, a date or time, a GUID, a URI, an enumeration, and the nullable forms of those. On a member of any other type, such as an object or a collection, the serializer throws a `NotSupportedException` the first time the type is used.
-- A `null` value is left out. An attribute can't be marked nil, so `NilHandling` doesn't apply.
+- A `null` value is left out. An attribute can't be marked nil.
 - Attributes are written before element text and child elements. Among themselves they follow declaration order, or `[XmlPropertyOrder]` when it is set.
 - `[XmlPropertyName]` on the same member takes precedence over `AttributeName`. When neither is set, the member name is converted by `AttributeNamingPolicy`, or by `PropertyNamingPolicy` when that is `null`.
 - `[XmlAttribute]` can't be combined with `[XmlElement]`, `[XmlText]`, or `[XmlCData]` on one member.
@@ -82,7 +87,7 @@ To write every simple member as an attribute without annotating each one, set `X
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute with the member name as the attribute name.
+Initializes a new instance of the [XmlAttributeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlAttributeAttribute) class that uses the member name as the attribute name.
 
 #### Syntax
 
@@ -92,7 +97,7 @@ public XmlAttributeAttribute()
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute.
+Initializes a new instance of the [XmlAttributeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlAttributeAttribute) class with the specified attribute name.
 
 #### Syntax
 
@@ -104,11 +109,18 @@ public XmlAttributeAttribute(string attributeName)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `attributeName` | `string` | The attribute local name. |
+| `attributeName` | `string` | The local name of the XML attribute. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *attributeName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentException` | *attributeName* is empty or consists only of white-space characters. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Creates the attribute.
+Initializes a new instance of the [XmlAttributeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlAttributeAttribute) class with the specified attribute name and namespace.
 
 #### Syntax
 
@@ -120,8 +132,15 @@ public XmlAttributeAttribute(string attributeName, string namespaceUri)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `attributeName` | `string` | The attribute local name. |
-| `namespaceUri` | `string?` | The namespace URI. |
+| `attributeName` | `string` | The local name of the XML attribute. |
+| `namespaceUri` | `string?` | The namespace URI of the XML attribute, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for no namespace. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *attributeName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentException` | *attributeName* is empty or consists only of white-space characters. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -147,7 +166,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeName
 
-Gets or sets the attribute local name. When null or empty, the member name after the naming policy is used.
+Gets or sets the local name of the XML attribute.
 
 #### Syntax
 
@@ -158,10 +177,16 @@ public string AttributeName { get; set; }
 #### Property Value
 
 Type: `string?`
+The local name of the XML attribute. If the value is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or empty, the member name is used,
+converted by the attribute naming policy. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+
+#### Remarks
+
+An [XmlPropertyNameAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyNameAttribute) on the same member takes precedence over this property.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
 
-Gets or sets the namespace URI of the attribute.
+Gets or sets the namespace URI of the XML attribute.
 
 #### Syntax
 
@@ -172,6 +197,7 @@ public string Namespace { get; set; }
 #### Property Value
 
 Type: `string?`
+The namespace URI of the XML attribute, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for no namespace. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

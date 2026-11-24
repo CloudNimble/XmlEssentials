@@ -7,7 +7,8 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
     /// Source-generated context for the AOT smoke. Reflection is disabled in this process.
     /// </summary>
     [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
-    [XmlSerializable(typeof(Person))]
+    [XmlSerializable<Inventory>]
+    [XmlSerializable<Person>]
     internal partial class AppXmlContext : XmlSerializerContext
     {
     }

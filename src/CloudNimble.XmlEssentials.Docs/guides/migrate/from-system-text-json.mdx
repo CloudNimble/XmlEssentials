@@ -108,11 +108,9 @@ Every XmlEssentials type in these tables exists. The types are in `CloudNimble.T
 | `JsonSerializerDefaults` | `XmlSerializerDefaults` | `General`, `Web`, `Strict`. |
 | `JsonNamingPolicy` | [`XmlNamingPolicy`](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) | `CamelCase`, `SnakeCaseLower`, `SnakeCaseUpper`, `KebabCaseLower`, `KebabCaseUpper`, and also `PascalCase`. See [Customize names](/guides/customize-names). |
 | `JsonSerializerOptions.PropertyNamingPolicy` | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy` | XML has two kinds of names, so you can set a policy for each. |
-| `JsonIgnoreCondition` | `XmlIgnoreCondition` | `Never`, `Always`, `WhenWritingDefault`, `WhenWritingNull`. |
+| `JsonIgnoreCondition` | `XmlIgnoreCondition` | `Never`, `Always`, `WhenWritingDefault`, `WhenWritingNull`, `WhenWriting`, `WhenReading`, with the same values and meaning. |
 | `JsonNumberHandling` | `XmlNumberHandling` | `Strict` and `AllowNamedFloatingPointLiterals`. There is no "number in a string" in XML, so the other values don't exist. |
 | `JsonUnmappedMemberHandling` | `XmlUnmappedMemberHandling` | `Skip`, `Disallow`. |
-| `JsonObjectCreationHandling` | `XmlObjectCreationHandling` | `Replace`, `Populate`. |
-| `JsonUnknownTypeHandling` | `XmlUnknownTypeHandling` | `XmlElement`, `XmlNode`. |
 | `ReferenceHandler`, `ReferenceResolver` | `XmlReferenceHandler`, `XmlReferenceResolver` | `Preserve` and `IgnoreCycles`. See [Preserve references](/guides/preserve-references). |
 | `JsonException` | [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException) | `BytePosition`, `LineNumber`, `LinePosition`, `Path`. |
 | `JsonSerializer.IsReflectionEnabledByDefault` | `XmlSerializer.IsReflectionEnabledByDefault` | |
@@ -132,7 +130,9 @@ Every XmlEssentials type in these tables exists. The types are in `CloudNimble.T
 | `[JsonPolymorphic]` | `[XmlPolymorphic]` | Adds `DiscriminatorPlacement`: element name, attribute, or `xsi:type`. See [Polymorphism](/guides/polymorphism). |
 | `[JsonDerivedType(typeof(T), "name")]` | `[XmlDerivedType<T>("name")]` | Generic attribute. |
 | `JsonUnknownDerivedTypeHandling` | `XmlUnknownDerivedTypeHandling` | |
-| `[JsonNumberHandling]`, `[JsonObjectCreationHandling]`, `[JsonUnmappedMemberHandling]`, `[JsonStringEnumMemberName]` | No counterpart | Set the matching option on `XmlSerializerOptions`. An enum member can't be renamed. |
+| `[JsonNumberHandling]`, `[JsonUnmappedMemberHandling]`, `[JsonStringEnumMemberName]` | No counterpart | Set the matching option on `XmlSerializerOptions`. An enum member can't be renamed. |
+| `[JsonObjectCreationHandling]`, `JsonObjectCreationHandling`, `PreferredObjectCreationHandling` | `[XmlObjectCreationHandling]`, `XmlObjectCreationHandling`, `PreferredObjectCreationHandling` | The same values and the same rules. `Replace` is the default. |
+| `JsonUnknownTypeHandling`, `UnknownTypeHandling` | `XmlUnknownTypeHandling`, `UnknownTypeHandling` | A value declared as `object` is read as an `XmlElement` by default, as System.Text.Json reads a `JsonElement`. `XmlUnknownTypeHandling.XmlNode` reads an `XmlNode`, the counterpart of `JsonNode`. |
 | No counterpart | `[XmlRoot]`, `[XmlElement]`, `[XmlAttribute]`, `[XmlText]`, `[XmlCData]`, `[XmlArray]`, `[XmlArrayItem]`, `[XmlMixed]` | The XML shapes. See [What XML has that JSON doesn't](#what-xml-has-that-json-doesnt). |
 
 ### Converters and metadata
@@ -144,7 +144,7 @@ Every XmlEssentials type in these tables exists. The types are in `CloudNimble.T
 | `JsonConverterFactory` | `XmlConverterFactory` | |
 | `JsonStringEnumConverter` | Not needed | Enums are written as names by default. `EnumHandling = XmlEnumHandling.Integer` writes numbers. |
 | `JsonSerializerContext` | [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) | See [Use source generation](/guides/source-generation). |
-| `[JsonSerializable]` | `[XmlSerializable]` | `TypeInfoPropertyName`, `GenerationMode`. |
+| `[JsonSerializable(typeof(T))]` | `[XmlSerializable<T>]` | The type is a type argument. `TypeInfoPropertyName`, `GenerationMode`. |
 | `[JsonSourceGenerationOptions]` | `[XmlSourceGenerationOptions]` | |
 | `JsonSourceGenerationMode` | `XmlSourceGenerationMode` | `Default`, `Metadata`, `Serialization`. See [Source-generation modes](/guides/source-generation-modes). |
 | `JsonKnownNamingPolicy` | `XmlKnownNamingPolicy` | |
@@ -333,7 +333,7 @@ Description is null: True
 DisplayName is empty: True
 ```
 
-`xsi:nil` is the XML Schema way to write `null`, and it's the default, which matches `JsonIgnoreCondition.Never`. `XmlSerializerOptions.NilHandling` and `DefaultIgnoreCondition` change it. The empty `Tags` list is absent from this output for the reason given under [No arrays](#no-arrays). See [Null and nil](/guides/null-and-nil).
+`xsi:nil` is the XML Schema way to write `null`, and it's the default, which matches `JsonIgnoreCondition.Never`. `XmlSerializerOptions.DefaultIgnoreCondition` leaves a `null` member out, as `JsonSerializerOptions.DefaultIgnoreCondition` does. The empty `Tags` list is absent from this output for the reason given under [No arrays](#no-arrays). See [Null and nil](/guides/null-and-nil).
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/44_ComingFromSystemTextJson.cs)
 
@@ -386,7 +386,7 @@ XML has node kinds that JSON doesn't: comments, CDATA sections (text that isn't 
 A few things you may reach for don't apply:
 
 - **`JsonSerializerOptions.Encoder` and relaxed escaping.** XML escaping is fixed by the specification.
-- **`AllowTrailingCommas`, `AllowReadingFromString`, `WriteAsString`.** They have no XML meaning.
+- **`AllowTrailingCommas`, `AllowReadingFromString`, `WriteAsString`, `AllowOutOfOrderMetadataProperties`.** They have no XML meaning. A discriminator, a reference id, and a reference are XML attributes, and the order of attributes isn't significant, so they are accepted in any position.
 - **DTDs and custom entities.** XmlEssentials rejects a document that has a `<!DOCTYPE`. See [Security](/guides/security).
 
 <Note>

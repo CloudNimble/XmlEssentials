@@ -15,7 +15,7 @@ Set `GenerationMode` on [`[XmlSourceGenerationOptions]`](/api-reference/CloudNim
 
 ```csharp MetadataOrderXmlContext.cs
 [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class MetadataOrderXmlContext : XmlSerializerContext
 {
 }
@@ -116,7 +116,7 @@ A context in either mode writes a converter only for object types: classes and s
 
 Use **`Default`** for a context you publish with trimming or Native AOT, and for the types on your hot path.
 
-Use **`Metadata`** when you want the compile-time checks and the typed `Default.Order` properties of a context, and you also need behavior only the run-time resolver has: custom converters on member types, `NilHandling`, `DefaultIgnoreCondition`, a `ReferenceHandler`, or the member list in `Properties`. The application must then be one that allows reflection.
+Use **`Metadata`** when you want the compile-time checks and the typed `Default.Order` properties of a context, and you also need behavior only the run-time resolver has: custom converters on member types, `DefaultIgnoreCondition`, a `ReferenceHandler`, or the member list in `Properties`. The application must then be one that allows reflection.
 
 There's no reason to choose `Serialization` over `Default`. They produce the same code.
 

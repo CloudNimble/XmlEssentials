@@ -1,6 +1,6 @@
 - **Use `Default` unless you need other options.** It's created once and shared. When you do pass options to the constructor, create that context once and keep it.
 - **Prefer the `XmlTypeInfo<T>` properties to the context overloads.** `OrderXmlContext.Default.Order` fails to compile when the type isn't in the context. `XmlSerializer.Serialize(value, context)` finds out at run time.
-- **List every root type.** A generated context answers for a type it doesn't list by using the reflection resolver, which isn't safe in a trimmed or Native AOT application.
+- **List every root type.** A generated context uses no reflection: a type that it doesn't list and can't reach from a listed type is a `NotSupportedException`, unless it is a built-in value. That includes a collection or array type that you serialize as the document element, so list it too.
 - **Set naming policies with `[XmlSourceGenerationOptions]`.** Generated converters fix member names at compile time, so a policy set only on run-time options changes the name of the document element and nothing else.
-- **Put a type that needs custom converters in a metadata-mode context,** or serialize it with reflection. Default-mode converters don't apply custom converters to class and struct members.
+- **Give a type that needs a custom converter the `[XmlConverter]` attribute.** A generated context then uses the converter for that type. A converter in `XmlSerializerOptions.Converters` for a type the context generates code for throws `NotSupportedException`; put such a type in a metadata-mode context, or serialize it with reflection.
 - **Serialize a type that declares `[XmlDerivedType]` with reflection.** The generator reports `XMLXE008` for it in every mode.

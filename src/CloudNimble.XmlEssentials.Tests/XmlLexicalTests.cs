@@ -96,6 +96,86 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow("0", "0")]
+        [DataRow("-0", "0")]
+        [DataRow("+0", "0")]
+        [DataRow(" 42 ", "42")]
+        [DataRow("\n\t-42\r\n", "-42")]
+        [DataRow("007", "7")]
+        [DataRow("170141183460469231731687303715884105727", "170141183460469231731687303715884105727")]
+        [DataRow("-170141183460469231731687303715884105728", "-170141183460469231731687303715884105728")]
+        [DataRow("340282366920938463463374607431768211455", "340282366920938463463374607431768211455")]
+        [DataRow("-340282366920938463463374607431768211456", "-340282366920938463463374607431768211456")]
+        [DataRow("123456789012345678901234567890123456789012345678901234567890", "123456789012345678901234567890123456789012345678901234567890")]
+        public void WideIntegers_Valid(string text, string expected)
+        {
+            // The three types share one lexical form, xs:integer. Each accepts what fits in it.
+            var value = System.Numerics.BigInteger.Parse(expected);
+            XmlLexical.TryParseBigInteger(Utf8(text), out var big).Should().BeTrue();
+            big.Should().Be(value);
+            var fitsSigned = value >= (System.Numerics.BigInteger)Int128.MinValue && value <= (System.Numerics.BigInteger)Int128.MaxValue;
+            XmlLexical.TryParseInt128(Utf8(text), out var signed).Should().Be(fitsSigned);
+            signed.Should().Be(fitsSigned ? (Int128)value : default);
+            var fitsUnsigned = value >= 0 && value <= (System.Numerics.BigInteger)UInt128.MaxValue;
+            XmlLexical.TryParseUInt128(Utf8(text), out var unsigned).Should().Be(fitsUnsigned);
+            unsigned.Should().Be(fitsUnsigned ? (UInt128)value : default);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(" ")]
+        [DataRow("+")]
+        [DataRow("-")]
+        [DataRow("+-1")]
+        [DataRow("--1")]
+        [DataRow("1 2")]
+        [DataRow("1.0")]
+        [DataRow("1e3")]
+        [DataRow("1,000")]
+        [DataRow("0x10")]
+        [DataRow("12a")]
+        [DataRow("١")]
+        [DataRow("(1)")]
+        public void WideIntegers_Invalid(string text)
+        {
+            XmlLexical.TryParseBigInteger(Utf8(text), out var big).Should().BeFalse();
+            big.Should().Be(System.Numerics.BigInteger.Zero);
+            XmlLexical.TryParseInt128(Utf8(text), out var signed).Should().BeFalse();
+            signed.Should().Be(Int128.Zero);
+            XmlLexical.TryParseUInt128(Utf8(text), out var unsigned).Should().BeFalse();
+            unsigned.Should().Be(UInt128.Zero);
+        }
+
+        [TestMethod]
+        [DataRow("0", 0d)]
+        [DataRow("1.5", 1.5d)]
+        [DataRow(" +2.5 ", 2.5d)]
+        [DataRow("-1e1", -10d)]
+        [DataRow("INF", double.PositiveInfinity)]
+        [DataRow("-INF", double.NegativeInfinity)]
+        [DataRow("NaN", double.NaN)]
+        [DataRow("65504", 65504d)]
+        [DataRow("1.000488281250000000001", 1.0009765625d)]
+        [DataRow("1e9", double.PositiveInfinity)]
+        public void Half_Valid(string text, double expected)
+        {
+            XmlLexical.TryParseHalf(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be((Half)expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("one")]
+        [DataRow("1,5")]
+        [DataRow("Infinity")]
+        [DataRow("0x1")]
+        public void Half_Invalid(string text)
+        {
+            XmlLexical.TryParseHalf(Utf8(text), out var value).Should().BeFalse();
+            value.Should().Be(default(Half));
+        }
+
+        [TestMethod]
         public void Integers_RangeBoundaries()
         {
             XmlLexical.TryParseInt32(Utf8("2147483647"), out var maxInt).Should().BeTrue();
@@ -219,6 +299,9 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("-Inf", double.NegativeInfinity)]
         [DataRow("nan", double.NaN)]
         [DataRow("1.7976931348623157E308", double.MaxValue)]
+        [DataRow("1e400", double.PositiveInfinity, DisplayName = "too large for a double: infinity, as XmlConvert.ToDouble reads it")]
+        [DataRow("-1e400", double.NegativeInfinity, DisplayName = "too large and negative: negative infinity")]
+        [DataRow("1e-400", 0d, DisplayName = "too small for a double: zero")]
         public void Double_Valid(string text, double expected)
         {
             XmlLexical.TryParseDouble(Utf8(text), out var value).Should().BeTrue();

@@ -79,12 +79,12 @@ The code produces the following output:
 
 ```text
 XmlDeclaration (depth 0)
-StartElement Order (depth 1)
-StartElement Item (depth 2)
+StartElement Order (depth 0)
+StartElement Item (depth 1)
 Text "Keyboard" (depth 2)
 EndElement Item (depth 1)
 StartElement Gift (depth 1)
-StartElement Note (depth 2)
+StartElement Note (depth 1)
 CData "Leave at <door>" (depth 2)
 EndElement Note (depth 1)
 EndElement Order (depth 0)
@@ -95,8 +95,8 @@ EndElement Order (depth 0)
 What to notice:
 
 - The sample sets two options so that the loop sees data only. By default, the reader also reports comments and the white space between elements, such as the indentation of this document, so that nothing in a document is lost when you read it and write it back. These two options are the ones to set in a loop that only wants data. See [Comments, white space, CDATA, and processing instructions](#comments-white-space-cdata-and-processing-instructions).
-- `CurrentDepth` is the number of elements that are open *after* the token. A start tag is at the depth of its content, and an end tag is at the depth of its parent.
-- `<Gift/>` produces one token and doesn't change the depth. See [Handle empty elements](#handle-empty-elements).
+- `CurrentDepth` is the number of elements the token is inside. The root element is at depth 0. A start tag and its end tag are at the same depth, and the content between them is one deeper.
+- `<Gift/>` produces one token, at the depth a `<Gift>` start tag would have. See [Handle empty elements](#handle-empty-elements).
 - Attributes aren't tokens in the loop. You visit them from the start tag, as the next section shows.
 
 The reader reports these token types:
@@ -616,7 +616,7 @@ Read Total
 Details worth knowing:
 
 - On an empty element, `Skip` does nothing, because the element is already complete.
-- Call `Skip` on a start tag. On any other token it reads one token, like `Read`.
+- Call `Skip` on a start tag. On any other token it does nothing, because only a start tag has children.
 - When you read in blocks and the element isn't all in the current block, `Skip` throws an `XmlException` (`Cannot skip: more data is required.`). Use `TrySkip` there instead. It returns `false` and puts the reader back on the start tag, as `Utf8JsonReader.TrySkip` does, so you can supply more data and try again.
 
 ## Read a fragment

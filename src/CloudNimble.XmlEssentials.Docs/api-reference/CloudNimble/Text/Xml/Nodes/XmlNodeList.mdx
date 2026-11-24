@@ -1,6 +1,6 @@
 ---
 title: XmlNodeList
-description: "An ordered list of child [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) instances."
+description: "Represents the ordered list of child nodes of an [XmlElementNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlElementNode). This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlNodeList', 'CloudNimble.Text.Xml.Nodes.XmlNodeList', 'CloudNimble.Text.Xml.Nodes', 'class', 'CloudNimble.Text.Xml.Nodes.XmlElementNode', 'CloudNimble.Text.Xml.Nodes.XmlNode', 'CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList']
@@ -20,7 +20,7 @@ CloudNimble.Text.Xml.Nodes.XmlNodeList
 
 ## Summary
 
-An ordered list of child [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) instances.
+Represents the ordered list of child nodes of an [XmlElementNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlElementNode). This class cannot be inherited.
 
 ## Usage
 
@@ -60,13 +60,19 @@ You don't create a list. Every `XmlElementNode` has one.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
 
+## Remarks
+
+A node can belong to one list at a time. Adding, inserting, or assigning a node that already has a
+parent throws an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException), and [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) throws an
+[ArgumentNullException](https://learn.microsoft.com/dotnet/api/system.argumentnullexception). A node that is removed or replaced has no parent afterward.
+
 ## Considerations
 
 - A node belongs to one list at a time. `Add`, `Insert`, and the index setter throw an `XmlException` ("The node already has a parent.") for a node that has a parent. Remove it first to move it, or add a `DeepClone` to copy it.
 - `Remove`, `RemoveAt`, `Clear`, and replacing through the index setter set the `Parent` of the node that leaves the list to `null`. `Remove` returns `false` when the node isn't in the list.
 - In a tree parsed from an indented document, the list holds a text node for each run of white space between elements. Don't assume that an index holds an element.
 - Changing the list while a `foreach` loop enumerates it throws `InvalidOperationException`. Collect the nodes to remove first, or loop by index from the end.
-- The list accepts any `XmlNode`, including kinds that don't belong among an element's children. An `XmlDeclarationNode` added here is written inside the element, which isn't well-formed XML. Keep attributes in `Attributes` and write a declaration separately.
+- The list accepts the kinds of node that can be content: elements, text, CDATA sections, comments, and processing instructions. Adding an `XmlAttributeNode` or an `XmlDeclarationNode` throws an `XmlException`. When an assignment to an index is refused, the node that was there stays.
 
 ## Constructors
 

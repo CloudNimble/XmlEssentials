@@ -1,6 +1,6 @@
 ---
 title: XmlWhitespaceHandling
-description: "How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements."
+description: "Specifies how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) handles whitespace-only text between elements."
 icon: list-ol
 tag: "ENUM"
 keywords: ['XmlWhitespaceHandling', 'CloudNimble.Text.Xml.XmlWhitespaceHandling', 'CloudNimble.Text.Xml', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlReaderOptions', 'CloudNimble.Text.Xml.XmlDocumentOptions', 'CloudNimble.Text.Xml.XmlTokenType', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.XmlCommentHandling']
@@ -22,7 +22,7 @@ CloudNimble.Text.Xml.XmlWhitespaceHandling
 
 ## Summary
 
-How [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) treats whitespace-only text between elements.
+Specifies how a [Utf8XmlReader](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) handles whitespace-only text between elements.
 
 ## Usage
 
@@ -79,6 +79,13 @@ Comments skipped and white space insignificant:
 
 Whitespace inside a leaf element's value is always significant.
 `<n> a </n>` is the value `" a "` regardless of this setting.
+[XmlWhitespaceHandling.Significant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling) is the zero value of the enumeration, so it is the default wherever a
+whitespace handling value is not set: in [XmlReaderOptions](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) and
+[XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions), whether they are created with `new` or as
+`default`. Whitespace between elements, such as indentation, is kept by default so
+that XML that is read and written back does not change its layout.
+[XmlSerializerOptions.WhitespaceHandling](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#whitespacehandling) defaults to [XmlWhitespaceHandling.Insignificant](/api-reference/CloudNimble/Text/Xml/XmlWhitespaceHandling), because
+indentation has no place in an object.
 
 ## Considerations
 
@@ -94,9 +101,10 @@ Whitespace inside a leaf element's value is always significant.
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Insignificant` | 0 | Skip whitespace-only text between elements. This is the default. |
-| `Significant` | 1 | Report whitespace-only text nodes as [XmlTokenType.Text](/api-reference/CloudNimble/Text/Xml/XmlTokenType). |
-| `None` | 2 | Reject whitespace-only text between elements with [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException). |
+| `Significant` | 0 | Whitespace-only text nodes are reported as [XmlTokenType.Text](/api-reference/CloudNimble/Text/Xml/XmlTokenType) tokens. This is the default. |
+| `Insignificant` | 1 | Whitespace-only text between elements is skipped. |
+| `None` | 2 | Whitespace-only text between elements is not allowed. The reader throws an
+[XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) when it reads such text. |
 
 ## Related APIs
 

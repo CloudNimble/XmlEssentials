@@ -8,7 +8,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// Reads and writes a collection as the document element, one child element per item.
     /// </summary>
     /// <typeparam name="TCollection">The collection type.</typeparam>
-    internal sealed class XmlCollectionConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] TCollection> : XmlConverter<TCollection>
+    internal sealed class XmlCollectionConverter<TCollection> : XmlConverter<TCollection>
     {
 
         #region Fields
@@ -27,6 +27,19 @@ namespace CloudNimble.Text.Xml.Serialization
         public XmlCollectionConverter(XmlSerializerOptions options, Type elementType)
         {
             _items = XmlCollectionBinding.Create(typeof(TCollection), elementType, wrapped: true, [], options.GetTypeInfo(elementType), mixed: false);
+        }
+
+        /// <summary>
+        /// Creates the converter from a binding whose item type the caller named at compile time.
+        /// </summary>
+        /// <param name="items">How the items are read, held, and written.</param>
+        /// <remarks>
+        /// A generated context uses this constructor. It closes no generic type at run time, which Native AOT
+        /// cannot do for an item type that is a value type.
+        /// </remarks>
+        internal XmlCollectionConverter(XmlCollectionBinding items)
+        {
+            _items = items;
         }
 
         #endregion

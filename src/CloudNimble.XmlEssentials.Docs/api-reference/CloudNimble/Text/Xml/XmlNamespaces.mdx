@@ -1,6 +1,6 @@
 ---
 title: XmlNamespaces
-description: "Well-known XML namespace URIs used by XmlEssentials."
+description: "Provides the well-known XML namespace URIs that XmlEssentials uses. This class cannot be inherited."
 icon: bolt
 tag: "STATIC"
 keywords: ['XmlNamespaces', 'CloudNimble.Text.Xml.XmlNamespaces', 'CloudNimble.Text.Xml', 'class', 'CloudNimble.Text.Xml.XmlAttributes', 'CloudNimble.Text.Xml.XmlName', 'CloudNimble.Text.Xml.Utf8XmlReader', 'CloudNimble.Text.Xml.Utf8XmlWriter', 'CloudNimble.Text.Xml.Serialization.XmlReferenceHandler']
@@ -20,7 +20,7 @@ CloudNimble.Text.Xml.XmlNamespaces
 
 ## Summary
 
-Well-known XML namespace URIs used by XmlEssentials.
+Provides the well-known XML namespace URIs that XmlEssentials uses. This class cannot be inherited.
 
 ## Usage
 
@@ -53,7 +53,7 @@ The code prints `xsi:nil is true`. It is part of the [namespaces sample](https:/
 ## Remarks
 
 The `xml` and `xmlns` prefixes are bound to [XmlNamespaces.Xml](/api-reference/CloudNimble/Text/Xml/XmlNamespaces#xml) and [XmlNamespaces.Xmlns](/api-reference/CloudNimble/Text/Xml/XmlNamespaces#xmlns)
-for the lifetime of a document. Do not rebind them.
+for the whole of every document. Do not bind them to another namespace.
 
 ## Best Practices
 

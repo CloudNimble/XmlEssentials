@@ -39,8 +39,15 @@ namespace CloudNimble.Text.Xml.Nodes
             set
             {
                 ArgumentNullException.ThrowIfNull(value);
-                Detach(_items[index]);
+                var old = _items[index];
+                if (ReferenceEquals(old, value))
+                {
+                    return;
+                }
+
+                // The new attribute is checked first. If it is refused, the old one is still in its place.
                 Attach(value);
+                Detach(old);
                 _items[index] = value;
             }
         }

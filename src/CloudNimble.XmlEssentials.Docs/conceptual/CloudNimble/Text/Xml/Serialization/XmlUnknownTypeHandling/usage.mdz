@@ -1,10 +1,15 @@
-`XmlUnknownTypeHandling` is the type of `XmlSerializerOptions.UnknownTypeHandling`. It names the two DOM types a member declared as `object` could be read into: `XmlElement` or `XmlNode`. It corresponds to `JsonUnknownTypeHandling` in System.Text.Json.
+`XmlUnknownTypeHandling` is the type of `XmlSerializerOptions.UnknownTypeHandling`. It says what an element is read as when the declared type is `object`, where the XML can't say which type wrote it. It is the counterpart of `JsonUnknownTypeHandling`.
 
-The serializer doesn't read this option in this release. A member declared as `object` has no built-in mapping, and serializing or deserializing a type that has one throws `NotSupportedException` with the message `The type 'System.Object' is not supported.`
+| Value | A value declared as `object` is read as |
+| --- | --- |
+| `XmlElement` | An [`XmlElement`](/api-reference/CloudNimble/Text/Xml/XmlElement), which is read-only. This is the default. |
+| `XmlNode` | An [`XmlNode`](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) that can be changed. The node is an `XmlElementNode`. |
 
-To handle such a member today, do one of the following:
+```csharp
+var options = new XmlSerializerOptions
+{
+    UnknownTypeHandling = XmlUnknownTypeHandling.XmlNode,
+};
+```
 
-- Declare the member with a concrete type.
-- Declare it as a base class with `[XmlDerivedType<T>]` attributes. See [Serialize derived classes](/guides/polymorphism).
-- Keep content that no member maps in an `XmlExtensionData` member. See [Mixed content and overflow](/guides/mixed-content).
-- Write a [custom converter](/guides/custom-converters) for the member.
+The option applies to a member, an item of a collection, a value of a dictionary, and the document root. An element marked `xsi:nil="true"` is read as `null` under both values. Writing isn't affected.

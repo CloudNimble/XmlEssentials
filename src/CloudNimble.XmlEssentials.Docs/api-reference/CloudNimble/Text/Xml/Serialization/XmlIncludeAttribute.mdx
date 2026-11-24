@@ -1,6 +1,6 @@
 ---
 title: XmlIncludeAttribute
-description: "Includes a non-public property or field in serialization. Analogous to `JsonIncludeAttribute`. This is not BCL `XmlIncludeAttribute` (known types); use `XmlD..."
+description: "Indicates that a non-public property or field is included for serialization and deserialization. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.XmlSerializerOptions']
@@ -22,8 +22,7 @@ CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute
 
 ## Summary
 
-Includes a non-public property or field in serialization. Analogous to `JsonIncludeAttribute`.
-This is not BCL `XmlIncludeAttribute` (known types); use `XmlDerivedTypeAttribute` for those.
+Indicates that a non-public property or field is included for serialization and deserialization. This class cannot be inherited.
 
 ## Usage
 
@@ -53,6 +52,12 @@ The code produces the following output:
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+## Remarks
+
+This attribute is analogous to `JsonIncludeAttribute` in `System.Text.Json`. It is not the
+`System.Xml.Serialization.XmlIncludeAttribute` of the base class library, which declares known types.
+Use `XmlDerivedTypeAttribute`1` to declare a derived type.
 
 ## Considerations
 

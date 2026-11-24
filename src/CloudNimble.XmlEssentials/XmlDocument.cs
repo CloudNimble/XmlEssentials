@@ -44,6 +44,7 @@ namespace CloudNimble.Text.Xml
         private bool _disposed;
         private byte[] _extra;
         private int _extraLength;
+        private bool _isPooled = true;
         private int _nsCacheLength;
         private int _nsCacheStart;
         private int _rootIndex;
@@ -77,6 +78,12 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets a value that indicates whether the document holds arrays rented from a pool, which
+        /// <see cref="Dispose"/> returns.
+        /// </summary>
+        internal bool IsPooled => _isPooled;
+
+        /// <summary>
         /// Gets the root element of this XML document.
         /// </summary>
         /// <value>
@@ -86,8 +93,7 @@ namespace CloudNimble.Text.Xml
         /// The document has been disposed.
         /// </exception>
         /// <exception cref="XmlException">
-        /// The document has no root element. This can happen only for a document that
-        /// <see cref="ParseValue(ref Utf8XmlReader)"/> returned.
+        /// The document has no root element. No document that a public method returns is in that state.
         /// </exception>
         public XmlElement RootElement
         {
@@ -145,9 +151,13 @@ namespace CloudNimble.Text.Xml
             }
 
             _disposed = true;
-            ReturnBuffer(_source, _sourceLength);
-            ReturnBuffer(_extra, _extraLength);
-            ArrayPool<XmlDbRow>.Shared.Return(_rows);
+            if (_isPooled)
+            {
+                ReturnBuffer(_source, _sourceLength);
+                ReturnBuffer(_extra, _extraLength);
+                ArrayPool<XmlDbRow>.Shared.Return(_rows);
+            }
+
             _source = [];
             _extra = [];
             _rows = [];
@@ -213,7 +223,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDocumentTooLarge(byteCount, options.MaxDocumentByteCount);
             var rented = ArrayPool<byte>.Shared.Rent(byteCount);
             var written = Encoding.UTF8.GetBytes(xml, rented);
-            return ParseOwned(rented, written, options);
+            return ParseOwned(rented, written, options, ignoreDeclaredEncoding: true);
         }
 
         /// <summary>
@@ -242,7 +252,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDocumentTooLarge(utf8Xml.Length, options.MaxDocumentByteCount);
             var rented = ArrayPool<byte>.Shared.Rent(utf8Xml.Length);
             utf8Xml.CopyTo(rented);
-            return ParseOwned(rented, utf8Xml.Length, options);
+            return ParseOwned(rented, utf8Xml.Length, options, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>
@@ -275,7 +285,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDocumentTooLarge(length, options.MaxDocumentByteCount);
             var rented = ArrayPool<byte>.Shared.Rent(length);
             utf8Xml.CopyTo(rented);
-            return ParseOwned(rented, length, options);
+            return ParseOwned(rented, length, options, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>
@@ -307,7 +317,7 @@ namespace CloudNimble.Text.Xml
         {
             ArgumentNullException.ThrowIfNull(utf8Xml);
             var rented = XmlStreamBuffer.ReadToEnd(utf8Xml, options.MaxDocumentByteCount, out var length);
-            return ParseOwned(rented, length, options);
+            return ParseOwned(rented, length, options, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>
@@ -320,6 +330,8 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException">
         /// <paramref name="reader"/> reaches an end tag before it reaches a start tag.
         /// -or-
+        /// <paramref name="reader"/> reaches the end of its input without reading an element.
+        /// -or-
         /// The XML that <paramref name="reader"/> reads is not well formed.
         /// </exception>
         /// <remarks>
@@ -328,8 +340,6 @@ namespace CloudNimble.Text.Xml
         /// element itself if it is an empty-element tag.
         /// The document copies the names and values it keeps, so it does not depend on the reader's input
         /// after this method returns.
-        /// If the reader reaches the end of its input without reading an element, the returned document has no root element, and
-        /// <see cref="RootElement"/> throws an <see cref="XmlException"/>.
         /// The reader is not restored to its original position when this method throws.
         /// </remarks>
         public static XmlDocument ParseValue(ref Utf8XmlReader reader)
@@ -338,6 +348,13 @@ namespace CloudNimble.Text.Xml
             try
             {
                 document.FillFromReader(ref reader, requireDocumentRoot: false);
+                if (document._rootIndex < 0)
+                {
+                    // The reader ran out of input without reaching a start tag. A document with no element
+                    // has nothing to give back.
+                    throw new XmlException("The reader is not on an element and has none left to read.");
+                }
+
                 return document;
             }
             catch
@@ -395,7 +412,10 @@ namespace CloudNimble.Text.Xml
         /// <remarks>
         /// The XML declaration (when the document has one) is written first, then the comments and processing
         /// instructions before the root element, the root element, and the comments and processing
-        /// instructions after it. The declaration is written with the version of the parsed document and
+        /// instructions after it. The declaration belongs to the document, so it is written whatever the writer's
+        /// <see cref="XmlWriterOptions.OmitXmlDeclaration"/> says: that option only decides whether the writer adds a declaration
+        /// to a document that has none. Write with it set to <see langword="true"/> to get back what was parsed. The
+        /// declaration is written with the version of the parsed document and
         /// <c>encoding="utf-8"</c>.
         /// </remarks>
         public void WriteTo(Utf8XmlWriter writer)
@@ -856,8 +876,9 @@ namespace CloudNimble.Text.Xml
         /// <param name="rented">A buffer rented from <see cref="ArrayPool{T}.Shared"/>.</param>
         /// <param name="length">The payload length.</param>
         /// <param name="options">Parse options.</param>
+        /// <param name="ignoreDeclaredEncoding">Whether the bytes were transcoded from characters, so the encoding the declaration names is not checked.</param>
         /// <returns>The filled document.</returns>
-        internal static XmlDocument ParseOwned(byte[] rented, int length, XmlDocumentOptions options)
+        internal static XmlDocument ParseOwned(byte[] rented, int length, XmlDocumentOptions options, bool ignoreDeclaredEncoding)
         {
             var document = new XmlDocument(rented, length);
             try
@@ -865,7 +886,9 @@ namespace CloudNimble.Text.Xml
                 // A rented buffer is usually longer than what was asked for. The reader works in the part
                 // after the payload, and what it wrote there is cleared, because the buffer goes back to the
                 // shared pool with only the payload cleared.
-                var reader = new Utf8XmlReader(rented.AsSpan(0, length), rented.AsSpan(length), sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock: true, new XmlReaderState(options.ToReaderOptions()));
+                var readerOptions = options.ToReaderOptions();
+                readerOptions.IgnoreDeclaredEncoding = ignoreDeclaredEncoding;
+                var reader = new Utf8XmlReader(rented.AsSpan(0, length), rented.AsSpan(length), sequenceCopy: null, sequence: default, hasSequence: false, isFinalBlock: true, new XmlReaderState(readerOptions));
                 document.FillFromReader(ref reader, requireDocumentRoot: true);
                 if (reader.ScratchBytesUsed != 0)
                 {
@@ -903,6 +926,30 @@ namespace CloudNimble.Text.Xml
         {
             XmlDeclarationSyntax.TryParse(reader.ValueSpan, out var version, out _, out var standalone);
             return new XmlDeclarationInfo(version is XmlVersion.Version11 ? "1.1" : "1.0", "utf-8", standalone);
+        }
+
+        /// <summary>
+        /// Moves what the document holds out of the array pools into arrays of its own, and returns the
+        /// rented ones.
+        /// </summary>
+        /// <remarks>
+        /// For a document that nobody will dispose: the one behind an <see cref="XmlElement"/> that the
+        /// serializer hands out on its own. Its arrays are then collected like any other object, and
+        /// nothing is kept from the pools.
+        /// </remarks>
+        internal void MoveOutOfPool()
+        {
+            ThrowIfDisposed();
+            var source = _source.AsSpan(0, _sourceLength).ToArray();
+            var extra = _extra.AsSpan(0, _extraLength).ToArray();
+            var rows = _rows.AsSpan(0, _rowCount).ToArray();
+            ReturnBuffer(_source, _sourceLength);
+            ReturnBuffer(_extra, _extraLength);
+            ArrayPool<XmlDbRow>.Shared.Return(_rows);
+            _source = source;
+            _extra = extra;
+            _rows = rows;
+            _isPooled = false;
         }
 
         /// <summary>

@@ -1,9 +1,9 @@
 ---
 title: XmlObjectCreationHandling
-description: "How objects are created when deserializing into an existing instance."
+description: "Determines how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles a member that already holds a value when it is deserialized."
 icon: list-ol
 tag: "ENUM"
-keywords: ['XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'CloudNimble.Text.Xml.XmlSerializerOptions', 'CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute']
+keywords: ['XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling', 'CloudNimble.Text.Xml.Serialization', 'enum', 'System.Enum', 'System.IComparable', 'System.ISpanFormattable', 'System.IFormattable', 'System.IConvertible']
 ---
 
 ## Definition
@@ -22,25 +22,43 @@ CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandling
 
 ## Summary
 
-How objects are created when deserializing into an existing instance.
+Determines how [XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) handles a member that already holds a value when it is deserialized.
 
 ## Usage
 
-`XmlObjectCreationHandling` is the type of `XmlSerializerOptions.PreferredObjectCreationHandling`. Its two values, `Replace` and `Populate`, mirror `JsonObjectCreationHandling`.
+`XmlObjectCreationHandling` says what happens to the value a member already holds when the member is read. Use it in two places: [`[XmlObjectCreationHandling]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectCreationHandlingAttribute), for one member or one type, and `XmlSerializerOptions.PreferredObjectCreationHandling`, for every member. It is the counterpart of `JsonObjectCreationHandling`, with the same values and rules.
 
-In version 1.0 the serializer doesn't read the option. Whatever its value, deserializing a member replaces the member's value with a new object or collection. A collection property with no setter isn't filled, and an existing object isn't updated in place.
+| Value | When the member is read |
+| --- | --- |
+| `Replace` | The member is given a new value. A member with no setter isn't read. This is the default. |
+| `Populate` | The value the member holds is kept. Items are added to a collection, entries to a dictionary, and the members of an object are set on it. |
 
-If you need to read into a collection property, give it a setter or an `init` accessor, or make it a constructor parameter. See [Immutable types](/guides/immutable-types).
+```csharp
+var options = new XmlSerializerOptions
+{
+    PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
+};
+```
+
+See [Populate a collection that already holds a value](/guides/collections#populate-a-collection-that-already-holds-a-value) for what can and can't be populated.
+
+## Remarks
+
+The values and their meaning are those of `System.Text.Json.Serialization.JsonObjectCreationHandling`.
 
 ## Values
 
 | Name | Value | Description |
 |------|-------|-------------|
-| `Replace` | 0 | Replace the existing value. |
-| `Populate` | 1 | Populate the existing value. |
+| `Replace` | 0 | A new instance is created and assigned to the member. A member with no setter is not read. |
+| `Populate` | 1 | The instance the member holds is populated: items are added to a collection, entries to a dictionary, and
+the members of an object are set on it. A member that holds [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) is given a new instance
+when it has a setter. |
 
 ## Related APIs
 
-- CloudNimble.Text.Xml.XmlSerializerOptions
-- CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute
+- System.IComparable
+- System.ISpanFormattable
+- System.IFormattable
+- System.IConvertible
 

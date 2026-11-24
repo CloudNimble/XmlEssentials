@@ -27,7 +27,7 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 9 | Benchmarks vs BCL XmlSerializer vs STJ | Implemented (uncommitted): `XmlSerializerGraphBenchmarks` adds first-call reflection and source-gen context on the Customer graph; existing object/scalar/sequence/reader/writer/DOM rows remain. |
 | 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
 | 11 | Breakdance freeze + coverage slogan check | Not started |
-| 12 | Doc findings resolution | Slice 1 (F1 to F10) **done** (uncommitted); slices 2 and 3 not started; see [doc findings resolution](24-doc-findings-resolution.md) |
+| 12 | Doc findings resolution | Slices 1 and 2 (F1 to F40) **done** (uncommitted), with N1 to N4 and the System.Text.Json option mappings (decisions 43 to 49): 5115 tests pass and 1 is skipped, gate 100% line and branch, Native AOT smoke passes, no benchmark run. Slice 3 (D1 to D6) open; see [doc findings resolution](24-doc-findings-resolution.md) |
 
 Reader and writer speed work is tracked in [optimization](23-optimization.md), not as a new PR. Prefix resolution is done (every benchmark row is under BCL). Still open there: per-reader allocations on real documents (80 B to 10504 B per drain).
 

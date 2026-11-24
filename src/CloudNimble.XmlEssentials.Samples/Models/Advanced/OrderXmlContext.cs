@@ -6,7 +6,7 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Advanced
     /// <summary>
     /// A source-generated context for <see cref="Order"/>. The generator adds the other half of this class.
     /// </summary>
-    [XmlSerializable(typeof(Order))]
+    [XmlSerializable<Order>]
     public partial class OrderXmlContext : XmlSerializerContext
     {
     }

@@ -6,7 +6,7 @@ namespace CloudNimble.XmlEssentials.Tests
     /// <summary>
     /// A value whose converter serializes its content with a nested call to the serializer.
     /// </summary>
-    [XmlConverter(typeof(EnvelopeConverter))]
+    [XmlConverter<EnvelopeConverter>]
     public readonly struct Envelope
     {
 

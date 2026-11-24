@@ -43,12 +43,12 @@ For the document below, the loop prints the token types in the order shown.
 
 ```text
 XmlDeclaration (depth 0)
-StartElement Order (depth 1)
-StartElement Item (depth 2)
+StartElement Order (depth 0)
+StartElement Item (depth 1)
 Text "Keyboard" (depth 2)
 EndElement Item (depth 1)
 StartElement Gift (depth 1)
-StartElement Note (depth 2)
+StartElement Note (depth 1)
 CData "Leave at <door>" (depth 2)
 EndElement Note (depth 1)
 EndElement Order (depth 0)

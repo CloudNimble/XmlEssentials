@@ -1,6 +1,6 @@
 ---
 title: XmlPropertyInfo
-description: "Metadata for one serialized member of an object."
+description: "Provides XML serialization-related metadata about a property or field. This class cannot be inherited."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfo', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlTypeInfo', 'CloudNimble.Text.Xml.Serialization.XmlAttributeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlElementAttribute', 'CloudNimble.Text.Xml.Serialization.XmlTextAttribute', 'CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute']
@@ -20,7 +20,7 @@ CloudNimble.Text.Xml.Serialization.XmlPropertyInfo
 
 ## Summary
 
-Metadata for one serialized member of an object.
+Provides XML serialization-related metadata about a property or field. This class cannot be inherited.
 
 ## Usage
 
@@ -68,7 +68,7 @@ public Object()
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsAttribute
 
-Gets whether the member is mapped as an XML attribute.
+Gets a value that indicates whether the member is serialized as an XML attribute.
 
 #### Syntax
 
@@ -79,10 +79,11 @@ public bool IsAttribute { get; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the member is serialized as an XML attribute; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNillable
 
-Gets whether a null value is written as a nillable element.
+Gets a value that indicates whether the member is nillable.
 
 #### Syntax
 
@@ -93,10 +94,17 @@ public bool IsNillable { get; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the member is nillable; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Remarks
+
+A member is nillable when its type is a reference type, a [Nullable`1](https://learn.microsoft.com/dotnet/api/system.nullable-1), or a collection, or when
+[XmlElementAttribute.IsNullable](/api-reference/CloudNimble/Text/Xml/Serialization/XmlElementAttribute#isnullable) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). Whether a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) value is written
+depends on the ignore condition of the member. When it is written, it is an element marked `xsi:nil="true"`.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsRequired
 
-Gets whether the member must be present when deserializing.
+Gets a value that indicates whether the member must be present on deserialization.
 
 #### Syntax
 
@@ -107,10 +115,11 @@ public bool IsRequired { get; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the member must be present on deserialization; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsText
 
-Gets whether the member is mapped as simple content of the parent element.
+Gets a value that indicates whether the member is serialized as the text content of the element for its containing type.
 
 #### Syntax
 
@@ -121,6 +130,7 @@ public bool IsText { get; }
 #### Property Value
 
 Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the member is serialized as text content; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Name
 
@@ -135,10 +145,11 @@ public CloudNimble.Text.Xml.XmlName Name { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.XmlName`
+The name of the element or attribute that the member is serialized as.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Order
 
-Gets the order among sibling members. `-1` means unset.
+Gets the serialization order of the member among the members of its containing type.
 
 #### Syntax
 
@@ -149,10 +160,11 @@ public int Order { get; }
 #### Property Value
 
 Type: `int`
+The order of the member, or `-1` if no order is set.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyType
 
-Gets the type info of the member's CLR type.
+Gets the metadata for the type of the member.
 
 #### Syntax
 
@@ -163,6 +175,7 @@ public CloudNimble.Text.Xml.Serialization.XmlTypeInfo PropertyType { get; }
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`
+The serialization metadata for the type of the member.
 
 ## Methods
 

@@ -1,7 +1,7 @@
 You don't use `XmlSerializerContext` directly. You declare a partial class that derives from it, list your types with `[XmlSerializable]`, and the source generator in the `XmlEssentials` package writes the rest of the class.
 
 ```csharp
-[XmlSerializable(typeof(Order))]
+[XmlSerializable<Order>]
 public partial class OrderXmlContext : XmlSerializerContext
 {
 }
