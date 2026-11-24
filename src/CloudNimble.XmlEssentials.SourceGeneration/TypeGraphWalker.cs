@@ -827,8 +827,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="members">The members. A member that fills a parameter is replaced by a copy that says so.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
         /// <remarks>
-        /// A constructor marked <c>[XmlConstructor]</c> is used. Otherwise the public constructor with the most
-        /// parameters is used, among those whose every parameter is named like a member. A parameter no
+        /// A constructor marked <c>[XmlConstructor]</c> is used. Otherwise the public parameterless constructor
+        /// is used, and a value type is created as its default. Otherwise the one public constructor with
+        /// parameters is used, as in System.Text.Json and in the reflection resolver. A parameter no
         /// member fills must have a default value. XMLESS005 is reported when the choice is ambiguous, and
         /// XMLESS002 when no constructor can be used. A constructor that is not accessible is called through an accessor.
         /// </remarks>
@@ -847,9 +848,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var ignored = IgnoredMembers(type);
             IMethodSymbol? marked = null;
             var markedCount = 0;
-            IMethodSymbol? best = null;
-            var bestCount = -1;
-            var bestTies = 0;
+            IMethodSymbol? parameterless = null;
+            IMethodSymbol? parameterized = null;
+            var parameterizedCount = 0;
+            var hasParameterless = false;
             foreach (var constructor in type.InstanceConstructors)
             {
                 if (SymbolHelpers.GetAttribute(constructor, SymbolHelpers.ConstructorAttribute) is not null)
@@ -858,61 +860,44 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     markedCount++;
                 }
 
+                if (constructor.Parameters.Length == 0)
+                {
+                    hasParameterless |= constructor.DeclaredAccessibility is not (Accessibility.Private or Accessibility.Protected or Accessibility.ProtectedAndInternal);
+                }
+
                 if (constructor.DeclaredAccessibility is not Accessibility.Public)
                 {
                     continue;
                 }
 
-                var bindable = true;
-                foreach (var parameter in constructor.Parameters)
+                if (constructor.Parameters.Length == 0)
                 {
-                    if (!names.Contains(parameter.Name) && !ignored.Contains(parameter.Name))
-                    {
-                        bindable = false;
-                        break;
-                    }
-                }
-
-                if (!bindable)
-                {
+                    parameterless = constructor;
                     continue;
                 }
 
-                var count = constructor.Parameters.Length;
-                if (count > bestCount)
-                {
-                    best = constructor;
-                    bestCount = count;
-                    bestTies = 1;
-                }
-                else if (count == bestCount && count > 0)
-                {
-                    bestTies++;
-                }
+                parameterized = constructor;
+                parameterizedCount++;
             }
 
-            if (markedCount > 1 || (marked is null && bestTies > 1))
+            // A key and value pair has no setters and no attribute could be put on its constructor, so it is
+            // created through the one it has.
+            var isPair = type.ConstructedFrom.ToDisplayString() is "System.Collections.Generic.KeyValuePair<TKey, TValue>";
+            var usesParameterless = marked is null && !isPair && (parameterless is not null || type.IsValueType);
+            if (markedCount > 1 || (marked is null && !usesParameterless && parameterizedCount > 1))
             {
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.AmbiguousConstructors, type.Locations[0], type.ToDisplayString()));
                 return;
             }
 
-            var chosen = marked ?? best;
-            var hasParameterless = false;
-            foreach (var constructor in type.InstanceConstructors)
-            {
-                hasParameterless |= constructor.Parameters.Length == 0
-                    && constructor.DeclaredAccessibility is not (Accessibility.Private or Accessibility.Protected or Accessibility.ProtectedAndInternal);
-            }
-
+            var chosen = marked ?? (usesParameterless ? null : parameterized);
             if (chosen is null && !hasParameterless && type is { IsAbstract: false, TypeKind: TypeKind.Class })
             {
-                // Every public constructor has a parameter that is not a member, and there is no parameterless
-                // one the generated code may call, so there is nothing the metadata can create the object with.
+                // There is no public constructor, and no parameterless one the generated code may call, so there
+                // is nothing the metadata can create the object with.
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
                 return;
             }
-
 
             chosenConstructor = chosen is { Parameters.Length: > 0 } ? chosen : null;
             if (chosen is null || chosen.Parameters.Length == 0)

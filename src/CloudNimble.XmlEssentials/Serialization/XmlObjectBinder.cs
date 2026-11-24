@@ -45,7 +45,7 @@ namespace CloudNimble.Text.Xml.Serialization
             // It is bound for its members, which describe it and are what is written when an undeclared
             // derived type falls back to the declared type.
             var isAbstract = typeof(T).IsAbstract;
-            var constructor = isAbstract ? null : SelectConstructor(typeof(T), members);
+            var constructor = isAbstract ? null : SelectConstructor(typeof(T));
             Func<object>? create = null;
             XmlConstructorFacts? constructorFacts = null;
             if (constructor is { } chosen && chosen.GetParameters().Length > 0)
@@ -177,7 +177,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 create,
                 nextSlot,
                 extension,
-                new XmlPolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown));
+                CreatePolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown));
         }
 
         #endregion
@@ -279,6 +279,41 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 throw ex.InnerException!;
             }
+        }
+
+        /// <summary>
+        /// Creates the polymorphism of <paramref name="type"/> from the list of derived types it declares or inherits.
+        /// </summary>
+        /// <param name="type">The declared CLR type.</param>
+        /// <param name="known">The whole list, as <see cref="BindDerived"/> returns it, or null.</param>
+        /// <param name="placement">Where the discriminator is written.</param>
+        /// <param name="utf8DiscriminatorAttributeName">The discriminator attribute local name.</param>
+        /// <param name="unknown">How a runtime type that is not declared is handled.</param>
+        /// <returns>The polymorphism.</returns>
+        /// <remarks>
+        /// A derived type inherits the list its base declares, which names the derived type itself and the types
+        /// beside it. Only a type that derives from <paramref name="type"/> is one a value may be written as, so a
+        /// value of the declared type is written under the name of its member with no discriminator, as
+        /// <c>System.Xml.Serialization</c> writes it. The whole list is kept for reading: a document that identifies
+        /// the declared type is read as it, and one that identifies a type beside it is refused.
+        /// </remarks>
+        internal static XmlPolymorphism CreatePolymorphism(Type type, XmlDerivedBinding[]? known, XmlDiscriminatorPlacement placement, byte[] utf8DiscriminatorAttributeName, XmlUnknownDerivedTypeHandling unknown)
+        {
+            if (known is null)
+            {
+                return new XmlPolymorphism(type, null, placement, utf8DiscriminatorAttributeName, unknown);
+            }
+
+            var derived = new List<XmlDerivedBinding>(known.Length);
+            foreach (var binding in known)
+            {
+                if (binding.Type != type && type.IsAssignableFrom(binding.Type))
+                {
+                    derived.Add(binding);
+                }
+            }
+
+            return new XmlPolymorphism(type, derived.Count == known.Length ? known : derived.ToArray(), placement, utf8DiscriminatorAttributeName, unknown, known);
         }
 
         /// <summary>
@@ -393,7 +428,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
-            return new XmlPolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown);
+            return CreatePolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown);
         }
 
         /// <summary>
@@ -1090,15 +1125,18 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Chooses the constructor used to create <paramref name="type"/>.
         /// </summary>
         /// <param name="type">The CLR type.</param>
-        /// <param name="members">The serializable members.</param>
         /// <returns>The constructor, or null to use <see cref="Activator.CreateInstance{T}"/>.</returns>
+        /// <exception cref="NotSupportedException">
+        /// More than one constructor is marked; or the type has no public parameterless constructor and more than
+        /// one public constructor with parameters, none of them marked.
+        /// </exception>
         /// <remarks>
-        /// A constructor marked <see cref="XmlConstructorAttribute"/> is used. Otherwise the public constructor
-        /// with the most parameters is used, among those whose every parameter names a member. A parameter
-        /// names a member as <see cref="FindConstructorMember"/> has it, without regard to case.
+        /// The rule is the one System.Text.Json has. A constructor marked <see cref="XmlConstructorAttribute"/>
+        /// is used. Otherwise the public parameterless constructor is used, and a value type is created as its
+        /// default. Otherwise the one public constructor with parameters is used.
         /// </remarks>
         [UnconditionalSuppressMessage("Trimming", "IL2070")]
-        internal static ConstructorInfo? SelectConstructor(Type type, List<XmlMemberModel> members)
+        internal static ConstructorInfo? SelectConstructor(Type type)
         {
             var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             ConstructorInfo? marked = null;
@@ -1122,8 +1160,9 @@ namespace CloudNimble.Text.Xml.Serialization
                 return marked;
             }
 
-            ConstructorInfo? best = null;
-            var bestCount = -1;
+            ConstructorInfo? parameterless = null;
+            ConstructorInfo? parameterized = null;
+            var parameterizedCount = 0;
             foreach (var constructor in constructors)
             {
                 if (!constructor.IsPublic)
@@ -1131,36 +1170,30 @@ namespace CloudNimble.Text.Xml.Serialization
                     continue;
                 }
 
-                var parameters = constructor.GetParameters();
-                var subset = true;
-                foreach (var parameter in parameters)
+                if (constructor.GetParameters().Length == 0)
                 {
-                    if (parameter.Name is null || (FindConstructorMember(members, parameter.Name) < 0 && !IsIgnoredMember(type, parameter.Name)))
-                    {
-                        subset = false;
-                        break;
-                    }
-                }
-
-                if (!subset)
-                {
+                    parameterless = constructor;
                     continue;
                 }
 
-                if (parameters.Length > bestCount)
-                {
-                    best = constructor;
-                    bestCount = parameters.Length;
-                    continue;
-                }
-
-                if (parameters.Length == bestCount && bestCount > 0)
-                {
-                    throw new NotSupportedException($"The type '{type}' has more than one constructor that can bind its members. Mark one with [{nameof(XmlConstructorAttribute)}].");
-                }
+                parameterized = constructor;
+                parameterizedCount++;
             }
 
-            return best;
+            // A key and value pair has no setters and no attribute could be put on its constructor, so it is
+            // created through the one it has.
+            var isPair = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>);
+            if (!isPair && (parameterless is not null || type.IsValueType))
+            {
+                return parameterless;
+            }
+
+            if (parameterizedCount > 1)
+            {
+                throw new NotSupportedException($"The type '{type}' has more than one constructor that can bind its members. Mark one with [{nameof(XmlConstructorAttribute)}].");
+            }
+
+            return parameterized;
         }
 
         /// <summary>

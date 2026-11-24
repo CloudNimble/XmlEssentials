@@ -52,15 +52,15 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void CamelCaseParameter_NextToAParameterlessConstructor_IsTheConstructorUsed()
+        public void CamelCaseParameter_NextToAParameterlessConstructor_IsNotTheConstructorUsed()
         {
-            // The constructor that takes the most members wins, as it did for a parameter spelled exactly
-            // like its member.
+            // A public parameterless constructor is used when a type has one, however well the parameters of
+            // another constructor name the members. The member is set through its setter.
             foreach (var options in new[] { Sensitive, Insensitive })
             {
                 var read = XmlSerializer.Deserialize<CamelOrParameterless>("<CamelOrParameterless><Name>Ada</Name></CamelOrParameterless>", options)!;
                 read.Name.Should().Be("Ada");
-                read.CreatedBy.Should().Be("parameterized");
+                read.CreatedBy.Should().Be("parameterless");
             }
         }
 

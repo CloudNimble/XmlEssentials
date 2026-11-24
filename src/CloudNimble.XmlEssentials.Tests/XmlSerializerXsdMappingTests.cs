@@ -210,7 +210,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     "mm|1.5|null|2|t|null|1:m:3:1|Circle:2:red:4:-,Ring:3:null:5:|null|next_day|a,b|null|null|2.50\n" +
                     "<drawing xmlns=\"urn:shapes\" xmlns:ns1=\"urn:shapes\" ns1:unit=\"mm\" scale=\"1.5\" rev=\"2\"><Title>t</Title>" +
                     "<Main" + Xsi + " xsi:type=\"Ring\" id=\"1\"><Name>m</Name><Radius>3</Radius><Inner>1</Inner></Main>" +
-                    "<Extra" + Xsi + " xsi:type=\"Circle\" id=\"2\" fill=\"red\"><Name>c</Name><Radius>4</Radius></Extra>" +
+                    "<Extra id=\"2\" fill=\"red\"><Name>c</Name><Radius>4</Radius></Extra>" +
                     "<Extra" + Xsi + " xsi:type=\"Ring\" id=\"3\"><Name>r</Name><Radius>5</Radius></Extra>" +
                     "<Mode>next-day</Mode><Tags><Tag>a</Tag><Tag>b</Tag></Tags>" +
                     "<Note" + Xsi + " xsi:nil=\"true\"/><Count" + Xsi + " xsi:nil=\"true\"/><Size>2.50</Size></drawing>\n" +

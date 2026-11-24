@@ -407,11 +407,11 @@ The code produces the following output:
 
 ```xml
 <Payment kind="card"><Amount>59.90</Amount><LastFour>4242</LastFour></Payment>
-<CardPayment kind="card"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
-<CardPayment kind="card"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
+<CardPayment><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
+<CardPayment><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
 ```
 
-A derived type inherits the polymorphism attributes of its base type, so the discriminator is written even when you serialize the derived type directly. System.Text.Json leaves the discriminator out in that case. Read a document with the same type argument that wrote it: a document written as `Payment` has a `<Payment>` root, and `Deserialize<CardPayment>` expects `<CardPayment>`.
+A discriminator says which derived type a value of the declared type is. A value that is serialized as its own type needs none, so none is written, as in `System.Xml.Serialization` and System.Text.Json. A derived type still inherits the list of its base type: a value of a type that derives from `CardPayment` and is listed on `Payment` is written with its discriminator when it is serialized as `CardPayment`. Read a document with the same type argument that wrote it: a document written as `Payment` has a `<Payment>` root, and `Deserialize<CardPayment>` expects `<CardPayment>`.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 

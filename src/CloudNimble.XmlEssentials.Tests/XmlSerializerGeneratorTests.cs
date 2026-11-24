@@ -614,7 +614,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """).Should().Be(
-                "Voltage=230|marked:4,5|parameterized:Ada|upper,lower|Dune|"
+                "Voltage=230|marked:4,5|parameterless:Ada|upper,lower|Dune|"
                 + "<Camel><Name>Voltage</Name><Value>230</Value></Camel>"
                 + "<Twins><Name>upper</Name><name>lower</name></Twins>"
                 + "<Titled><title>Dune</title></Titled>");
@@ -754,6 +754,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("public sealed class Odd { public Odd(string Name, int extra) { this.Name = Name; } public string Name { get; } }", "XMLESS002", DisplayName = "no constructor can be called: one parameter is not a member and has no default")]
         [DataRow("public sealed class Odd { [XmlConstructor] public Odd(string Name) { this.Name = Name; } [XmlConstructor] public Odd(string Name, int Age) { this.Name = Name; this.Age = Age; } public string Name { get; } public int Age { get; } }", "XMLESS005", DisplayName = "two marked constructors")]
         [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(int Age) { this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLESS005", DisplayName = "two constructors that bind as many members")]
+        [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(string Name, int Age) { this.Name = Name; this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLESS005", DisplayName = "two constructors with parameters of different sizes and no parameterless one")]
         public void GeneratedContext_ConstructorThatCannotBeChosenOrCalled_IsReported(string type, string expectedId)
         {
             var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + type + "\n[XmlSerializable<Odd>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";

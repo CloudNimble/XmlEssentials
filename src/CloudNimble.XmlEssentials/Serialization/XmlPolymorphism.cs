@@ -23,9 +23,18 @@ namespace CloudNimble.Text.Xml.Serialization
         internal readonly Type DeclaredType;
 
         /// <summary>
-        /// The derived-type choices.
+        /// The types a value of the declared type may be written as: the types that derive from the declared type.
+        /// The declared type is never one of them, so a value of the declared type is written as itself, under the
+        /// name of the member and with no discriminator.
         /// </summary>
         internal readonly XmlDerivedBinding[] Derived;
+
+        /// <summary>
+        /// Every type a document may identify here: <see cref="Derived"/>, and the rest of the list the declared
+        /// type inherits, which holds the declared type itself and the types beside it. A document that identifies
+        /// the declared type is read as it; one that identifies a type beside it is refused.
+        /// </summary>
+        internal readonly XmlDerivedBinding[] Known;
 
         /// <summary>
         /// Whether a derived type is written under its own element name.
@@ -71,14 +80,16 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="placement">Where the discriminator is written.</param>
         /// <param name="utf8DiscriminatorAttributeName">The discriminator attribute local name, or null.</param>
         /// <param name="unknownDerivedTypeHandling">How a runtime type that is not declared is handled.</param>
-        internal XmlPolymorphism(Type declaredType, XmlDerivedBinding[]? derived, XmlDiscriminatorPlacement placement, byte[]? utf8DiscriminatorAttributeName, XmlUnknownDerivedTypeHandling unknownDerivedTypeHandling)
+        /// <param name="known">Every type a document may identify, or null when it is <paramref name="derived"/>.</param>
+        internal XmlPolymorphism(Type declaredType, XmlDerivedBinding[]? derived, XmlDiscriminatorPlacement placement, byte[]? utf8DiscriminatorAttributeName, XmlUnknownDerivedTypeHandling unknownDerivedTypeHandling, XmlDerivedBinding[]? known = null)
         {
             DeclaredType = declaredType;
             Derived = derived ?? [];
+            Known = known ?? Derived;
             Placement = placement;
             Utf8DiscriminatorAttributeName = utf8DiscriminatorAttributeName ?? [];
             UnknownDerivedTypeHandling = unknownDerivedTypeHandling;
-            IsActive = Derived.Length > 0 || placement is not XmlDiscriminatorPlacement.ElementName;
+            IsActive = Known.Length > 0 || placement is not XmlDiscriminatorPlacement.ElementName;
             HasElementNames = Derived.Length > 0 && placement is XmlDiscriminatorPlacement.ElementName;
         }
 
@@ -93,7 +104,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <returns>The binding, or null.</returns>
         internal XmlDerivedBinding? FindByDiscriminator(string discriminator)
         {
-            foreach (var derived in Derived)
+            foreach (var derived in Known)
             {
                 if (derived.Discriminator == discriminator)
                 {
@@ -107,7 +118,7 @@ namespace CloudNimble.Text.Xml.Serialization
             if (Placement is XmlDiscriminatorPlacement.XsiType && discriminator.IndexOf(':') is > 0 and var colon)
             {
                 var local = discriminator.AsSpan(colon + 1);
-                foreach (var derived in Derived)
+                foreach (var derived in Known)
                 {
                     if (local.SequenceEqual(derived.Discriminator))
                     {
@@ -126,7 +137,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <returns>The binding, or null.</returns>
         internal XmlDerivedBinding? FindByElementName(ref Utf8XmlReader reader)
         {
-            foreach (var derived in Derived)
+            foreach (var derived in Known)
             {
                 if (derived.Matches(ref reader, caseInsensitive: true))
                 {

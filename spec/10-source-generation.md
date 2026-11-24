@@ -75,8 +75,8 @@ Primary library csproj:
    - XMLESS002: truly unsupported types (open generics that cannot close, `IntPtr`, pointers). **Do not fire** on `Dictionary<,>` maps, `[XmlMixed]`, `[XmlExtensionData]` bags, or `IAsyncEnumerable` at the `SerializeAsyncEnumerable` entry point.
    - XMLESS003: attribute mapping on complex type
    - XMLESS004: multiple `[XmlText]`
-   - XMLESS005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, two public constructors that bind the same number of members)
-   - Constructor choice follows the reflection resolver: the marked constructor, else the public one with the most parameters among those whose every parameter is named like a member. A constructor that is not accessible from the context is called through `[UnsafeAccessor]`. XMLESS002 is also reported when no constructor can be used: a parameter no member fills has no default, or a class has no parameterless constructor and none that binds.
+   - XMLESS005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, more than one public constructor with parameters and no public parameterless one)
+   - Constructor choice follows the reflection resolver: the marked constructor, else the public parameterless one (a struct is created as its default), else the one public constructor with parameters, as in System.Text.Json ([decision 81](24-doc-findings-resolution.md)). A constructor that is not accessible from the context is called through `[UnsafeAccessor]`. XMLESS002 is also reported when no constructor can be used: a parameter no member fills has no default, or a class has no parameterless constructor and none that binds.
    - XMLESS015: a text member (`[XmlText]`, `[XmlCData]`) whose type is not a single value and has no `[XmlConverter]`.
    - XMLESS017: a required member is marked `[XmlIgnore(Condition = WhenReading)]`, so it would never be read.
    - XMLESS006: invalid XML name after policy

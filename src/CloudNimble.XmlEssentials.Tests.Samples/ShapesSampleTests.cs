@@ -249,8 +249,8 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(Polymorphism.SerializeDeclaredType).Should().Be(
                 "<Payment kind=\"card\"><Amount>59.90</Amount><LastFour>4242</LastFour></Payment>\n" +
-                "<CardPayment kind=\"card\"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>\n" +
-                "<CardPayment kind=\"card\"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>");
+                "<CardPayment><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>\n" +
+                "<CardPayment><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>");
         }
 
 #if NET11_0_OR_GREATER

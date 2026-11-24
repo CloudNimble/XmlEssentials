@@ -74,7 +74,7 @@ namespace CloudNimble.Text.Xml.Serialization
             var polymorphism = _binding.Polymorphism;
             if (polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
             {
-                foreach (var derived in polymorphism.Derived)
+                foreach (var derived in polymorphism.Known)
                 {
                     if (derived.Matches(ref reader, Options.PropertyNameCaseInsensitive))
                     {

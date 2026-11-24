@@ -63,13 +63,13 @@ Serialize a member if:
 3. If read-only (no setter the serializer uses, and not constructor-bound): skipped when `IgnoreReadOnlyProperties` / `IgnoreReadOnlyFields`, unless it is a collection or a dictionary, which needs no setter (as System.Text.Json; [decision 71](24-doc-findings-resolution.md)).
 4. `init` and `required` members are included (match STJ). A `set` or `init` accessor is used when it is public, or when the member is marked `[XmlInclude]`; one that is not public is not used otherwise, so the property is read-only to the serializer, as in System.Text.Json with `[JsonInclude]` ([decision 79](24-doc-findings-resolution.md)).
 5. Records: compiler-generated parameters bind like STJ.
-6. Record structs and structs are supported. Parameterless constructor is not required if `[XmlConstructor]` or a unique parameterized constructor can bind all required members.
+6. Record structs and structs are supported. A struct is created as its default and its members are set, unless a constructor is marked `[XmlConstructor]`. A class needs no parameterless constructor when it has a marked constructor or one public constructor with parameters.
 
 Deserialize needs: setter, or `init`, or constructor parameter (name match against the member's C# name or XML name, always without regard to case as in STJ; an exact-case match wins when two members differ only by case), or `[XmlConstructor]`. A member with none of these is read only when the value it holds is populated (see "Object creation handling"); otherwise its element is passed over without being read, so what it holds does not have to be a value of the member's type. A constructor parameter whose property or field is marked `[XmlIgnore]` takes the default of its type.
 
 `PropertyNameCaseInsensitive` applies to the document element as well as to members. Ignoring case is an ASCII rule; a name that holds other characters matches only itself.
 
-Multiple parameterized constructors: `[XmlConstructor]` wins; else the public constructor whose parameters are a subset of serializable members, preferring most parameters. Ambiguity is `NotSupportedException` at type-info build.
+The constructor is chosen as System.Text.Json chooses it ([decision 81](24-doc-findings-resolution.md)): the one marked `[XmlConstructor]`; else the public parameterless constructor, and a struct is created as its default; else the one public constructor with parameters. More than one public constructor with parameters, none marked and no public parameterless one, is `NotSupportedException` at type-info build. A type with no public constructor is created through its parameterless constructor. `KeyValuePair<,>` is created through its constructor.
 
 ### Members of the same name
 
@@ -278,6 +278,8 @@ public class Product
 ```
 
 An item whose runtime type is the declared type itself (a plain `Product` here) is written under the member name, `<Products>`, and read back as the declared type.
+
+**A derived type as the declared type** ([decision 80](24-doc-findings-resolution.md)). A derived type inherits the list its base declares. Of that list, only the types that derive from the declared type are ones a value is written as: a `Book` declared as `Book` is written as itself, with no discriminator and under the name of its member, and a type below `Book` that `Product` lists is written with its discriminator or under its element name. This is what `System.Xml.Serialization` does. The whole list is used when a document is read: a discriminator or a document element that names the declared type is read as it, and one that names a type beside it (`Dvd` for a `Book`) is an `XmlException`. A member takes the element names of the types below its declared type only.
 
 Wrapped with `[XmlArray("Items")]`:
 
