@@ -132,7 +132,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     XmlConverterHelpers.WriteDiscriminator(writer, polymorphism.Placement, polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
                 }
 
-                derived.Info.WriteContentAsObject(writer, item);
+                derived.WriteContent(writer, item);
                 writer.WriteEndElement();
                 return;
             }

@@ -1645,6 +1645,75 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void ElementChoices_AndMembersInNoNamespace_AreWrittenAndReadAsTheReflectionResolverDoes()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public class Shape
+                {
+                    public string? Name { get; set; }
+                }
+
+                public sealed class Circle : Shape
+                {
+                    public int R { get; set; }
+                }
+
+                public sealed class Square : Shape
+                {
+                    public int S { get; set; }
+                }
+
+                [XmlRoot("page", Namespace = "urn:p")]
+                public sealed class Page
+                {
+                    [XmlElement<Circle>("circle")]
+                    [XmlElement<Square>("square")]
+                    public Shape? One { get; set; }
+
+                    [XmlElement<string>("t")]
+                    [XmlElement<int>("n")]
+                    [XmlElement<Square>("sq")]
+                    public List<object> Many { get; set; } = new();
+
+                    [XmlArray("wrapped")]
+                    [XmlArrayItem<Circle>("c")]
+                    [XmlArrayItem<Square>("s")]
+                    public List<Shape> Wrapped { get; set; } = new();
+
+                    [XmlElement("local", Namespace = "")]
+                    public string? Local { get; set; }
+
+                    [XmlArray("wrap", Namespace = "")]
+                    public List<int> Numbers { get; set; } = new();
+                }
+
+                [XmlSerializable<Page>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var page = new Page { One = new Square { S = 1 }, Local = "l" };
+                        page.Many.Add("a");
+                        page.Many.Add(2);
+                        page.Many.Add(new Square { S = 3 });
+                        page.Wrapped.Add(new Circle { R = 4 });
+                        page.Numbers.Add(5);
+                        return Both.Write(page, o => new AppXmlContext(o).Page, p => p.One!.GetType().Name + "," + p.Many.Count + "," + p.Many[2].GetType().Name + "," + p.Wrapped[0].GetType().Name + "," + p.Local + "," + p.Numbers[0]);
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<page xmlns=\"urn:p\"><square><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><S>1</S></square>"
+                + "<t>a</t><n>2</n><sq><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><S>3</S></sq>"
+                + "<wrapped><c><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><R>4</R></c></wrapped>"
+                + "<local xmlns=\"\">l</local><wrap xmlns=\"\"><int>5</int></wrap></page>"
+                + "\nsame\nSquare,3,Square,Circle,l,5\nSquare,3,Square,Circle,l,5");
+        }
+
+        [TestMethod]
         public void NullWrappedCollection_IsNil_UnlessTheIgnoreConditionLeavesItOut()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + """

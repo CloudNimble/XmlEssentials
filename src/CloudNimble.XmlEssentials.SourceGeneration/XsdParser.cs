@@ -218,9 +218,15 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                         bind.GlobalElements[name] = child;
                     }
 
-                    if (child.Attr("substitutionGroup") is { Length: > 0 } head)
+                    if (name is { Length: > 0 } && child.Attr("substitutionGroup") is { Length: > 0 } head)
                     {
-                        bind.SubstitutionHeads.Add(LocalName(head));
+                        if (!bind.Substitutes.TryGetValue(LocalName(head), out var substitutes))
+                        {
+                            substitutes = new List<string>();
+                            bind.Substitutes[LocalName(head)] = substitutes;
+                        }
+
+                        substitutes.Add(name);
                     }
 
                     continue;
@@ -263,9 +269,16 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
             }
 
+            // A member that names no namespace takes the default namespace in scope. That is the target
+            // namespace everywhere when every element is in it. When some element of a complex type is in no
+            // namespace, the default namespace changes on the way down, so each member names its own.
+            bind.ElementsQualified = root.Attr("elementFormDefault") == "qualified";
+            bind.AttributesQualified = root.Attr("attributeFormDefault") == "qualified";
+            bind.ExplicitNamespaces = targetNs.Length > 0 && (!bind.ElementsQualified || DeclaresUnqualifiedElement(root));
             foreach (var pair in enumerations)
             {
                 bind.TypeMap[pair.Key] = "global::" + ns + "." + Sanitize(pair.Key);
+                bind.EnumValues["global::" + ns + "." + Sanitize(pair.Key)] = pair.Value;
             }
 
             foreach (var typeName in bind.ComplexTypeOrder)
@@ -353,10 +366,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     continue;
                 }
 
-                if (element.Attr("substitutionGroup") is { Length: > 0 } head)
-                {
-                    bind.Warn("Element '" + elementName + "' is in the substitution group of '" + LocalName(head) + "'. Substitution groups are not mapped, so it is not read or written in place of '" + LocalName(head) + "'.");
-                }
 
                 if (element.Attr("type") is { } typeAttr)
                 {
@@ -389,10 +398,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 EnsureType(typeName, bind);
             }
 
-            if (bind.HasLocalElements && targetNs.Length > 0 && root.Attr("elementFormDefault") != "qualified")
-            {
-                bind.Warn("Schema '" + fileName + "' has a target namespace and local elements that are in no namespace (elementFormDefault is not \"qualified\"). The generated types write them in the target namespace.");
-            }
 
             if (typeSpecs.Count == 0)
             {
@@ -403,6 +408,30 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             // collection types are listed too, with their item types named.
             var listed = new HashSet<string>(StringComparer.Ordinal);
             var objectCount = typeSpecs.Count;
+            var hasMixed = false;
+            for (var i = 0; i < objectCount; i++)
+            {
+                foreach (var member in typeSpecs[i].Members)
+                {
+                    hasMixed |= member.IsMixed;
+                }
+            }
+
+            if (hasMixed)
+            {
+                // The text of mixed content is read as XmlMixedText, which the runtime library asks the context for.
+                const string mixedText = "global::CloudNimble.Text.Xml.Serialization.XmlMixedText";
+                var textMember = new MemberSpec("Text", "string", "Text", "", false, true, false, false, false, "", "", true, false, true, -1, -1, false, false);
+                typeSpecs.Add(new TypeSpec(
+                    mixedText,
+                    "XmlMixedText",
+                    0,
+                    false,
+                    true,
+                    false,
+                    new EquatableArray<MemberSpec>([textMember]),
+                    metadata: MetadataBuilder.BuildFromMembers(mixedText, [textMember])));
+            }
             for (var i = 0; i < objectCount; i++)
             {
                 foreach (var member in typeSpecs[i].Members)
@@ -517,17 +546,56 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             var used = new HashSet<string>(StringComparer.Ordinal) { className };
+            var inheritsMixed = false;
             foreach (var member in inherited)
             {
                 used.Add(member.ClrName);
+                inheritsMixed |= member.IsMixed;
             }
 
             var own = new List<MemberSpec>();
-            foreach (var member in BindType(complex, className, bind))
+            var bound = BindType(complex, className, bind);
+            foreach (var member in bound)
             {
+                // A name the schema gives is taken before a name the generator made up is settled.
+                if (member.Xsd is not { HasGeneratedName: true })
+                {
+                    used.Add(member.ClrName);
+                }
+            }
+
+            var seen = new HashSet<string>(StringComparer.Ordinal) { className };
+            foreach (var inheritedMember in inherited)
+            {
+                seen.Add(inheritedMember.ClrName);
+            }
+
+            foreach (var candidate in bound)
+            {
+                var member = candidate;
+                if (member.IsMixed && inheritsMixed)
+                {
+                    // The base class holds the content of the element already.
+                    continue;
+                }
+
+                if (member.Xsd is { HasGeneratedName: true })
+                {
+                    var ident = member.ClrName;
+                    for (var suffix = 2; used.Contains(ident); suffix++)
+                    {
+                        ident = member.ClrName + suffix;
+                    }
+
+                    used.Add(ident);
+                    seen.Add(ident);
+                    own.Add(Renamed(member, ident));
+                    continue;
+                }
+
                 // A property cannot have the name of its class, of another property, or of a property of a base
                 // class. An element and an attribute of one name are the usual cause.
-                if (!used.Add(member.ClrName))
+                if (!seen.Add(member.ClrName))
                 {
                     bind.Diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.GeneratedNameCollision, Location.None, className + "." + member.ClrName));
                     continue;
@@ -552,11 +620,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             var clrName = "global::" + bind.Namespace + "." + className;
             bind.Pocos.Add((bind.Namespace + "." + className + ".g.cs", EmitPoco(bind.Namespace, className, rootName, bind.TargetNamespace, own, documentation, baseClr, isAbstract, derived)));
+
+            // The write fast path writes one element for a member, in the namespace in scope. Anything else is
+            // written from the metadata: a value that may be of a derived class, a choice of elements, mixed
+            // content, extension data, and an element or an item that names no namespace of its own.
             var fastPath = !isAbstract && derived.Count == 0;
             foreach (var member in all)
             {
                 var valueType = TrimNullable(member.IsCollection ? member.ItemTypeName : member.ClrTypeName);
-                fastPath &= !member.IsExtensionData && !bind.PolymorphicClr.Contains(valueType);
+                fastPath &= !member.IsExtensionData
+                    && !member.IsMixed
+                    && !bind.PolymorphicClr.Contains(valueType)
+                    && member.Xsd is not ({ Choices: not null } or { IsUnqualified: true } or { ItemNamespace: not null });
             }
 
             bind.TypeSpecs.Add(new TypeSpec(
@@ -573,6 +648,37 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 bind.Members[typeName] = all;
             }
+        }
+
+        /// <summary>
+        /// Returns a member the generator named, under another name.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <param name="ident">The C# name, which is its XML name too: no element of the schema has it.</param>
+        /// <returns>The member with the new name.</returns>
+        internal static MemberSpec Renamed(MemberSpec member, string ident)
+        {
+            return new MemberSpec(
+                new MemberSpec(
+                    ident,
+                    member.ClrTypeName,
+                    ident,
+                    member.NamespaceUri,
+                    member.IsAttribute,
+                    member.IsText,
+                    member.IsCData,
+                    member.IsCollection,
+                    member.IsWrapped,
+                    ident,
+                    member.ItemTypeName,
+                    member.IsNillable,
+                    member.IsRequired,
+                    member.CanSet,
+                    member.IgnoreCondition,
+                    member.Order,
+                    member.IsExtensionData,
+                    member.IsMixed),
+                member.Xsd!);
         }
 
         /// <summary>
@@ -612,14 +718,15 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="owner">The owning class name.</param>
         /// <param name="bind">The bind context.</param>
         /// <returns>The members, without those of a base type, in the order the schema declares them.</returns>
+        /// <remarks>
+        /// A type with mixed content has its attributes and one member that holds the text and the elements in
+        /// the order of the document. The elements are not members of their own, because a member cannot say
+        /// where among the text its element stood.
+        /// </remarks>
         internal static List<MemberSpec> BindType(MiniElement complex, string owner, XsdBindContext bind)
         {
             var members = new List<MemberSpec>();
-            if (complex.Attr("mixed") == "true")
-            {
-                bind.Warn("The type of '" + owner + "' has mixed content. The text between its elements is not read or written.");
-            }
-
+            var mixed = complex.Attr("mixed") == "true";
             MiniElement? content = complex;
             foreach (var child in complex.Elements)
             {
@@ -628,11 +735,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     continue;
                 }
 
-                if (child.Attr("mixed") == "true")
-                {
-                    bind.Warn("The type of '" + owner + "' has mixed content. The text between its elements is not read or written.");
-                }
-
+                mixed |= child.Attr("mixed") == "true";
                 foreach (var derivation in child.Elements)
                 {
                     if (derivation.NamespaceUri != Xs || derivation.LocalName is not ("extension" or "restriction"))
@@ -663,12 +766,54 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
             }
 
-            if (content is not null)
+            if (mixed)
+            {
+                if (content is not null)
+                {
+                    BindAttributes(content, owner, bind, members);
+                }
+
+                const string item = "global::CloudNimble.Text.Xml.Serialization.XmlMixedContentItem";
+                members.Add(new MemberSpec("Content", "global::System.Collections.Generic.List<" + item + ">", "Content", "", false, false, false, true, false, "", item, true, false, true, -1, -1, false, true));
+            }
+            else if (content is not null)
             {
                 BindContent(content, owner, bind, members);
             }
 
             return members;
+        }
+
+        /// <summary>
+        /// Binds the attributes of a complex type or an extension, and nothing else of it.
+        /// </summary>
+        /// <param name="content">The element that holds the attributes.</param>
+        /// <param name="owner">The owning class name.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <param name="members">The members.</param>
+        internal static void BindAttributes(MiniElement content, string owner, XsdBindContext bind, List<MemberSpec> members)
+        {
+            var bound = new List<MemberSpec>();
+            foreach (var child in content.Elements)
+            {
+                if (child.NamespaceUri != Xs)
+                {
+                    continue;
+                }
+
+                if (child.LocalName == "attribute")
+                {
+                    BindAttribute(child, bind, bound);
+                }
+                else if (child.LocalName == "attributeGroup")
+                {
+                    BindAttributeGroup(child, owner, bind, bound, new HashSet<string>(StringComparer.Ordinal));
+                }
+            }
+
+            // An attribute group may hold xs:anyAttribute. The member for it is not an attribute, and mixed
+            // content is the only member a mixed type has besides its attributes.
+            members.AddRange(bound.FindAll(static member => member.IsAttribute));
         }
 
         /// <summary>
@@ -728,20 +873,35 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="optional">Whether the particles may be absent because of what holds the compositor.</param>
         /// <param name="repeating">Whether the particles repeat because of what holds the compositor.</param>
         /// <param name="groups">The named groups being bound, which is how a group that holds itself is found.</param>
+        /// <remarks>
+        /// A choice, and a group that repeats, is one member when its particles are elements of different types:
+        /// each element name stands for a type, and a list keeps the order of the document. When two of them have
+        /// one type the type does not say which element a value is, so each element is a member of its own.
+        /// </remarks>
         internal static void BindCompositor(MiniElement compositor, string owner, XsdBindContext bind, List<MemberSpec> members, bool optional, bool repeating, HashSet<string> groups)
         {
-            if (compositor.LocalName == "choice")
+            // A choice of one element is that element.
+            var isChoice = compositor.LocalName == "choice" && compositor.Elements.FindAll(static particle => particle.NamespaceUri == Xs && particle.LocalName != "annotation").Count > 1;
+            var repeats = Repeats(compositor);
+            optional |= compositor.Attr("minOccurs") == "0";
+            if (!repeating && (isChoice || repeats) && TryBindAsOneMember(compositor, owner, bind, members, optional, repeats))
             {
-                bind.Note("xs:choice is mapped as optional members.");
+                return;
+            }
+
+            if (isChoice)
+            {
+                bind.Note("xs:choice in '" + owner + "' is mapped as optional members, because its alternatives are not single elements of different types.");
                 optional = true;
             }
 
-            optional |= compositor.Attr("minOccurs") == "0";
-            if (Repeats(compositor))
+            if (repeats)
             {
-                if (!repeating)
+                // One element that repeats is a list, and a list keeps its order.
+                var particles = compositor.Elements.FindAll(static particle => particle.NamespaceUri == Xs && particle.LocalName != "annotation");
+                if (!repeating && !(particles.Count == 1 && particles[0].LocalName == "element"))
                 {
-                    bind.Warn("A repeating xs:" + compositor.LocalName + " in '" + owner + "' is mapped as members that each repeat. The order between them is not kept.");
+                    bind.Warn("A repeating xs:" + compositor.LocalName + " in '" + owner + "' is mapped as members that each repeat, because its elements are not of different types. The order between them is not kept.");
                 }
 
                 repeating = true;
@@ -775,6 +935,180 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     bind.Note("xs:" + particle.LocalName + " in '" + owner + "' is ignored.");
                 }
             }
+        }
+
+        /// <summary>
+        /// Binds a choice, or a group that repeats, as one member that holds a choice of elements.
+        /// </summary>
+        /// <param name="compositor">The compositor.</param>
+        /// <param name="owner">The owning class name.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <param name="members">The members.</param>
+        /// <param name="optional">Whether nothing of the compositor may be present.</param>
+        /// <param name="isList">Whether the compositor repeats, so that the member is a list.</param>
+        /// <returns>
+        /// <see langword="false"/> when the compositor holds anything but elements, an element that repeats inside
+        /// a choice that does not, or two elements of one type. Nothing is added then.
+        /// </returns>
+        internal static bool TryBindAsOneMember(MiniElement compositor, string owner, XsdBindContext bind, List<MemberSpec> members, bool optional, bool isList)
+        {
+            // First the elements are found. What is reported while finding them is reported again when the
+            // particles become members of their own, so it is taken back if this does not work out.
+            var reported = bind.Diagnostics.Count;
+            var elements = new List<(MiniElement Particle, string Name, MiniElement Declaration, bool IsReference)>();
+            var bound = true;
+            foreach (var particle in compositor.Elements)
+            {
+                if (particle.NamespaceUri != Xs || particle.LocalName == "annotation")
+                {
+                    continue;
+                }
+
+                if (particle.LocalName != "element"
+                    || (!isList && Repeats(particle))
+                    || !TryResolveElement(particle, owner, bind, out var name, out var declaration, out var isReference))
+                {
+                    bound = false;
+                    break;
+                }
+
+                elements.Add((particle, name, declaration, isReference));
+            }
+
+            var found = bind.Diagnostics.Count;
+
+            // Then their types. A class written for an anonymous type stays written, and so does what it reports.
+            var alternatives = new List<XsdAlternative>();
+            foreach (var (particle, name, declaration, isReference) in bound ? elements : new List<(MiniElement Particle, string Name, MiniElement Declaration, bool IsReference)>())
+            {
+                if (isReference && bind.Substitutes.ContainsKey(name))
+                {
+                    bound &= TryCollectSubstitutes(name, owner, bind, alternatives, new HashSet<string>(StringComparer.Ordinal));
+                    continue;
+                }
+
+                var typeName = declaration.Attr("type") is { } type && bind.ComplexTypes.ContainsKey(LocalName(type)) ? LocalName(type) : null;
+                alternatives.Add(new XsdAlternative(name, ElementNamespace(particle, isReference, bind), TrimNullable(ResolveElementType(declaration, isReference, owner, name, bind)), typeName));
+            }
+
+            // One element is an element: a sequence of one that repeats is a list of it, which needs no choice.
+            if (!bound || alternatives.Count < 2 || !HaveDifferentTypes(alternatives))
+            {
+                bind.Diagnostics.RemoveRange(reported, found - reported);
+                return false;
+            }
+
+            // The name is the generator's, so EmitClass makes it give way to the names the schema gives.
+            var ident = isList ? "Items" : "Item";
+            AddChoice(members, ident, ident, CommonType(alternatives, bind), alternatives, isList);
+            var added = members[members.Count - 1];
+            added.Xsd!.HasGeneratedName = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Adds the member that holds a choice of elements.
+        /// </summary>
+        /// <param name="members">The members.</param>
+        /// <param name="ident">The C# name of the member.</param>
+        /// <param name="localName">The XML name of the member, which a value of the member's own type is written under.</param>
+        /// <param name="declaredClr">The CLR type every alternative can be assigned to.</param>
+        /// <param name="alternatives">The elements the member may hold.</param>
+        /// <param name="isList">Whether the member holds many.</param>
+        internal static void AddChoice(List<MemberSpec> members, string ident, string localName, string declaredClr, List<XsdAlternative> alternatives, bool isList)
+        {
+            var member = isList
+                ? new MemberSpec(ident, "global::System.Collections.Generic.List<" + declaredClr + ">", localName, "", false, false, false, true, false, localName, declaredClr, true, false, true, -1, -1, false, false)
+                : new MemberSpec(ident, declaredClr, localName, "", false, false, false, false, false, localName, "", true, false, true, 3, -1, false, false);
+            members.Add(new MemberSpec(member, new XsdMemberDetails { Choices = alternatives }));
+        }
+
+        /// <summary>
+        /// Returns whether no two alternatives have one CLR type.
+        /// </summary>
+        /// <param name="alternatives">The alternatives.</param>
+        /// <returns><see langword="true"/> when the type of a value says which element it is.</returns>
+        internal static bool HaveDifferentTypes(List<XsdAlternative> alternatives)
+        {
+            var types = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var alternative in alternatives)
+            {
+                if (!types.Add(alternative.ClrTypeName))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns the CLR type every alternative can be assigned to.
+        /// </summary>
+        /// <param name="alternatives">The alternatives.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <returns>
+        /// The class of the nearest complex type all of them derive from or are, or <c>object</c> when there is
+        /// none or one of them is not of a named complex type.
+        /// </returns>
+        internal static string CommonType(List<XsdAlternative> alternatives, XsdBindContext bind)
+        {
+            List<string>? common = null;
+            foreach (var alternative in alternatives)
+            {
+                if (alternative.TypeName is null)
+                {
+                    return "object";
+                }
+
+                var chain = new List<string>();
+                for (var current = alternative.TypeName; current is not null && !chain.Contains(current); current = bind.BaseOf.TryGetValue(current, out var next) ? next : null)
+                {
+                    chain.Add(current);
+                }
+
+                common = common is null ? chain : common.FindAll(chain.Contains);
+            }
+
+            return common is { Count: > 0 } ? bind.TypeMap[common[0]] : "object";
+        }
+
+        /// <summary>
+        /// Collects the elements that may stand where the head of a substitution group is referred to: the head,
+        /// and every element that names it, or one that names it, as its substitution group.
+        /// </summary>
+        /// <param name="head">The name of the head element.</param>
+        /// <param name="owner">The owning class name.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <param name="alternatives">The list the elements are added to.</param>
+        /// <param name="visited">The heads that have been followed.</param>
+        /// <returns><see langword="false"/> when two of them have one CLR type.</returns>
+        /// <remarks>
+        /// An element that is abstract cannot appear in a document, so it is not added; the elements that stand
+        /// for it are.
+        /// </remarks>
+        internal static bool TryCollectSubstitutes(string head, string owner, XsdBindContext bind, List<XsdAlternative> alternatives, HashSet<string> visited)
+        {
+            if (!visited.Add(head) || !bind.GlobalElements.TryGetValue(head, out var declaration))
+            {
+                return true;
+            }
+
+            if (declaration.Attr("abstract") != "true")
+            {
+                var typeName = declaration.Attr("type") is { } type && bind.ComplexTypes.ContainsKey(LocalName(type)) ? LocalName(type) : null;
+                alternatives.Add(new XsdAlternative(head, bind.ExplicitNamespaces ? bind.TargetNamespace : null, TrimNullable(ResolveElementType(declaration, true, owner, head, bind)), typeName));
+            }
+
+            if (bind.Substitutes.TryGetValue(head, out var substitutes))
+            {
+                foreach (var substitute in substitutes)
+                {
+                    TryCollectSubstitutes(substitute, owner, bind, alternatives, visited);
+                }
+            }
+
+            return HaveDifferentTypes(alternatives);
         }
 
         /// <summary>
@@ -892,36 +1226,65 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             optional |= particle.Attr("minOccurs") == "0";
             var unbounded = repeating || Repeats(particle);
-            NoteValueConstraint(particle, declaration, name, bind);
             var nillable = declaration.Attr("nillable") == "true";
             var ident = Sanitize(name);
+            var elementNamespace = ElementNamespace(particle, isReference, bind);
+            var details = new XsdMemberDetails { IsUnqualified = elementNamespace is { Length: 0 } };
+            if (isReference && bind.Substitutes.ContainsKey(name))
+            {
+                // Where the head of a substitution group is allowed, so is each element of the group.
+                var substitutes = new List<XsdAlternative>();
+                if (TryCollectSubstitutes(name, owner, bind, substitutes, new HashSet<string>(StringComparer.Ordinal)))
+                {
+                    if (substitutes.Count > 0)
+                    {
+                        var headType = declaration.Attr("type") is { } type && bind.ComplexTypes.ContainsKey(LocalName(type)) ? LocalName(type) : null;
+                        var declared = headType is not null && substitutes.TrueForAll(substitute => substitute.TypeName is not null && DerivesFrom(substitute.TypeName, headType, bind))
+                            ? bind.TypeMap[headType]
+                            : "object";
+                        // One element that may stand there is that element, with its own type.
+                        AddChoice(members, ident, name, substitutes.Count == 1 ? substitutes[0].ClrTypeName : declared, substitutes, unbounded);
+                    }
+
+                    return;
+                }
+
+                bind.Warn("The elements that may stand for '" + name + "' in '" + owner + "' are not of different types, so only '" + name + "' itself is read and written there.");
+            }
+
+            // The elements that may stand for the head of a substitution group are a choice, which the member of
+            // a class holds. The wrapper element becomes a class then, as any other anonymous type does.
             if (!unbounded
                 && !isReference
                 && InlineComplexType(declaration) is { } wrapper
                 && WrappedItem(wrapper) is { } item
+                && !(item.Attr("ref") is { } itemRef && bind.Substitutes.ContainsKey(LocalName(itemRef)))
                 && TryResolveElement(item, owner + "_" + name, bind, out var itemName, out var itemDeclaration, out var itemIsReference))
             {
                 // An element that holds nothing but one repeating element is the wrapper of a collection.
                 var itemClr = TrimNullable(ResolveElementType(itemDeclaration, itemIsReference, Sanitize(owner + "_" + name), itemName, bind));
+                details.ItemNamespace = ElementNamespace(item, itemIsReference, bind);
                 members.Add(new MemberSpec(
-                    ident,
-                    "global::System.Collections.Generic.List<" + itemClr + ">",
-                    name,
-                    "",
-                    false,
-                    false,
-                    false,
-                    true,
-                    true,
-                    itemName,
-                    itemClr,
-                    true,
-                    false,
-                    true,
-                    nillable ? -1 : 3,
-                    -1,
-                    false,
-                    false));
+                    new MemberSpec(
+                        ident,
+                        "global::System.Collections.Generic.List<" + itemClr + ">",
+                        name,
+                        elementNamespace ?? "",
+                        false,
+                        false,
+                        false,
+                        true,
+                        true,
+                        itemName,
+                        itemClr,
+                        true,
+                        false,
+                        true,
+                        nillable ? -1 : 3,
+                        -1,
+                        false,
+                        false),
+                    details));
                 return;
             }
 
@@ -929,8 +1292,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             if (unbounded)
             {
                 var itemType = TrimNullable(clrType);
-                members.Add(new MemberSpec(ident, "global::System.Collections.Generic.List<" + itemType + ">", name, "", false, false, false, true, false, name, itemType, true, false, true, -1, -1, false, false));
+                members.Add(new MemberSpec(
+                    new MemberSpec(ident, "global::System.Collections.Generic.List<" + itemType + ">", name, elementNamespace ?? "", false, false, false, true, false, name, itemType, true, false, true, -1, -1, false, false),
+                    details));
                 return;
+            }
+
+            // A default applies to an element that is present and empty, and an element that may be absent stays
+            // absent, so only an element that must be present starts with its default.
+            if (!optional)
+            {
+                details.Initializer = Initializer(particle, declaration, clrType, name, bind);
+            }
+            else
+            {
+                NoteValueConstraint(particle, declaration, name, bind);
             }
 
             // A value type has no way to say that the element is absent or nil, so it becomes nullable when the
@@ -942,7 +1318,75 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 clrType += "?";
             }
 
-            members.Add(new MemberSpec(ident, clrType, name, "", false, false, false, false, false, name, "", canBeNull, false, true, canBeNull && !nillable ? 3 : -1, -1, false, false));
+            members.Add(new MemberSpec(
+                new MemberSpec(ident, clrType, name, elementNamespace ?? "", false, false, false, false, false, name, "", canBeNull, false, true, canBeNull && !nillable ? 3 : -1, -1, false, false),
+                details));
+        }
+
+        /// <summary>
+        /// Returns the namespace an element member names for itself.
+        /// </summary>
+        /// <param name="particle">The particle.</param>
+        /// <param name="isReference">Whether the particle refers to a global element.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <returns>
+        /// <see langword="null"/> when members name no namespace, because every element of the schema is in the
+        /// target namespace or there is none. Otherwise the target namespace, for a global element and for an
+        /// element whose form is qualified, or an empty string for an element in no namespace.
+        /// </returns>
+        internal static string? ElementNamespace(MiniElement particle, bool isReference, XsdBindContext bind)
+        {
+            if (!bind.ExplicitNamespaces)
+            {
+                return null;
+            }
+
+            var qualified = isReference || (particle.Attr("form") is { } form ? form == "qualified" : bind.ElementsQualified);
+            return qualified ? bind.TargetNamespace : "";
+        }
+
+        /// <summary>
+        /// Returns whether a named complex type is another, or derives from it.
+        /// </summary>
+        /// <param name="typeName">The name of the type.</param>
+        /// <param name="baseName">The name of the type it may derive from.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <returns><see langword="true"/> when a value of the one can be assigned to the other.</returns>
+        internal static bool DerivesFrom(string typeName, string baseName, XsdBindContext bind)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (var current = typeName; seen.Add(current); current = bind.BaseOf[current])
+            {
+                if (current == baseName)
+                {
+                    return true;
+                }
+
+                if (!bind.BaseOf.ContainsKey(current))
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns whether a schema declares an element of a complex type with <c>form="unqualified"</c>.
+        /// </summary>
+        /// <param name="element">The schema, or an element inside it.</param>
+        /// <returns><see langword="true"/> when some element says it is in no namespace.</returns>
+        internal static bool DeclaresUnqualifiedElement(MiniElement element)
+        {
+            foreach (var child in element.Elements)
+            {
+                if ((child.NamespaceUri == Xs && child.LocalName == "element" && child.Attr("form") == "unqualified") || DeclaresUnqualifiedElement(child))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -973,14 +1417,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     bind.Warn("The element '" + name + "' that '" + owner + "' refers to is not in the schema. It is mapped as a string.");
                 }
 
-                if (bind.SubstitutionHeads.Contains(name))
-                {
-                    bind.Warn("The element '" + name + "' that '" + owner + "' refers to heads a substitution group. Substitution groups are not mapped, so only '" + name + "' itself is read and written there.");
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(name))
-            {
-                bind.HasLocalElements = true;
+
             }
 
             if (string.IsNullOrWhiteSpace(name))
@@ -1022,8 +1459,13 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
 
                 var nestedName = Sanitize(owner + "_" + name);
-                if (bind.ClassNames.Add(nestedName))
+                if (bind.NestedClasses.Contains(nestedName))
                 {
+                    // The element has been looked at before, and its class is written.
+                }
+                else if (bind.ClassNames.Add(nestedName))
+                {
+                    bind.NestedClasses.Add(nestedName);
                     EmitClass(nestedName, name, inline, null, ReadDocumentation(inline), bind);
                 }
                 else
@@ -1060,10 +1502,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             var declaration = attribute;
             var name = attribute.Attr("name");
-            var attributeNamespace = "";
+
+            // An attribute declared in a complex type is in no namespace unless its form is qualified. A global
+            // attribute is in the target namespace, and so is a reference to one.
+            var attributeNamespace = (attribute.Attr("form") is { } form ? form == "qualified" : bind.AttributesQualified) ? bind.TargetNamespace : "";
             if (string.IsNullOrWhiteSpace(name) && attribute.Attr("ref") is { Length: > 0 } attributeRef)
             {
                 name = LocalName(attributeRef);
+                attributeNamespace = bind.TargetNamespace;
                 if (attributeRef.StartsWith("xml:", StringComparison.Ordinal))
                 {
                     // xml:lang, xml:space and xml:base are declared by the XML namespace itself, and are text.
@@ -1090,7 +1536,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return;
             }
 
-            NoteValueConstraint(attribute, declaration, name!, bind);
             var clrType = "string";
             if (declaration.Attr("type") is { } typeName)
             {
@@ -1108,14 +1553,130 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             // An attribute is optional unless use="required", and a value type has no way to say it is absent.
+            // An attribute with a default is never absent: a document that leaves it out means the default.
+            var initializer = Initializer(attribute, declaration, clrType, name!, bind);
             var isValue = IsValueClr(clrType) || IsEnumClr(clrType, bind.TypeSpecs);
-            var canBeNull = !isValue || attribute.Attr("use") != "required";
+            var canBeNull = !isValue || (attribute.Attr("use") != "required" && initializer.Length == 0);
             if (isValue && canBeNull)
             {
                 clrType += "?";
             }
 
-            members.Add(new MemberSpec(Sanitize(name!), clrType, name!, attributeNamespace, true, false, false, false, false, "", "", canBeNull, false, true, -1, -1, false, false));
+            members.Add(new MemberSpec(
+                new MemberSpec(Sanitize(name!), clrType, name!, attributeNamespace, true, false, false, false, false, "", "", canBeNull, false, true, -1, -1, false, false),
+                new XsdMemberDetails { Initializer = initializer }));
+        }
+
+        /// <summary>
+        /// Returns the C# expression for the <c>default</c> or <c>fixed</c> value of an element or attribute.
+        /// </summary>
+        /// <param name="use">The particle or attribute use.</param>
+        /// <param name="declaration">The declaration it refers to, or itself.</param>
+        /// <param name="clrType">The CLR type of the member, not nullable.</param>
+        /// <param name="name">The XML name.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <returns>
+        /// The expression, or an empty string when there is no value or the value cannot be written as a C#
+        /// constant of the type, which is reported.
+        /// </returns>
+        internal static string Initializer(MiniElement use, MiniElement declaration, string clrType, string name, XsdBindContext bind)
+        {
+            foreach (var constraint in new[] { "default", "fixed" })
+            {
+                if ((use.Attr(constraint) ?? declaration.Attr(constraint)) is not { } value)
+                {
+                    continue;
+                }
+
+                if (TryLiteral(clrType, value, bind, out var literal))
+                {
+                    return literal;
+                }
+
+                bind.Note("The " + constraint + " value '" + value + "' of '" + name + "' is not applied to the generated member.");
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Writes a value of a schema as a C# constant of a CLR type.
+        /// </summary>
+        /// <param name="clrType">The CLR type.</param>
+        /// <param name="value">The value, in the lexical form of the schema type.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <param name="literal">Receives the C# expression.</param>
+        /// <returns>
+        /// <see langword="false"/> when the type has no constants (a date, a time, a GUID, a URI, binary data) or
+        /// the value is not one of the type.
+        /// </returns>
+        internal static bool TryLiteral(string clrType, string value, XsdBindContext bind, out string literal)
+        {
+            var invariant = System.Globalization.CultureInfo.InvariantCulture;
+            var text = value.Trim();
+            literal = "";
+            switch (clrType)
+            {
+                case "string":
+                    literal = "\"" + ContextEmitter.Escape(value) + "\"";
+                    return true;
+                case "bool":
+                    literal = text is "true" or "1" ? "true" : "false";
+                    return text is "true" or "1" or "false" or "0";
+                case "sbyte" or "short" or "int" or "long":
+                    if (!long.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign, invariant, out var signed)
+                        || (clrType == "sbyte" && (signed < sbyte.MinValue || signed > sbyte.MaxValue))
+                        || (clrType == "short" && (signed < short.MinValue || signed > short.MaxValue))
+                        || (clrType == "int" && (signed < int.MinValue || signed > int.MaxValue)))
+                    {
+                        return false;
+                    }
+
+                    literal = signed.ToString(invariant) + (clrType == "long" ? "L" : "");
+                    return true;
+                case "byte" or "ushort" or "uint" or "ulong":
+                    if (!ulong.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign, invariant, out var unsigned)
+                        || (clrType == "byte" && unsigned > byte.MaxValue)
+                        || (clrType == "ushort" && unsigned > ushort.MaxValue)
+                        || (clrType == "uint" && unsigned > uint.MaxValue))
+                    {
+                        return false;
+                    }
+
+                    literal = unsigned.ToString(invariant) + (clrType == "ulong" ? "UL" : clrType == "uint" ? "U" : "");
+                    return true;
+                case "decimal":
+                    if (!decimal.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint, invariant, out var number))
+                    {
+                        return false;
+                    }
+
+                    literal = number.ToString(invariant) + "M";
+                    return true;
+                case "float" or "double":
+                    var type = clrType == "float" ? "float" : "double";
+                    if (text is "INF" or "-INF" or "NaN")
+                    {
+                        literal = type + (text == "INF" ? ".PositiveInfinity" : text == "-INF" ? ".NegativeInfinity" : ".NaN");
+                        return true;
+                    }
+
+                    if (!double.TryParse(text, System.Globalization.NumberStyles.Float, invariant, out var real) || double.IsInfinity(real) || double.IsNaN(real))
+                    {
+                        return false;
+                    }
+
+                    literal = clrType == "float" ? ((float)real).ToString("R", invariant) + "F" : real.ToString("R", invariant) + "D";
+                    return true;
+                default:
+                    if (bind.EnumValues.TryGetValue(clrType, out var values) && values.Contains(value))
+                    {
+                        literal = clrType + "." + Sanitize(value);
+                        return true;
+                    }
+
+                    return false;
+            }
         }
 
         /// <summary>
@@ -1160,7 +1721,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="complex">An anonymous complex type.</param>
         /// <returns>
         /// The element particle, or null when the type has an attribute, mixed content, a base type, or a content
-        /// other than a sequence of one repeating element.
+        /// other than a sequence or a choice of one element, where the element or the group repeats.
         /// </returns>
         internal static MiniElement? WrappedItem(MiniElement complex)
         {
@@ -1169,7 +1730,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return null;
             }
 
-            MiniElement? sequence = null;
+            MiniElement? group = null;
             foreach (var child in complex.Elements)
             {
                 if (child.NamespaceUri == Xs && child.LocalName == "annotation")
@@ -1177,23 +1738,23 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     continue;
                 }
 
-                if (sequence is not null || child.NamespaceUri != Xs || child.LocalName != "sequence" || Repeats(child) || child.Attr("minOccurs") == "0")
+                if (group is not null || child.NamespaceUri != Xs || child.LocalName is not ("sequence" or "choice"))
                 {
                     return null;
                 }
 
-                sequence = child;
+                group = child;
             }
 
             MiniElement? item = null;
-            foreach (var particle in sequence?.Elements ?? new List<MiniElement>())
+            foreach (var particle in group?.Elements ?? new List<MiniElement>())
             {
                 if (particle.NamespaceUri == Xs && particle.LocalName == "annotation")
                 {
                     continue;
                 }
 
-                if (item is not null || particle.NamespaceUri != Xs || particle.LocalName != "element" || !Repeats(particle))
+                if (item is not null || particle.NamespaceUri != Xs || particle.LocalName != "element")
                 {
                     return null;
                 }
@@ -1201,7 +1762,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 item = particle;
             }
 
-            return item;
+            // The element repeats, or the group that holds it alone does. Either way the wrapper holds a list.
+            return item is not null && (Repeats(item) || Repeats(group!)) ? item : null;
         }
 
         /// <summary>
@@ -1544,41 +2106,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.AppendLine("    {");
             foreach (var member in members)
             {
-                if (member.IsExtensionData)
+                foreach (var attribute in MemberAttributes(member))
                 {
-                    builder.AppendLine("        [XmlExtensionData]");
-                    builder.Append("        public ").Append(member.ClrTypeName).Append("? ").Append(member.ClrName).AppendLine(" { get; set; }");
-                    builder.AppendLine();
-                    continue;
-                }
-
-                if (member.IsAttribute)
-                {
-                    builder.Append("        [XmlAttribute(\"").Append(ContextEmitter.Escape(member.LocalName)).Append('"');
-                    if (member.NamespaceUri.Length > 0)
-                    {
-                        builder.Append(", Namespace = \"").Append(ContextEmitter.Escape(member.NamespaceUri)).Append('"');
-                    }
-
-                    builder.AppendLine(")]");
-                }
-                else if (member.IsText)
-                {
-                    builder.AppendLine("        [XmlText]");
-                }
-                else if (member.IsCollection && member.IsWrapped)
-                {
-                    builder.Append("        [XmlArray(\"").Append(ContextEmitter.Escape(member.LocalName)).AppendLine("\")]");
-                    builder.Append("        [XmlArrayItem(\"").Append(ContextEmitter.Escape(member.ItemLocalName)).AppendLine("\")]");
-                }
-                else if (member.LocalName != member.ClrName)
-                {
-                    builder.Append("        [XmlElement(\"").Append(ContextEmitter.Escape(member.LocalName)).AppendLine("\")]");
-                }
-
-                if (member.IgnoreCondition == 3)
-                {
-                    builder.AppendLine("        [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]");
+                    builder.Append("        [").Append(attribute.ToAttribute()).AppendLine("]");
                 }
 
                 var propType = member.ClrTypeName;
@@ -1587,7 +2117,13 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     propType += "?";
                 }
 
-                builder.Append("        public ").Append(propType).Append(' ').Append(member.ClrName).AppendLine(" { get; set; }");
+                builder.Append("        public ").Append(propType).Append(' ').Append(member.ClrName).Append(" { get; set; }");
+                if (member.Xsd is { Initializer.Length: > 0 } details)
+                {
+                    builder.Append(" = ").Append(details.Initializer).Append(';');
+                }
+
+                builder.AppendLine();
                 builder.AppendLine();
             }
 
@@ -1595,6 +2131,58 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.AppendLine();
             builder.AppendLine("}");
             return builder.ToString();
+        }
+
+        /// <summary>
+        /// Returns the mapping attributes of a member, which are written on its property and into the metadata.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <returns>The attributes, in the order they are written.</returns>
+        internal static List<XsdAttributeSyntax> MemberAttributes(MemberSpec member)
+        {
+            var attributes = new List<XsdAttributeSyntax>();
+            var elementNamespace = member.Xsd is { IsUnqualified: true } ? "" : member.NamespaceUri.Length > 0 ? member.NamespaceUri : null;
+            if (member.IsExtensionData)
+            {
+                attributes.Add(new XsdAttributeSyntax("XmlExtensionData"));
+            }
+            else if (member.IsMixed)
+            {
+                attributes.Add(new XsdAttributeSyntax("XmlMixed"));
+            }
+            else if (member.IsAttribute)
+            {
+                attributes.Add(new XsdAttributeSyntax("XmlAttribute").Argument(member.LocalName).Namespace(elementNamespace));
+            }
+            else if (member.IsText)
+            {
+                attributes.Add(new XsdAttributeSyntax("XmlText"));
+            }
+            else if (member.Xsd is { Choices: { } choices })
+            {
+                foreach (var choice in choices)
+                {
+                    attributes.Add(new XsdAttributeSyntax("XmlElement", choice.ClrTypeName).Argument(choice.Name).Namespace(choice.Namespace));
+                }
+            }
+            else if (member.IsCollection && member.IsWrapped)
+            {
+                attributes.Add(new XsdAttributeSyntax("XmlArray").Argument(member.LocalName).Namespace(elementNamespace));
+                attributes.Add(new XsdAttributeSyntax("XmlArrayItem").Argument(member.ItemLocalName).Namespace(member.Xsd?.ItemNamespace));
+            }
+            else if (member.LocalName != member.ClrName || elementNamespace is not null)
+            {
+                attributes.Add(new XsdAttributeSyntax("XmlElement").Argument(member.LocalName).Namespace(elementNamespace));
+            }
+
+            if (member.IgnoreCondition == 3)
+            {
+                var ignore = new XsdAttributeSyntax("XmlIgnore");
+                ignore.Properties.Add(new KeyValuePair<string, string>("Condition", "XmlIgnoreCondition.WhenWritingNull"));
+                attributes.Add(ignore);
+            }
+
+            return attributes;
         }
 
         /// <summary>

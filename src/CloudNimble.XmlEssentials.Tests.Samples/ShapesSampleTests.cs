@@ -91,6 +91,17 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample14_Namespaces_PutMemberInNoNamespace()
+        {
+            SampleOutput.Capture(Namespaces.PutMemberInNoNamespace).Should().Be(
+                Declaration + "\n" +
+                "<Order xmlns=\"urn:example:orders\">\n" +
+                "  <Customer>Fabrikam</Customer>\n" +
+                "  <Id xmlns=\"\">7</Id>\n" +
+                "</Order>");
+        }
+
+        [TestMethod]
         public void Sample14_Namespaces_ReadPrefixes()
         {
             SampleOutput.Capture(Namespaces.ReadPrefixes).Should().Be(
@@ -189,6 +200,17 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "Book: Clean Code\n" +
                 "Dvd: The Matrix\n" +
                 "Product: Gift card");
+        }
+
+        [TestMethod]
+        public void Sample16_Polymorphism_ChooseByElementName()
+        {
+            SampleOutput.Capture(Polymorphism.ChooseByElementName).Should().Be(
+                "<Timeline><note>start</note><pause>5</pause><mark><Title>half</Title></mark><note>end</note></Timeline>\n" +
+                "String\n" +
+                "Int32\n" +
+                "TimelineMark\n" +
+                "String");
         }
 
         [TestMethod]

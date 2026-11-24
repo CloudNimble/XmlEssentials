@@ -135,7 +135,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "  next_day [" + S + ".XmlPropertyNameAttribute(\"next-day\")]",
                 "  Plain",
                 "class " + G + "Drawing [" + S + ".XmlRootAttribute(\"drawing\", Namespace = \"urn:shapes\")]",
-                "  string? unit [" + S + ".XmlAttributeAttribute(\"unit\")]",
+                "  string? unit [" + S + ".XmlAttributeAttribute(\"unit\", Namespace = \"urn:shapes\")]",
                 "  double? scale [" + S + ".XmlAttributeAttribute(\"scale\")]",
                 "  string? by [" + S + ".XmlAttributeAttribute(\"by\")]",
                 "  int? rev [" + S + ".XmlAttributeAttribute(\"rev\")]",
@@ -181,7 +181,7 @@ namespace CloudNimble.XmlEssentials.Tests
                         // A document as another producer writes it: a prefix for the namespace, and the same prefix
                         // in the value of xsi:type.
                         const string document =
-                            "<d:drawing xmlns:d=\"urn:shapes\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" unit=\"mm\" scale=\"1.5\" rev=\"2\">" +
+                            "<d:drawing xmlns:d=\"urn:shapes\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" d:unit=\"mm\" scale=\"1.5\" rev=\"2\">" +
                             "<d:Title>t</d:Title>" +
                             "<d:Main xsi:type=\"d:Ring\" id=\"1\"><d:Name>m</d:Name><d:Radius>3</d:Radius><d:Inner>1</d:Inner></d:Main>" +
                             "<d:Extra id=\"2\" fill=\"red\"><d:Name>c</d:Name><d:Radius>4</d:Radius></d:Extra>" +
@@ -208,7 +208,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """).Should().Be(
                     "mm|1.5|null|2|t|null|1:m:3:1|Circle:2:red:4:-,Ring:3:null:5:|null|next_day|a,b|null|null|2.50\n" +
-                    "<drawing xmlns=\"urn:shapes\" unit=\"mm\" scale=\"1.5\" rev=\"2\"><Title>t</Title>" +
+                    "<drawing xmlns=\"urn:shapes\" xmlns:ns1=\"urn:shapes\" ns1:unit=\"mm\" scale=\"1.5\" rev=\"2\"><Title>t</Title>" +
                     "<Main" + Xsi + " xsi:type=\"Ring\" id=\"1\"><Name>m</Name><Radius>3</Radius><Inner>1</Inner></Main>" +
                     "<Extra" + Xsi + " xsi:type=\"Circle\" id=\"2\" fill=\"red\"><Name>c</Name><Radius>4</Radius></Extra>" +
                     "<Extra" + Xsi + " xsi:type=\"Ring\" id=\"3\"><Name>r</Name><Radius>5</Radius></Extra>" +
@@ -234,7 +234,7 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void UnmappedConstructs_AreReported_AndTheRestIsGenerated()
+        public void WhatIsNotInTheSchemaOrIsNotEnforced_IsReported_AndTheRestIsGenerated()
         {
             const string schema = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:t" targetNamespace="urn:t">
@@ -255,7 +255,7 @@ namespace CloudNimble.XmlEssentials.Tests
                       </xs:restriction>
                     </xs:complexContent>
                   </xs:complexType>
-                  <xs:complexType name="Page" mixed="true">
+                  <xs:complexType name="Page">
                     <xs:sequence>
                       <xs:element ref="t:shape"/>
                       <xs:element ref="t:missing"/>
@@ -291,37 +291,27 @@ namespace CloudNimble.XmlEssentials.Tests
 
             diagnostics.Should().Equal(
                 "Warning XMLESS018: The elements 'shape', 'figure' share the type 'Shape'. The generated class has one root name, 'shape'.",
-                "Info XMLESS011: The default value 'none' of 'Name' is not applied to the generated member.",
-                "Warning XMLESS018: Element 'circle' is in the substitution group of 'shape'. Substitution groups are not mapped, so it is not read or written in place of 'shape'.",
                 "Info XMLESS011: 'Circle' restricts 'Shape'. It is mapped as a class derived from it, and what it restricts is not enforced.",
-                "Warning XMLESS018: The type of 'Page' has mixed content. The text between its elements is not read or written.",
-                "Warning XMLESS018: The element 'shape' that 'Page' refers to heads a substitution group. Substitution groups are not mapped, so only 'shape' itself is read and written there.",
                 "Warning XMLESS018: The element 'missing' that 'Page' refers to is not in the schema. It is mapped as a string.",
-                "Info XMLESS011: xs:choice is mapped as optional members.",
-                "Warning XMLESS018: A repeating xs:sequence in 'Page' is mapped as members that each repeat. The order between them is not kept.",
                 "Warning XMLESS018: The group 'Gone' that 'Page' refers to is not in the schema, so its elements are not generated.",
-                "Info XMLESS011: The fixed value '2' of 'version' is not applied to the generated member.",
                 "Warning XMLESS018: The attribute 'absent' that a ref names is not in the schema. It is mapped as a string.",
                 "Warning XMLESS018: The attribute group 'Lost' that 'Page' refers to is not in the schema, so its attributes are not generated.",
-                "Warning XMLESS018: The base type 'Elsewhere' of 'Foreign' is not a complex type of the schema, so its members are not generated.",
-                "Warning XMLESS018: Schema 't.xsd' has a target namespace and local elements that are in no namespace (elementFormDefault is not \"qualified\"). The generated types write them in the target namespace.");
+                "Warning XMLESS018: The base type 'Elsewhere' of 'Foreign' is not a complex type of the schema, so its members are not generated.");
             declared.Should().Equal(
-                "class " + G + "Shape [" + S + ".XmlRootAttribute(\"shape\", Namespace = \"urn:t\"), " + XsiType + ", " + S + ".XmlDerivedTypeAttribute<" + G + "Circle>(\"Circle\")]",
-                "  string? Name [" + Ignore + "]",
+                "class " + G + "Shape [" + S + ".XmlRootAttribute(\"shape\", Namespace = \"urn:t\"), " + S + ".XmlPolymorphicAttribute(DiscriminatorPlacement = CloudNimble.Text.Xml.XmlDiscriminatorPlacement.XsiType), " + S + ".XmlDerivedTypeAttribute<" + G + "Circle>(\"Circle\")]",
+                "  string? Name [" + S + ".XmlElementAttribute(\"Name\", Namespace = \"\"), " + Ignore + "]",
                 "class " + G + "Circle : Shape [" + S + ".XmlRootAttribute(\"circle\", Namespace = \"urn:t\")]",
                 "class " + G + "Page [" + S + ".XmlRootAttribute(\"Page\", Namespace = \"urn:t\")]",
-                "  int? version [" + S + ".XmlAttributeAttribute(\"version\")]",
-                "  string? absent [" + S + ".XmlAttributeAttribute(\"absent\")]",
+                "  int version [" + S + ".XmlAttributeAttribute(\"version\")]",
+                "  string? absent [" + S + ".XmlAttributeAttribute(\"absent\", Namespace = \"urn:t\")]",
                 "  string? lang [" + S + ".XmlAttributeAttribute(\"lang\", Namespace = \"http://www.w3.org/XML/1998/namespace\")]",
-                "  " + G + "Shape? shape [" + Ignore + "]",
-                "  string? missing [" + Ignore + "]",
-                "  string? Card [" + Ignore + "]",
-                "  int? Cash [" + Ignore + "]",
-                "  System.Collections.Generic.List<string>? Key",
-                "  System.Collections.Generic.List<int>? Value",
+                "  " + G + "Shape? shape [" + S + ".XmlElementAttribute<" + G + "Shape>(\"shape\", Namespace = \"urn:t\"), " + S + ".XmlElementAttribute<" + G + "Circle>(\"circle\", Namespace = \"urn:t\"), " + Ignore + "]",
+                "  string? missing [" + S + ".XmlElementAttribute(\"missing\", Namespace = \"urn:t\"), " + Ignore + "]",
+                "  object? Item [" + S + ".XmlElementAttribute<System.String>(\"Card\", Namespace = \"\"), " + S + ".XmlElementAttribute<System.Int32>(\"Cash\", Namespace = \"\"), " + Ignore + "]",
+                "  System.Collections.Generic.List<object>? Items [" + S + ".XmlElementAttribute<System.String>(\"Key\", Namespace = \"\"), " + S + ".XmlElementAttribute<System.Int32>(\"Value\", Namespace = \"\")]",
                 "class " + G + "Foreign [" + S + ".XmlRootAttribute(\"Foreign\", Namespace = \"urn:t\")]",
-                "  string? Own [" + Ignore + "]",
-                "class " + G + "TXmlContext : XmlSerializerContext [" + string.Join(", ", new[] { "Shape", "Circle", "Page", "Foreign" }.Select(name => S + ".XmlSerializableAttribute<" + G + name + ">")) + "]",
+                "  string? Own [" + S + ".XmlElementAttribute(\"Own\", Namespace = \"\"), " + Ignore + "]",
+                "class " + G + "TXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<" + G + "Shape>, " + S + ".XmlSerializableAttribute<" + G + "Circle>, " + S + ".XmlSerializableAttribute<" + G + "Page>, " + S + ".XmlSerializableAttribute<" + G + "Foreign>]",
                 "  " + S + ".XmlTypeInfo<" + G + "Shape> Shape",
                 "  " + S + ".XmlTypeInfo<" + G + "Circle> Circle",
                 "  " + S + ".XmlTypeInfo<" + G + "Page> Page",
@@ -429,25 +419,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void UnqualifiedLocalElements_InATargetNamespace_AreReported()
-        {
-            const string schema = """
-                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:u">
-                  <xs:element name="Order">
-                    <xs:complexType>
-                      <xs:sequence>
-                        <xs:element name="Id" type="xs:string"/>
-                      </xs:sequence>
-                    </xs:complexType>
-                  </xs:element>
-                </xs:schema>
-                """;
-
-            Generate(schema, "u.xsd").Diagnostics.Should().Equal(
-                "Warning XMLESS018: Schema 'u.xsd' has a target namespace and local elements that are in no namespace (elementFormDefault is not \"qualified\"). The generated types write them in the target namespace.");
-        }
-
-        [TestMethod]
         public void ReferenceToAGlobalElement_UsesTheClassOfThatElement()
         {
             const string schema = """
@@ -509,7 +480,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Private Methods
 
-        private static string Execute(string schema, string fileName, string source)
+        internal static string Execute(string schema, string fileName, string source)
         {
             var (compilation, diagnostics, _) = GeneratorTestHost.Run(source, [new TestAdditionalText(fileName, schema)], null);
             diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
@@ -531,7 +502,7 @@ namespace CloudNimble.XmlEssentials.Tests
             }
         }
 
-        private static (List<string> Declared, List<string> Diagnostics) Generate(string schema, string fileName)
+        internal static (List<string> Declared, List<string> Diagnostics) Generate(string schema, string fileName)
         {
             var (compilation, diagnostics, generated) = GeneratorTestHost.Run("public static class Marker { }", [new TestAdditionalText(fileName, schema)], null);
             var errors = compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).ToArray();

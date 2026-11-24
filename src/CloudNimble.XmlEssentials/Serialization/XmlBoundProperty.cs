@@ -104,6 +104,25 @@ namespace CloudNimble.Text.Xml.Serialization
         internal Func<object>? HeldBoxFactory;
 
         /// <summary>
+        /// Whether the member's element is in no namespace, whatever default namespace is in scope. It is written
+        /// with the default namespace undeclared when there is one, and only an element in no namespace is read.
+        /// </summary>
+        internal bool NoNamespace
+        {
+            get;
+            init
+            {
+                field = value;
+                if (value)
+                {
+                    // The tags that are copied whole for a simple value say nothing of a namespace.
+                    LeafOpenTag = null;
+                    LeafCloseTag = null;
+                }
+            }
+        }
+
+        /// <summary>
         /// Whether the reusable box may be closed over the member's type at run time, which only the reflection
         /// resolver may do: Native AOT cannot close a generic type over a value type that way.
         /// </summary>
@@ -254,7 +273,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     return false;
                 }
             }
-            else if (IsAttribute && !reader.NamespaceUriSpan.IsEmpty)
+            else if ((IsAttribute || NoNamespace) && !reader.NamespaceUriSpan.IsEmpty)
             {
                 return false;
             }
@@ -413,7 +432,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="writer">The writer.</param>
         internal void WriteStart(Utf8XmlWriter writer)
         {
-            if (Utf8NamespaceUri.Length > 0)
+            if (Utf8NamespaceUri.Length > 0 || NoNamespace)
             {
                 writer.WriteStartElement(Utf8LocalName, Utf8NamespaceUri);
                 return;

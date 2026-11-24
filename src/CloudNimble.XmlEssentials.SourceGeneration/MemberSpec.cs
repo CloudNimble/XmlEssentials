@@ -113,6 +113,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         internal string? NullGetOwner { get; }
 
+        /// <summary>
+        /// Gets what a member generated from a schema needs beyond the rest, or null for any other member.
+        /// </summary>
+        internal XsdMemberDetails? Xsd { get; }
+
         #endregion
 
         #region Constructors
@@ -207,6 +212,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         {
             ConstructorParameter = constructorParameter;
             NullGetOwner = nullGetOwner;
+            Xsd = source.Xsd;
+        }
+
+        /// <summary>
+        /// Copies <paramref name="source"/> with what a member generated from a schema needs beyond the rest.
+        /// </summary>
+        /// <param name="source">The member as it was bound.</param>
+        /// <param name="xsd">The details.</param>
+        internal MemberSpec(MemberSpec source, XsdMemberDetails xsd)
+            : this(source, source.ConstructorParameter, source.NullGetOwner)
+        {
+            Xsd = xsd;
         }
 
         #endregion
@@ -235,7 +252,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 && IsExtensionData == other.IsExtensionData
                 && IsMixed == other.IsMixed
                 && ConstructorParameter == other.ConstructorParameter
-                && NullGetOwner == other.NullGetOwner;
+                && NullGetOwner == other.NullGetOwner
+                && Equals(Xsd, other.Xsd);
         }
 
         /// <inheritdoc />

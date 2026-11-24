@@ -6,6 +6,10 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Specifies the element name, and optionally the type, of the items in a collection member.
     /// </summary>
+    /// <remarks>
+    /// A collection in a wrapper that carries more than one <see cref="XmlArrayItemAttribute{T}"/> holds a choice
+    /// of items: each element name stands for a type, and each item is written under the element of its own type.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class XmlArrayItemAttribute : Attribute
     {

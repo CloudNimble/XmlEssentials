@@ -113,6 +113,42 @@ Without further instruction the serializer chooses how each namespace is declare
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/14_Namespaces.cs)
 
+### Put an element in no namespace
+
+An element with no namespace of its own takes the namespace of its parent. Some formats put the document element in a namespace and the elements inside it in none; an XML Schema does this unless it says `elementFormDefault="qualified"`. Give such a member an empty namespace:
+
+```csharp LegacyOrder.cs
+[XmlRoot("Order", Namespace = "urn:example:orders")]
+public sealed class LegacyOrder
+{
+    public string? Customer { get; set; }
+
+    [XmlElement("Id", Namespace = "")]
+    public int Id { get; set; }
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var order = new LegacyOrder { Customer = "Fabrikam", Id = 7 };
+
+output.WriteLine(XmlSerializer.Serialize(order, options));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order xmlns="urn:example:orders">
+  <Customer>Fabrikam</Customer>
+  <Id xmlns="">7</Id>
+</Order>
+```
+
+`xmlns=""` takes the element out of the default namespace. When the document is read, only an `Id` element in no namespace is this member: an `Id` in the namespace of the order is another element. `[XmlArray(Namespace = "")]` does the same for a wrapper element.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/14_Namespaces.cs)
+
 ## Choose the prefixes
 
 Prefixes carry no meaning in XML: a conforming reader treats `ns1:revision` and `audit:revision` as the same name. People and less careful consumers do read them, so you can state the prefixes a document is written with. A namespace that you declare is declared once, on the document element, and every element and attribute in it uses the prefix you gave.

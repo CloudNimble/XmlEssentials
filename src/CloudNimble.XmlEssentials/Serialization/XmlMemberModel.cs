@@ -103,6 +103,17 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         internal Type Type { get; }
 
+        /// <summary>
+        /// Gets the alternatives of a member that holds a choice of elements, or <see langword="null"/>.
+        /// </summary>
+        internal System.Collections.Generic.List<XmlElementChoice>? Choices { get; init; }
+
+        /// <summary>
+        /// Gets a value indicating whether the member's element was put in no namespace, with an empty string
+        /// for its namespace. A member with no namespace given takes the default namespace that is in scope.
+        /// </summary>
+        internal bool IsUnqualified { get; init; }
+
         #endregion
 
         #region Constructors

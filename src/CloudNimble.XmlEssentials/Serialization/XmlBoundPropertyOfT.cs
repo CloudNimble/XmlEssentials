@@ -443,7 +443,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     XmlConverterHelpers.WriteDiscriminator(writer, Polymorphism.Placement, Polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
                 }
 
-                derived.Info.WriteContentAsObject(writer, value);
+                derived.WriteContent(writer, value);
                 writer.WriteEndElement();
                 return;
             }

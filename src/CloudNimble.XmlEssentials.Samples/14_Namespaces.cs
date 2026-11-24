@@ -111,6 +111,18 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
+        /// Serializes a type in a namespace with one element that is in no namespace.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void PutMemberInNoNamespace(TextWriter output)
+        {
+            var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+            var order = new LegacyOrder { Customer = "Fabrikam", Id = 7 };
+
+            output.WriteLine(XmlSerializer.Serialize(order, options));
+        }
+
+        /// <summary>
         /// Deserializes a document that binds the same namespaces to prefixes of its own.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>

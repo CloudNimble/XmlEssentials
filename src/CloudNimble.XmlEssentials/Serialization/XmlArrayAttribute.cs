@@ -33,7 +33,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <value>
         /// The namespace URI of the wrapper element. If the value is <see langword="null"/>, the namespace set by an
         /// <see cref="XmlElementAttribute"/> on the same member is used, and without one the wrapper element is written with an
-        /// unqualified name. The default is <see langword="null"/>.
+        /// unqualified name. An empty string puts the wrapper element in no namespace. The default is <see langword="null"/>.
         /// </value>
         public string? Namespace { get; set; }
 

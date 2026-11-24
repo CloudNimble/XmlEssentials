@@ -17,6 +17,12 @@ namespace CloudNimble.Text.Xml.Serialization
         internal XmlTypeInfo Info { get; }
 
         /// <summary>
+        /// Gets the derived types of this type that an attribute identifies inside its element, when this is an
+        /// alternative of a choice of elements; otherwise <see langword="null"/>.
+        /// </summary>
+        internal XmlPolymorphism? Nested { get; init; }
+
+        /// <summary>
         /// Gets the derived CLR type.
         /// </summary>
         internal Type Type { get; }
@@ -76,6 +82,27 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             return XmlBoundProperty.NameEquals(ref reader, Utf8Name, caseInsensitive)
                 && (Utf8NamespaceUri is null || reader.NamespaceUriSpan.SequenceEqual(Utf8NamespaceUri));
+        }
+
+        /// <summary>
+        /// Writes the attributes and content of a value inside the element of this derived type.
+        /// </summary>
+        /// <param name="writer">The writer, inside the start tag.</param>
+        /// <param name="value">The value, of this type or of a type that derives from it.</param>
+        /// <remarks>
+        /// A value of a type that derives from an alternative of a choice is written with the discriminator the
+        /// alternative's own type gives it.
+        /// </remarks>
+        internal void WriteContent(Utf8XmlWriter writer, object value)
+        {
+            if (Nested is { } nested && value.GetType() != Type && nested.TryGetDerivedWrite(value.GetType()) is { } inner)
+            {
+                XmlConverterHelpers.WriteDiscriminator(writer, nested.Placement, nested.Utf8DiscriminatorAttributeName, inner.Discriminator);
+                inner.Info.WriteContentAsObject(writer, value);
+                return;
+            }
+
+            Info.WriteContentAsObject(writer, value);
         }
 
         /// <summary>

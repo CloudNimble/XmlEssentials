@@ -355,31 +355,108 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             var derivedSource = mixed ? null : collectionElement ?? member.ConverterType;
-            var polymorphism = XmlPolymorphism.None;
-            if (derivedSource is not null)
-            {
-                var placement = XmlDiscriminatorPlacement.ElementName;
-                byte[] utf8DiscAttr = [];
-                var unknown = XmlUnknownDerivedTypeHandling.FailSerialization;
-                var polymorphic = derivedSource.GetCustomAttribute<XmlPolymorphicAttribute>();
-                if (polymorphic is not null)
-                {
-                    placement = polymorphic.DiscriminatorPlacement;
-                    unknown = polymorphic.UnknownDerivedTypeHandling;
-                    if (placement is XmlDiscriminatorPlacement.Attribute && polymorphic.TypeDiscriminatorPropertyName is { Length: > 0 } discriminatorName)
-                    {
-                        utf8DiscAttr = Encoding.UTF8.GetBytes(discriminatorName);
-                    }
-                }
+            var polymorphism = derivedSource is null ? XmlPolymorphism.None : BindPolymorphism(derivedSource, options);
 
-                polymorphism = new XmlPolymorphism(derivedSource, BindDerived(derivedSource, options, placement, polymorphic), placement, utf8DiscAttr, unknown);
+            if (member.Choices is { } choices)
+            {
+                // The alternatives the member names stand in place of the derived types its type declares.
+                polymorphism = BindChoices(member, collectionElement ?? member.ConverterType, choices, options);
             }
 
             return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
             {
                 HeldBoxFactory = member.Member.CreateHeldBox,
+                NoNamespace = member.IsUnqualified,
                 ReflectsHeldBox = member.Member.Member is not null,
             };
+        }
+
+        /// <summary>
+        /// Binds the derived types a type declares, as a value of that type is written and read.
+        /// </summary>
+        /// <param name="type">The declared type of a member, of an item, or of an alternative of a choice.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The derived types and where their discriminator is written.</returns>
+        internal static XmlPolymorphism BindPolymorphism(Type type, XmlSerializerOptions options)
+        {
+            var placement = XmlDiscriminatorPlacement.ElementName;
+            byte[] utf8DiscAttr = [];
+            var unknown = XmlUnknownDerivedTypeHandling.FailSerialization;
+            var polymorphic = type.GetCustomAttribute<XmlPolymorphicAttribute>();
+            if (polymorphic is not null)
+            {
+                placement = polymorphic.DiscriminatorPlacement;
+                unknown = polymorphic.UnknownDerivedTypeHandling;
+                if (placement is XmlDiscriminatorPlacement.Attribute && polymorphic.TypeDiscriminatorPropertyName is { Length: > 0 } discriminatorName)
+                {
+                    utf8DiscAttr = Encoding.UTF8.GetBytes(discriminatorName);
+                }
+            }
+
+            return new XmlPolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown);
+        }
+
+        /// <summary>
+        /// Binds the alternatives of a member that holds a choice of elements.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <param name="declared">The type of the member, or of its items.</param>
+        /// <param name="choices">The alternatives.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The choice, as the derived types of the member with the element name as the discriminator.</returns>
+        /// <exception cref="NotSupportedException">
+        /// An alternative names a type that is not the member's type, or two alternatives have one type or one
+        /// element name.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// A value is written under the element name of its type, so a type can stand for one element only. An
+        /// element is read as the type of its name.
+        /// </para>
+        /// <para>
+        /// The type of an alternative may declare derived types of its own that an attribute identifies
+        /// (<c>xsi:type</c>, or a discriminator attribute). They still apply inside the element of the
+        /// alternative: a value of one of them is written under that element with its discriminator.
+        /// </para>
+        /// </remarks>
+        internal static XmlPolymorphism BindChoices(XmlMemberModel member, Type declared, List<XmlElementChoice> choices, XmlSerializerOptions options)
+        {
+            var bindings = new XmlDerivedBinding[choices.Count];
+            for (var index = 0; index < choices.Count; index++)
+            {
+                var choice = choices[index];
+                if (!declared.IsAssignableFrom(choice.Type))
+                {
+                    throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' has an element for the type '{choice.Type}', which is not a '{declared}'.");
+                }
+
+                var name = choice.ElementName ?? XmlTypeNames.ElementName(choice.Type, options);
+                for (var earlier = 0; earlier < index; earlier++)
+                {
+                    if (bindings[earlier].Type == choice.Type)
+                    {
+                        throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' has more than one element for the type '{choice.Type}'. A value is written under the element of its type, so a type can have one.");
+                    }
+
+                    if (bindings[earlier].Discriminator == name && choices[earlier].Namespace == choice.Namespace)
+                    {
+                        throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' has more than one element named '{name}'. An element is read as the type of its name, so a name can have one.");
+                    }
+                }
+
+                var nested = BindPolymorphism(choice.Type, options);
+                bindings[index] = new XmlDerivedBinding(
+                    Encoding.UTF8.GetBytes(name),
+                    choice.Type,
+                    options.GetTypeInfo(choice.Type),
+                    name,
+                    choice.Namespace is null ? null : Encoding.UTF8.GetBytes(choice.Namespace))
+                {
+                    Nested = nested.Derived.Length > 0 && nested.Placement is not XmlDiscriminatorPlacement.ElementName ? nested : null,
+                };
+            }
+
+            return new XmlPolymorphism(declared, bindings, XmlDiscriminatorPlacement.ElementName, null, XmlUnknownDerivedTypeHandling.FailSerialization);
         }
 
         /// <summary>
@@ -1184,6 +1261,8 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             var xmlName = member.GetCustomAttribute<XmlPropertyNameAttribute>()?.Name;
+            List<XmlElementChoice>? choices = null;
+            var isUnqualified = false;
             var isAttribute = false;
             var isText = false;
             var isCData = false;
@@ -1212,18 +1291,26 @@ namespace CloudNimble.Text.Xml.Serialization
                     ?? (attribute.AttributeName is { Length: > 0 } attributeName ? attributeName : options.ConvertAttributeName(member.Name));
                 ns = attribute.Namespace ?? "";
             }
-            else if (typed is { Count: > 0 })
+            else if (typed is [var first])
             {
-                var first = typed[0];
                 local = xmlName
                     ?? (first.ElementName is { Length: > 0 } typedName ? typedName : options.ConvertElementName(member.Name));
                 ns = first.Namespace ?? "";
+                isUnqualified = first.Namespace is { Length: 0 };
+            }
+            else if (typed is { Count: > 1 })
+            {
+                // A choice: each element name stands for a type. A value of the member's own type is written
+                // under the member's name.
+                local = xmlName ?? options.ConvertElementName(member.Name);
+                choices = typed.ConvertAll(static choice => new XmlElementChoice(choice.ElementName, choice.Namespace, choice.Type!));
             }
             else if (element is not null)
             {
                 local = xmlName
                     ?? (element.ElementName is { Length: > 0 } elementName ? elementName : options.ConvertElementName(member.Name));
                 ns = element.Namespace ?? "";
+                isUnqualified = element.Namespace is { Length: 0 };
             }
             else if (options.DefaultPropertyMapping is XmlPropertyMapping.Attribute && XmlBuiltInConverters.IsScalar(memberType))
             {
@@ -1250,8 +1337,17 @@ namespace CloudNimble.Text.Xml.Serialization
                 isCollection = true;
                 var array = member.GetCustomAttribute<XmlArrayAttribute>();
                 XmlArrayItemAttribute? arrayItem = null;
+                List<XmlElementChoice>? itemChoices = null;
                 foreach (var candidate in member.GetCustomAttributes<XmlArrayItemAttribute>())
                 {
+                    if (arrayItem is { Type: not null } && candidate.Type is not null)
+                    {
+                        // More than one is a choice of items, and then each names its type.
+                        itemChoices ??= [new XmlElementChoice(arrayItem.ElementName, arrayItem.Namespace, arrayItem.Type)];
+                        itemChoices.Add(new XmlElementChoice(candidate.ElementName, candidate.Namespace, candidate.Type));
+                        continue;
+                    }
+
                     if (arrayItem is not null)
                     {
                         throw new NotSupportedException($"Member '{member.DeclaringType}.{member.Name}' has more than one [{nameof(XmlArrayItemAttribute)}] or a typed item choice. Polymorphic collection items are not enabled for this type.");
@@ -1269,10 +1365,18 @@ namespace CloudNimble.Text.Xml.Serialization
                     local = xmlName
                         ?? (array.ElementName is { Length: > 0 } arrayName ? arrayName : options.ConvertElementName(member.Name));
                     ns = array.Namespace ?? ns;
+                    isUnqualified = array.Namespace is { Length: 0 };
                     if (order < 0 && array.Order >= 0)
                     {
                         order = array.Order;
                     }
+                }
+
+                if (isWrapped && itemChoices is not null)
+                {
+                    // The items of the wrapper are the choice. No one of them names the item.
+                    choices = itemChoices;
+                    arrayItem = null;
                 }
 
                 var itemClr = arrayItem?.Type ?? elementType;
@@ -1290,7 +1394,11 @@ namespace CloudNimble.Text.Xml.Serialization
             var isRequired = member.IsDefined(typeof(XmlRequiredAttribute))
                 || member.IsRequiredMember;
             var isNillable = !memberType.IsValueType || Nullable.GetUnderlyingType(memberType) is not null || element is { IsNullable: true } || typed is [{ IsNullable: true }, ..] || isCollection;
-            model = new XmlMemberModel(member, memberType, local, ns, order, declarationIndex, isRequired, isNillable, ignore, canSet, isAttribute, isText, isCData, isCollection, isWrapped, itemLocal, typed is { Count: > 0 } ? typed[0].Type : null, itemNamespace);
+            model = new XmlMemberModel(member, memberType, local, ns, order, declarationIndex, isRequired, isNillable, ignore, canSet, isAttribute, isText, isCData, isCollection, isWrapped, itemLocal, typed is [var only] ? only.Type : null, itemNamespace)
+            {
+                Choices = choices,
+                IsUnqualified = isUnqualified,
+            };
             return true;
         }
 

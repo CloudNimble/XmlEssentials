@@ -6,6 +6,12 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Specifies that a member is serialized as a child element, and optionally sets the name, namespace, order, or nillability of that element.
     /// </summary>
+    /// <remarks>
+    /// A member that carries more than one <see cref="XmlElementAttribute{T}"/> holds a choice of elements: each
+    /// element name stands for a type. A value is written under the element of its type, and an element is read
+    /// as the type of its name. On a collection, each item is written under the element of its own type, in the
+    /// order of the collection. A value of the member's own type is written under the member's name.
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public class XmlElementAttribute : Attribute
     {
@@ -39,9 +45,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets or sets the namespace URI of the element.
         /// </summary>
         /// <value>
-        /// The namespace URI of the element. If the value is <see langword="null"/>, the element is written with an unqualified name.
+        /// The namespace URI of the element. If the value is <see langword="null"/>, the element is written with an unqualified name,
+        /// so it is in the default namespace that is in scope. An empty string puts the element in no namespace.
         /// The default is <see langword="null"/>.
         /// </value>
+        /// <remarks>
+        /// An element in no namespace is written with <c>xmlns=""</c> where a default namespace is in scope, and
+        /// only an element in no namespace is read as the member.
+        /// </remarks>
         public string? Namespace { get; set; }
 
         /// <summary>

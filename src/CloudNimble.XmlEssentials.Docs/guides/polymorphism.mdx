@@ -293,6 +293,61 @@ With `XmlDiscriminatorPlacement.ElementName`, an element whose name isn't declar
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
+## Name the elements on the member
+
+`[XmlDerivedType]` goes on a base type, so it applies wherever that type is used, and it needs the types to be related. When the types aren't related, or the names belong to one member only, put the names on the member: more than one `[XmlElement<T>]` makes the member a choice of elements, where each element name stands for a type.
+
+```csharp Timeline.cs
+public sealed class Timeline
+{
+    [XmlElement<string>("note")]
+    [XmlElement<int>("pause")]
+    [XmlElement<TimelineMark>("mark")]
+    public List<object> Events { get; set; } = [];
+}
+
+public sealed class TimelineMark
+{
+    public string? Title { get; set; }
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var timeline = new Timeline
+{
+    Events = { "start", 5, new TimelineMark { Title = "half" }, "end" },
+};
+
+string xml = XmlSerializer.Serialize(timeline, options);
+output.WriteLine(xml);
+
+Timeline read = XmlSerializer.Deserialize<Timeline>(xml, options)!;
+foreach (object item in read.Events)
+{
+    output.WriteLine(item.GetType().Name);
+}
+```
+
+The code produces the following output:
+
+```
+<Timeline><note>start</note><pause>5</pause><mark><Title>half</Title></mark><note>end</note></Timeline>
+String
+Int32
+TimelineMark
+String
+```
+
+Each item is written under the element of its own type, and the list keeps its order when it is read back. The same works on a member that holds one value, and inside a wrapper with more than one `[XmlArrayItem<T>]`.
+
+- Each type can have one element name and each element name one type, because a value is written under the element of its type. Two elements for one type are refused when the type is first used.
+- Every type must be assignable to the member's type, or to the item type of a collection.
+- A value whose type has no element is refused with a `NotSupportedException`, except a value of the member's own type, which is written under the member's name.
+- When the type of an element declares derived types with `xsi:type` or an attribute, they still apply inside that element: a value of one of them is written under the element of its base type, with its discriminator.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
 ## Mind the type you serialize as
 
 The serializer uses the type you declare, not the runtime type, to choose the document element. The next example serializes the same `CardPayment` three ways: as `Payment`, as its own type through type inference, and as its runtime type through the overload that takes a `Type`.

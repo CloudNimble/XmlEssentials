@@ -530,7 +530,6 @@ public abstract class XmlTypeInfo
     public bool IsNillable { get; }
     public Func<object>? CreateObject { get; }
     public IList<XmlPropertyInfo> Properties { get; }
-    public XmlPolymorphismOptions? PolymorphismOptions { get; }
 }
 
 public abstract class XmlTypeInfo<T> : XmlTypeInfo
@@ -547,20 +546,6 @@ public sealed class XmlPropertyInfo
     public bool IsRequired { get; }
     public int Order { get; }
     public XmlTypeInfo PropertyType { get; }
-}
-
-public sealed class XmlPolymorphismOptions
-{
-    public XmlDiscriminatorPlacement DiscriminatorPlacement { get; }
-    public string? TypeDiscriminatorPropertyName { get; }
-    public IList<XmlDerivedTypeInfo> DerivedTypes { get; }
-}
-
-public readonly struct XmlDerivedTypeInfo
-{
-    public Type Type { get; }   // typeof(T)
-    public string Discriminator { get; }
-    public string? Namespace { get; }
 }
 
 public abstract class XmlSerializerContext : IXmlTypeInfoResolver

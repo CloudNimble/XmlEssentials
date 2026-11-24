@@ -118,38 +118,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             body.AppendLine("    {");
             foreach (var member in members)
             {
-                string attributes;
-                if (member.IsExtensionData)
+                // The attributes are the ones XsdParser.EmitPoco writes on the property, from one description.
+                var expressions = new List<string>();
+                foreach (var attribute in XsdParser.MemberAttributes(member))
                 {
-                    attributes = "new XmlExtensionDataAttribute()";
-                }
-                else if (member.IsAttribute)
-                {
-                    attributes = "new XmlAttributeAttribute(\"" + ContextEmitter.Escape(member.LocalName) + "\")"
-                        + (member.NamespaceUri.Length > 0 ? " { Namespace = \"" + ContextEmitter.Escape(member.NamespaceUri) + "\" }" : "");
-                }
-                else if (member.IsText)
-                {
-                    attributes = "new XmlTextAttribute()";
-                }
-                else if (member.IsCollection && member.IsWrapped)
-                {
-                    attributes = "new XmlArrayAttribute(\"" + ContextEmitter.Escape(member.LocalName) + "\"), new XmlArrayItemAttribute(\"" + ContextEmitter.Escape(member.ItemLocalName) + "\")";
-                }
-                else if (member.LocalName != member.ClrName)
-                {
-                    attributes = "new XmlElementAttribute(\"" + ContextEmitter.Escape(member.LocalName) + "\")";
-                }
-                else
-                {
-                    attributes = "";
+                    expressions.Add(attribute.ToExpression());
                 }
 
-                if (member.IgnoreCondition == 3)
-                {
-                    attributes += (attributes.Length > 0 ? ", " : "") + "new XmlIgnoreAttribute { Condition = XmlIgnoreCondition.WhenWritingNull }";
-                }
-
+                var attributes = string.Join(", ", expressions);
                 var source = "__Property(\"" + member.ClrName + "\", static (" + typeName + " obj) => obj." + member.ClrName + ", static (obj, value) => obj." + member.ClrName + " = value"
                     + (attributes.Length > 0 ? ", " + attributes : "") + ")";
                 if (member.IsCollection && !member.IsExtensionData)

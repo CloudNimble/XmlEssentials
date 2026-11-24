@@ -45,6 +45,28 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
+        /// Serializes a list whose items are of several unrelated types, each under the element name the member gives its type.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void ChooseByElementName(TextWriter output)
+        {
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            var timeline = new Timeline
+            {
+                Events = { "start", 5, new TimelineMark { Title = "half" }, "end" },
+            };
+
+            string xml = XmlSerializer.Serialize(timeline, options);
+            output.WriteLine(xml);
+
+            Timeline read = XmlSerializer.Deserialize<Timeline>(xml, options)!;
+            foreach (object item in read.Events)
+            {
+                output.WriteLine(item.GetType().Name);
+            }
+        }
+
+        /// <summary>
         /// Serializes a derived type as the document root, named by an <c>xsi:type</c> attribute, and a type the base
         /// does not declare as its nearest declared ancestor.
         /// </summary>

@@ -14,6 +14,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         #region Public Properties
 
         /// <summary>
+        /// Gets or sets a value indicating whether attributes declared in a complex type are in the target
+        /// namespace unless they say otherwise (<c>attributeFormDefault="qualified"</c>).
+        /// </summary>
+        internal bool AttributesQualified { get; set; }
+
+        /// <summary>
         /// Gets the named attribute groups of the schema, by name.
         /// </summary>
         internal Dictionary<string, MiniElement> AttributeGroups { get; } = new Dictionary<string, MiniElement>(StringComparer.Ordinal);
@@ -55,6 +61,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal HashSet<string> ElementClasses { get; } = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>
+        /// Gets or sets a value indicating whether elements declared in a complex type are in the target
+        /// namespace unless they say otherwise (<c>elementFormDefault="qualified"</c>).
+        /// </summary>
+        internal bool ElementsQualified { get; set; }
+
+        /// <summary>
         /// Gets the names of the global elements that share each named complex type, by the name of the type.
         /// </summary>
         internal Dictionary<string, List<string>> ElementsOfType { get; } = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -63,6 +75,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// Gets the names of the named complex types whose class has been written, or could not be.
         /// </summary>
         internal HashSet<string> Emitted { get; } = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Gets the values of each generated enumeration, by the CLR name of the enumeration.
+        /// </summary>
+        internal Dictionary<string, List<string>> EnumValues { get; } = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Gets or sets a value indicating whether each element member names its namespace. It does when the
+        /// schema has a target namespace and some element of a complex type is in no namespace: a member that
+        /// names none takes the default namespace in scope, which is then not the same everywhere.
+        /// </summary>
+        internal bool ExplicitNamespaces { get; set; }
 
         /// <summary>
         /// Gets the schema file name for diagnostics.
@@ -84,10 +108,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         internal Dictionary<string, MiniElement> Groups { get; } = new Dictionary<string, MiniElement>(StringComparer.Ordinal);
 
-        /// <summary>
-        /// Gets or sets a value indicating whether a local element declaration has been bound.
-        /// </summary>
-        internal bool HasLocalElements { get; set; }
 
         /// <summary>
         /// Gets the names of the named complex types whose class is being written, which is how a type that is its
@@ -100,6 +120,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// of the type.
         /// </summary>
         internal Dictionary<string, List<MemberSpec>> Members { get; } = new Dictionary<string, List<MemberSpec>>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Gets the names of the classes written for anonymous complex types of elements inside a type. One is
+        /// written once, however often its element is looked at.
+        /// </summary>
+        internal HashSet<string> NestedClasses { get; } = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>
         /// Gets the C# namespace.
@@ -123,9 +149,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal Dictionary<string, MiniElement> SimpleTypes { get; } = new Dictionary<string, MiniElement>(StringComparer.Ordinal);
 
         /// <summary>
-        /// Gets the names of the global elements that another element names as its substitution group.
+        /// Gets the names of the global elements that name each global element as their substitution group, by
+        /// the name of that element, the head of the group.
         /// </summary>
-        internal HashSet<string> SubstitutionHeads { get; } = new HashSet<string>(StringComparer.Ordinal);
+        internal Dictionary<string, List<string>> Substitutes { get; } = new Dictionary<string, List<string>>(StringComparer.Ordinal);
 
         /// <summary>
         /// Gets the XML target namespace.
@@ -181,6 +208,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         private XsdBindContext(XsdBindContext source)
         {
             AttributeGroups = source.AttributeGroups;
+            AttributesQualified = source.AttributesQualified;
+            ElementsQualified = source.ElementsQualified;
+            EnumValues = source.EnumValues;
+            ExplicitNamespaces = source.ExplicitNamespaces;
+            NestedClasses = new HashSet<string>(StringComparer.Ordinal);
+            Substitutes = source.Substitutes;
             BaseOf = source.BaseOf;
             ClassNames = new HashSet<string>(StringComparer.Ordinal);
             ComplexTypeOrder = source.ComplexTypeOrder;
@@ -200,7 +233,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             Pocos = new List<(string Hint, string Source)>();
             PolymorphicClr = source.PolymorphicClr;
             SimpleTypes = source.SimpleTypes;
-            SubstitutionHeads = source.SubstitutionHeads;
             TargetNamespace = source.TargetNamespace;
             TypeMap = source.TypeMap;
             TypeSpecs = new List<TypeSpec>(source.TypeSpecs);

@@ -294,6 +294,12 @@ Types such as `xs:positiveInteger`, `xs:hexBinary`, and `xs:token` map to `strin
 | Global `xs:element` with an inline `xs:complexType` | A class named after the element, with `[XmlRoot]`. |
 | Global `xs:element` with a simple type | Nothing. |
 | `xs:sequence`, `xs:all`, and a sequence nested in another | One property for each child element, in the order of the schema. |
+| `xs:choice` of elements of different types | One property, `Item`, with an `[XmlElement<T>]` for each alternative. Its type is the class every alternative derives from, or `object`. |
+| A choice or a sequence with `maxOccurs` greater than 1, of elements of different types | One `List<T>?` property, `Items`, with an `[XmlElement<T>]` for each element. The list keeps the order of the document. |
+| `xs:element ref` to the head of a substitution group | One property with an `[XmlElement<T>]` for the head and for each element that may stand for it. An element that is `abstract` isn't one of them. |
+| `mixed="true"` | The attributes, and one `List<XmlMixedContentItem>? Content` property with `[XmlMixed]` that holds the text and the elements in the order of the document. The elements aren't properties of their own. |
+| `default` or `fixed` on an attribute, or on an element that must be present | The property starts with that value. A value type with a default isn't nullable. |
+| Elements and attributes of a schema with a `targetNamespace` | The namespace the schema gives each one. When every element is in the target namespace (`elementFormDefault="qualified"`), properties name none and take it from the class. Otherwise each property names its own: `Namespace = ""` for an element in no namespace, and the target namespace for a global element, a global attribute, and anything with `form="qualified"`. |
 | `xs:element` with `maxOccurs` greater than 1 or `unbounded` | A `List<T>?` property, written as repeated elements with no wrapper. |
 | `xs:element` whose inline type is a sequence of one repeating element and nothing else | A `List<T>?` property with `[XmlArray]` and `[XmlArrayItem]`: the outer element is the wrapper. |
 | `xs:element` with `minOccurs="0"` | A property that can be `null`, such as `int?`. A `null` is left out of the document. |
@@ -320,17 +326,15 @@ The generator doesn't act on the following. It reports `XMLESS011` as informatio
 
 | XSD construct | What happens |
 | --- | --- |
-| `xs:choice` | One optional property for each alternative. That exactly one is present isn't enforced (`XMLESS011`). |
-| A sequence, choice or group with `maxOccurs` greater than 1 | Each element in it becomes a list. The order between the elements of different lists isn't kept (`XMLESS018`). |
-| `substitutionGroup` | Not mapped (`XMLESS018`). Where the head element is allowed, only the head element itself is read and written. |
-| `mixed="true"` | The elements are mapped. The text between them isn't read or written (`XMLESS018`). |
-| Local elements of a schema that has a `targetNamespace` and isn't `elementFormDefault="qualified"` | The schema puts them in no namespace. The generated classes write them in the target namespace (`XMLESS018`). |
+| A choice or a repeating group whose elements aren't of different types, or that holds anything but elements | A value is written under the element of its type, so two elements of one type can't share a property. Each element becomes a property of its own: optional for a choice (`XMLESS011`), and a list each for a repeating group, which loses the order between them (`XMLESS018`). |
+| A substitution group whose elements aren't of different types | Only the head element is read and written (`XMLESS018`). |
 | A `ref`, a group, an attribute group or a base type that isn't in the schema or its includes | A `ref` becomes a `string` property; the members of a missing group or base type aren't generated (`XMLESS018`). |
 | `xs:restriction` of a named complex type | A derived class with no members of its own. What it restricts isn't enforced (`XMLESS011`). |
-| `default`, `fixed` | Not applied to the property (`XMLESS011`). |
+| `default` or `fixed` on an element that may be absent, or of a type with no C# constant (a date, a time, a GUID, a URI, binary data) | Not applied to the property (`XMLESS011`). |
 | Facets: `pattern`, `minInclusive`, `maxLength`, and the others except `enumeration` | Ignored. Values aren't validated. |
 | `xs:key`, `xs:keyref`, `xs:unique` | Ignored (`XMLESS011`). |
 | `xs:redefine`, `xs:notation` | Ignored (`XMLESS011`). |
+
 ## Diagnostics
 
 | ID | Severity | When |

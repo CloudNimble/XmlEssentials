@@ -1008,6 +1008,51 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
+        /// Returns whether a member names more than one type with <c>[XmlElement&lt;T&gt;]</c> or with
+        /// <c>[XmlArrayItem&lt;T&gt;]</c>, which makes it a choice of elements.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <returns><see langword="true"/> for a choice.</returns>
+        internal static bool HasElementChoice(ISymbol member)
+        {
+            var elements = 0;
+            var items = 0;
+            foreach (var attribute in member.GetAttributes())
+            {
+                if (attribute.AttributeClass is not { IsGenericType: true } attributeClass
+                    || attributeClass.ContainingNamespace.ToDisplayString() is not "CloudNimble.Text.Xml.Serialization")
+                {
+                    continue;
+                }
+
+                elements += attributeClass.Name == "XmlElementAttribute" ? 1 : 0;
+                items += attributeClass.Name == "XmlArrayItemAttribute" ? 1 : 0;
+            }
+
+            return elements > 1 || items > 1;
+        }
+
+        /// <summary>
+        /// Returns whether a member's element or wrapper is put in no namespace, with an empty string.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <returns><see langword="true"/> when <c>[XmlElement]</c> or <c>[XmlArray]</c> gives an empty namespace.</returns>
+        internal static bool HasEmptyNamespace(ISymbol member)
+        {
+            foreach (var attribute in member.GetAttributes())
+            {
+                if (attribute.AttributeClass is { Name: "XmlElementAttribute" or "XmlArrayAttribute" } attributeClass
+                    && attributeClass.ContainingNamespace.ToDisplayString() is "CloudNimble.Text.Xml.Serialization"
+                    && (SymbolHelpers.GetString(attribute, "Namespace") ?? SymbolHelpers.GetConstructorString(attribute, 1)) is { Length: 0 })
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Returns whether a member of type <paramref name="type"/> holds values that are written as derived types.
         /// </summary>
         /// <param name="type">The type of a member.</param>
@@ -1123,6 +1168,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             // The write fast path does not write either, so the type goes without one.
             FastPathBlocked |= DeclaresDerivedTypes(member) || SymbolHelpers.GetAttribute(member, SymbolHelpers.ConverterAttribute) is not null;
             FastPathBlocked |= memberType is not null && HoldsDerivedTypes(memberType);
+
+            // A choice of elements, and an element put in no namespace, are written from the metadata too.
+            FastPathBlocked |= HasElementChoice(member) || HasEmptyNamespace(member);
 
 
             if (SymbolHelpers.GetAttribute(member, SymbolHelpers.BclXmlInclude) is not null)

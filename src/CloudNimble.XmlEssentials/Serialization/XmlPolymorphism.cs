@@ -175,7 +175,10 @@ namespace CloudNimble.Text.Xml.Serialization
 
             try
             {
-                return derived.Info.ReadElementAsObject(ref reader);
+                // An alternative of a choice may be of a type whose own derived types an attribute identifies.
+                return derived.Nested is { } nested
+                    ? nested.ReadValue(ref reader, derived.Info)
+                    : derived.Info.ReadElementAsObject(ref reader);
             }
             catch (XmlException ex)
             {
@@ -234,6 +237,19 @@ namespace CloudNimble.Text.Xml.Serialization
                 if (derived.Type == runtime)
                 {
                     return derived;
+                }
+            }
+
+            // A value of a type that derives from an alternative of a choice is written under the element of that
+            // alternative, with the discriminator the alternative's own type gives it.
+            for (var type = runtime.BaseType; type is not null; type = type.BaseType)
+            {
+                foreach (var derived in Derived)
+                {
+                    if (derived.Type == type && derived.Nested is not null)
+                    {
+                        return derived;
+                    }
                 }
             }
 
