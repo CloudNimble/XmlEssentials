@@ -132,6 +132,8 @@ namespace CloudNimble.XmlEssentials.Samples
 
             output.WriteLine($"AllowDuplicateProperties = {options.AllowDuplicateProperties}");
             output.WriteLine($"AttributeNamingPolicy = {options.AttributeNamingPolicy?.ToString() ?? "null"}");
+            output.WriteLine($"AttributeStyle = {options.AttributeStyle}");
+            output.WriteLine($"AttributesPerLine = {options.AttributesPerLine}");
             output.WriteLine($"Converters.Count = {options.Converters.Count}");
             output.WriteLine($"DefaultBufferSize = {options.DefaultBufferSize}");
             output.WriteLine($"DefaultIgnoreCondition = {options.DefaultIgnoreCondition}");
@@ -140,6 +142,7 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine($"DictionaryKeyPolicy = {options.DictionaryKeyPolicy?.ToString() ?? "null"}");
             output.WriteLine($"ElementNamingPolicy = {options.ElementNamingPolicy?.ToString() ?? "null"}");
             output.WriteLine($"EmitByteOrderMark = {options.EmitByteOrderMark}");
+            output.WriteLine($"EmptyElementStyle = {options.EmptyElementStyle}");
             output.WriteLine($"EnumHandling = {options.EnumHandling}");
             output.WriteLine($"IgnoreReadOnlyFields = {options.IgnoreReadOnlyFields}");
             output.WriteLine($"IgnoreReadOnlyProperties = {options.IgnoreReadOnlyProperties}");

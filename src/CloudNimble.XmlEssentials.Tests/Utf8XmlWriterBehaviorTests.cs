@@ -476,8 +476,6 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         [DataRow("\n", DisplayName = "LF")]
         [DataRow("\r\n", DisplayName = "CR LF")]
-        [DataRow("\r", DisplayName = "a line end of the caller's own")]
-        [DataRow(" | ", DisplayName = "any other text")]
         public void Indented_UsesTheNewLineItIsGiven(string newLine)
         {
             var options = new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentSize = 1, NewLine = newLine };
@@ -495,17 +493,34 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Indented_WithNoNewLineGiven_UsesTheEnvironmentOne()
         {
-            foreach (var unset in new[] { null, "" })
+            // As System.Text.Json has it: the value is never null, in default(XmlWriterOptions) either.
+            foreach (var options in new[] { default, new XmlWriterOptions() })
             {
-                var options = new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentSize = 2, NewLine = unset };
                 XmlWriterHarness.ToXml(writer =>
                 {
                     writer.WriteStartElement("a");
                     writer.WriteStartElement("b");
                     writer.WriteEndElement();
                     writer.WriteEndElement();
-                }, options).Should().Be("<a>" + Environment.NewLine + "  <b/>" + Environment.NewLine + "</a>");
+                }, options with { OmitXmlDeclaration = true, Indented = true, IndentSize = 2 }).Should().Be("<a>" + Environment.NewLine + "  <b/>" + Environment.NewLine + "</a>");
             }
+        }
+
+        [TestMethod]
+        [DataRow("", DisplayName = "an empty string")]
+        [DataRow("\r", DisplayName = "a carriage return alone")]
+        [DataRow("\n\n", DisplayName = "two line feeds")]
+        [DataRow(" | ", DisplayName = "any other text")]
+        public void NewLine_ThatIsNotALineEnding_IsRejected(string newLine)
+        {
+            // The two values System.Text.Json accepts. The writer uses the value for the line breaks in content
+            // too, and these are the only two a reader gives back as a line feed.
+            FluentActions.Invoking(() => new XmlWriterOptions { NewLine = newLine })
+                .Should().ThrowExactly<ArgumentOutOfRangeException>().Which.Message.Should().Be("The line ending must be \"\\n\" or \"\\r\\n\". (Parameter 'value')");
+            FluentActions.Invoking(() => new XmlSerializerOptions { NewLine = newLine })
+                .Should().ThrowExactly<ArgumentOutOfRangeException>().Which.Message.Should().Be("The line ending must be \"\\n\" or \"\\r\\n\". (Parameter 'value')");
+            FluentActions.Invoking(() => new XmlWriterOptions { NewLine = null! })
+                .Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("value");
         }
 
         [TestMethod]

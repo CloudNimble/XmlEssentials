@@ -1,3 +1,5 @@
+// CloudNimble.XmlEssentials.Tests.Aot targets net11.0, so this test exists only in the net11.0 build of the tests.
+#if NET11_0
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -25,10 +27,6 @@ namespace CloudNimble.XmlEssentials.Tests
         [Timeout(600000)]
         public void NativeAotSmoke_PublishesRunsAndPrintsTheExactSuccessLine()
         {
-#if !NET11_0
-            Assert.Inconclusive("Tests.Aot targets net11.0; publish it from the net11.0 test host.");
-            return;
-#else
             var src = FindSrc();
             var configuration = typeof(XmlAotPublishTests).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration
                 ?? "Release";
@@ -64,7 +62,6 @@ namespace CloudNimble.XmlEssentials.Tests
                 + "<Order xmlns=\"urn:order\" currency=\"USD\"><Id>A-1</Id><Status>Open</Status><Qty>2</Qty><Line><Sku>sku</Sku><Qty>1</Qty></Line></Order>" + Environment.NewLine
                 + "<Inventory><Any>5</Any><Codes>1</Codes><Codes>2</Codes><Counts><bolts>40</bolts></Counts><Notes>n</Notes><Pending>7</Pending><Pending>8</Pending><Raw><part id=\"9\"/></Raw><Sizes>3</Sizes><Tags>new</Tags></Inventory>" + Environment.NewLine
                 + "XmlEssentials AOT smoke passed." + Environment.NewLine);
-#endif
         }
 
         #endregion
@@ -150,3 +147,4 @@ namespace CloudNimble.XmlEssentials.Tests
     }
 
 }
+#endif

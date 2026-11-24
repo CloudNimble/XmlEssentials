@@ -18,6 +18,43 @@ namespace CloudNimble.Text.Xml
         #region Public Properties
 
         /// <summary>
+        /// Gets or sets a value that specifies how the writer lays out the attributes of a start tag.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlAttributeStyle.Inline"/>, which writes
+        /// every attribute on the line of the start tag.
+        /// </value>
+        /// <remarks>
+        /// With <see cref="XmlAttributeStyle.PerLine"/>, <see cref="AttributesPerLine"/> attributes are written
+        /// to a line and each line after the first is indented to put its first attribute under the first
+        /// attribute of the tag. The indentation is the white space that starts the line of the tag, and then
+        /// one space for each character of the tag up to its first attribute. It applies with or without
+        /// <see cref="Indented"/>.
+        /// </remarks>
+        public XmlAttributeStyle AttributeStyle { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of attributes the writer writes to a line when <see cref="AttributeStyle"/>
+        /// is <see cref="XmlAttributeStyle.PerLine"/>.
+        /// </summary>
+        /// <value>
+        /// The number of attributes to a line. The default is 0, which means 1. The value is not read when
+        /// <see cref="AttributeStyle"/> is <see cref="XmlAttributeStyle.Inline"/>.
+        /// </value>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The property is set to a negative value.
+        /// </exception>
+        public int AttributesPerLine
+        {
+            get;
+            set
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
+
+        /// <summary>
         /// Gets or sets a value that indicates whether the writer writes a UTF-8 byte order mark before its first output.
         /// </summary>
         /// <value>
@@ -25,6 +62,20 @@ namespace CloudNimble.Text.Xml
         /// The default is <see langword="false"/>.
         /// </value>
         public bool EmitByteOrderMark { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value that specifies how the writer writes an element that has no content.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlEmptyElementStyle.SelfClosing"/>, which
+        /// writes <c>&lt;e/&gt;</c>.
+        /// </value>
+        /// <remarks>
+        /// The setting applies to an element ended with <see cref="Utf8XmlWriter.WriteEndElement"/> before any
+        /// content was written, and to the <c>WriteEmptyElement</c> methods.
+        /// <see cref="Utf8XmlWriter.WriteFullEndElement"/> always writes an end tag.
+        /// </remarks>
+        public XmlEmptyElementStyle EmptyElementStyle { get; set; }
 
         /// <summary>
         /// Gets or sets the character used to indent when <see cref="Indented"/> is <see langword="true"/>.
@@ -118,13 +169,40 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets the line ending written before each indented line when <see cref="Indented"/> is <see langword="true"/>.
+        /// Gets or sets the line ending the writer writes.
         /// </summary>
         /// <value>
-        /// The line ending. The default is <see cref="Environment.NewLine"/>. A <see langword="null"/> or empty
-        /// value also means <see cref="Environment.NewLine"/>.
+        /// The line ending: <c>"\n"</c> or <c>"\r\n"</c>. The default is <see cref="Environment.NewLine"/>, in
+        /// an instance created with <see langword="new"/> and in <see langword="default"/> alike.
         /// </value>
-        public string? NewLine { get; set; } = Environment.NewLine;
+        /// <exception cref="ArgumentNullException">
+        /// The property is set to <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The property is set to a value that is neither <c>"\n"</c> nor <c>"\r\n"</c>.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// The value is written for every line break: the ones <see cref="Indented"/> and
+        /// <see cref="XmlAttributeStyle.PerLine"/> add, and the ones in text, CDATA sections, comments and
+        /// processing instructions. So a document has one kind of line ending, whatever it was read with.
+        /// </para>
+        /// <para>
+        /// No value changes. A reader gives a carriage return and a line feed back as a line feed (XML 1.0 and
+        /// 1.1, section 2.11). A carriage return that is part of a value is written as a character reference,
+        /// as it always is, and a line break in an attribute value is written as a character reference too.
+        /// </para>
+        /// </remarks>
+        public string NewLine
+        {
+            get => field ?? Environment.NewLine;
+            set
+            {
+                ArgumentNullException.ThrowIfNull(value);
+                XmlLimits.ThrowIfNotNewLine(value);
+                field = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets a value that indicates whether the writer omits the XML declaration (<c>&lt;?xml ...?&gt;</c>).

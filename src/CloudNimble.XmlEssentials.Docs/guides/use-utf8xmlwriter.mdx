@@ -244,18 +244,20 @@ The code produces the following output:
 
 | Method | Writes |
 | --- | --- |
-| `WriteElementString` | An element with text. A `null` string writes an empty element. Overloads take a `DateTime`, a `DateTimeOffset`, or a `Guid`. |
+| `WriteElementString` | An element with text. A `null` string writes an empty element, `<Comment/>` by default. Overloads take a `DateTime`, a `DateTimeOffset`, or a `Guid`. |
 | `WriteElementNumber` | An element with a number. |
 | `WriteElementBoolean` | An element with `true` or `false`. |
 | `WriteElementBase64String` | An element with Base64 text. |
-| `WriteEmptyElement` | An empty element, `<Gift/>`. |
+| `WriteEmptyElement` | An empty element, `<Gift/>` by default. |
 | `WriteNilElement` | An empty element with `xsi:nil="true"`. The writer declares the `xsi` prefix if it isn't in scope. See [Null values and xsi:nil](/guides/null-and-nil). |
 | `WriteAttributeString`, `WriteAttributeNumber` | A complete attribute on the open start tag. |
 
 To choose between the two ways of closing an element:
 
-- `WriteEndElement` writes `<Notes/>` when the element has no content, and `</Notes>` when it has.
-- `WriteFullEndElement` always writes the end tag, so an element with no content becomes `<Notes></Notes>`. Use it for consumers that treat the two forms differently, such as HTML parsers.
+- `WriteEndElement` writes `</Notes>` when the element has content. When it has none, the element is written in the form `EmptyElementStyle` asks for, which is `<Notes/>` by default.
+- `WriteFullEndElement` always writes the end tag, so an element with no content becomes `<Notes></Notes>`, whatever `EmptyElementStyle` is. Use it for consumers that treat the two forms differently, such as HTML parsers.
+
+`WriteEmptyElement` and `WriteElementString` with a `null` string follow `EmptyElementStyle` too. See [Control the layout](#control-the-layout).
 
 ## How the writer escapes values
 
@@ -263,7 +265,7 @@ You pass values as they are. The writer escapes the characters that would otherw
 
 ```csharp
 var buffer = new ArrayBufferWriter<byte>();
-var options = new XmlWriterOptions { OmitXmlDeclaration = true };
+var options = new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true };
 
 using (var writer = new Utf8XmlWriter(buffer, options))
 {
@@ -300,6 +302,7 @@ Text read back unchanged: True
 | Attribute value | `&` as `&amp;`, `<` as `&lt;`, `"` as `&quot;`, a tab as `&#x9;`, a line feed as `&#xA;`, and a carriage return as `&#xD;`. Attribute values are always in double quotes. |
 | Text and attribute values in XML 1.1 | Also U+0085 as `&#x85;`, U+2028 as `&#x2028;`, and control characters as `&#xN;`. |
 | CDATA sections, comments, processing instructions | Nothing. Content that can't be written as it is throws an `XmlException`. |
+| A line feed in element text, a CDATA section, a comment, or a processing instruction | Not escaped. It is written as the line ending in `NewLine`. |
 | Names | Nothing. A name that isn't a valid XML name throws an `XmlException`. |
 
 What to notice in the output:
@@ -307,6 +310,7 @@ What to notice in the output:
 - `>` is left alone except in `]]>`, and `"` is left alone in element text. Both are legal there.
 - The white space in the attribute is written as character references. A reader replaces a literal tab or line end in an attribute with a space, so a reference is the only way to keep it.
 - The carriage return in the text is a reference for the same reason: a reader turns a literal one into a line feed.
+- The line feed in the text is a line break in the output, and the writer writes every line break as the `NewLine` option says. The sample sets `NewLine` to `"\n"`. With `"\r\n"` the text is still read back unchanged, because a reader gives a carriage return and a line feed back as one line feed.
 
 A character that XML doesn't allow at all, such as U+0000, can't be escaped, and writing it throws `Illegal character in XML value.` [XML 1.1](#write-xml-11) allows more characters than XML 1.0.
 
@@ -506,11 +510,155 @@ Indentation never changes a value. An element that holds text, such as `Note`, i
 | `Indented` | `true` puts each element on its own line and indents it. | `false` |
 | `IndentSize` | How many indent characters each level gets. | 0, which means 2 |
 | `IndentCharacter` | The character to indent with: a space (`' '`) or a tab (`'\t'`). Any other character throws `ArgumentOutOfRangeException`. | A space |
-| `NewLine` | The line ending. | `Environment.NewLine` |
+| `NewLine` | The line ending, `"\n"` or `"\r\n"`. The writer uses it for every line break, not only the ones indentation adds. See [Control the layout](#control-the-layout). | `Environment.NewLine` |
 
 <Tip>
 `NewLine` defaults to the line ending of the machine that runs the code, so the same program writes different bytes on Windows and on Linux. Set it to `"\n"` or `"\r\n"` when the output is compared, hashed, signed, or checked in.
 </Tip>
+
+## Control the layout
+
+These options set how the markup is laid out. None of them changes what a reader gets from the document. Each is a rule for the whole output, whichever code wrote it: your calls, the serializer, or a document or node that writes itself.
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `EmptyElementStyle` | The form of an element that has no content. | `XmlEmptyElementStyle.SelfClosing` |
+| `AttributeStyle` | Whether attributes stay on the line of the start tag or go a fixed number to a line. | `XmlAttributeStyle.Inline` |
+| `AttributesPerLine` | The number of attributes on each line. Read only when `AttributeStyle` is `PerLine`. | 0, which means 1 |
+| `NewLine` | The line ending, `"\n"` or `"\r\n"`. | `Environment.NewLine` |
+
+### Choose the form of an empty element
+
+`EmptyElementStyle` applies to an element that you end with `WriteEndElement` before you write any content, to `WriteEmptyElement`, and to `WriteElementString` with a `null` string.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions
+{
+    EmptyElementStyle = XmlEmptyElementStyle.StartAndEndTag,
+    Indented = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+};
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("a");
+    writer.WriteStartElement("b");
+    writer.WriteEndElement();
+    writer.WriteEmptyElement("c");
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<a>
+  <b></b>
+  <c></c>
+</a>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+| Value | `c` is written as |
+| --- | --- |
+| `SelfClosing` | `<c/>` |
+| `SelfClosingWithSpace` | `<c />`, the form the writers in `System.Xml` use |
+| `StartAndEndTag` | `<c></c>` |
+
+`WriteFullEndElement` writes an end tag under every setting. Indentation puts nothing between the two tags of `<b></b>`, because white space there would be content.
+
+### Put attributes on their own lines
+
+With `AttributeStyle = XmlAttributeStyle.PerLine`, the writer breaks the line between attributes. Each line after the first starts with the white space that starts the line of the tag, then one space for each character of the tag up to its first attribute. For a tag that starts its line, that puts the attributes under the first one.
+
+The sample writes one document twice: with one attribute to a line, and then with `AttributesPerLine = 2`.
+
+```csharp
+var onePerLine = new XmlWriterOptions
+{
+    AttributeStyle = XmlAttributeStyle.PerLine,
+    Indented = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+};
+
+foreach (XmlWriterOptions options in new[] { onePerLine, onePerLine with { AttributesPerLine = 2 } })
+{
+    var buffer = new ArrayBufferWriter<byte>();
+    using (var writer = new Utf8XmlWriter(buffer, options))
+    {
+        writer.WriteStartElement("order");
+        writer.WriteAttributeString("a", "1");
+        writer.WriteAttributeString("b", "2");
+        writer.WriteAttributeString("c", "3");
+        writer.WriteStartElement("line");
+        writer.WriteAttributeString("x", "1");
+        writer.WriteAttributeString("y", "2");
+        writer.WriteEndElement();
+        writer.WriteEndElement();
+    }
+
+    output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+}
+```
+
+The code produces the following output:
+
+```xml
+<order a="1"
+       b="2"
+       c="3">
+  <line x="1"
+        y="2"/>
+</order>
+<order a="1" b="2"
+       c="3">
+  <line x="1" y="2"/>
+</order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+- A namespace declaration and `xsi:nil` are attributes and are counted.
+- `PerLine` works with or without `Indented`.
+- `AttributesPerLine` can't be negative. A negative value throws `ArgumentOutOfRangeException`.
+
+### Choose the line ending
+
+`NewLine` is written for every line break in the output: the ones `Indented` and `PerLine` add, and the ones inside text, CDATA sections, comments, and processing instructions. A document therefore has one kind of line ending, whatever it was read with.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { NewLine = "\r\n", OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("r");
+    writer.WriteStringValue("a\nb");
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan).Replace("\r", "\\r"));
+```
+
+The code produces the following output:
+
+```text
+<r>a\r
+b</r>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+- The property accepts `"\n"` and `"\r\n"`, the two values `JsonWriterOptions.NewLine` accepts in System.Text.Json. Any other string throws `ArgumentOutOfRangeException`, and `null` throws `ArgumentNullException`. The default is `Environment.NewLine`.
+- No value changes. A reader gives a carriage return followed by a line feed back as one line feed, so the text of `r` is read back as `"a\nb"`.
+- A carriage return that is part of a value is still written as `&#xD;`, and a line feed in an attribute value is still written as `&#xA;`. See [How the writer escapes values](#how-the-writer-escapes-values).
+- A document that was read with LF line ends is written with CRLF on Windows unless you set `NewLine = "\n"`.
 
 ## Write comments, CDATA, processing instructions, and raw XML
 

@@ -542,6 +542,8 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
             SampleOutput.Capture(ConfigureOptions.Defaults).Should().Be(
                 "AllowDuplicateProperties = True\n" +
                 "AttributeNamingPolicy = null\n" +
+                "AttributeStyle = Inline\n" +
+                "AttributesPerLine = 1\n" +
                 "Converters.Count = 0\n" +
                 "DefaultBufferSize = 0\n" +
                 "DefaultIgnoreCondition = Never\n" +
@@ -550,6 +552,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "DictionaryKeyPolicy = null\n" +
                 "ElementNamingPolicy = null\n" +
                 "EmitByteOrderMark = False\n" +
+                "EmptyElementStyle = SelfClosing\n" +
                 "EnumHandling = Name\n" +
                 "IgnoreReadOnlyFields = False\n" +
                 "IgnoreReadOnlyProperties = False\n" +

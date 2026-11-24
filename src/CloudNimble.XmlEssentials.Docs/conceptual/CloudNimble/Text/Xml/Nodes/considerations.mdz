@@ -1,5 +1,5 @@
 - **XML isn't a property bag.** An element's children are an ordered list that can mix elements, text, comments, and more, and names can repeat. There is no equivalent of `JsonObject`.
-- **What `XmlNode.Parse` keeps.** The root element and everything inside it, including comments and the white space between elements. The XML declaration and anything outside the root element aren't part of the tree, and `<e></e>` is written back as `<e/>`.
+- **What `XmlNode.Parse` keeps.** The root element and everything inside it, including comments, the white space between elements, and whether an element with no content was `<e/>` or `<e></e>`. The XML declaration and anything outside the root element aren't part of the tree.
 - **Nothing is validated until the tree is written.** An invalid name, a duplicate attribute, a prefix without a namespace, a comment that contains `--`, or a CDATA section that contains `]]>` throws an `XmlException` from `ToString` or `WriteTo`.
 - **Values are strings.** The tree has no typed getters such as `GetInt32`.
 - **Nodes are ordinary objects.** There is nothing to dispose, and a tree stays valid after the `XmlDocument` it was cloned from is disposed.

@@ -49,6 +49,11 @@ namespace CloudNimble.Text.Xml
         public static readonly SearchValues<byte> AsciiTextWriteChars = SearchValues.Create("\t\n !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
 
         /// <summary>
+        /// <see cref="AsciiTextWriteChars"/> without LF: what is copied verbatim when a line break is written as CR LF.
+        /// </summary>
+        public static readonly SearchValues<byte> AsciiTextWriteCharsNoLineFeed = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~"u8);
+
+        /// <summary>
         /// ASCII bytes that are legal, as literals, in comments, CDATA sections, and processing instruction data
         /// in both XML versions: TAB, LF, CR, and printable ASCII.
         /// </summary>
@@ -67,6 +72,11 @@ namespace CloudNimble.Text.Xml
         /// UTF-16 form of <see cref="AsciiTextWriteChars"/>: element text made only of these is copied verbatim.
         /// </summary>
         public static readonly SearchValues<char> PlainTextChars = SearchValues.Create("\t\n !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~");
+
+        /// <summary>
+        /// <see cref="PlainTextChars"/> without LF: what is copied verbatim when a line break is written as CR LF.
+        /// </summary>
+        public static readonly SearchValues<char> PlainTextCharsNoLineFeed = SearchValues.Create("\t !\"#$%'()*+,-./0123456789:;=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\^_`abcdefghijklmnopqrstuvwxyz{|}~");
 
         /// <summary>
         /// Bytes of a double-quoted attribute value that are the value as written: printable ASCII except

@@ -481,7 +481,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             using var document = XmlDocument.Parse(xml);
             var buffer = new ArrayBufferWriter<byte>();
-            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true });
             document.WriteTo(writer);
             writer.Flush();
             return Encoding.UTF8.GetString(buffer.WrittenSpan);

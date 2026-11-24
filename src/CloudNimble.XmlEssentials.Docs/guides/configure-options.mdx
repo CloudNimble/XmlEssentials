@@ -189,6 +189,8 @@ var options = new XmlSerializerOptions();
 
 output.WriteLine($"AllowDuplicateProperties = {options.AllowDuplicateProperties}");
 output.WriteLine($"AttributeNamingPolicy = {options.AttributeNamingPolicy?.ToString() ?? "null"}");
+output.WriteLine($"AttributeStyle = {options.AttributeStyle}");
+output.WriteLine($"AttributesPerLine = {options.AttributesPerLine}");
 output.WriteLine($"Converters.Count = {options.Converters.Count}");
 output.WriteLine($"DefaultBufferSize = {options.DefaultBufferSize}");
 output.WriteLine($"DefaultIgnoreCondition = {options.DefaultIgnoreCondition}");
@@ -197,6 +199,7 @@ output.WriteLine($"DefaultPropertyMapping = {options.DefaultPropertyMapping}");
 output.WriteLine($"DictionaryKeyPolicy = {options.DictionaryKeyPolicy?.ToString() ?? "null"}");
 output.WriteLine($"ElementNamingPolicy = {options.ElementNamingPolicy?.ToString() ?? "null"}");
 output.WriteLine($"EmitByteOrderMark = {options.EmitByteOrderMark}");
+output.WriteLine($"EmptyElementStyle = {options.EmptyElementStyle}");
 output.WriteLine($"EnumHandling = {options.EnumHandling}");
 output.WriteLine($"IgnoreReadOnlyFields = {options.IgnoreReadOnlyFields}");
 output.WriteLine($"IgnoreReadOnlyProperties = {options.IgnoreReadOnlyProperties}");
@@ -234,6 +237,8 @@ The code produces the following output:
 ```text
 AllowDuplicateProperties = True
 AttributeNamingPolicy = null
+AttributeStyle = Inline
+AttributesPerLine = 1
 Converters.Count = 0
 DefaultBufferSize = 0
 DefaultIgnoreCondition = Never
@@ -242,6 +247,7 @@ DefaultPropertyMapping = Element
 DictionaryKeyPolicy = null
 ElementNamingPolicy = null
 EmitByteOrderMark = False
+EmptyElementStyle = SelfClosing
 EnumHandling = Name
 IgnoreReadOnlyFields = False
 IgnoreReadOnlyProperties = False
@@ -289,7 +295,10 @@ These options take effect when writing.
 | `WriteIndented` | `false` | Puts each element on its own line and indents nested elements. |
 | `IndentCharacter` | `' '` (space) | The character used to indent: a space or a tab. |
 | `IndentSize` | `0`, which means 2 | How many indent characters each level gets. |
-| `NewLine` | `Environment.NewLine` | The line end written when the output is indented. Set it to `"\n"` for output that is the same on every operating system. |
+| `NewLine` | `Environment.NewLine` | The line end written for every line break: the ones indentation and `AttributeStyle` add, and the ones inside values. It must be `"\n"` or `"\r\n"`. Set it to `"\n"` for output that is the same on every operating system. |
+| `EmptyElementStyle` | `XmlEmptyElementStyle.SelfClosing` | The form of an element that has no content: `<e/>`, `<e />` (`SelfClosingWithSpace`), or `<e></e>` (`StartAndEndTag`). |
+| `AttributeStyle` | `XmlAttributeStyle.Inline` | Whether the XML attributes of an element are all on the line of its start tag, or `AttributesPerLine` to a line (`PerLine`), lined up under the first one. |
+| `AttributesPerLine` | `1` | How many XML attributes each line gets when `AttributeStyle` is `PerLine`. It must be at least 1. |
 | `OmitXmlDeclaration` | `false` | Leaves out the `<?xml ...?>` declaration. |
 | `XmlVersion` | `XmlVersion.Version10` | The XML version in the declaration. See [XML conformance](/guides/xml-conformance). |
 | `EmitByteOrderMark` | `false` | Starts the output with the UTF-8 byte order mark. With the overload that returns a `string`, the string then starts with the character U+FEFF. |

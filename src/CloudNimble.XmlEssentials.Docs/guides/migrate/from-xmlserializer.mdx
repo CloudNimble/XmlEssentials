@@ -265,6 +265,7 @@ The first block is what `System.Xml.Serialization.XmlSerializer` writes to a `St
 | Namespace declarations on the root | `xmlns:xsi` and `xmlns:xsd`, always | None | Not available. A reader that follows the Namespaces in XML recommendation doesn't need them. |
 | XML declaration | Written. The encoding is the encoding of the target | Written, always `encoding="utf-8"` | Set `OmitXmlDeclaration` to leave it out. See [Encoding](#encoding). |
 | Indentation | Two spaces | One line | Set `WriteIndented = true`. |
+| Element with no content | `<e />` | `<e/>` | Set `EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace`. |
 | Element order | Declaration order, base class first | Declaration order, base class first | No change. `[XmlPropertyOrder]` or `Order` sets an explicit order. |
 | `null` reference | Element left out | `xsi:nil="true"` | Set `DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull`. See [Null values](#null-values). |
 | Collection | `<Packages>` wrapper, items named for their type (`<string>`) | Repeated `<Packages>`, no wrapper | Add `[XmlArray]` and `[XmlArrayItem("string")]`. See [Collections](#collections). |

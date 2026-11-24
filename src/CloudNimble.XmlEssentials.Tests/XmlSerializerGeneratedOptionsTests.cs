@@ -447,10 +447,70 @@ namespace CloudNimble.XmlEssentials.Tests
 
                     public static string Run()
                     {
-                        return Read(XmlUnknownTypeHandling.XmlElement) + "\n" + Read(XmlUnknownTypeHandling.XmlNode);
+                        return Read(XmlUnknownTypeHandling.XmlElement) + "\n" + Read(XmlUnknownTypeHandling.XmlNode) + "\n" + Write(XmlUnknownTypeHandling.XmlElement) + "\n" + Write(XmlUnknownTypeHandling.XmlNode);
+                    }
+
+                    private static string Write(XmlUnknownTypeHandling handling)
+                    {
+                        const string xml = "<Holder><Any id=\"7\"><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>";
+                        var info = new AppXmlContext(new XmlSerializerOptions { UnknownTypeHandling = handling, OmitXmlDeclaration = true }).Holder;
+                        return XmlSerializer.Serialize(XmlSerializer.Deserialize(xml, info)!, info);
                     }
                 }
-                """).Should().Be("XmlElement,XmlElement;null\nXmlElementNode,XmlElementNode;null");
+                """).Should().Be(
+                    "XmlElement,XmlElement;null\nXmlElementNode,XmlElementNode;null\n" +
+                    "<Holder><Any id=\"7\"><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>\n" +
+                    "<Holder><Any id=\"7\"><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>");
+        }
+
+        [TestMethod]
+        public void LayoutSettings_AreFollowedByAGeneratedContext()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public sealed class Styled
+                {
+                    [XmlAttribute]
+                    public string Code { get; set; } = "";
+
+                    [XmlAttribute]
+                    public int Id { get; set; }
+
+                    [XmlArray]
+                    public List<string> Lines { get; set; } = new();
+
+                    public string? Note { get; set; }
+
+                    public string Text { get; set; } = "";
+                }
+
+                [XmlSerializable<Styled>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        XmlSerializerOptions Options() => new XmlSerializerOptions
+                        {
+                            AttributeStyle = XmlAttributeStyle.PerLine,
+                            EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace,
+                            NewLine = "\r\n",
+                            OmitXmlDeclaration = true,
+                        };
+                        var value = new Styled { Code = "c", Id = 7, Text = "one\ntwo" };
+                        var generated = XmlSerializer.Serialize(value, new AppXmlContext(Options()).Styled);
+                        var reflected = XmlSerializer.Serialize(value, Options());
+                        var read = XmlSerializer.Deserialize(generated, new AppXmlContext(Options()).Styled)!;
+                        return (generated == reflected ? generated : generated + " <> reflection: " + reflected) + "|" + read.Text.Replace("\n", "<LF>");
+                    }
+                }
+                """).Should().Be(
+
+                    // Nothing is indented, so Note is on the line that starts with the eight blanks before Id,
+                    // and its second line has those and six more for "<Note ".
+                    "<Styled Code=\"c\"\r\n        Id=\"7\"><Lines /><Note xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\r\n              xsi:nil=\"true\" /><Text>one\r\ntwo</Text></Styled>|one<LF>two");
         }
 
         [TestMethod]

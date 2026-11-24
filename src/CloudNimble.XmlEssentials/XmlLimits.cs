@@ -87,6 +87,27 @@ namespace CloudNimble.Text.Xml
             }
         }
 
+        /// <summary>
+        /// Throws when <paramref name="value"/> is not a line ending: a line feed, or a carriage return and a line feed.
+        /// </summary>
+        /// <param name="value">The value to check.</param>
+        /// <param name="paramName">The name of the parameter, filled in by the compiler.</param>
+        /// <exception cref="System.ArgumentOutOfRangeException">
+        /// <paramref name="value"/> is neither <c>"\n"</c> nor <c>"\r\n"</c>.
+        /// </exception>
+        /// <remarks>
+        /// These are the two values <c>System.Text.Json</c> accepts. They are also the only two that a reader
+        /// gives back as a line feed, which matters because the writer uses the value for the line breaks in
+        /// content too.
+        /// </remarks>
+        public static void ThrowIfNotNewLine(string value, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(value))] string? paramName = null)
+        {
+            if (value is not ("\n" or "\r\n"))
+            {
+                throw new System.ArgumentOutOfRangeException(paramName, "The line ending must be \"\\n\" or \"\\r\\n\".");
+            }
+        }
+
         #endregion
 
     }

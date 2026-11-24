@@ -23,7 +23,7 @@ The defaults aim at no surprises on a round trip, for example when a file is edi
 ### Writing
 
 - `WriteTo` keeps comments, white space between elements, namespace declarations where they were, attribute order, and the difference between `<e/>` and `<e></e>`.
-- The result has the same content but isn't always the same bytes. Attribute values are written with double quotes and one space between attributes, `<e />` is written `<e/>`, CRLF is written as LF, and a character reference such as `&#65;` is written as the character.
+- The result has the same content but isn't always the same bytes. Attribute values are written with double quotes, and a character reference such as `&#65;` is written as the character. White space inside a tag isn't kept: the attributes are laid out as `XmlWriterOptions.AttributeStyle` says (one space before each, by default), and an empty-element tag has the form `EmptyElementStyle` says (`<e/>` by default, so `<e />` is written `<e/>`). Every line end is written as `NewLine`, which defaults to `Environment.NewLine`.
 - A parsed declaration is written with the parsed version and `encoding="utf-8"`, even when the writer's `OmitXmlDeclaration` is `true`. When the document has no declaration, the writer decides: a `Utf8XmlWriter` adds one unless `XmlWriterOptions.OmitXmlDeclaration` is `true`.
 - Writing a parsed document doesn't allocate.
 

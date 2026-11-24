@@ -18,7 +18,8 @@ The types in the `CloudNimble.Text.Xml.Nodes` namespace are a tree of XML nodes 
 | Storage | Pooled buffers; an `XmlElement` is a struct that points into them | One object per node; names and values are strings |
 | Lifetime | Dispose the document; elements die with it | Ordinary objects; nothing to dispose |
 | Keeps comments and indentation inside the root | Yes | Yes |
-| Keeps `<e></e>` distinct from `<e/>`, and the declaration and comments outside the root | Yes | No |
+| Keeps `<e></e>` distinct from `<e/>` | Yes | Yes |
+| Keeps the declaration and comments outside the root | Yes | No |
 | Typed getters such as `GetInt32` | Yes | No; values are strings |
 
 If you only read, use [`XmlDocument`](/guides/use-xmldocument). If you read forward once through a large input, use [`Utf8XmlReader`](/guides/use-utf8xmlreader). If the XML maps to your own classes, use [`XmlSerializer`](/guides/serialize). The cost of the tree is covered in [When the tree costs more](#when-the-tree-costs-more) at the end of this page.
@@ -67,7 +68,7 @@ What to notice:
 
 - `ToString` returns the markup of the node, without an XML declaration and without indentation.
 - You set values as plain text. Escaping happens when the tree is written, so `&` became `&amp;`.
-- An element with no children is written as an empty-element tag (`<Notes/>`).
+- An element that you create and give no children is written as an empty-element tag (`<Notes/>`). Set `IsEmptyElement` to `false` to write it as `<Notes></Notes>`. A parsed element keeps the form it had in its source.
 - Setting `InnerText` replaces all the children of the element with one text node. Setting it to an empty string removes them.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)
@@ -106,7 +107,7 @@ The code produces the following output:
 <Order>
   <!-- rush -->
   <Item> Keyboard </Item>
-  <Notes/>
+  <Notes></Notes>
 </Order>
 End tag does not match start tag.
 ```
@@ -116,7 +117,7 @@ The tree holds the root element and what's inside it. Compare the output with th
 - **Kept:** elements, attributes, text, CDATA sections, processing instructions inside the root, and comments inside the root.
 - **Kept:** the white space between elements inside the root, as text nodes, so the indentation survives. The goal is the same as for `XmlDocument`: no surprises when a document is edited and saved.
 - **Dropped:** the XML declaration, and the comments, processing instructions, and white space before and after the root element.
-- **Changed:** `<Notes></Notes>` comes back as `<Notes/>`. The tree doesn't record which form an empty element had.
+- **Kept:** the form of an element with no content. `<Notes></Notes>` comes back as `<Notes></Notes>`, and `<Notes/>` would come back as one tag. `XmlElementNode.IsEmptyElement` holds the form, and you can set it.
 
 `Parse` returns the root as an `XmlNode`; cast the result to `XmlElementNode` to reach the element members. Input that isn't a well-formed document throws an `XmlException`. `Parse` takes no options and has no `Stream` overload. When you need limits, a tree without the white space, or a stream, parse with [`XmlDocument`](/guides/use-xmldocument) and call `CloneNode` on the element you want:
 
@@ -554,6 +555,72 @@ The first writer adds the XML declaration itself, which is what you want in most
 </Warning>
 
 `XmlNode.Parse` never produces an `XmlDeclarationNode`, and a tree has no document node to hold one. The declaration of a parsed document is available on [`XmlDocument.Declaration`](/guides/use-xmldocument#read-the-xml-declaration).
+
+### Change one thing in a file and write it back
+
+To edit a file and leave the rest of it as it was, parse it, make the change, and write the tree with options that name the file's style. The tree keeps the white space and the comments inside the root element, and whether each element with no content had one tag or two. The writer's options set the rest.
+
+```csharp
+const string project =
+    "<Project Sdk=\"Microsoft.NET.Sdk\">\n" +
+    "  <PropertyGroup>\n" +
+    "    <Description></Description>\n" +
+    "  </PropertyGroup>\n" +
+    "  <!-- What the project depends on. -->\n" +
+    "  <ItemGroup>\n" +
+    "    <PackageReference Include=\"FluentAssertions\" Version=\"8.0.0\" />\n" +
+    "  </ItemGroup>\n" +
+    "</Project>";
+
+var root = (XmlElementNode)XmlNode.Parse(project)!;
+root["ItemGroup"]!["PackageReference"]!.SetAttribute("Version", "8.1.0");
+
+var options = new XmlWriterOptions
+{
+    EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+};
+
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    root.WriteTo(writer);
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description></Description>
+  </PropertyGroup>
+  <!-- What the project depends on. -->
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="8.1.0" />
+  </ItemGroup>
+</Project>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
+
+The version number is the only difference from the input. These `XmlWriterOptions` properties name the style:
+
+| Option | What it sets |
+| --- | --- |
+| `EmptyElementStyle` | The form of an element that is written as one tag: `<e/>` by default, `<e />` with `SelfClosingWithSpace`. `StartAndEndTag` writes every element with no content as `<e></e>`. |
+| `AttributeStyle` | Whether the attributes are on the line of the start tag (`Inline`, the default) or `AttributesPerLine` to a line (`PerLine`). |
+| `NewLine` | Every line break in the output: `"\n"` or `"\r\n"`. The tree holds line feeds, whatever the file had, and the default is `Environment.NewLine`. |
+| `OmitXmlDeclaration` | Whether the writer adds an XML declaration. |
+
+See [Control the layout](/guides/use-utf8xmlwriter#control-the-layout). There are limits:
+
+- White space and comments outside the root element aren't kept. `XmlNode.Parse` returns the root element, so a comment before it and a line break after its end tag aren't in the tree.
+- The writer adds an XML declaration unless `OmitXmlDeclaration` is `true`. The declaration the file had isn't in the tree, so the one that is written is the writer's: `<?xml version="1.0" encoding="utf-8"?>`.
+- A few spellings have no setting. Attribute values are written in double quotes, extra white space inside a tag isn't kept, and a character reference such as `&#65;` is written as the character. See [What a round trip keeps](/guides/use-xmldocument#what-a-round-trip-keeps).
 
 ### Call ToString on other nodes
 

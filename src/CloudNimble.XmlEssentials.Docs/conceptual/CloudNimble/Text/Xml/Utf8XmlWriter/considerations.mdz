@@ -24,6 +24,10 @@ The writer tracks the namespaces in scope and declares what's missing: a default
 
 With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text is written on one line, with everything in it.
 
+### Layout
+
+Every line break the writer writes is the `NewLine` of its options, including a line feed inside text, a CDATA section, a comment, or a processing instruction. An element with no content is written in the form `EmptyElementStyle` asks for (`<e/>` by default), except after `WriteFullEndElement`, which always writes an end tag. `AttributeStyle` decides whether attributes stay on the line of the start tag.
+
 ### What isn't checked
 
 - `WriteRawValue` copies its input without escaping it. It checks that the input is well formed where it is written only when `skipInputValidation` is `false` and the writer does not have `SkipValidation` set.

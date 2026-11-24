@@ -105,8 +105,9 @@ The state holds more than `JsonReaderState` does. To resume inside a document, t
 | --- | --- | --- |
 | `struct XmlDataWriterOptions` | [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) | Renamed. |
 | `Indented`, `IndentCharacter`, `IndentSize`, `MaxDepth`, `SkipValidation`, `OmitXmlDeclaration` | The same names | Same. |
-| `string NewLine` | `string? NewLine` | Same. `null` or an empty string means `Environment.NewLine`. |
+| `string NewLine` | `string NewLine` | Same name. The value is never `null`, and the default is `Environment.NewLine`. The value must be `"\n"` or `"\r\n"`, as for `JsonWriterOptions.NewLine`, and it is written for every line break, including the ones inside text. |
 | | `EmitByteOrderMark`, `MaxAttributeCount`, `MaxNameByteCount`, `Standalone`, `Version` | Added. `Version` selects XML 1.0 or 1.1. `Standalone` adds the `standalone` attribute to the declaration. |
+| | `EmptyElementStyle`, `AttributeStyle`, `AttributesPerLine` | Added. The form of an element with no content, and the layout of attributes. |
 
 ## Writer
 
@@ -169,7 +170,8 @@ One default differs from what the proposal's examples show. A collection member 
 
 | Proposed | XmlEssentials | Status |
 | --- | --- | --- |
-| `WriteIndented`, `IndentCharacter`, `IndentSize`, `NewLine`, `OmitXmlDeclaration` | The same names | Same. |
+| `WriteIndented`, `IndentCharacter`, `IndentSize`, `OmitXmlDeclaration` | The same names | Same. |
+| `NewLine` | `NewLine` | Same name. The value must be `"\n"` or `"\r\n"`, and it is written for every line break, including the ones inside text. |
 | `MaxDepth`, `IgnoreReadOnlyProperties`, `IgnoreReadOnlyFields`, `IncludeFields` | The same names | Same. |
 | `XmlDataNumberHandling NumberHandling` | `XmlNumberHandling NumberHandling` | Renamed. The proposal doesn't define the enum. Here it has `Strict` and `AllowNamedFloatingPointLiterals`. |
 | `XmlDataUnmappedMemberHandling UnmappedMemberHandling` | `XmlUnmappedMemberHandling UnmappedMemberHandling` | Renamed. The proposal doesn't define the enum. Here it has `Skip` and `Disallow`. |
@@ -178,7 +180,7 @@ One default differs from what the proposal's examples show. A collection member 
 | `XmlDataSerializerContext? TypeInfoResolver` | `IXmlTypeInfoResolver? TypeInfoResolver` | Different shape. The property takes the interface that `XmlSerializerContext` implements, as `JsonSerializerOptions.TypeInfoResolver` takes `IJsonTypeInfoResolver`. `TypeInfoResolverChain` combines several. |
 | | `Default`, `Web`, `Strict`, the constructors that take `XmlSerializerDefaults` or another options instance, `MakeReadOnly`, `IsReadOnly`, `GetTypeInfo`, `TryGetTypeInfo`, `GetConverter` | Added. Counterparts of the `JsonSerializerOptions` members. |
 | | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DictionaryKeyPolicy`, `PropertyNameCaseInsensitive`, `DefaultIgnoreCondition`, `ReferenceHandler`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`, `AllowDuplicateProperties`, `ReadCommentHandling`, `DefaultBufferSize` | Added. Counterparts of the `JsonSerializerOptions` members. |
-| | `DefaultPropertyMapping`, `EnumHandling`, `InferClosedTypePolymorphism`, `WhitespaceHandling`, `XmlVersion`, `EmitByteOrderMark`, `MaxAttributeCount`, `MaxCommentByteCount`, `MaxDocumentByteCount`, `MaxNameByteCount`, `MaxTextByteCount` | Added. XML-specific settings and input limits. |
+| | `DefaultPropertyMapping`, `EnumHandling`, `InferClosedTypePolymorphism`, `WhitespaceHandling`, `XmlVersion`, `EmitByteOrderMark`, `EmptyElementStyle`, `AttributeStyle`, `AttributesPerLine`, `MaxAttributeCount`, `MaxCommentByteCount`, `MaxDocumentByteCount`, `MaxNameByteCount`, `MaxTextByteCount` | Added. XML-specific settings and input limits. |
 
 ## Serializer
 

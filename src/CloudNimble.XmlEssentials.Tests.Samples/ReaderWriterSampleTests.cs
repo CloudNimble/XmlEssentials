@@ -267,6 +267,61 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample23_WriteElementsAndValues_ControlLayout()
+        {
+            SampleOutput.Capture(WriteElementsAndValues.ControlLayout).Should().Be(
+                "<Order id=\"1042\" status=\"open\" region=\"EU\">\n" +
+                "  <Customer>Ada Lovelace</Customer>\n" +
+                "  <Notes />\n" +
+                "</Order>\n" +
+                "<Order id=\"1042\"\n" +
+                "       status=\"open\"\n" +
+                "       region=\"EU\">\n" +
+                "  <Customer>Ada Lovelace</Customer>\n" +
+                "  <Notes />\n" +
+                "</Order>\n" +
+                "<Order id=\"1042\" status=\"open\"\n" +
+                "       region=\"EU\">\n" +
+                "  <Customer>Ada Lovelace</Customer>\n" +
+                "  <Notes></Notes>\n" +
+                "</Order>");
+        }
+
+        [TestMethod]
+        public void Sample23_WriteElementsAndValues_ChooseEmptyElementForm()
+        {
+            SampleOutput.Capture(WriteElementsAndValues.ChooseEmptyElementForm).Should().Be(
+                "<a>\n" +
+                "  <b></b>\n" +
+                "  <c></c>\n" +
+                "</a>");
+        }
+
+        [TestMethod]
+        public void Sample23_WriteElementsAndValues_ChooseLineEnding()
+        {
+            SampleOutput.Capture(WriteElementsAndValues.ChooseLineEnding).Should().Be(
+                "<r>a\\r\n" +
+                "b</r>");
+        }
+
+        [TestMethod]
+        public void Sample23_WriteElementsAndValues_PutAttributesOnLines()
+        {
+            SampleOutput.Capture(WriteElementsAndValues.PutAttributesOnLines).Should().Be(
+                "<order a=\"1\"\n" +
+                "       b=\"2\"\n" +
+                "       c=\"3\">\n" +
+                "  <line x=\"1\"\n" +
+                "        y=\"2\"/>\n" +
+                "</order>\n" +
+                "<order a=\"1\" b=\"2\"\n" +
+                "       c=\"3\">\n" +
+                "  <line x=\"1\" y=\"2\"/>\n" +
+                "</order>");
+        }
+
+        [TestMethod]
         public void Sample23_WriteElementsAndValues_EscapeValues()
         {
             SampleOutput.Capture(WriteElementsAndValues.EscapeValues).Should().Be(

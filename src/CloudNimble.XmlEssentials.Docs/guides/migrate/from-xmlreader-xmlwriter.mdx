@@ -487,7 +487,7 @@ Where a `Utf8XmlWriter` method takes a name or text as a `string`, it usually ha
 | `WriteStartDocument()` | Not needed | `WriteXmlDeclaration()` writes the declaration at a point you choose. `XmlWriterOptions.Standalone` adds `standalone`. |
 | `WriteEndDocument()` | No counterpart | Call `WriteEndElement` for every element. See [Close every element](#close-every-element). |
 | `WriteStartElement(localName)`, `(localName, ns)`, `(prefix, localName, ns)` | The same three overloads | The writer declares the namespace on the element when it isn't in scope. |
-| `WriteEndElement()`, `WriteFullEndElement()` | `WriteEndElement()`, `WriteFullEndElement()` | `WriteEndElement` writes `<a/>` for an element with no content. `WriteFullEndElement` writes `<a></a>`. |
+| `WriteEndElement()`, `WriteFullEndElement()` | `WriteEndElement()`, `WriteFullEndElement()` | `WriteEndElement` writes `<a/>` for an element with no content, where `XmlWriter` writes `<a />`. Set `EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace` for the `<a />` form. `WriteFullEndElement` writes `<a></a>`. |
 | `WriteAttributeString(localName, value)`, `(localName, ns, value)`, `(prefix, localName, ns, value)` | The same three overloads | Also `WriteAttributeNumber(name, value)`. |
 | `WriteStartAttribute(...)`, `WriteEndAttribute()` | `WriteStartAttribute(...)`, `WriteEndAttribute()` | |
 | `WriteElementString(localName, value)`, `(localName, ns, value)` | The same two overloads | Also `WriteElementNumber`, `WriteElementBoolean`, `WriteElementBase64String`, `WriteEmptyElement`, and `WriteNilElement`. |
@@ -510,19 +510,22 @@ For `xsi:nil`, `WriteNilElement(localName)` writes an empty element with the att
 ## Writer settings
 
 <Note>
-`new XmlWriterOptions()` and `default(XmlWriterOptions)` write the same XML. The default line ending is `Environment.NewLine`, so set `NewLine` when indented output must be the same on every operating system.
+`new XmlWriterOptions()` and `default(XmlWriterOptions)` write the same XML. The default line ending is `Environment.NewLine`, so set `NewLine` when the output must be the same on every operating system.
 </Note>
 
 | `XmlWriterSettings` | `XmlWriterOptions` | Notes |
 | --- | --- | --- |
 | `Indent` | `Indented` | |
 | `IndentChars` | `IndentCharacter`, `IndentSize` | One character, repeated. The default is two spaces. |
-| `NewLineChars` | `NewLine` | |
+| `NewLineChars` | `NewLine` | Only `"\n"` and `"\r\n"` are accepted. The value is written for every line break, including the ones inside text, CDATA sections, comments, and processing instructions. |
 | `OmitXmlDeclaration` | `OmitXmlDeclaration` | |
 | `Encoding` | No counterpart | The output is UTF-8. `EmitByteOrderMark` (default `false`) adds a byte order mark. |
 | `CheckCharacters` | `SkipValidation` | With `SkipValidation`, the writer doesn't check names, namespace declarations, duplicate attributes, or unclosed elements. It still enforces a single root element. |
 | `ConformanceLevel` | No counterpart | The writer writes one root element. |
-| `NewLineOnAttributes`, `NamespaceHandling`, `NewLineHandling`, `CloseOutput`, `WriteEndDocumentOnClose`, `Async` | No counterpart | |
+| `NewLineOnAttributes` | `AttributeStyle = XmlAttributeStyle.PerLine` | The layout is different. `XmlWriter` puts every attribute on a line of its own, indented one level under the tag. `PerLine` keeps the first attribute on the line of the tag and puts the others under it. `AttributesPerLine` sets how many go on a line. |
+| `NewLineHandling` | `NewLine` | A line feed in text is always written as `NewLine`, which is close to `NewLineHandling.Replace`. A carriage return in a value is written as `&#xD;`, so it is read back. The other two values have no counterpart. |
+| `NamespaceHandling`, `CloseOutput`, `WriteEndDocumentOnClose`, `Async` | No counterpart | |
+| No counterpart | `EmptyElementStyle` | The form of an element with no content. The default writes `<e/>`. `XmlEmptyElementStyle.SelfClosingWithSpace` gives the `<e />` form that `XmlWriter` writes. |
 | No counterpart | `Version`, `Standalone`, `MaxDepth`, `MaxAttributeCount`, `MaxNameByteCount` | `Version` chooses XML 1.0 or 1.1. |
 
 To write a fragment with no declaration into a buffer:

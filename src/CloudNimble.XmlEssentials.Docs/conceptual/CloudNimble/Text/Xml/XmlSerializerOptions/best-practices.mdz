@@ -3,5 +3,6 @@
 - **Use the same instance to read and to write.** Naming policies, the default property mapping, and the default namespace change the names the serializer looks for when it reads.
 - **Call `MakeReadOnly` before you share an instance** with code that might otherwise change it before its first use.
 - **Copy at startup, not per call.** A copy shares none of the source's cached metadata.
-- **Set `NewLine` when the output must be identical on every operating system.** Its default is `Environment.NewLine`, and it is used only when `WriteIndented` is `true`.
+- **Set `NewLine` when the output must be identical on every operating system.** Its default is `Environment.NewLine`, and it is written for every line break: the ones `WriteIndented` adds and the ones inside values. It accepts `"\n"` and `"\r\n"`.
+- **Set the layout options to match the files you already have.** `EmptyElementStyle` chooses between `<e/>`, `<e />` and `<e></e>`, and `AttributeStyle` with `AttributesPerLine` chooses how the attributes of a start tag are laid out. They change how the output looks, not what a reader gets from it, and they are passed to the writer under the same names.
 - **Start from `XmlSerializerOptions.Strict` for XML you don't control,** and set `MaxDocumentByteCount`. See [Security](/guides/security).

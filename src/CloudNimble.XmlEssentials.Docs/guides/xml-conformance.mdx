@@ -244,7 +244,7 @@ None: XmlException at line 2, position 3: Whitespace-only text is not allowed.
 
 Inside an element that has `xml:space="preserve"`, whitespace-only text is reported with `Insignificant` too.
 
-The writer adds whitespace only when `Indented` is `true`, and only between elements. An element that holds text is written on one line, so indentation never changes a value.
+The writer adds whitespace to content only when `Indented` is `true`, and only between elements. An element that holds text is written on one line, so indentation never changes a value. `AttributeStyle = XmlAttributeStyle.PerLine` adds line breaks inside start tags, between attributes, where whitespace isn't content.
 
 ## Comments and processing instructions
 
@@ -404,7 +404,8 @@ Reading normalizes values, so the writer protects everything that normalization 
 | `"` | Written as is | `&quot;` |
 | `>` | Written as is, except after `]]`, where it is `&gt;` | Written as is |
 | Carriage return | `&#xD;` | `&#xD;` |
-| Tab, line feed | Written as is | `&#x9;`, `&#xA;` |
+| Tab | Written as is | `&#x9;` |
+| Line feed | Written as the line ending in `XmlWriterOptions.NewLine`, `"\n"` or `"\r\n"`. A reader gives either back as a line feed | `&#xA;` |
 | NEL, LS in XML 1.1 | `&#x85;`, `&#x2028;` | `&#x85;`, `&#x2028;` |
 | A control character that XML 1.1 allows only as a reference | `&#x1;` and so on | The same |
 | A character the version doesn't allow, such as `U+0001` in XML 1.0 | `XmlException`: `Illegal character in XML value.` | The same |
@@ -462,16 +463,16 @@ A lone UTF-16 surrogate in a .NET string isn't a character. The writer throws `X
 
 ## Round trips through XmlDocument
 
-With its default options, `XmlDocument.Parse` keeps comments and the whitespace-only text between elements, and `XmlDocument.WriteTo` writes the document it parsed with the same elements, attributes, namespace declarations, comments, processing instructions, and text, in the same order. An empty element (`<e/>`) and a start tag followed by an end tag (`<e></e>`) stay as they were.
+With its default options, `XmlDocument.Parse` keeps comments and the whitespace-only text between elements, and `XmlDocument.WriteTo` writes the document it parsed with the same elements, attributes, namespace declarations, comments, processing instructions, and text, in the same order. An empty element (`<e/>`) and a start tag followed by an end tag (`<e></e>`) stay as they were, unless `XmlWriterOptions.EmptyElementStyle` is `StartAndEndTag`, which writes both as `<e></e>`.
 
 The output isn't always the same bytes as the input. These details of the original text carry no information in XML, and they aren't kept:
 
 | In the input | In the output |
 | --- | --- |
 | Whitespace outside the root element | Dropped |
-| Whitespace inside a tag, such as `<B />` or two spaces between attributes | Normalized: `<B/>`, one space between attributes |
+| Whitespace inside a tag, such as `<B />` or two spaces between attributes | Not kept. An empty-element tag has the form `XmlWriterOptions.EmptyElementStyle` says, `<B/>` by default. The attributes are laid out as `AttributeStyle` says, with one space before each by default |
 | Attribute values in single quotation marks | Double quotation marks |
-| CR LF and CR line ends | Line feeds, because the reader normalizes them |
+| CR LF and CR line ends | The line ending in `XmlWriterOptions.NewLine`, which defaults to `Environment.NewLine`. The reader normalizes them to line feeds, and the writer writes every line feed as that line ending |
 | Character references, such as `&#65;` | The character itself, escaped only where XML requires it |
 | The spelling of the XML declaration | `version`, then `encoding="utf-8"`, then `standalone` when it was present |
 

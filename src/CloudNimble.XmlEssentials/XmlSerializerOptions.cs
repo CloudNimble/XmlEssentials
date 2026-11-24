@@ -75,6 +75,54 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets or sets a value that specifies how the attributes of a start tag are laid out.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlAttributeStyle.Inline"/>, which writes
+        /// every attribute on the line of the start tag.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// The value is passed to the writer as <see cref="XmlWriterOptions.AttributeStyle"/>.
+        /// </remarks>
+        public XmlAttributeStyle AttributeStyle
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the number of attributes written to a line when <see cref="AttributeStyle"/> is
+        /// <see cref="XmlAttributeStyle.PerLine"/>.
+        /// </summary>
+        /// <value>
+        /// The number of attributes to a line. The default is 1. The value is not read when
+        /// <see cref="AttributeStyle"/> is <see cref="XmlAttributeStyle.Inline"/>.
+        /// </value>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The property is set to a value that is less than 1.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        public int AttributesPerLine
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+                field = value;
+            }
+        } = 1;
+
+        /// <summary>
         /// Gets the list of user-defined converters that were registered.
         /// </summary>
         /// <value>
@@ -253,6 +301,29 @@ namespace CloudNimble.Text.Xml
         /// The property is set after this instance has become read-only.
         /// </exception>
         public bool EmitByteOrderMark
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value that specifies how an element that has no content is written.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlEmptyElementStyle.SelfClosing"/>, which
+        /// writes <c>&lt;e/&gt;</c>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// The value is passed to the writer as <see cref="XmlWriterOptions.EmptyElementStyle"/>.
+        /// </remarks>
+        public XmlEmptyElementStyle EmptyElementStyle
         {
             get;
             set
@@ -542,13 +613,16 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets the new line string to use when <see cref="WriteIndented"/> is <see langword="true"/>.
+        /// Gets or sets the line ending that is written.
         /// </summary>
         /// <value>
-        /// The new line string. The default is the value of <see cref="Environment.NewLine"/>.
+        /// The line ending: <c>"\n"</c> or <c>"\r\n"</c>. The default is the value of <see cref="Environment.NewLine"/>.
         /// </value>
         /// <exception cref="ArgumentNullException">
         /// The property is set to <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// The property is set to a value that is neither <c>"\n"</c> nor <c>"\r\n"</c>.
         /// </exception>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
@@ -559,6 +633,7 @@ namespace CloudNimble.Text.Xml
             set
             {
                 ArgumentNullException.ThrowIfNull(value);
+                XmlLimits.ThrowIfNotNewLine(value);
                 VerifyMutable();
                 field = value;
             }
@@ -997,10 +1072,13 @@ namespace CloudNimble.Text.Xml
             DefaultBufferSize = options.DefaultBufferSize;
             DefaultIgnoreCondition = options.DefaultIgnoreCondition;
             DefaultNamespace = options.DefaultNamespace;
+            AttributeStyle = options.AttributeStyle;
+            AttributesPerLine = options.AttributesPerLine;
             DefaultPropertyMapping = options.DefaultPropertyMapping;
             DictionaryKeyPolicy = options.DictionaryKeyPolicy;
             ElementNamingPolicy = options.ElementNamingPolicy;
             EmitByteOrderMark = options.EmitByteOrderMark;
+            EmptyElementStyle = options.EmptyElementStyle;
             EnumHandling = options.EnumHandling;
             IgnoreReadOnlyFields = options.IgnoreReadOnlyFields;
             IgnoreReadOnlyProperties = options.IgnoreReadOnlyProperties;
@@ -1399,7 +1477,10 @@ namespace CloudNimble.Text.Xml
         {
             return new XmlWriterOptions
             {
+                AttributeStyle = AttributeStyle,
+                AttributesPerLine = AttributesPerLine,
                 EmitByteOrderMark = EmitByteOrderMark,
+                EmptyElementStyle = EmptyElementStyle,
                 IndentCharacter = IndentCharacter,
                 IndentSize = IndentSize,
                 Indented = WriteIndented,

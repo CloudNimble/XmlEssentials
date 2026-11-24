@@ -36,6 +36,13 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow(XmlVersion.Version11)]
         public void Writer_ThenReader_ReturnsEveryValueExactly(XmlVersion version)
         {
+            // Under both line endings on every platform: each one copies a different set of characters verbatim.
+            ReturnsEveryValueExactly(version, "\n");
+            ReturnsEveryValueExactly(version, "\r\n");
+        }
+
+        private static void ReturnsEveryValueExactly(XmlVersion version, string newLine)
+        {
             var random = new Random(20261122);
             var fragments = new List<string>(Fragments);
             if (version is XmlVersion.Version11)
@@ -48,7 +55,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 var attributeValue = Compose(random, fragments);
                 var textValue = Compose(random, fragments);
                 var buffer = new ArrayBufferWriter<byte>();
-                using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { Version = version }))
+                using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = newLine, Version = version }))
                 {
                     writer.WriteStartElement("e");
                     writer.WriteAttributeString("a", attributeValue);
@@ -76,7 +83,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 document.RootElement.GetAttribute("a").GetString().Should().Be(attributeValue);
                 document.RootElement.GetChild("chars").GetString().Should().Be(textValue);
                 var rewritten = new ArrayBufferWriter<byte>();
-                using (var rewriter = new Utf8XmlWriter(rewritten, new XmlWriterOptions { Version = version }))
+                using (var rewriter = new Utf8XmlWriter(rewritten, new XmlWriterOptions { NewLine = newLine, Version = version }))
                 {
                     document.WriteTo(rewriter);
                     rewriter.Flush();

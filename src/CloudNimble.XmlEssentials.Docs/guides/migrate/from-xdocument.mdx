@@ -154,7 +154,7 @@ The table lists the LINQ to XML member, the `System.Xml.XmlDocument` member that
 | `Value` | `InnerText` | `GetString()`, `GetInnerText()` | `InnerText` on an element. `Value` on an attribute, text, CDATA, or comment node |
 | `(int)element`, `(bool)attribute`, and the other casts | `XmlConvert` on `InnerText` | `GetInt32()`, `GetInt64()`, `GetBoolean()`, `GetDecimal()`, `GetDouble()`, `GetDateTime()`, `GetDateTimeOffset()`, `GetGuid()`, `GetBytesFromBase64()` | No typed getters. Values are strings |
 | `NodeType` | `NodeType` | `ValueKind`, `TokenType` | `ValueKind` |
-| `IsEmpty` | `IsEmpty` | `IsEmptyElement` | Check `Children.Count` |
+| `IsEmpty` | `IsEmpty` | `IsEmptyElement` | Check `Children.Count`. `IsEmptyElement` says whether an element with no children is written as `<e/>` or `<e></e>` |
 | `Parent` | `ParentNode` | No counterpart | `Parent` |
 | `Descendants(name)` | `GetElementsByTagName(name)`, `SelectNodes("//name")` | No counterpart. See [Queries](#queries) | No counterpart. See [Queries](#queries) |
 | `Add(content)` | `AppendChild(node)` | Read-only | `Add(node)`, `AddElement(localName)`, `Children.Insert(index, node)` |
@@ -189,7 +189,7 @@ const string xml = """
 using (XmlDocument document = XmlDocument.Parse(xml))
 {
     var buffer = new ArrayBufferWriter<byte>();
-    using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+    using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true }))
     {
         document.WriteTo(writer);
     }
@@ -226,7 +226,7 @@ With the default options, `Order` has five children: white space, the comment, w
 - Filter on `ValueKind`, as the samples on this page do. The document still round-trips.
 - Pass `XmlDocumentOptions` with `WhitespaceHandling = XmlWhitespaceHandling.Insignificant`, and `CommentHandling = XmlCommentHandling.Skip` if you don't want comments either. The document then holds elements and text only.
 
-The round trip keeps the document's content, not every byte of its formatting. Details that aren't part of the XML data, such as the quote character around an attribute value or the space in `<Item />`, are written in the writer's own style. See [Use XmlDocument](/guides/use-xmldocument).
+The round trip keeps the document's content, not every byte of its formatting. Details that aren't part of the XML data, such as the quote character around an attribute value, are written in the writer's own style. Three of them are set by `XmlWriterOptions`: `NewLine` is the line ending of the whole output, which is why the sample sets it; `EmptyElementStyle` is the form of an empty-element tag, where `XmlEmptyElementStyle.SelfClosingWithSpace` gives the `<Item />` that `XDocument` writes; and `AttributeStyle` is the layout of attributes. See [Use XmlDocument](/guides/use-xmldocument#what-a-round-trip-keeps).
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/43_MigrateFromXDocument.cs)
 

@@ -131,7 +131,7 @@ const string xml =
 using XmlDocument document = XmlDocument.Parse(xml);
 
 var buffer = new ArrayBufferWriter<byte>();
-using (var writer = new Utf8XmlWriter(buffer))
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n" }))
 {
     document.WriteTo(writer);
 }
@@ -149,7 +149,7 @@ The code produces the following output:
 </Order>
 ```
 
-The comments and the indentation inside `Order` are kept. The white space outside the root element is dropped, the declaration and the attribute quotes are written the writer's way, `<Notes />` becomes `<Notes/>`, CRLF becomes LF, and `&#65;` is written as `A`.
+The comments and the indentation inside `Order` are kept. The white space outside the root element is dropped, the declaration and the attribute quotes are written the writer's way, and `&#65;` is written as `A`. The white space inside a tag isn't kept: the attributes follow `XmlWriterOptions.AttributeStyle`, and the empty-element tag follows `EmptyElementStyle`, so with the defaults `<Notes />` becomes `<Notes/>`. The line ends follow `NewLine`, which the sample sets to `"\n"`, so the CRLF of the input becomes LF.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/28_WriteAndConvertXmlDocument.cs)
 
@@ -245,7 +245,7 @@ has a declaration: False
 - **Expect comments and white space when you enumerate.** Both are kept by default so that a round trip doesn't lose comments or indentation. Check `ValueKind` in every loop over `EnumerateChildren`.
 - **Turn them off when you only read values.** Parse with `CommentHandling = XmlCommentHandling.Skip` and `WhitespaceHandling = XmlWhitespaceHandling.Insignificant`, and the children of an element are only what carries data.
 - **Read values from leaf elements.** The text of an element that has child elements includes the white space between them.
-- **Don't rely on identical bytes after a round trip.** Content, comments, and indentation inside the root are preserved. Quote style, the declaration, CRLF line ends, and white space outside the root are written the writer's way.
+- **Don't rely on identical bytes after a round trip.** Content, comments, and indentation inside the root are preserved. Quote style, the declaration, and white space outside the root are written the writer's way. Line ends, the layout of attributes, and the form of an empty-element tag follow the `NewLine`, `AttributeStyle`, and `EmptyElementStyle` properties of `XmlWriterOptions`.
 - **Use `TryGetChild` and `TryGetAttribute` for optional names.** `GetChild` and `GetAttribute` throw an `XmlException` when the name is missing.
 - **Don't parse into a document only to deserialize it.** `XmlSerializer.Deserialize` reads text, bytes, and streams directly. Deserialize from a document or an element when you need to inspect the XML first.
 
@@ -366,7 +366,7 @@ The defaults aim at no surprises on a round trip, for example when a file is edi
 ### Writing
 
 - `WriteTo` keeps comments, white space between elements, namespace declarations where they were, attribute order, and the difference between `<e/>` and `<e></e>`.
-- The result has the same content but isn't always the same bytes. Attribute values are written with double quotes and one space between attributes, `<e />` is written `<e/>`, CRLF is written as LF, and a character reference such as `&#65;` is written as the character.
+- The result has the same content but isn't always the same bytes. Attribute values are written with double quotes, and a character reference such as `&#65;` is written as the character. White space inside a tag isn't kept: the attributes are laid out as `XmlWriterOptions.AttributeStyle` says (one space before each, by default), and an empty-element tag has the form `EmptyElementStyle` says (`<e/>` by default, so `<e />` is written `<e/>`). Every line end is written as `NewLine`, which defaults to `Environment.NewLine`.
 - A parsed declaration is written with the parsed version and `encoding="utf-8"`, even when the writer's `OmitXmlDeclaration` is `true`. When the document has no declaration, the writer decides: a `Utf8XmlWriter` adds one unless `XmlWriterOptions.OmitXmlDeclaration` is `true`.
 - Writing a parsed document doesn't allocate.
 

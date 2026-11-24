@@ -773,7 +773,7 @@ namespace CloudNimble.Text.Xml
         public string GetRawXml()
         {
             var buffer = new ArrayBufferWriter<byte>();
-            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true });
             WriteTo(writer);
             writer.Flush();
             return Encoding.UTF8.GetString(buffer.WrittenSpan);
@@ -912,6 +912,19 @@ namespace CloudNimble.Text.Xml
         {
             ArgumentNullException.ThrowIfNull(writer);
             EnsureDocument().WriteRow(_index, writer);
+        }
+
+        /// <summary>
+        /// Writes the attributes and the children of this element into the element that
+        /// <paramref name="writer"/> has open, without this element's own tags.
+        /// </summary>
+        /// <param name="writer">The destination, with a start tag open.</param>
+        /// <remarks>
+        /// A node that is not an element is written as <see cref="WriteTo"/> writes it.
+        /// </remarks>
+        internal void WriteContentTo(Utf8XmlWriter writer)
+        {
+            EnsureDocument().WriteContent(_index, writer);
         }
 
         /// <summary>

@@ -9,7 +9,7 @@ The properties fall into four groups:
 
 | Group | Properties |
 | --- | --- |
-| Formatting | `Indented`, `IndentSize`, `IndentCharacter`, `NewLine` |
+| Formatting | `Indented`, `IndentSize`, `IndentCharacter`, `NewLine`, `EmptyElementStyle`, `AttributeStyle`, `AttributesPerLine` |
 | The start of the document | `OmitXmlDeclaration`, `Standalone`, `Version`, `EmitByteOrderMark` |
 | Checks | `SkipValidation` |
 | Limits | `MaxDepth`, `MaxAttributeCount`, `MaxNameByteCount` |

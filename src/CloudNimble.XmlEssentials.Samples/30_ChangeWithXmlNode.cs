@@ -90,6 +90,42 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
+        /// Changes one attribute of a project file and writes the file back in the style it had.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void ChangeAndWriteBack(TextWriter output)
+        {
+            const string project =
+                "<Project Sdk=\"Microsoft.NET.Sdk\">\n" +
+                "  <PropertyGroup>\n" +
+                "    <Description></Description>\n" +
+                "  </PropertyGroup>\n" +
+                "  <!-- What the project depends on. -->\n" +
+                "  <ItemGroup>\n" +
+                "    <PackageReference Include=\"FluentAssertions\" Version=\"8.0.0\" />\n" +
+                "  </ItemGroup>\n" +
+                "</Project>";
+
+            var root = (XmlElementNode)XmlNode.Parse(project)!;
+            root["ItemGroup"]!["PackageReference"]!.SetAttribute("Version", "8.1.0");
+
+            var options = new XmlWriterOptions
+            {
+                EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace,
+                NewLine = "\n",
+                OmitXmlDeclaration = true,
+            };
+
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = new Utf8XmlWriter(buffer, options))
+            {
+                root.WriteTo(writer);
+            }
+
+            output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+        }
+
+        /// <summary>
         /// Copies a subtree so that it can be added to a second parent.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>

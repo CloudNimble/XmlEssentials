@@ -6,7 +6,7 @@ Call `WriteStartElement`, then the attributes and namespace declarations, then t
 
 ### Leaf element
 
-`WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, and `WriteElementBase64String` write a start tag, a value, and an end tag in one call. `WriteEmptyElement` writes `<e/>`, and `WriteNilElement` writes an empty element with `xsi:nil="true"`.
+`WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, and `WriteElementBase64String` write a start tag, a value, and an end tag in one call. `WriteEmptyElement` writes an element with no content, `<e/>` unless `XmlWriterOptions.EmptyElementStyle` says otherwise, and `WriteNilElement` writes an empty element with `xsi:nil="true"`.
 
 ### Attribute with a typed value
 

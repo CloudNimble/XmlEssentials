@@ -8,6 +8,9 @@ Know the following about the defaults and what each group of options does.
 | `IndentSize` | 0, which means 2 |
 | `IndentCharacter` | A space |
 | `NewLine` | `Environment.NewLine` |
+| `EmptyElementStyle` | `XmlEmptyElementStyle.SelfClosing`, which writes `<e/>` |
+| `AttributeStyle` | `XmlAttributeStyle.Inline` |
+| `AttributesPerLine` | 0, which means 1. Read only when `AttributeStyle` is `PerLine` |
 | `OmitXmlDeclaration` | `false` |
 | `Standalone` | `null`, which leaves `standalone` out of the declaration |
 | `Version` | `XmlVersion.Version10` |
@@ -28,6 +31,12 @@ A limit of 0 selects its default. There's no value that turns a limit off. `MaxA
 ### What indentation does
 
 `Indented` adds a line break and indentation before elements, comments, and processing instructions. An element that holds text is written on one line, with any child elements, so that no value changes.
+
+### What the layout options do
+
+- `NewLine` is written for every line break: the ones `Indented` and `XmlAttributeStyle.PerLine` add, and the ones inside text, CDATA sections, comments, and processing instructions. It accepts `"\n"` and `"\r\n"`; any other string throws `ArgumentOutOfRangeException`. No value changes, because a reader gives a carriage return followed by a line feed back as one line feed. A carriage return that is part of a value is written as `&#xD;`, and a line break in an attribute value as `&#xA;`.
+- `EmptyElementStyle` sets the form of an element with no content: `<e/>`, `<e />`, or `<e></e>`. It applies to `WriteEndElement` on an element with no content, to `WriteEmptyElement`, and to `WriteElementString` with a `null` string. `WriteFullEndElement` always writes an end tag.
+- `AttributeStyle` set to `PerLine` puts `AttributesPerLine` attributes on each line, with or without `Indented`. Each line after the first is indented so that its first attribute is under the first attribute of the tag. Namespace declarations and `xsi:nil` count as attributes.
 
 ### What SkipValidation skips
 

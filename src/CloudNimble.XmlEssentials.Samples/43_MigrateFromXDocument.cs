@@ -52,7 +52,7 @@ namespace CloudNimble.XmlEssentials.Samples
             using (XmlDocument document = XmlDocument.Parse(xml))
             {
                 var buffer = new ArrayBufferWriter<byte>();
-                using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+                using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true }))
                 {
                     document.WriteTo(writer);
                 }

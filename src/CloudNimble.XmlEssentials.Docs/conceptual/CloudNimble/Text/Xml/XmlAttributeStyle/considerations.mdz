@@ -1,0 +1,9 @@
+- **`Inline` is the zero value, and the default.** `new XmlWriterOptions()`, `default(XmlWriterOptions)`, a writer created without options, and `new XmlSerializerOptions()` all write every attribute on the line of its start tag.
+- **The layout of attributes means nothing to a reader.** The setting changes how the output looks, not what it holds.
+- **It is one rule for all output.** Your own calls to the writer, the serializer, a generated context, `XmlDocument.WriteTo` and `XmlNode.WriteTo` lay out a start tag the same way. A document or a node doesn't keep the layout its source had inside a tag, so this setting decides it.
+- **`AttributesPerLine` is read only under `PerLine`.** On `XmlWriterOptions` its default is 0, which means 1, and a negative value throws an `ArgumentOutOfRangeException`. On `XmlSerializerOptions` its default is 1, and a value below 1 throws.
+- **How a later line is indented.** It starts with the white space that starts the line of the tag, and then one space for each character of the tag up to its first attribute: the `<`, the name with its prefix, and the space. For a tag that starts its line, that puts the attributes under the first one. A tab in the white space stays a tab.
+- **It doesn't depend on `Indented`.** A document that is read keeps the white space between its elements, so a tag is usually on a line of its own without the writer indenting anything.
+- **A tag in the middle of a line follows the same rule.** Its later lines start with the white space of the line it is on, not at the column of its own first attribute. For example, unindented output gives `<r><e a="1"><f c="3"`, a line break, three spaces, and then `d="4"/></e></r>`.
+- **A namespace declaration and `xsi:nil` are attributes,** and are counted with the others.
+- **The line break is `XmlWriterOptions.NewLine`.**

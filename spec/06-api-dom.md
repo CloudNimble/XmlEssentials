@@ -140,7 +140,7 @@ Prolog/epilog comments and PIs are **preserved** in the parse buffer and round-t
 
 ### WriteTo fidelity
 
-`WriteTo` writes the infoset that was parsed. The exact guarantees are listed under [round-trip guarantees](02-xml-fidelity.md#round-trip-guarantees): namespace declarations as parsed and in place, `xmlns=""` kept (and added for a sub-tree that needs it), attribute order kept, `<e/>` versus `<e></e>` kept. A document that is already in the writer's own form is reproduced byte for byte.
+`WriteTo` writes the infoset that was parsed. The exact guarantees are listed under [round-trip guarantees](02-xml-fidelity.md#round-trip-guarantees): namespace declarations as parsed and in place, `xmlns=""` kept (and added for a sub-tree that needs it), attribute order kept, `<e/>` versus `<e></e>` kept. A document that is already in the form the writer's options ask for is reproduced byte for byte; the form of an empty-element tag, the layout of attributes and the line ending follow `EmptyElementStyle`, `AttributeStyle` and `NewLine`. `XmlElementNode.IsEmptyElement` keeps `<e/>` versus `<e></e>` in the mutable tree.
 
 Writing a sub-tree (`XmlElement.WriteTo`, `GetRawXml`, `ParseValue`) declares any namespace its own name or attributes need that an ancestor declared.
 

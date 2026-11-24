@@ -1,0 +1,58 @@
+Set `XmlWriterOptions.AttributeStyle`, or `XmlSerializerOptions.AttributeStyle`, to choose how the attributes of a start tag are laid out.
+
+| Value | The attributes of a start tag are written |
+| --- | --- |
+| `Inline` | On the line of the start tag, with one space before each. This is the default. |
+| `PerLine` | A fixed number to a line. `AttributesPerLine` is the number, which is 1 unless you set it. |
+
+The sample writes one document three times: with `Inline`, with `PerLine`, and with `PerLine` and `AttributesPerLine = 2`:
+
+```csharp
+var asSystemXml = new XmlWriterOptions
+{
+    EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace,
+    Indented = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+};
+var onePerLine = asSystemXml with { AttributeStyle = XmlAttributeStyle.PerLine };
+var twoPerLine = onePerLine with { AttributesPerLine = 2, EmptyElementStyle = XmlEmptyElementStyle.StartAndEndTag };
+
+foreach (XmlWriterOptions options in new[] { asSystemXml, onePerLine, twoPerLine })
+{
+    var buffer = new ArrayBufferWriter<byte>();
+    using (var writer = new Utf8XmlWriter(buffer, options))
+    {
+        writer.WriteStartElement("Order");
+        writer.WriteAttributeString("id", "1042");
+        writer.WriteAttributeString("status", "open");
+        writer.WriteAttributeString("region", "EU");
+        writer.WriteElementString("Customer", "Ada Lovelace");
+        writer.WriteStartElement("Notes");
+        writer.WriteEndElement();
+        writer.WriteEndElement();
+    }
+
+    output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+}
+```
+
+```xml
+<Order id="1042" status="open" region="EU">
+  <Customer>Ada Lovelace</Customer>
+  <Notes />
+</Order>
+<Order id="1042"
+       status="open"
+       region="EU">
+  <Customer>Ada Lovelace</Customer>
+  <Notes />
+</Order>
+<Order id="1042" status="open"
+       region="EU">
+  <Customer>Ada Lovelace</Customer>
+  <Notes></Notes>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)

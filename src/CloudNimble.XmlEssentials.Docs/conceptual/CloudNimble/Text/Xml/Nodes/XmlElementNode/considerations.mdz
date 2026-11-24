@@ -1,4 +1,5 @@
-- `ValueKind` is always `Element`. The tree doesn't distinguish `<e/>` from `<e></e>`: an element with no children is written as an empty-element tag, and an element with children is written with an end tag.
+- `ValueKind` is always `Element`. `IsEmptyElement` says how an element with no children is written: as an empty-element tag (`<e/>`) when it's `true`, which is the default for an element you create, and as `<e></e>` when it's `false`. A parsed element has the value its source had, and `DeepClone` copies it. The property isn't read while the element has children; such an element is written with an end tag.
+- `XmlWriterOptions.EmptyElementStyle` sets the form of the one tag, `<e/>` or `<e />`. With `StartAndEndTag`, every element with no children is written as `<e></e>`, whatever `IsEmptyElement` is.
 - The one-argument indexer matches a local name in any namespace. `SetAttribute(name, value)` sets the attribute in no namespace. The overloads that take a namespace URI match that namespace only; pass an empty string for no namespace.
 - The indexers return `null` when nothing matches. They search direct children only.
 - `SetAttribute` stores a `null` value as an empty string. It doesn't remove the attribute.

@@ -360,6 +360,8 @@ A value that is XML already is written as the XML it is. `XmlElement`, `XmlDocum
 
 A value declared as `object` is written as the type it has. `XmlSerializer.Serialize<object>(42)` writes `<Int32>42</Int32>`, and a member declared as `object` writes the value inside the member's element. A document doesn't record which type wrote an element, so a value declared as `object` is read as an `XmlElement`. Read it as the type you expect with `XmlSerializer.Deserialize<T>(element)`. To read an `XmlNode` that can be changed instead, set `XmlSerializerOptions.UnknownTypeHandling` to `XmlUnknownTypeHandling.XmlNode`.
 
+The element you get is the member's own element: `<Any><b>1</b></Any>` is read as an element named `Any`. When that value is written again, its attributes and children go inside the member's element, so the document comes back as it was read. The same holds for a list item and a dictionary value. The member names the element, so an `XmlElement` you built under another name is written under the member's name.
+
 An anonymous type is written under the element name `AnonymousType`, and each property becomes a child element. It can be read back through its constructor when you have a value of the type to infer it from.
 
 ## Types that aren't supported

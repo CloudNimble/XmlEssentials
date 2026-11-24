@@ -43,6 +43,22 @@ namespace CloudNimble.Text.Xml.Nodes
         public XmlNodeList Children { get; }
 
         /// <summary>
+        /// Gets or sets a value that indicates whether this element is written as one tag when it has no children.
+        /// </summary>
+        /// <value>
+        /// <see langword="true"/> if the element is written as an empty-element tag (<c>&lt;e/&gt;</c>) when it
+        /// has no children; <see langword="false"/> if it is written as a start tag and an end tag
+        /// (<c>&lt;e&gt;&lt;/e&gt;</c>). The default is <see langword="true"/>. An element that is parsed has the
+        /// value its source had: <see langword="false"/> for an element that had an end tag.
+        /// </value>
+        /// <remarks>
+        /// The value is not read while the element has children. The form of the one tag, <c>&lt;e/&gt;</c> or
+        /// <c>&lt;e /&gt;</c>, and whether every element with no content is written with an end tag, is set by
+        /// <see cref="XmlWriterOptions.EmptyElementStyle"/>.
+        /// </remarks>
+        public bool IsEmptyElement { get; set; } = true;
+
+        /// <summary>
         /// Gets or sets the text content of this element.
         /// </summary>
         /// <value>
@@ -256,7 +272,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <inheritdoc />
         public override XmlNode DeepClone()
         {
-            var clone = new XmlElementNode(_localName, _namespaceUri, _prefix);
+            var clone = new XmlElementNode(_localName, _namespaceUri, _prefix) { IsEmptyElement = IsEmptyElement };
             foreach (var attribute in Attributes)
             {
                 clone.Attributes.Add((XmlAttributeNode)attribute.DeepClone());
@@ -343,25 +359,15 @@ namespace CloudNimble.Text.Xml.Nodes
                 writer.EnsureElementNamespace(prefix, ns);
             }
 
-            foreach (var attribute in Attributes)
+            WriteAttributesAndChildren(writer, true);
+            if (Children.Count == 0 && !IsEmptyElement)
             {
-                if (!IsNamespaceDeclaration(attribute, out var declaredPrefix))
-                {
-                    attribute.WriteTo(writer);
-                    continue;
-                }
-
-                writer.WriteRegisteredNamespace(
-                    Utf8XmlWriter.EncodeUtf8(declaredPrefix, prefixScratch, out _),
-                    declaredPrefix == _prefix ? ns : Utf8XmlWriter.EncodeUtf8(attribute.Value, uriScratch, out _));
+                writer.WriteFullEndElement();
             }
-
-            foreach (var child in Children)
+            else
             {
-                child.WriteTo(writer);
+                writer.WriteEndElement();
             }
-
-            writer.WriteEndElement();
         }
 
         /// <inheritdoc />
@@ -373,6 +379,88 @@ namespace CloudNimble.Text.Xml.Nodes
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Writes the attributes and the children of this element into the element that
+        /// <paramref name="writer"/> has open, without this element's own tags.
+        /// </summary>
+        /// <param name="writer">The destination, with a start tag open.</param>
+        /// <remarks>
+        /// <para>
+        /// This is how an element is written where something else names it: the serializer writes the element
+        /// of a member, a list item or a dictionary value declared as <see cref="object"/>, and the value fills it.
+        /// </para>
+        /// <para>
+        /// A declaration of a prefix is written, because the content may use the prefix. A declaration of the
+        /// default namespace is not: it would move the open element, whose name is written already, into that
+        /// namespace. A child in that namespace declares it for itself.
+        /// </para>
+        /// </remarks>
+        internal void WriteContentTo(Utf8XmlWriter writer)
+        {
+            Span<byte> prefixScratch = stackalloc byte[64];
+            Span<byte> uriScratch = stackalloc byte[128];
+            foreach (var attribute in Attributes)
+            {
+                if (IsNamespaceDeclaration(attribute, out var declaredPrefix) && declaredPrefix.Length != 0)
+                {
+                    writer.RegisterNamespace(
+                        Utf8XmlWriter.EncodeUtf8(declaredPrefix, prefixScratch, out _),
+                        Utf8XmlWriter.EncodeUtf8(NamespaceOf(attribute, declaredPrefix), uriScratch, out _));
+                }
+            }
+
+            WriteAttributesAndChildren(writer, false);
+            if (Children.Count == 0 && !IsEmptyElement)
+            {
+                writer.WriteEmptyText();
+            }
+        }
+
+        /// <summary>
+        /// Returns the namespace that a declaration of <paramref name="declaredPrefix"/> on this element stands for.
+        /// </summary>
+        /// <param name="attribute">The declaration.</param>
+        /// <param name="declaredPrefix">The prefix it declares.</param>
+        /// <returns>
+        /// The element's own namespace when the prefix is the element's, because the element's name is
+        /// authoritative even when the attribute node holds a stale value; otherwise the attribute's value.
+        /// </returns>
+        private string NamespaceOf(XmlAttributeNode attribute, string declaredPrefix)
+        {
+            return declaredPrefix == _prefix ? _namespaceUri : attribute.Value;
+        }
+
+        /// <summary>
+        /// Writes the attributes and the children of this element.
+        /// </summary>
+        /// <param name="writer">The destination, with a start tag open and the namespace declarations registered.</param>
+        /// <param name="defaultNamespace">Whether a declaration of the default namespace is written.</param>
+        private void WriteAttributesAndChildren(Utf8XmlWriter writer, bool defaultNamespace)
+        {
+            Span<byte> prefixScratch = stackalloc byte[64];
+            Span<byte> uriScratch = stackalloc byte[128];
+            foreach (var attribute in Attributes)
+            {
+                if (!IsNamespaceDeclaration(attribute, out var declaredPrefix))
+                {
+                    attribute.WriteTo(writer);
+                    continue;
+                }
+
+                if (defaultNamespace || declaredPrefix.Length != 0)
+                {
+                    writer.WriteRegisteredNamespace(
+                        Utf8XmlWriter.EncodeUtf8(declaredPrefix, prefixScratch, out _),
+                        Utf8XmlWriter.EncodeUtf8(NamespaceOf(attribute, declaredPrefix), uriScratch, out _));
+                }
+            }
+
+            foreach (var child in Children)
+            {
+                child.WriteTo(writer);
+            }
+        }
 
         /// <summary>
         /// Returns whether <paramref name="attribute"/> is an <c>xmlns</c> or <c>xmlns:prefix</c> declaration.

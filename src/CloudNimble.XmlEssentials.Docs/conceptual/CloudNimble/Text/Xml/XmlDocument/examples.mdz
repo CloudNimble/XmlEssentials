@@ -42,7 +42,7 @@ const string xml =
 using XmlDocument document = XmlDocument.Parse(xml);
 
 var buffer = new ArrayBufferWriter<byte>();
-using (var writer = new Utf8XmlWriter(buffer))
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n" }))
 {
     document.WriteTo(writer);
 }
@@ -60,7 +60,7 @@ The code produces the following output:
 </Order>
 ```
 
-The comments and the indentation inside `Order` are kept. The white space outside the root element is dropped, the declaration and the attribute quotes are written the writer's way, `<Notes />` becomes `<Notes/>`, CRLF becomes LF, and `&#65;` is written as `A`.
+The comments and the indentation inside `Order` are kept. The white space outside the root element is dropped, the declaration and the attribute quotes are written the writer's way, and `&#65;` is written as `A`. The white space inside a tag isn't kept: the attributes follow `XmlWriterOptions.AttributeStyle`, and the empty-element tag follows `EmptyElementStyle`, so with the defaults `<Notes />` becomes `<Notes/>`. The line ends follow `NewLine`, which the sample sets to `"\n"`, so the CRLF of the input becomes LF.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/28_WriteAndConvertXmlDocument.cs)
 

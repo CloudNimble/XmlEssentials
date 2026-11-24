@@ -499,7 +499,7 @@ Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `Wr
 
 ### Markup
 
-`GetRawXml` writes the node with a `Utf8XmlWriter`; it isn't a slice of the original input. It returns an empty string for an attribute. `IsEmptyElement` is `true` for `<e/>` and `false` for `<e></e>`, and `WriteTo` keeps the difference.
+`GetRawXml` writes the node with a `Utf8XmlWriter`; it isn't a slice of the original input. It takes no options, so its line ends are line feeds on every operating system. It returns an empty string for an attribute. `IsEmptyElement` is `true` for `<e/>` and `false` for `<e></e>`, and `WriteTo` keeps the difference.
 
 ## Constructors
 

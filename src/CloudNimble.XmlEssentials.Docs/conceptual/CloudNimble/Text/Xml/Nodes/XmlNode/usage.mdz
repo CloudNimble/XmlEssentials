@@ -36,11 +36,11 @@ The code produces the following output:
 <Order>
   <!-- rush -->
   <Item> Keyboard </Item>
-  <Notes/>
+  <Notes></Notes>
 </Order>
 End tag does not match start tag.
 ```
 
-The tree keeps the root element with its comments and indentation. The declaration and the comment before the root aren't part of it, and `<Notes></Notes>` is written as `<Notes/>`.
+The tree keeps the root element with its comments and indentation, and `<Notes></Notes>` keeps its end tag. The declaration and the comment before the root aren't part of it.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)

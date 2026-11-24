@@ -592,7 +592,10 @@ namespace CloudNimble.Text.Xml
                     var element = new XmlElementNode(
                         Encoding.UTF8.GetString(LocalName(in row)),
                         Encoding.UTF8.GetString(NamespaceUri(in row)),
-                        Encoding.UTF8.GetString(Prefix(in row)));
+                        Encoding.UTF8.GetString(Prefix(in row)))
+                    {
+                        IsEmptyElement = row.IsEmpty,
+                    };
                     var end = row.EndIndex;
                     var attributeEnd = index + 1 + row.AttributeCount;
                     for (var a = index + 1; a < attributeEnd; a++)
@@ -1133,12 +1136,84 @@ namespace CloudNimble.Text.Xml
                 writer.EnsureElementNamespace(elementPrefix, elementNs);
             }
 
+            WriteAttributesAndChildren(index, writer, true);
+            if (row.IsEmpty)
+            {
+                writer.WriteEndElement();
+            }
+            else
+            {
+                writer.WriteFullEndElement();
+            }
+        }
+
+        /// <summary>
+        /// Writes the attributes and the children of element row <paramref name="index"/> into the element
+        /// that <paramref name="writer"/> has open, without the element's own tags.
+        /// </summary>
+        /// <param name="index">The row index.</param>
+        /// <param name="writer">The destination, with a start tag open.</param>
+        /// <remarks>
+        /// <para>
+        /// This is how an element is written where something else names it: the serializer writes the element
+        /// of a member, a list item or a dictionary value declared as <see cref="object"/>, and the value fills it.
+        /// </para>
+        /// <para>
+        /// A declaration of a prefix is written, because the content may use the prefix. A declaration of the
+        /// default namespace is not: it would move the open element, whose name is written already, into that
+        /// namespace. A child in that namespace declares it for itself.
+        /// </para>
+        /// <para>
+        /// A row that is not an element is written as <see cref="WriteRow"/> writes it.
+        /// </para>
+        /// </remarks>
+        internal void WriteContent(int index, Utf8XmlWriter writer)
+        {
+            ref var row = ref _rows[index];
+            if (row.Kind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil))
+            {
+                WriteRow(index, writer);
+                return;
+            }
+
+            var attributeEnd = index + 1 + row.AttributeCount;
+            for (var a = index + 1; a < attributeEnd; a++)
+            {
+                ref var attribute = ref _rows[a];
+                if (IsNamespaceDeclaration(in attribute, out var declaredPrefix) && !declaredPrefix.IsEmpty)
+                {
+                    writer.RegisterNamespace(declaredPrefix, Value(in attribute));
+                }
+            }
+
+            WriteAttributesAndChildren(index, writer, false);
+            if (!row.IsEmpty && row.EndIndex == attributeEnd)
+            {
+                writer.WriteEmptyText();
+            }
+        }
+
+        /// <summary>
+        /// Writes the attributes and the children of element row <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The element row index.</param>
+        /// <param name="writer">The destination, with a start tag open and the namespace declarations registered.</param>
+        /// <param name="defaultNamespace">Whether a declaration of the default namespace is written.</param>
+        internal void WriteAttributesAndChildren(int index, Utf8XmlWriter writer, bool defaultNamespace)
+        {
+            ref var row = ref _rows[index];
+            var end = row.EndIndex;
+            var attributeEnd = index + 1 + row.AttributeCount;
             for (var a = index + 1; a < attributeEnd; a++)
             {
                 ref var attribute = ref _rows[a];
                 if (IsNamespaceDeclaration(in attribute, out var declaredPrefix))
                 {
-                    writer.WriteRegisteredNamespace(declaredPrefix, Value(in attribute));
+                    if (defaultNamespace || !declaredPrefix.IsEmpty)
+                    {
+                        writer.WriteRegisteredNamespace(declaredPrefix, Value(in attribute));
+                    }
+
                     continue;
                 }
 
@@ -1150,15 +1225,6 @@ namespace CloudNimble.Text.Xml
             for (var c = attributeEnd; c < end; c = NextSiblingIndex(c))
             {
                 WriteRow(c, writer);
-            }
-
-            if (row.IsEmpty)
-            {
-                writer.WriteEndElement();
-            }
-            else
-            {
-                writer.WriteFullEndElement();
             }
         }
 

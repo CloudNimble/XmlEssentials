@@ -57,6 +57,7 @@ namespace CloudNimble.Text.Xml
         private XmlWriterName[]? _attrLocalsHeap;
         private XmlWriterName8 _attrNsInline;
         private XmlWriterName[]? _attrNsHeap;
+        private int _attributesPerLine;
         private long _bracketEnd;
         private int _bracketRun;
         private int _buffered;
@@ -71,13 +72,17 @@ namespace CloudNimble.Text.Xml
         private bool _inAttribute;
         private int _indentSize;
         private bool _leafParentHadText;
+        private byte[] _lineIndent = [];
+        private int _lineIndentLength;
+        private bool _lineOpen = true;
+        private int _lineScanned;
         private int _maxAttributes;
         private int _maxDepth;
         private int _maxNameBytes;
         private Memory<byte> _memory;
         private byte[] _names;
         private int _namesLength;
-        private byte[]? _newLineUtf8;
+        private bool _newLineIsCrLf;
         private Int8Buffer _nsCacheIndexes;
         private int _nsCacheMask;
         private int _nsCount;
@@ -90,6 +95,10 @@ namespace CloudNimble.Text.Xml
         private int _segmentCarry;
         private int _segmentCarryLength;
         private Stream? _stream;
+        private SearchValues<byte> _plainTextBytes = XmlChars.AsciiTextWriteChars;
+        private SearchValues<char> _plainTextChars = XmlChars.PlainTextChars;
+        private byte[] _tagIndent = [];
+        private int _tagIndentLength;
         private XmlVersion _version;
         private bool _wroteDeclaration;
 
@@ -268,6 +277,7 @@ namespace CloudNimble.Text.Xml
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_buffered > 0)
             {
+                TrackFlushedLine();
                 if (_stream is not null)
                 {
                     await _stream.WriteAsync(_buffer.AsMemory(0, _buffered), cancellationToken).ConfigureAwait(false);
@@ -314,6 +324,9 @@ namespace CloudNimble.Text.Xml
             _inAttribute = false;
             _nsCacheMask = 0;
             _nsCount = 0;
+            _lineIndentLength = 0;
+            _lineOpen = true;
+            _lineScanned = 0;
             _seenRoot = false;
             _wroteDeclaration = false;
             _namesLength = 0;
@@ -398,7 +411,8 @@ namespace CloudNimble.Text.Xml
 
             EnsureXsi();
             TrackAttribute("nil"u8, XmlUtf8.Xsi);
-            WriteRaw(" xsi:nil=\"true\""u8);
+            WriteAttributeSeparator();
+            WriteRaw("xsi:nil=\"true\""u8);
         }
 
         /// <summary>
@@ -998,14 +1012,15 @@ namespace CloudNimble.Text.Xml
             }
 
             ref var frame = ref CurrentFrame();
-            if (frame.TagOpen && !frame.HasContent)
+            var empty = frame.TagOpen && !frame.HasContent;
+            if (empty && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
             {
-                WriteRaw("/>"u8);
+                WriteSelfClose();
             }
             else
             {
                 CloseStartTag();
-                if (_options.Indented && !frame.HasText)
+                if (!empty && _options.Indented && !frame.HasText)
                 {
                     WriteIndent(_depth - 1);
                 }
@@ -2040,12 +2055,14 @@ namespace CloudNimble.Text.Xml
             if (prefix.IsEmpty)
             {
                 TrackAttribute("xmlns"u8, XmlUtf8.Xmlns);
-                WriteRaw(" xmlns=\""u8);
+                WriteAttributeSeparator();
+                WriteRaw("xmlns=\""u8);
             }
             else
             {
                 TrackAttribute(prefix, XmlUtf8.Xmlns);
-                WriteRaw(" xmlns:"u8);
+                WriteAttributeSeparator();
+                WriteRaw("xmlns:"u8);
                 WriteRaw(prefix);
                 WriteRaw("=\""u8);
             }
@@ -2180,7 +2197,7 @@ namespace CloudNimble.Text.Xml
         public void WriteStringValue(ReadOnlySpan<char> value)
         {
             ThrowIfDisposed();
-            if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : XmlChars.PlainTextChars) < 0
+            if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : _plainTextChars) < 0
                 && (_inAttribute || PendingBrackets() == 0))
             {
                 if (_inAttribute)
@@ -2824,7 +2841,7 @@ namespace CloudNimble.Text.Xml
             CloseStartTag();
             MarkText();
             WriteRaw("<![CDATA["u8);
-            WriteRaw(utf8Value);
+            WriteRawLines(utf8Value);
             WriteRaw("]]>"u8);
         }
 
@@ -2910,7 +2927,7 @@ namespace CloudNimble.Text.Xml
             // A comment between elements gets a line of its own, as an element does.
             WriteElementIndent(_depth);
             WriteRaw("<!--"u8);
-            WriteRaw(utf8Value);
+            WriteRawLines(utf8Value);
             WriteRaw("-->"u8);
         }
 
@@ -3043,6 +3060,164 @@ namespace CloudNimble.Text.Xml
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Records where the attributes of the start tag that is about to be written go when they are laid out
+        /// a fixed number to a line.
+        /// </summary>
+        /// <param name="nameLength">The number of characters in the name of the element, with its prefix and colon.</param>
+        /// <remarks>
+        /// A line after the first starts with the white space that starts the line of the tag, and then one
+        /// space for each character of the tag up to its first attribute: the <c>&lt;</c>, the name, and the
+        /// space after it. Nothing is done unless <see cref="XmlAttributeStyle.PerLine"/> is set.
+        /// </remarks>
+        internal void PrepareAttributeLayout(int nameLength)
+        {
+            if (_attributesPerLine == 0)
+            {
+                return;
+            }
+
+            TrackLine();
+            var length = _lineIndentLength + nameLength + 2;
+            if (length > _tagIndent.Length)
+            {
+                _tagIndent = new byte[Math.Max(64, 2 * length)];
+            }
+
+            _lineIndent.AsSpan(0, _lineIndentLength).CopyTo(_tagIndent);
+            _tagIndent.AsSpan(_lineIndentLength, nameLength + 2).Fill((byte)' ');
+            _tagIndentLength = length;
+        }
+
+        /// <summary>
+        /// Reads what was written since the last call, to keep the white space that starts the current line.
+        /// </summary>
+        /// <remarks>
+        /// The output may have left the buffer by the time a start tag needs the white space, so it is read as
+        /// it goes: before each start tag, and before the buffer is handed on. Nothing is done unless
+        /// <see cref="XmlAttributeStyle.PerLine"/> is set.
+        /// </remarks>
+        internal void TrackLine()
+        {
+            if (_attributesPerLine == 0)
+            {
+                return;
+            }
+
+            var written = _memory.Span[_lineScanned.._buffered];
+            _lineScanned = _buffered;
+            var lineEnd = written.LastIndexOf((byte)'\n');
+            if (lineEnd >= 0)
+            {
+                _lineIndentLength = 0;
+                _lineOpen = true;
+                written = written[(lineEnd + 1)..];
+            }
+
+            if (!_lineOpen)
+            {
+                return;
+            }
+
+            var white = written.IndexOfAnyExcept((byte)' ', (byte)'\t');
+            if (white < 0)
+            {
+                white = written.Length;
+            }
+            else
+            {
+                _lineOpen = false;
+            }
+
+            if (_lineIndentLength + white > _lineIndent.Length)
+            {
+                Array.Resize(ref _lineIndent, Math.Max(64, 2 * (_lineIndentLength + white)));
+            }
+
+            written[..white].CopyTo(_lineIndent.AsSpan(_lineIndentLength));
+            _lineIndentLength += white;
+        }
+
+        /// <summary>
+        /// Reads what is in the buffer before it is handed on, as <see cref="TrackLine"/> does, and starts
+        /// again at the start of the buffer.
+        /// </summary>
+        internal void TrackFlushedLine()
+        {
+            TrackLine();
+            _lineScanned = 0;
+        }
+
+        /// <summary>
+        /// Writes what separates an attribute from what is before it in the start tag: a space, or a new line
+        /// and the indentation when the attributes are laid out a fixed number to a line.
+        /// </summary>
+        /// <remarks>
+        /// The attribute has been counted already, so the count of the element is one more than its index.
+        /// </remarks>
+        internal void WriteAttributeSeparator()
+        {
+            if (_attributesPerLine == 0)
+            {
+                WriteRawByte((byte)' ');
+                return;
+            }
+
+            var index = CurrentFrame().AttributeCount - 1;
+            if (index == 0 || index % _attributesPerLine != 0)
+            {
+                WriteRawByte((byte)' ');
+                return;
+            }
+
+            WriteRaw(NewLineUtf8());
+            WriteRaw(_tagIndent.AsSpan(0, _tagIndentLength));
+        }
+
+        /// <summary>
+        /// Writes the content of a comment, a CDATA section or a processing instruction, with each line break
+        /// as the line ending <see cref="XmlWriterOptions.NewLine"/> asks for.
+        /// </summary>
+        /// <param name="utf8">The content, which holds no markup to escape.</param>
+        /// <remarks>
+        /// A line feed that follows a carriage return is left as it is: the two are the line ending already.
+        /// </remarks>
+        internal void WriteRawLines(ReadOnlySpan<byte> utf8)
+        {
+            if (!_newLineIsCrLf)
+            {
+                WriteRaw(utf8);
+                return;
+            }
+
+            while (true)
+            {
+                var lineEnd = utf8.IndexOf((byte)'\n');
+                if (lineEnd < 0)
+                {
+                    WriteRaw(utf8);
+                    return;
+                }
+
+                WriteRaw(utf8[..lineEnd]);
+                WriteRaw(lineEnd > 0 && utf8[lineEnd - 1] is (byte)'\r' ? "\n"u8 : "\r\n"u8);
+                utf8 = utf8[(lineEnd + 1)..];
+            }
+        }
+
+        /// <summary>
+        /// Ends a start tag as the tag of an element with no content, in the form
+        /// <see cref="XmlWriterOptions.EmptyElementStyle"/> asks for: <c>/&gt;</c> or <c> /&gt;</c>.
+        /// </summary>
+        /// <remarks>
+        /// The caller writes a start tag and an end tag for <see cref="XmlEmptyElementStyle.StartAndEndTag"/>,
+        /// because that needs the name of the element.
+        /// </remarks>
+        internal void WriteSelfClose()
+        {
+            WriteRaw(_options.EmptyElementStyle is XmlEmptyElementStyle.SelfClosingWithSpace ? " />"u8 : "/>"u8);
+        }
 
         /// <summary>
         /// Closes an open start tag with <c>&gt;</c> when attributes are finished.
@@ -3216,6 +3391,7 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         internal void Grow(int needed)
         {
+            TrackFlushedLine();
             if (_bufferWriter is not null)
             {
                 if (_buffered > 0)
@@ -3399,6 +3575,7 @@ namespace CloudNimble.Text.Xml
                 return;
             }
 
+            TrackFlushedLine();
             if (_stream is not null)
             {
                 _stream.Write(_buffer, 0, _buffered);
@@ -3420,11 +3597,14 @@ namespace CloudNimble.Text.Xml
         internal void Configure(in XmlWriterOptions options)
         {
             _options = options;
+            _attributesPerLine = options.AttributeStyle is XmlAttributeStyle.PerLine ? XmlLimits.Resolve(options.AttributesPerLine, 1) : 0;
             _indentSize = XmlLimits.Resolve(options.IndentSize, 2);
             _maxAttributes = XmlLimits.Resolve(options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
             _maxDepth = XmlLimits.Resolve(options.MaxDepth, XmlLimits.DefaultMaxDepth);
             _maxNameBytes = XmlLimits.Resolve(options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
-            _newLineUtf8 = null;
+            _newLineIsCrLf = options.NewLine is "\r\n";
+            _plainTextBytes = _newLineIsCrLf ? XmlChars.AsciiTextWriteCharsNoLineFeed : XmlChars.AsciiTextWriteChars;
+            _plainTextChars = _newLineIsCrLf ? XmlChars.PlainTextCharsNoLineFeed : XmlChars.PlainTextChars;
             _version = options.Version;
         }
 
@@ -3444,6 +3624,23 @@ namespace CloudNimble.Text.Xml
             _bufferWriter = null;
             _stream = null;
             ReturnBuffer();
+        }
+
+        /// <summary>
+        /// Closes the start tag of the current element with nothing after it, so that the element is ended
+        /// with an end tag: <c>&lt;e&gt;&lt;/e&gt;</c>.
+        /// </summary>
+        /// <remarks>
+        /// This is for an element that was read with an end tag and no content, and is written by a caller that
+        /// writes the element's content and not its tags. The element counts as holding character data, so
+        /// indentation puts nothing between the two tags.
+        /// </remarks>
+        internal void WriteEmptyText()
+        {
+            CloseStartTag();
+            ref var frame = ref CurrentFrame();
+            frame.HasContent = true;
+            frame.HasText = true;
         }
 
         /// <summary>
@@ -3660,7 +3857,7 @@ namespace CloudNimble.Text.Xml
             var nameIsBound = _nsCount == 0 && prefix.IsEmpty
                 ? ns.IsEmpty
                 : ns.SequenceEqual(LookupUri(prefix));
-            if (!nameIsBound || _options.Indented || utf8Text.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) >= 0)
+            if (!nameIsBound || _options.Indented || utf8Text.IndexOfAnyExcept(_plainTextBytes) >= 0)
             {
                 WriteStartElementDeferred(local, prefix);
                 EnsureElementNamespace(prefix, ns);
@@ -3746,7 +3943,7 @@ namespace CloudNimble.Text.Xml
             if (!utf8Data.IsEmpty)
             {
                 WriteRaw(" "u8);
-                WriteRaw(utf8Data);
+                WriteRawLines(utf8Data);
             }
 
             WriteRaw("?>"u8);
@@ -4271,7 +4468,7 @@ namespace CloudNimble.Text.Xml
             // Text may arrive in several calls, and "]]" at the end of one followed by ">" at the start of
             // the next is the same "]]>" as in one call.
             var bracket = PendingBrackets();
-            if (bracket == 0 && utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) < 0)
+            if (bracket == 0 && utf8.IndexOfAnyExcept(_plainTextBytes) < 0)
             {
                 WriteRaw(utf8);
                 return;
@@ -4299,7 +4496,7 @@ namespace CloudNimble.Text.Xml
                     continue;
                 }
 
-                var plain = utf8[i..].IndexOfAnyExcept(XmlChars.AsciiTextWriteChars);
+                var plain = utf8[i..].IndexOfAnyExcept(_plainTextBytes);
                 if (plain != 0)
                 {
                     plain = plain < 0 ? utf8.Length - i : plain;
@@ -4337,6 +4534,15 @@ namespace CloudNimble.Text.Xml
                 if (cp is '<')
                 {
                     WriteRaw("&lt;"u8);
+                    bracket = 0;
+                    continue;
+                }
+
+                if (cp is '\n')
+                {
+                    // A line feed is plain text unless the line ending is CR LF, so this is that case. A reader
+                    // gives CR LF back as the line feed it was (XML 1.0 and 1.1 section 2.11).
+                    WriteRaw("\r\n"u8);
                     bracket = 0;
                     continue;
                 }
@@ -4808,6 +5014,14 @@ namespace CloudNimble.Text.Xml
         internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty, bool explicitNamespace)
         {
             ThrowIfDisposed();
+            if (empty && _options.EmptyElementStyle is XmlEmptyElementStyle.StartAndEndTag)
+            {
+                // The end tag needs the name, so the element is started and ended as any other is.
+                WriteStartElementUtf8(local, prefix, ns, empty: false, explicitNamespace);
+                WriteEndElement();
+                return;
+            }
+
             ValidateNcName(local);
             if (!prefix.IsEmpty)
             {
@@ -4885,7 +5099,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (!declarePrefixed && !declareDefault)
                 {
-                    WriteRaw("/>"u8);
+                    WriteSelfClose();
                     _seenRoot = true;
                     return;
                 }
@@ -4939,7 +5153,17 @@ namespace CloudNimble.Text.Xml
             }
 
             TrackAttribute(local, []);
-            WriteRaw(head);
+            if (_attributesPerLine == 0)
+            {
+                WriteRaw(head);
+            }
+            else
+            {
+                // The head starts with the space that separates it from what is before it.
+                WriteAttributeSeparator();
+                WriteRaw(head[1..]);
+            }
+
             _inAttribute = true;
         }
 
@@ -4997,7 +5221,7 @@ namespace CloudNimble.Text.Xml
             }
 
             TrackAttribute(local, nsUri);
-            WriteRaw(" "u8);
+            WriteAttributeSeparator();
             if (!prefix.IsEmpty)
             {
                 WriteRaw(prefix);
@@ -5212,29 +5436,12 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns the UTF-8 newline for indented output. <c>\n</c> and <c>\r\n</c> are static.
+        /// Returns the UTF-8 line ending that <see cref="XmlWriterOptions.NewLine"/> asks for.
         /// </summary>
         /// <returns>The newline bytes.</returns>
         internal ReadOnlySpan<byte> NewLineUtf8()
         {
-            if (_newLineUtf8 is not null)
-            {
-                return _newLineUtf8;
-            }
-
-            var nl = string.IsNullOrEmpty(_options.NewLine) ? Environment.NewLine : _options.NewLine;
-            if (nl.Length == 1 && nl[0] == '\n')
-            {
-                return "\n"u8;
-            }
-
-            if (nl.Length == 2 && nl[0] == '\r' && nl[1] == '\n')
-            {
-                return "\r\n"u8;
-            }
-
-            _newLineUtf8 = Encoding.UTF8.GetBytes(nl);
-            return _newLineUtf8;
+            return _newLineIsCrLf ? "\r\n"u8 : "\n"u8;
         }
 
         /// <summary>
@@ -5333,6 +5540,11 @@ namespace CloudNimble.Text.Xml
         /// <param name="local">The local name.</param>
         internal void WriteTagOpen(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> local)
         {
+            if (_attributesPerLine != 0)
+            {
+                PrepareAttributeLayout((prefix.Length > 0 ? Encoding.UTF8.GetCharCount(prefix) + 1 : 0) + Encoding.UTF8.GetCharCount(local));
+            }
+
             var prefixed = prefix.Length > 0 ? prefix.Length + 1 : 0;
             Ensure(prefixed + local.Length + 1);
             var destination = _memory.Span[_buffered..];
@@ -5356,6 +5568,14 @@ namespace CloudNimble.Text.Xml
         /// <param name="empty">When true, writes <c>/&gt;</c> without pushing a frame.</param>
         internal void WriteStartElementLiteral(string localName, string? prefix, string? namespaceUri, bool empty)
         {
+            if (empty && _options.EmptyElementStyle is XmlEmptyElementStyle.StartAndEndTag)
+            {
+                // The end tag needs the name, so the element is started and ended as any other is.
+                WriteStartElementLiteral(localName, prefix, namespaceUri, empty: false);
+                WriteEndElement();
+                return;
+            }
+
             // A null namespace says nothing about the namespace and the name is written as given. An empty
             // string says "no namespace", which needs xmlns="" when a default namespace is in scope.
             if (namespaceUri is not null && (namespaceUri.Length > 0 || LookupUri([]) is { Length: > 0 }))
@@ -5376,6 +5596,7 @@ namespace CloudNimble.Text.Xml
             }
 
             BeginStartElement();
+            PrepareAttributeLayout((string.IsNullOrEmpty(prefix) ? 0 : prefix.Length + 1) + localName.Length);
             WriteRawByte((byte)'<');
             if (!string.IsNullOrEmpty(prefix))
             {
@@ -5386,7 +5607,7 @@ namespace CloudNimble.Text.Xml
             WriteCharsRaw(localName);
             if (empty)
             {
-                WriteRaw("/>"u8);
+                WriteSelfClose();
                 _seenRoot = true;
                 return;
             }
@@ -5408,9 +5629,9 @@ namespace CloudNimble.Text.Xml
             BeginStartElement();
             WriteRawByte((byte)'<');
             WriteCharsRaw(localName);
-            if (valueIsNull)
+            if (valueIsNull && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
             {
-                WriteRaw("/>"u8);
+                WriteSelfClose();
                 _seenRoot = true;
                 return;
             }
@@ -5470,7 +5691,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="value">The characters.</param>
         internal void WriteElementContentChars(ReadOnlySpan<char> value)
         {
-            if (value.IndexOfAnyExcept(XmlChars.PlainTextChars) < 0)
+            if (value.IndexOfAnyExcept(_plainTextChars) < 0)
             {
                 WriteCharsRaw(value);
                 return;
@@ -5565,8 +5786,7 @@ namespace CloudNimble.Text.Xml
             RequireOpenTag();
             ValidateNcNameChars(name);
             TrackAttributeChars(name, []);
-            Ensure(1 + name.Length + 2);
-            WriteRawByte((byte)' ');
+            WriteAttributeSeparator();
             WriteCharsRaw(name);
             WriteRaw("=\""u8);
             _inAttribute = true;
@@ -5585,9 +5805,9 @@ namespace CloudNimble.Text.Xml
             Ensure(1 + name.Length + 2 + 16 + 1);
             var dest = _memory.Span[_buffered..];
             dest[0] = (byte)' ';
-            if (Ascii.FromUtf16(name, dest[1..], out var n) is not OperationStatus.Done)
+            if (_attributesPerLine != 0 || Ascii.FromUtf16(name, dest[1..], out var n) is not OperationStatus.Done)
             {
-                WriteRawByte((byte)' ');
+                WriteAttributeSeparator();
                 WriteCharsRaw(name);
                 WriteRaw("=\""u8);
                 Ensure(16);

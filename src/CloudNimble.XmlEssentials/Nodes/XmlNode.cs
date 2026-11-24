@@ -164,7 +164,7 @@ namespace CloudNimble.Text.Xml.Nodes
             var buffer = new ArrayBufferWriter<byte>();
             // A node does not know which XML version it was parsed from. XML 1.1 can carry every character
             // either version allows, and writes the ones it restricts or normalizes as references.
-            var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true, Version = XmlVersion.Version11 });
+            var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true, Version = XmlVersion.Version11 });
             try
             {
                 WriteTo(writer);

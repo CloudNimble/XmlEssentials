@@ -20,7 +20,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { NewLine = "\n", OmitXmlDeclaration = true };
         private const string Nil = "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"";
 
         #endregion

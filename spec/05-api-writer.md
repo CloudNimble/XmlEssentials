@@ -32,7 +32,10 @@ public struct XmlWriterOptions
     public bool Indented { get; set; }
     public char IndentCharacter { get; set; }   // default ' '
     public int IndentSize { get; set; }         // default 2
-    public string NewLine { get; set; }         // default Environment.NewLine
+    public string NewLine { get; set; }         // "\n" or "\r\n"; default Environment.NewLine, in default(XmlWriterOptions) too; every line break the writer writes
+    public XmlEmptyElementStyle EmptyElementStyle { get; set; }  // default SelfClosing: <e/>; SelfClosingWithSpace: <e />; StartAndEndTag: <e></e>
+    public XmlAttributeStyle AttributeStyle { get; set; }        // default Inline; PerLine: AttributesPerLine to a line, aligned under the first
+    public int AttributesPerLine { get; set; }  // 0 → 1; read only under PerLine
     public int MaxDepth { get; set; }           // 0 → 64
     public int MaxAttributeCount { get; set; }  // 0 → 1000; includes xmlns*; attribute storm
     public int MaxNameByteCount { get; set; }   // 0 → 1024; element/attribute/prefix names
@@ -197,6 +200,8 @@ Element text written in several calls, segments or not, never forms `]]>`: the w
 ## Writer escaping
 
 The writer escapes whatever a reader would otherwise change, so a value is read back exactly as it was written. The full table and its reasons are in [XML fidelity](02-xml-fidelity.md#round-trip-guarantees).
+
+`EmptyElementStyle`, `AttributeStyle` with `AttributesPerLine`, and `NewLine` say how the output is laid out. Each is a rule for every element the writer writes, so the serializer, a generated context, `XmlDocument.WriteTo` and `XmlNode.WriteTo` follow it with no code of their own. The rules are under [predictable normalization](02-xml-fidelity.md#round-trip-guarantees).
 
 | Context | Escape |
 | --- | --- |

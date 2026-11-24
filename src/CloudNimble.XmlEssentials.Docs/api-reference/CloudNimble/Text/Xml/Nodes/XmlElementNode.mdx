@@ -159,7 +159,8 @@ The writer declares each namespace where a name first needs it. Adding an `xmlns
 
 ## Considerations
 
-- `ValueKind` is always `Element`. The tree doesn't distinguish `<e/>` from `<e></e>`: an element with no children is written as an empty-element tag, and an element with children is written with an end tag.
+- `ValueKind` is always `Element`. `IsEmptyElement` says how an element with no children is written: as an empty-element tag (`<e/>`) when it's `true`, which is the default for an element you create, and as `<e></e>` when it's `false`. A parsed element has the value its source had, and `DeepClone` copies it. The property isn't read while the element has children; such an element is written with an end tag.
+- `XmlWriterOptions.EmptyElementStyle` sets the form of the one tag, `<e/>` or `<e />`. With `StartAndEndTag`, every element with no children is written as `<e></e>`, whatever `IsEmptyElement` is.
 - The one-argument indexer matches a local name in any namespace. `SetAttribute(name, value)` sets the attribute in no namespace. The overloads that take a namespace URI match that namespace only; pass an empty string for no namespace.
 - The indexers return `null` when nothing matches. They search direct children only.
 - `SetAttribute` stores a `null` value as an empty string. It doesn't remove the attribute.
@@ -269,6 +270,30 @@ Type: `string`
 The text of all text nodes and CDATA sections inside this element, in document order. Setting
 the value removes all children and adds one text node that holds the value. Setting
 [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or an empty string removes all children and adds nothing.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsEmptyElement
+
+Gets or sets a value that indicates whether this element is written as one tag when it has no children.
+
+#### Syntax
+
+```csharp
+public bool IsEmptyElement { get; set; }
+```
+
+#### Property Value
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the element is written as an empty-element tag (`<e/>`) when it
+has no children; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if it is written as a start tag and an end tag
+(`<e></e>`). The default is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). An element that is parsed has the
+value its source had: [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) for an element that had an end tag.
+
+#### Remarks
+
+The value is not read while the element has children. The form of the one tag, `<e/>` or
+`<e />`, and whether every element with no content is written with an end tag, is set by
+[XmlWriterOptions.EmptyElementStyle](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#emptyelementstyle).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> LocalName
 

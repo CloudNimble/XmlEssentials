@@ -129,7 +129,10 @@ public sealed class XmlSerializerOptions
     public bool WriteIndented { get; set; }
     public char IndentCharacter { get; set; }
     public int IndentSize { get; set; }
-    public string NewLine { get; set; }
+    public string NewLine { get; set; }                         // "\n" or "\r\n"; every line break that is written
+    public XmlEmptyElementStyle EmptyElementStyle { get; set; }
+    public XmlAttributeStyle AttributeStyle { get; set; }
+    public int AttributesPerLine { get; set; }                  // at least 1; read only under PerLine
 
     public int MaxDepth { get; set; }
     public int DefaultBufferSize { get; set; }
@@ -196,6 +199,9 @@ Defaults (when unset / `0` on max-* except `MaxDocumentByteCount`):
 | `IndentCharacter` | `' '` |
 | `IndentSize` | `2` |
 | `NewLine` | `Environment.NewLine` |
+| `EmptyElementStyle` | `SelfClosing` |
+| `AttributeStyle` | `Inline` |
+| `AttributesPerLine` | `1` |
 | `MaxDepth` | `0` → 64 |
 | `DefaultBufferSize` | `0` → 16384 |
 | `MaxAttributeCount` | `0` → 1000 |

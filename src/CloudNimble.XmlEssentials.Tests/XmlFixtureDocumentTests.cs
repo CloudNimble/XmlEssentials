@@ -131,7 +131,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 WhitespaceHandling = XmlWhitespaceHandling.Significant,
             });
             var buffer = new ArrayBufferWriter<byte>(xml.Length + 64);
-            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true, Version = version });
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true, Version = version });
             document.WriteTo(writer);
             writer.Flush();
             return buffer.WrittenSpan.ToArray();

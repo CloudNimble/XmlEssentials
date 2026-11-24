@@ -93,21 +93,38 @@ Reading normalizes; writing must therefore protect anything that normalization w
 | `"` | literal | `&quot;` | Attribute values are double-quoted. |
 | `>` after `]]` | `&gt;` | literal | `]]>` may not appear in character data (§2.4). |
 | CR (`#xD`) | `&#xD;` | `&#xD;` | A literal CR is read as LF (§2.11). |
-| TAB, LF | literal | `&#x9;`, `&#xA;` | A literal TAB or LF in an attribute is read as a space (§3.3.3). |
+| TAB | literal | `&#x9;` | A literal TAB in an attribute is read as a space (§3.3.3). |
+| LF | the line ending `NewLine` asks for: LF, or CR LF, which is read as LF (§2.11) | `&#xA;` | A literal LF in an attribute is read as a space (§3.3.3). |
 | NEL (`#x85`), LS (`#x2028`) in **1.1** | `&#x85;`, `&#x2028;` | same | Literals are read as LF in 1.1. In 1.0 they are ordinary characters and stay literal. |
 | 1.1 RestrictedChar | `&#xN;` | `&#xN;` | Must be a reference (§2.2). |
 | A character outside `Char` for the version | throws | throws | Cannot be represented. |
 
-**Reader → DOM → writer.** `XmlDocument.WriteTo` reproduces the infoset it parsed, and for a document already in the writer's own form it reproduces the bytes:
+**Predictable normalization.** What is read and written again keeps its infoset and the layout between its nodes. Everything else that is rewritten is rewritten by a named setting of the writer, which applies to every element in the same way, whichever code asked for the element: a caller of the writer, the serializer, a generated context, a document or a node. So a document changes only in the ways the options name, and a document that is already in the form the options ask for comes back byte for byte.
+
+| Setting (`XmlWriterOptions`, and the same name on `XmlSerializerOptions`) | What it decides | Values |
+| --- | --- | --- |
+| `EmptyElementStyle` | How an element with no content is written. | `SelfClosing` `<e/>` (default), `SelfClosingWithSpace` `<e />` (the form the writers in `System.Xml` use), `StartAndEndTag` `<e></e>`. |
+| `AttributeStyle`, `AttributesPerLine` | How the attributes of a start tag are laid out. | `Inline` (default): all on the line of the tag. `PerLine`: `AttributesPerLine` to a line (1 unless set), each later line indented so its first attribute is under the first attribute of the tag. |
+| `NewLine` | Every line break the writer writes: indentation, the breaks `PerLine` adds, and the line breaks in text, CDATA sections, comments and processing instructions. | `"\n"` or `"\r\n"`; the default is `Environment.NewLine`. These are the values `JsonWriterOptions.NewLine` accepts, and as there the value is never null: `default(XmlWriterOptions)` gives `Environment.NewLine` too. |
+| `OmitXmlDeclaration` | Whether a declaration is written. | The writer writes one unless this is set, whether or not the source had one. |
+
+Rules that follow from this:
+
+- An element that was given an empty string has content, a value of no characters, and is written `<e></e>` under every value of `EmptyElementStyle`. That keeps it apart from an element given nothing and from one that is nil.
+- `EmptyElementStyle` applies to an element ended with `WriteEndElement` before any content, to `WriteEmptyElement`, and to `WriteElementString` with a null value. `WriteFullEndElement` always writes an end tag. A document and a node end an element that was read with an end tag with `WriteFullEndElement`, so `<e></e>` stays `<e></e>` under every value, and an element read as one tag takes the form the setting asks for.
+- `PerLine`: a line after the first starts with the white space that starts the line of the tag, and then one space for each character of the tag up to its first attribute (`<`, the name with its prefix, and the space). It does not depend on `Indented`. A namespace declaration and `xsi:nil` are attributes and are counted. An element that does not start its line follows the same rule.
+- `NewLine` changes no value. A reader gives CR LF back as LF (XML 1.0 and 1.1 §2.11), a CR that is part of a value is written as `&#xD;`, and a line break in an attribute value is written as `&#xA;`. In a comment, a CDATA section or a processing instruction, an LF that follows a CR is left as it is. Any value but the two is rejected with `ArgumentOutOfRangeException`, because nothing else is read back as a line feed. `XmlElement.GetRawXml()` and `XmlNode.ToString()` take no options and always give LF.
+
+**Reader → DOM → writer.** `XmlDocument.WriteTo` reproduces the infoset it parsed, and for a document already in the form the writer's options ask for it reproduces the bytes:
 
 - Namespace declarations are written **as parsed**, in their original position among the attributes. They are not regenerated from the names in use, because a prefix may be referenced only from content (`xsi:type="p:T"`, XPath, QName-valued attributes).
 - `xmlns=""` is preserved, and is added when a sub-tree in no namespace is written under a default namespace. Without it the element would change namespace.
 - Attribute order is preserved.
 - `<e/>` and `<e></e>` are preserved (`IsEmptyElement`).
 - Comments and processing instructions before and after the root are preserved.
-- Not preserved, because they are not in the infoset: the quote character, whitespace inside tags, whitespace outside the root, the spelling of a character reference, and the declaration's spelling (it is rewritten as `version` + `encoding="utf-8"` + `standalone`).
+- Not preserved, because they are not in the infoset: the quote character (always `"`), whitespace inside tags (the layout of attributes follows `AttributeStyle`), the form of an empty-element tag (`<e/>` or `<e />`, which follows `EmptyElementStyle`), the line ending (which follows `NewLine`), whitespace outside the root, the spelling of a character reference, and the declaration's spelling (it is rewritten as `version` + `encoding="utf-8"` + `standalone`).
 
-The mutable tree (`XmlNode`) keeps namespace declarations and attribute order the same way. It does not record `<e/>` versus `<e></e>`: an element with no children is written `<e/>`.
+The mutable tree (`XmlNode`) keeps namespace declarations and attribute order the same way, and `XmlElementNode.IsEmptyElement` records `<e/>` versus `<e></e>`: it is `false` for an element that was read with an end tag, `true` for an element that is created, can be set, and is not read while the element has children. `XmlNode.Parse` returns the root element, so the declaration and everything outside the root are not part of the tree.
 
 **Indentation never changes content.** With `Indented`, whitespace is inserted only between elements. An element that holds character data is written on one line, including its child elements and its end tag, because whitespace next to character data is significant.
 

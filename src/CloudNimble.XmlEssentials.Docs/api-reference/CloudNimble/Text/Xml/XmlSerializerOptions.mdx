@@ -154,7 +154,8 @@ After MakeReadOnly: True
 - **Use the same instance to read and to write.** Naming policies, the default property mapping, and the default namespace change the names the serializer looks for when it reads.
 - **Call `MakeReadOnly` before you share an instance** with code that might otherwise change it before its first use.
 - **Copy at startup, not per call.** A copy shares none of the source's cached metadata.
-- **Set `NewLine` when the output must be identical on every operating system.** Its default is `Environment.NewLine`, and it is used only when `WriteIndented` is `true`.
+- **Set `NewLine` when the output must be identical on every operating system.** Its default is `Environment.NewLine`, and it is written for every line break: the ones `WriteIndented` adds and the ones inside values. It accepts `"\n"` and `"\r\n"`.
+- **Set the layout options to match the files you already have.** `EmptyElementStyle` chooses between `<e/>`, `<e />` and `<e></e>`, and `AttributeStyle` with `AttributesPerLine` chooses how the attributes of a start tag are laid out. They change how the output looks, not what a reader gets from it, and they are passed to the writer under the same names.
 - **Start from `XmlSerializerOptions.Strict` for XML you don't control,** and set `MaxDocumentByteCount`. See [Security](/guides/security).
 
 ## Considerations
@@ -301,6 +302,56 @@ The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-refer
 | Exception | Description |
 |-----------|-------------|
 | `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributesPerLine
+
+Gets or sets the number of attributes written to a line when [XmlSerializerOptions.AttributeStyle](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#attributestyle) is
+[XmlAttributeStyle.PerLine](/api-reference/CloudNimble/Text/Xml/XmlAttributeStyle).
+
+#### Syntax
+
+```csharp
+public int AttributesPerLine { get; set; }
+```
+
+#### Property Value
+
+Type: `int`
+The number of attributes to a line. The default is 1. The value is not read when
+[XmlSerializerOptions.AttributeStyle](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#attributestyle) is [XmlAttributeStyle.Inline](/api-reference/CloudNimble/Text/Xml/XmlAttributeStyle).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentOutOfRangeException` | The property is set to a value that is less than 1. |
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> AttributeStyle
+
+Gets or sets a value that specifies how the attributes of a start tag are laid out.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlAttributeStyle AttributeStyle { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlAttributeStyle`
+One of the enumeration values. The default is [XmlAttributeStyle.Inline](/api-reference/CloudNimble/Text/Xml/XmlAttributeStyle), which writes
+every attribute on the line of the start tag.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Remarks
+
+The value is passed to the writer as [XmlWriterOptions.AttributeStyle](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#attributestyle).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Converters
 
@@ -514,6 +565,32 @@ The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-refe
 | Exception | Description |
 |-----------|-------------|
 | `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EmptyElementStyle
+
+Gets or sets a value that specifies how an element that has no content is written.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlEmptyElementStyle EmptyElementStyle { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlEmptyElementStyle`
+One of the enumeration values. The default is [XmlEmptyElementStyle.SelfClosing](/api-reference/CloudNimble/Text/Xml/XmlEmptyElementStyle), which
+writes `<e/>`.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Remarks
+
+The value is passed to the writer as [XmlWriterOptions.EmptyElementStyle](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#emptyelementstyle).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumHandling
 
@@ -824,7 +901,7 @@ The maximum size of a text node, in bytes. The default is 0, which means 16,777,
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
 
-Gets or sets the new line string to use when [XmlSerializerOptions.WriteIndented](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#writeindented) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+Gets or sets the line ending that is written.
 
 #### Syntax
 
@@ -835,13 +912,14 @@ public string NewLine { get; set; }
 #### Property Value
 
 Type: `string`
-The new line string. The default is the value of [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
+The line ending: `"\n"` or `"\r\n"`. The default is the value of [NewLine](https://learn.microsoft.com/dotnet/api/system.environment.newline).
 
 #### Exceptions
 
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | The property is set to [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentOutOfRangeException` | The property is set to a value that is neither `"\n"` nor `"\r\n"`. |
 | `InvalidOperationException` | The property is set after this instance has become read-only. |
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NumberHandling

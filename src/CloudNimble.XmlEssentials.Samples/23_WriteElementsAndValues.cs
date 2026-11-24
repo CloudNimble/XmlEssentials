@@ -16,6 +16,41 @@ namespace CloudNimble.XmlEssentials.Samples
         #region Public Methods
 
         /// <summary>
+        /// Writes one document three ways to show the settings that lay out the output.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void ControlLayout(TextWriter output)
+        {
+            var asSystemXml = new XmlWriterOptions
+            {
+                EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace,
+                Indented = true,
+                NewLine = "\n",
+                OmitXmlDeclaration = true,
+            };
+            var onePerLine = asSystemXml with { AttributeStyle = XmlAttributeStyle.PerLine };
+            var twoPerLine = onePerLine with { AttributesPerLine = 2, EmptyElementStyle = XmlEmptyElementStyle.StartAndEndTag };
+
+            foreach (XmlWriterOptions options in new[] { asSystemXml, onePerLine, twoPerLine })
+            {
+                var buffer = new ArrayBufferWriter<byte>();
+                using (var writer = new Utf8XmlWriter(buffer, options))
+                {
+                    writer.WriteStartElement("Order");
+                    writer.WriteAttributeString("id", "1042");
+                    writer.WriteAttributeString("status", "open");
+                    writer.WriteAttributeString("region", "EU");
+                    writer.WriteElementString("Customer", "Ada Lovelace");
+                    writer.WriteStartElement("Notes");
+                    writer.WriteEndElement();
+                    writer.WriteEndElement();
+                }
+
+                output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+            }
+        }
+
+        /// <summary>
         /// Writes a document to an <see cref="IBufferWriter{T}"/> with start tags, attributes, text, and end tags.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
@@ -158,13 +193,93 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
+        /// Writes elements with no content as a start tag and an end tag.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void ChooseEmptyElementForm(TextWriter output)
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            var options = new XmlWriterOptions
+            {
+                EmptyElementStyle = XmlEmptyElementStyle.StartAndEndTag,
+                Indented = true,
+                NewLine = "\n",
+                OmitXmlDeclaration = true,
+            };
+
+            using (var writer = new Utf8XmlWriter(buffer, options))
+            {
+                writer.WriteStartElement("a");
+                writer.WriteStartElement("b");
+                writer.WriteEndElement();
+                writer.WriteEmptyElement("c");
+                writer.WriteEndElement();
+            }
+
+            output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+        }
+
+        /// <summary>
+        /// Writes a line break in text with the line ending the options name.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void ChooseLineEnding(TextWriter output)
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            var options = new XmlWriterOptions { NewLine = "\r\n", OmitXmlDeclaration = true };
+
+            using (var writer = new Utf8XmlWriter(buffer, options))
+            {
+                writer.WriteStartElement("r");
+                writer.WriteStringValue("a\nb");
+                writer.WriteEndElement();
+            }
+
+            output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan).Replace("\r", "\\r"));
+        }
+
+        /// <summary>
+        /// Writes the attributes of each start tag one to a line, and then two to a line.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void PutAttributesOnLines(TextWriter output)
+        {
+            var onePerLine = new XmlWriterOptions
+            {
+                AttributeStyle = XmlAttributeStyle.PerLine,
+                Indented = true,
+                NewLine = "\n",
+                OmitXmlDeclaration = true,
+            };
+
+            foreach (XmlWriterOptions options in new[] { onePerLine, onePerLine with { AttributesPerLine = 2 } })
+            {
+                var buffer = new ArrayBufferWriter<byte>();
+                using (var writer = new Utf8XmlWriter(buffer, options))
+                {
+                    writer.WriteStartElement("order");
+                    writer.WriteAttributeString("a", "1");
+                    writer.WriteAttributeString("b", "2");
+                    writer.WriteAttributeString("c", "3");
+                    writer.WriteStartElement("line");
+                    writer.WriteAttributeString("x", "1");
+                    writer.WriteAttributeString("y", "2");
+                    writer.WriteEndElement();
+                    writer.WriteEndElement();
+                }
+
+                output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+            }
+        }
+
+        /// <summary>
         /// Shows how the writer escapes text and attribute values.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void EscapeValues(TextWriter output)
         {
             var buffer = new ArrayBufferWriter<byte>();
-            var options = new XmlWriterOptions { OmitXmlDeclaration = true };
+            var options = new XmlWriterOptions { NewLine = "\n", OmitXmlDeclaration = true };
 
             using (var writer = new Utf8XmlWriter(buffer, options))
             {

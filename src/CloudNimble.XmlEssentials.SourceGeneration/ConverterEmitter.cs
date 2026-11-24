@@ -140,10 +140,22 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 var itemLeaf = IsLeafScalar(member.ItemTypeName) && CanLeafTag(itemName, itemNamespace);
                 builder.Append(indent).Append("    foreach (var item in ").Append(access).AppendLine(")");
                 builder.Append(indent).AppendLine("    {");
-                EmitStartElement(builder, indent + "        ", itemName, itemNamespace, itemLeaf);
                 // The property pattern is true for every value of a value type, where "is not null" would not compile.
-                builder.Append(indent).Append("        if (item is { }) ").Append(WriteContent("item", member.ItemTypeName)).AppendLine(";");
-                EmitEndElement(builder, indent + "        ", itemName, itemNamespace, itemLeaf);
+                builder.Append(indent).AppendLine("        if (item is { })");
+                builder.Append(indent).AppendLine("        {");
+                EmitStartElement(builder, indent + "            ", itemName, itemNamespace, itemLeaf);
+                builder.Append(indent).Append("            ").Append(WriteContent("item", member.ItemTypeName)).AppendLine(";");
+                EmitEndElement(builder, indent + "            ", itemName, itemNamespace, itemLeaf);
+                builder.Append(indent).AppendLine("        }");
+                builder.Append(indent).AppendLine("        else");
+                builder.Append(indent).AppendLine("        {");
+
+                // An item that is null is an element marked xsi:nil, as the reflection resolver writes it. An
+                // empty element would read back as a value.
+                EmitStartElement(builder, indent + "            ", itemName, itemNamespace, leaf: false);
+                builder.Append(indent).AppendLine("            writer.WriteNilValue();");
+                EmitEndElement(builder, indent + "            ", itemName, itemNamespace, leaf: false);
+                builder.Append(indent).AppendLine("        }");
                 builder.Append(indent).AppendLine("    }");
                 if (member.IsWrapped)
                 {

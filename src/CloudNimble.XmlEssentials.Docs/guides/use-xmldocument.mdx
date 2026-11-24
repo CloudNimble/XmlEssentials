@@ -818,7 +818,7 @@ Same as the input: True
 
 ### What a round trip keeps
 
-With the default options, a round trip preserves the document's content, its comments, and the indentation inside the root element. It doesn't promise the same bytes, because the writer has one spelling for things XML lets authors spell several ways. The next example parses a document that differs from the writer's spelling in each of those ways.
+With the default options, a round trip preserves the document's content, its comments, and the indentation inside the root element. It doesn't promise the same bytes, because the writer has one spelling for things XML lets authors spell several ways. Some of those spellings are set by `XmlWriterOptions`, and the rest are fixed. The next example parses a document that differs from the writer's spelling in each of those ways.
 
 ```csharp
 const string xml =
@@ -833,7 +833,7 @@ const string xml =
 using XmlDocument document = XmlDocument.Parse(xml);
 
 var buffer = new ArrayBufferWriter<byte>();
-using (var writer = new Utf8XmlWriter(buffer))
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = "\n" }))
 {
     document.WriteTo(writer);
 }
@@ -855,10 +855,13 @@ The code produces the following output:
 | --- | --- |
 | Elements, attributes, text, and CDATA sections | White space outside the root element: after the declaration, around comments in the prolog, and the final line break |
 | Comments and processing instructions, inside and outside the root | The declaration, written as `<?xml version="..." encoding="utf-8"?>` with double quotes |
-| Indentation and other white space between elements inside the root | Attribute quotes, which become double quotes, and the spacing between attributes, which becomes one space |
-| Attribute order, prefixes, and where namespaces are declared | `<Notes />`, written as `<Notes/>` |
-| `<e></e>` as distinct from `<e/>` | CRLF line ends, which become LF (the output above has no `\r`) |
+| Indentation and other white space between elements inside the root | Attribute quotes, which become double quotes |
+| Attribute order, prefixes, and where namespaces are declared | White space inside a tag. The attributes are laid out as `AttributeStyle` says: by default, one space before each |
+| `<e></e>` as distinct from `<e/>` | The form of an empty-element tag, which follows `EmptyElementStyle`. With the default, `<Notes />` is written as `<Notes/>` |
+| | Line ends, which follow `NewLine`. The input has CRLF, and the sample sets `NewLine = "\n"`, so the output above has no `\r` |
 | | Character references such as `&#65;`, written as the character |
+
+`NewLine` defaults to `Environment.NewLine`, so on Windows a document that was read with LF line ends is written with CRLF unless you set `NewLine = "\n"`. To write the `<Notes />` form, set `EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace`. See [Control the layout](/guides/use-utf8xmlwriter#control-the-layout).
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/28_WriteAndConvertXmlDocument.cs)
 

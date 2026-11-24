@@ -344,6 +344,21 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample30_ChangeWithXmlNode_ChangeAndWriteBack()
+        {
+            SampleOutput.Capture(ChangeWithXmlNode.ChangeAndWriteBack).Should().Be(
+                "<Project Sdk=\"Microsoft.NET.Sdk\">\n" +
+                "  <PropertyGroup>\n" +
+                "    <Description></Description>\n" +
+                "  </PropertyGroup>\n" +
+                "  <!-- What the project depends on. -->\n" +
+                "  <ItemGroup>\n" +
+                "    <PackageReference Include=\"FluentAssertions\" Version=\"8.1.0\" />\n" +
+                "  </ItemGroup>\n" +
+                "</Project>");
+        }
+
+        [TestMethod]
         public void Sample30_ChangeWithXmlNode_DeepClone()
         {
             SampleOutput.Capture(ChangeWithXmlNode.DeepClone).Should().Be(
@@ -359,7 +374,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "<Order>\n" +
                 "  <!-- rush -->\n" +
                 "  <Item> Keyboard </Item>\n" +
-                "  <Notes/>\n" +
+                "  <Notes></Notes>\n" +
                 "</Order>\n" +
                 "End tag does not match start tag.");
         }
