@@ -19,7 +19,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             return TryRead(ref reader, options, out var value)
                 ? value
-                : throw new XmlException("The element is incomplete: more data is required.");
+                : throw XmlException.Create("The element is incomplete: more data is required.");
         }
 
         /// <inheritdoc />

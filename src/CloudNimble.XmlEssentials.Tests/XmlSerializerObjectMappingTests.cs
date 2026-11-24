@@ -176,9 +176,9 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, MaxNameByteCount = 4 };
             FluentActions.Invoking(() => XmlSerializer.Serialize(new LongNames { LongAttribute = "x" }, options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxNameByteCount exceeded (4).");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxNameByteCount exceeded (4). Path: /r.");
             FluentActions.Invoking(() => XmlSerializer.Serialize(new LongNames { LongElement = "x" }, options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxNameByteCount exceeded (4).");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxNameByteCount exceeded (4). Path: /r.");
             XmlSerializer.Serialize(new LongNames(), options).Should().Be("<r/>");
         }
 
@@ -187,7 +187,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, MaxDepth = 1 };
             FluentActions.Invoking(() => XmlSerializer.Serialize(new Person { Name = "Ada", Age = 36 }, options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDepth exceeded (1).");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDepth exceeded (1). Path: /Person.");
         }
 
         [TestMethod]
@@ -213,7 +213,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Person_ScalarElement_WithTheWrongEndTag_Throws()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Name>Ada</Nome><Age>36</Age></Person>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("End tag does not match start tag.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("End tag does not match start tag. Path: /Person/Name | LineNumber: 1 | BytePositionInLine: 25.");
         }
 
         [TestMethod]
@@ -222,7 +222,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var options = new XmlSerializerOptions { MaxTextByteCount = 4 };
             XmlSerializer.Deserialize<Person>("<Person><Name>Adam</Name><Age>36</Age></Person>", options)!.Name.Should().Be("Adam");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Name>Adaline</Name><Age>36</Age></Person>", options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxTextByteCount exceeded (4).");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxTextByteCount exceeded (4). Path: /Person/Name | LineNumber: 1 | BytePositionInLine: 22.");
         }
 
         [TestMethod]
@@ -343,7 +343,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Dictionary_NonStringKeys_RejectAnElementNamedForAKey()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Dictionary<int, string>>("<DictionaryOfInt32String><one>1</one></DictionaryOfInt32String>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element 'one' is not an entry of a dictionary keyed by 'System.Int32'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element 'one' is not an entry of a dictionary keyed by 'System.Int32'. Path: /DictionaryOfInt32String | LineNumber: 1 | BytePositionInLine: 31.");
         }
 
         [TestMethod]
@@ -489,7 +489,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var xml = $"<MixedPair xmlns:r=\"{RefsNamespace}\"><First r:id=\"1\"><Name>n</Name></First><Second r:ref=\"1\"/></MixedPair>";
             FluentActions.Invoking(() => XmlSerializer.Deserialize<MixedPair>(xml, Preserve))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown reference '1'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown reference '1'. Path: /MixedPair/Second | LineNumber: 1 | BytePositionInLine: 109.");
         }
 
         [TestMethod]
@@ -532,7 +532,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var xml = $"<Node xmlns:r=\"{RefsNamespace}\"><Child r:ref=\"1\"/><Name>root</Name></Node>";
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Node>(xml))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown reference '1'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown reference '1'. Path: /Node/Child | LineNumber: 1 | BytePositionInLine: 65.");
         }
 
         [TestMethod]
@@ -585,7 +585,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var options = new XmlSerializerOptions { UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow };
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Price>("<Price Currency=\"USD\">19.99<Note>x</Note></Price>", options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'Note'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'Note'. Path: /Price | LineNumber: 1 | BytePositionInLine: 34.");
         }
 
         [TestMethod]
@@ -693,7 +693,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 var reader = new Utf8XmlReader("<TextMapped>abc<?pi x?>"u8, isFinalBlock: false, new XmlReaderState());
                 XmlSerializer.Deserialize<TextMapped>(ref reader);
-            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element was not closed.");
+            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element was not closed. Path: /TextMapped | LineNumber: 1 | BytePositionInLine: 24.");
         }
 
         [TestMethod]

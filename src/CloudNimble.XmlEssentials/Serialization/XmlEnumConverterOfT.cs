@@ -61,7 +61,7 @@ namespace CloudNimble.Text.Xml.Serialization
             var text = XmlLexical.Collapse(utf8);
             if (!TryParseNumber(text, out var bits) && !TryParseNames(text, out bits))
             {
-                throw new XmlException("The value is not a valid enum member.");
+                throw XmlException.Create("The value is not a valid enum member.");
             }
 
             return FromBits(bits);

@@ -107,11 +107,13 @@ public sealed class XmlException : System.Exception
     public long? BytePosition { get; }
     public long? LineNumber { get; }     // 1-based after EOL normalization
     public long? LinePosition { get; }   // 1-based, UTF-8 bytes in the current line (STJ-like, not xmlconf columns)
-    public string? Path { get; }         // /Person/Address/City or /Person/@id
+    public string? Path { get; }         // /Order/Lines/Line[1]/@sku; set by the serializer, null from the reader alone
 }
 ```
 
 Do not use or wrap `System.Xml.XmlException`.
+
+`Path` is set by `XmlSerializer` for an exception thrown while it reads or writes: the form and the rules are in decision 61 of [doc findings](24-doc-findings-resolution.md). The serializer also fills in the three positions for an exception that has none. The reader, a document and a node do not set `Path`. A path given to the constructor is not changed. `Message` is overridden: for an exception the library creates that has a path, it ends with ` Path: {Path} | LineNumber: {n} | BytePositionInLine: {m}.`, or ` Path: {Path}.` when no line is known (decision 61).
 
 ## Reader options / state
 

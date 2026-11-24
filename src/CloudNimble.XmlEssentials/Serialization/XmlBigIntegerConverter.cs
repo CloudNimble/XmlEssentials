@@ -22,7 +22,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override BigInteger Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            return XmlLexical.TryParseBigInteger(utf8, out var value) ? value : throw new XmlException("The value is not a valid integer.");
+            return XmlLexical.TryParseBigInteger(utf8, out var value) ? value : throw XmlException.Create("The value is not a valid integer.");
         }
 
         /// <inheritdoc />

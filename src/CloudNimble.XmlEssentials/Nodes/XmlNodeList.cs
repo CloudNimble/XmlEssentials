@@ -158,17 +158,17 @@ namespace CloudNimble.Text.Xml.Nodes
             // a declaration inside an element is not well formed.
             if (node is XmlAttributeNode)
             {
-                throw new XmlException("An attribute cannot be a child of an element. Add it to Attributes.");
+                throw XmlException.Create("An attribute cannot be a child of an element. Add it to Attributes.");
             }
 
             if (node is XmlDeclarationNode)
             {
-                throw new XmlException("An XML declaration cannot be a child of an element.");
+                throw XmlException.Create("An XML declaration cannot be a child of an element.");
             }
 
             if (node.Parent is not null)
             {
-                throw new XmlException("The node already has a parent.");
+                throw XmlException.Create("The node already has a parent.");
             }
 
             node.SetParent(_owner);

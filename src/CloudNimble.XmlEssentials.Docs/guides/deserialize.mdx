@@ -304,6 +304,57 @@ The value is not a valid integer.
 
 A document that isn't well formed is never partly accepted: the serializer reads to the end of the document, so content after the document element is checked too.
 
+### Find where the error is
+
+The exception says where in the document the error was. `Path` names each element from the document element down to the error, and `LineNumber` and `LinePosition` give the place in the text.
+
+```csharp Program.cs
+const string xml = """
+    <Invoice>
+      <Number>204</Number>
+      <Lines><Sku>KB-01</Sku><Quantity>1</Quantity></Lines>
+      <Lines><Sku>MS-02</Sku><Quantity>two</Quantity></Lines>
+    </Invoice>
+    """;
+
+try
+{
+    XmlSerializer.Deserialize<Invoice>(xml);
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+    output.WriteLine($"Path: {ex.Path}");
+    output.WriteLine($"Line {ex.LineNumber}, position {ex.LinePosition}");
+}
+```
+
+The code produces the following output:
+
+```text
+The value is not a valid integer. Path: /Invoice/Lines[1]/Quantity | LineNumber: 4 | BytePositionInLine: 50.
+Path: /Invoice/Lines[1]/Quantity
+Line 4, position 50
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/07_DeserializeFromXml.cs)
+
+A path reads like this:
+
+| In the path | Meaning |
+| --- | --- |
+| `/Invoice/Number` | The element `Number` in the document element `Invoice`. |
+| `Lines[1]` | The second item of a collection. Items are counted from 0, as `System.Text.Json` counts them. |
+| `@id` | The attribute `id`. |
+| `text()` | The text of an element that is mapped with `[XmlText]`. |
+
+- An entry of a dictionary is the element named for its key.
+- An item whose type is a derived type has the name its element has in the document.
+- The message ends with the path and, when it's known, the line and the byte position in the line, in the form `System.Text.Json` uses.
+- An exception that a converter of yours throws gets a path too, and its message is left as you wrote it. A path you give to the `XmlException` constructor is left as it is.
+- When an object is written, the path is made of the elements the writer has open, with no positions: `/Invoice/Lines`. A value that is written as one whole element ends the path at the element that holds it.
+- `Path` is set by `XmlSerializer`. An `XmlException` from `Utf8XmlReader`, `XmlDocument` or `XmlNode` used on its own has no path.
+
 ## Deserialization behavior
 
 Unless you change it with options or attributes, `XmlSerializer` behaves as follows:

@@ -52,17 +52,27 @@ namespace CloudNimble.Text.Xml.Serialization
             var builder = _items.CreateBuilder();
             if (!reader.IsEmptyElement)
             {
-                while (reader.Read())
+                try
                 {
-                    if (reader.TokenType is XmlTokenType.EndElement)
+                    while (reader.Read())
                     {
-                        break;
-                    }
+                        if (reader.TokenType is XmlTokenType.EndElement)
+                        {
+                            break;
+                        }
 
-                    if (reader.TokenType is XmlTokenType.StartElement)
-                    {
-                        _items.ReadRootItem(ref reader, builder);
+                        if (reader.TokenType is XmlTokenType.StartElement)
+                        {
+                            _items.ReadRootItem(ref reader, builder);
+                        }
                     }
+                }
+                catch (XmlException ex)
+                {
+                    // An item could not be read. Its position is the number of items read before it.
+                    reader.Locate(ex);
+                    ex.AddItem(_items.ItemTypeInfo.RootName.LocalName, ((System.Collections.ICollection)builder).Count);
+                    throw;
                 }
             }
 

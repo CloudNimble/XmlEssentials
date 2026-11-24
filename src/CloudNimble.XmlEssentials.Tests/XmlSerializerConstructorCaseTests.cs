@@ -68,7 +68,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void CamelCaseParameter_WhenTheDocumentLeavesTheMemberOut_IsRequired()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<CamelCtor>("<CamelCtor><Name>Voltage</Name></CamelCtor>", Sensitive))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Value' is missing.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Value' is missing. Path: /CamelCtor | LineNumber: 1 | BytePositionInLine: 44.");
         }
 
         [TestMethod]
@@ -100,7 +100,7 @@ namespace CloudNimble.XmlEssentials.Tests
             read.Name.Should().Be("Voltage");
             read.Value.Should().Be(230);
             FluentActions.Invoking(() => XmlSerializer.Deserialize<CamelCtor>(lower, Sensitive))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Name' is missing.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Name' is missing. Path: /CamelCtor | LineNumber: 1 | BytePositionInLine: 62.");
         }
 
         #endregion

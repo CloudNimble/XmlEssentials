@@ -218,7 +218,7 @@ namespace CloudNimble.XmlEssentials.Tests
                         }
                     }
                 }
-                """).Should().Be("The root element does not match 'purchaseOrder'.|The root element is not in namespace 'urn:po'.|4");
+                """).Should().Be("The root element does not match 'purchaseOrder'. Path: /purchaseOrder | LineNumber: 1 | BytePositionInLine: 8.|The root element is not in namespace 'urn:po'. Path: /purchaseOrder | LineNumber: 1 | BytePositionInLine: 16.|4");
         }
 
         #endregion

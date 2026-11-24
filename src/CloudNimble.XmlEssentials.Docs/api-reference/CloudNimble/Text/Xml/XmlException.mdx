@@ -63,7 +63,7 @@ Path: (not set)
 | `LineNumber` | The line, counting from 1, or `null`. |
 | `LinePosition` | The position in the line, counting from 1, in UTF-8 bytes, or `null`. |
 | `BytePosition` | The offset from the start of the document, counting from 0, or `null`. |
-| `Path` | A path in the document, or `null`. `Utf8XmlReader` doesn't set it. |
+| `Path` | A path in the document, such as `/Order/Lines/Line[1]/@sku`, or `null`. `XmlSerializer` sets it; `Utf8XmlReader` used on its own doesn't. |
 
 ## Remarks
 
@@ -86,7 +86,10 @@ are optional. They are set when the reader knows the byte offset and line.
 - **The location is where the reader stopped,** which is at the problem or right after it. For a mismatched end tag, that's the end of the tag.
 - **`BytePosition` counts from the start of the document,** including the blocks before the current one when you read in blocks.
 - **Lines are counted after line ends are normalized,** so a carriage return followed by a line feed is one line end.
-- **`Path` is `null` on exceptions from the reader.** The constructor accepts a path so that code that knows one can supply it.
+- **`XmlSerializer` sets `Path`; the reader on its own does not.** An exception that is thrown while the serializer reads or writes names each element from the document element down to the error: `/Order/Lines/Line[1]/@sku`. An item of a collection has its position after its name, counted from 0 as `System.Text.Json` counts, when a document is read. When an object is written the path is the elements the writer has open, with no positions. `Path` is `null` on an exception from `Utf8XmlReader`, `XmlDocument` or `XmlNode` used on its own.
+- **The serializer fills in the position too.** An exception for a value that can't be converted has `BytePosition`, `LineNumber` and `LinePosition` when it comes from `XmlSerializer.Deserialize`: they say how far the reader had got.
+- **The message ends with the path.** For an exception the library creates, `Message` ends with ` Path: /Order/Lines/Line[1]/@sku | LineNumber: 1 | BytePositionInLine: 55.`, the form `System.Text.Json` uses, or with the path alone when no line is known. An exception you create keeps the message you gave it.
+- **A path you supply is kept.** The constructor accepts a path, and the serializer does not change it.
 - **Not every failure is an `XmlException`.** A `null` argument throws `ArgumentNullException`, a destination that's too small for `CopyString` throws `ArgumentException`, and a disposed writer throws `ObjectDisposedException`.
 - **The class is sealed** and derives from `Exception`, not from `System.Xml.XmlException`.
 
@@ -227,7 +230,7 @@ Gets the zero-based byte offset in the UTF-8 document at which the error occurre
 #### Syntax
 
 ```csharp
-public long? BytePosition { get; }
+public long? BytePosition { get; private set; }
 ```
 
 #### Property Value
@@ -298,7 +301,7 @@ Gets the one-based number of the line on which the error occurred.
 #### Syntax
 
 ```csharp
-public long? LineNumber { get; }
+public long? LineNumber { get; private set; }
 ```
 
 #### Property Value
@@ -314,7 +317,7 @@ Gets the one-based byte position within the line at which the error occurred.
 #### Syntax
 
 ```csharp
-public long? LinePosition { get; }
+public long? LinePosition { get; private set; }
 ```
 
 #### Property Value
@@ -343,13 +346,26 @@ Gets the path in the document at which the error occurred.
 #### Syntax
 
 ```csharp
-public string Path { get; }
+public string Path { get; private set; }
 ```
 
 #### Property Value
 
 Type: `string?`
-The document path, such as `/Person/@id`, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
+The document path, such as `/Order/Lines/Line[2]/@sku`, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
+
+#### Remarks
+
+[XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) sets the path of an exception that is thrown while it reads or writes, as
+          `System.Text.Json` sets `JsonException.Path`. The path starts at the document element and
+          names each element on the way to the error. An attribute is `@name` and the text of an element
+          is `text()`.
+
+When a document is read, an item of a collection has its position in the collection after its name,
+counted from 1: `Line[2]` is the second item. When an object is written, the path is made of the
+elements the writer has open, and has no positions.
+
+A path that was given to the constructor is left as it is.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Source <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

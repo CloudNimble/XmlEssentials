@@ -23,7 +23,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override DateTimeOffset Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            return XmlLexical.TryParseDateTimeOffset(utf8, out var value) ? value : throw new XmlException("The value is not a valid dateTime.");
+            return XmlLexical.TryParseDateTimeOffset(utf8, out var value) ? value : throw XmlException.Create("The value is not a valid dateTime.");
         }
 
         /// <inheritdoc />

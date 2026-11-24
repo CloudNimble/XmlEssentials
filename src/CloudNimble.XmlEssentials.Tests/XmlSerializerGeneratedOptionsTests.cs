@@ -618,7 +618,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     "True,Integer,True,True,3,True,Version11\n" +
                     "<BOM><?xml version=\"1.1\" encoding=\"utf-8\"?><Item Mark=\"1\"><Child xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Level>1</Level><Levels>0</Levels><Levels>1</Levels><Maybe>1</Maybe><Name>n</Name></Item>\n" +
                     "x\n" +
-                    "XmlException: MaxDepth exceeded (3).\n" +
+                    "XmlException: MaxDepth exceeded (3). Path: /Item/Child/Child.\n" +
                     "<Item Mark=\"1\"><Child xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Level>1</Level><Levels>0</Levels><Levels>1</Levels><Maybe>1</Maybe><Name>n</Name><ReadOnly>ro</ReadOnly></Item>");
         }
 
@@ -755,6 +755,95 @@ namespace CloudNimble.XmlEssentials.Tests
 #endif
 
         [TestMethod]
+        public void ExceptionPaths_AreTheSameFromAGeneratedContext()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public sealed class Line
+                {
+                    public string? Label { get; set; }
+
+                    public int Qty { get; set; }
+
+                    [XmlAttribute]
+                    public int Row { get; set; }
+                }
+
+                public sealed class Order
+                {
+                    public Dictionary<string, int> Counts { get; set; } = new();
+
+                    public List<Line> Extras { get; set; } = new();
+
+                    [XmlAttribute]
+                    public int Id { get; set; }
+
+                    [XmlArray]
+                    public List<Line> Lines { get; set; } = new();
+                }
+
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
+                [XmlSerializable<Order>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                // In this mode there is no write fast path, so the engine writes from the metadata.
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true, GenerationMode = XmlSourceGenerationMode.Metadata)]
+                [XmlSerializable<Order>]
+                internal partial class MetadataXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Describe(Action action)
+                    {
+                        try
+                        {
+                            action();
+                        }
+                        catch (XmlException ex)
+                        {
+                            return ex.Path + "|" + ex.LineNumber + ":" + ex.LinePosition + "|" + ex.Message;
+                        }
+
+                        return "nothing was thrown";
+                    }
+
+                    private static string Read(string xml)
+                    {
+                        var generated = Describe(() => XmlSerializer.Deserialize(xml, AppXmlContext.Default.Order));
+                        var reflected = Describe(() => XmlSerializer.Deserialize<Order>(xml, new XmlSerializerOptions { OmitXmlDeclaration = true }));
+                        return generated == reflected ? generated : generated + " <> reflection: " + reflected;
+                    }
+
+                    private static string Write(Order order)
+                    {
+                        var fast = Describe(() => XmlSerializer.Serialize(order, AppXmlContext.Default.Order));
+                        var metadata = Describe(() => XmlSerializer.Serialize(order, MetadataXmlContext.Default.Order));
+                        var reflected = Describe(() => XmlSerializer.Serialize(order, new XmlSerializerOptions { OmitXmlDeclaration = true }));
+                        return fast == reflected && metadata == reflected ? fast : fast + " <> metadata: " + metadata + " <> reflection: " + reflected;
+                    }
+
+                    public static string Run()
+                    {
+                        return string.Join("\n",
+                            Read("<Order Id=\"x\"/>"),
+                            Read("<Order><Lines><Line><Qty>1</Qty></Line><Line Row=\"x\"/></Lines></Order>"),
+                            Read("<Order><Extras><Qty>1</Qty></Extras><Extras><Qty>x</Qty></Extras></Order>"),
+                            Read("<Order><Counts><a>1</a><b>x</b></Counts></Order>"),
+                            Write(new Order { Lines = { new Line { Label = "ok" }, new Line { Label = "a\0b" } } }));
+                    }
+                }
+                """).Should().Be(
+                    "/Order/@Id|1:16|The value is not a valid integer. Path: /Order/@Id | LineNumber: 1 | BytePositionInLine: 16.\n" +
+                    "/Order/Lines/Line[1]/@Row|1:55|The value is not a valid integer. Path: /Order/Lines/Line[1]/@Row | LineNumber: 1 | BytePositionInLine: 55.\n" +
+                    "/Order/Extras[1]/Qty|1:57|The value is not a valid integer. Path: /Order/Extras[1]/Qty | LineNumber: 1 | BytePositionInLine: 57.\n" +
+                    "/Order/Counts/b|1:32|The value is not a valid integer. Path: /Order/Counts/b | LineNumber: 1 | BytePositionInLine: 32.\n" +
+                    "/Order/Lines/Line|:|Illegal character in XML value. Path: /Order/Lines/Line.");
+        }
+
+        [TestMethod]
         public void NamesAreMatchedWithoutCase_WhenTheOptionsAskForIt()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
@@ -790,7 +879,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """ + Compare).Should().Be(
                 "<Item><Name>n</Name><Count>0</Count><Limit>1</Limit><Ratio>NaN</Ratio><Always>a</Always></Item>\nsame\nNaN\nNaN\n" +
-                "XmlException: Named floating-point literals are not allowed when NumberHandling is Strict.\n" +
+                "XmlException: Named floating-point literals are not allowed when NumberHandling is Strict. Path: /Item.\n" +
                 "<Item><Name>n</Name><Count>0</Count><Limit>1</Limit><Ratio>2</Ratio><Always>a</Always></Item>\nsame\n2\n2");
         }
 
@@ -958,32 +1047,32 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """).Should().Be(string.Join("\n",
-                Setting("Name", "Note"),
-                Setting("Kept", "Base`1[System.String]"),
+                Setting("Name", "Note") + " Path: /Note/Name | LineNumber: 1 | BytePositionInLine: 83.",
+                Setting("Kept", "Base`1[System.String]") + " Path: /Note/Kept | LineNumber: 1 | BytePositionInLine: 83.",
                 "read",
-                Setting("Tags", "Note"),
+                Setting("Tags", "Note") + " Path: /Note/Tags | LineNumber: 1 | BytePositionInLine: 83.",
                 "read",
-                Setting("Disallowed", "Note"),
-                Setting("Possibly", "Note"),
+                Setting("Disallowed", "Note") + " Path: /Note/Disallowed | LineNumber: 1 | BytePositionInLine: 89.",
+                Setting("Possibly", "Note") + " Path: /Note/Possibly | LineNumber: 1 | BytePositionInLine: 87.",
                 "read",
-                Setting("Limit", "Note"),
+                Setting("Limit", "Note") + " Path: /Note/Limit | LineNumber: 1 | BytePositionInLine: 84.",
                 "read",
-                "XmlException: The constructor parameter 'Name' on type 'Pair' doesn't allow null values. Consider updating its nullability annotation.",
+                "XmlException: The constructor parameter 'Name' on type 'Pair' doesn't allow null values. Consider updating its nullability annotation. Path: /Pair/Name | LineNumber: 1 | BytePositionInLine: 83.",
                 "Pair { Name = n, Maybe =  }",
                 "null",
-                Setting("Value", "Hard`1[System.String]"),
+                Setting("Value", "Hard`1[System.String]") + " Path: /HardOfString/Value | LineNumber: 1 | BytePositionInLine: 92.",
                 "null",
-                Getting("Name", "Note"),
-                Getting("Kept", "Base`1[System.String]"),
-                Getting("Code", "Note"),
-                Getting("Tags", "Note"),
-                Getting("Allowed", "Note"),
-                Getting("Certain", "Note"),
+                Getting("Name", "Note") + " Path: /Note.",
+                Getting("Kept", "Base`1[System.String]") + " Path: /Note.",
+                Getting("Code", "Note") + " Path: /Note.",
+                Getting("Tags", "Note") + " Path: /Note.",
+                Getting("Allowed", "Note") + " Path: /Note.",
+                Getting("Certain", "Note") + " Path: /Note.",
                 "<Note Code=\"c\"><Kept>k</Kept><Name>n</Name><Maybe " + Nil + "/><Tags/><Allowed>a</Allowed><Disallowed " + Nil + "/><Possibly " + Nil + "/><Certain>c</Certain><Limit " + Nil + "/></Note>",
                 "<Note><Maybe>m</Maybe><Disallowed>d</Disallowed><Possibly>p</Possibly><Limit>1</Limit><Skipped>s</Skipped></Note>",
                 "<Note Code=\"c\"><Kept>k</Kept><Name " + Nil + "/><Maybe>m</Maybe><Tags/><Allowed>a</Allowed><Disallowed>d</Disallowed><Possibly>p</Possibly><Certain>c</Certain><Limit>1</Limit><Skipped>s</Skipped></Note>",
                 "True",
-                "XmlException: The constructor parameter 'Name' on type 'Pair' doesn't allow null values. Consider updating its nullability annotation."));
+                "XmlException: The constructor parameter 'Name' on type 'Pair' doesn't allow null values. Consider updating its nullability annotation. Path: /Pair/Name | LineNumber: 1 | BytePositionInLine: 83."));
 
             static string Getting(string member, string type) => "XmlException: The property or field '" + member + "' on type '" + type + "' doesn't allow getting null values. Consider updating its nullability annotation.";
             static string Setting(string member, string type) => "XmlException: The property or field '" + member + "' on type '" + type + "' doesn't allow setting null values. Consider updating its nullability annotation.";

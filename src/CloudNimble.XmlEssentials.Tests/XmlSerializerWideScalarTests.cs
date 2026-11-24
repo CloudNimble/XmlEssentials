@@ -37,7 +37,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Serialize(BigInteger.Zero, Bare).Should().Be("<BigInteger>0</BigInteger>");
             XmlSerializer.Deserialize<BigInteger>("<BigInteger> +0042 </BigInteger>").Should().Be(new BigInteger(42));
             FluentActions.Invoking(() => XmlSerializer.Deserialize<BigInteger>("<BigInteger>4.2</BigInteger>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer. Path: /BigInteger | LineNumber: 1 | BytePositionInLine: 29.");
         }
 
         [TestMethod]
@@ -72,9 +72,9 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<char>("<Char> x </Char>").Should().Be('x');
             XmlSerializer.Deserialize<char>("<Char>\n  x\n</Char>").Should().Be('x');
             FluentActions.Invoking(() => XmlSerializer.Deserialize<char>("<Char>  </Char>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character. Path: /Char | LineNumber: 1 | BytePositionInLine: 16.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<char>("<Char>xy</Char>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character. Path: /Char | LineNumber: 1 | BytePositionInLine: 16.");
         }
 
         [TestMethod]
@@ -97,11 +97,11 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var strict = new XmlSerializerOptions { OmitXmlDeclaration = true, NumberHandling = Text.Xml.Serialization.XmlNumberHandling.Strict };
             FluentActions.Invoking(() => XmlSerializer.Serialize(Half.NaN, strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Named floating-point literals are not allowed when NumberHandling is Strict.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Named floating-point literals are not allowed when NumberHandling is Strict. Path: /Half.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Half>("<Half>INF</Half>", strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float. Path: /Half | LineNumber: 1 | BytePositionInLine: 17.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Half>("<Half>one</Half>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float. Path: /Half | LineNumber: 1 | BytePositionInLine: 17.");
             XmlSerializer.Serialize((Half)2, strict).Should().Be("<Half>2</Half>");
         }
 
@@ -114,9 +114,9 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<Int128>("<Int128>-170141183460469231731687303715884105728</Int128>").Should().Be(Int128.MinValue);
             XmlSerializer.Deserialize<Int128>("<Int128> +5 </Int128>").Should().Be((Int128)5);
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Int128>("<Int128>170141183460469231731687303715884105728</Int128>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer. Path: /Int128 | LineNumber: 1 | BytePositionInLine: 57.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Int128>("<Int128/>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer. Path: /Int128 | LineNumber: 1 | BytePositionInLine: 10.");
         }
 
         [TestMethod]
@@ -130,9 +130,9 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Serialize(Memory<byte>.Empty, Bare).Should().Be("<MemoryOfByte></MemoryOfByte>");
             XmlSerializer.Deserialize<Memory<byte>>("<MemoryOfByte/>").Length.Should().Be(0);
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Memory<byte>>("<MemoryOfByte>!</MemoryOfByte>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not valid base64.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not valid base64. Path: /MemoryOfByte | LineNumber: 1 | BytePositionInLine: 31.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<ReadOnlyMemory<byte>>("<ReadOnlyMemoryOfByte>!</ReadOnlyMemoryOfByte>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not valid base64.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not valid base64. Path: /ReadOnlyMemoryOfByte | LineNumber: 1 | BytePositionInLine: 47.");
         }
 
         [TestMethod]
@@ -142,9 +142,9 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<UInt128>("<UInt128>340282366920938463463374607431768211455</UInt128>").Should().Be(UInt128.MaxValue);
             XmlSerializer.Deserialize<UInt128>("<UInt128>-0</UInt128>").Should().Be(UInt128.Zero);
             FluentActions.Invoking(() => XmlSerializer.Deserialize<UInt128>("<UInt128>-1</UInt128>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer. Path: /UInt128 | LineNumber: 1 | BytePositionInLine: 22.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<UInt128>("<UInt128>340282366920938463463374607431768211456</UInt128>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer. Path: /UInt128 | LineNumber: 1 | BytePositionInLine: 59.");
         }
 
         [TestMethod]

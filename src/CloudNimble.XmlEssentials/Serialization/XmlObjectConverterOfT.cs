@@ -61,7 +61,7 @@ namespace CloudNimble.Text.Xml.Serialization
             if (typeof(T).IsAbstract)
             {
                 // The element was read as the declared type because nothing in it named a derived type.
-                throw new XmlException($"The type '{typeof(T)}' is abstract or an interface, so the element must identify one of its derived types.");
+                throw XmlException.Create($"The type '{typeof(T)}' is abstract or an interface, so the element must identify one of its derived types.");
             }
 
             return (T)ReadInto(ref reader, null, options);
@@ -158,7 +158,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 {
                     if (XmlReferenceScope.Current?.ResolveReference(referenceRef) is not T resolved)
                     {
-                        throw new XmlException($"Unknown reference '{referenceRef}'.");
+                        throw XmlException.Create($"Unknown reference '{referenceRef}'.");
                     }
 
                     if (!reader.IsEmptyElement)
@@ -208,7 +208,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (!seen[property.Index])
                 {
-                    throw new XmlException($"The required member '{property.Info.Name.LocalName}' is missing.");
+                    throw XmlException.Create($"The required member '{property.Info.Name.LocalName}' is missing.");
                 }
             }
 
@@ -318,7 +318,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (options.UnmappedMemberHandling is XmlUnmappedMemberHandling.Disallow)
             {
-                throw new XmlException($"Unknown attribute '{Encoding.UTF8.GetString(reader.LocalNameSpan)}'.");
+                throw XmlException.Create($"Unknown attribute '{Encoding.UTF8.GetString(reader.LocalNameSpan)}'.");
             }
         }
 
@@ -358,7 +358,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (options.UnmappedMemberHandling is XmlUnmappedMemberHandling.Disallow)
             {
-                throw new XmlException($"Unknown element '{Encoding.UTF8.GetString(reader.LocalNameSpan)}'.");
+                throw XmlException.Create($"Unknown element '{Encoding.UTF8.GetString(reader.LocalNameSpan)}'.");
             }
 
             reader.Skip();
@@ -391,7 +391,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
                 if (options.RespectRequiredConstructorParameters && !binding.ParameterHasDefault[i])
                 {
-                    throw new XmlException($"The required constructor parameter '{properties[map[i]].Info.Name.LocalName}' is missing.");
+                    throw XmlException.Create($"The required constructor parameter '{properties[map[i]].Info.Name.LocalName}' is missing.");
                 }
 
                 if (map[i] >= 0 && source == i)
@@ -535,47 +535,64 @@ namespace CloudNimble.Text.Xml.Serialization
             var attributes = binding.Attributes;
             var caseInsensitive = options.PropertyNameCaseInsensitive;
             var next = 0;
-            while (reader.MoveToNextAttribute())
+            XmlBoundProperty? current = null;
+            try
             {
-                if (FindAttribute(attributes, ref reader, caseInsensitive, ref next) is { } property)
+                while (reader.MoveToNextAttribute())
                 {
-                    property.ReadAttribute(ref reader, state.Instance, state.Values);
-                    seen[property.Index] = true;
-                    continue;
-                }
-
-                if (IsNamespaceDeclaration(ref reader))
-                {
-                    continue;
-                }
-
-                if (reader.NamespaceUriEquals(XmlNamespaces.Refs))
-                {
-                    if (reader.LocalNameEquals("id"u8))
+                    if (FindAttribute(attributes, ref reader, caseInsensitive, ref next) is { } property)
                     {
-                        referenceId = reader.GetString();
-                    }
-                    else if (reader.LocalNameEquals("ref"u8))
-                    {
-                        referenceRef = reader.GetString();
+                        current = property;
+                        property.ReadAttribute(ref reader, state.Instance, state.Values);
+                        current = null;
+                        seen[property.Index] = true;
+                        continue;
                     }
 
-                    continue;
-                }
+                    if (IsNamespaceDeclaration(ref reader))
+                    {
+                        continue;
+                    }
 
-                if ((reader.LocalNameEquals(XmlAttributes.Nil) || reader.LocalNameEquals(XmlAttributes.Type)) && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
+                    if (reader.NamespaceUriEquals(XmlNamespaces.Refs))
+                    {
+                        if (reader.LocalNameEquals("id"u8))
+                        {
+                            referenceId = reader.GetString();
+                        }
+                        else if (reader.LocalNameEquals("ref"u8))
+                        {
+                            referenceRef = reader.GetString();
+                        }
+
+                        continue;
+                    }
+
+                    if ((reader.LocalNameEquals(XmlAttributes.Nil) || reader.LocalNameEquals(XmlAttributes.Type)) && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
+                    {
+                        continue;
+                    }
+
+                    if (binding.Polymorphism.Placement is XmlDiscriminatorPlacement.Attribute
+                        && reader.LocalNameEquals(binding.Polymorphism.Utf8DiscriminatorAttributeName)
+                        && reader.PrefixSpan.IsEmpty)
+                    {
+                        continue;
+                    }
+
+                    CaptureAttribute(ref reader, binding, options, ref state);
+                }
+            }
+            catch (XmlException ex)
+            {
+                // The value of an attribute that a member is read from could not be read.
+                reader.Locate(ex);
+                if (current is not null)
                 {
-                    continue;
+                    ex.AddAttribute(current.Info.Name.LocalName);
                 }
 
-                if (binding.Polymorphism.Placement is XmlDiscriminatorPlacement.Attribute
-                    && reader.LocalNameEquals(binding.Polymorphism.Utf8DiscriminatorAttributeName)
-                    && reader.PrefixSpan.IsEmpty)
-                {
-                    continue;
-                }
-
-                CaptureAttribute(ref reader, binding, options, ref state);
+                throw;
             }
 
             reader.MoveToElement();
@@ -595,59 +612,83 @@ namespace CloudNimble.Text.Xml.Serialization
             var elements = binding.Elements;
             var caseInsensitive = options.PropertyNameCaseInsensitive;
             var next = 0;
-            while (reader.Read())
+            XmlBoundProperty? current = null;
+            try
             {
-                switch (reader.TokenType)
+                while (reader.Read())
                 {
-                    case XmlTokenType.EndElement:
-                        return;
-                    case XmlTokenType.StartElement:
-                        if (FindElement(elements, ref reader, caseInsensitive, ref next) is not { } property)
-                        {
-                            CaptureElement(ref reader, binding, options, ref state, seen);
-                            break;
-                        }
-
-                        if (property.IsUnwrappedCollection)
-                        {
-                            if (property.NeverStored && !property.Populates)
+                    switch (reader.TokenType)
+                    {
+                        case XmlTokenType.EndElement:
+                            return;
+                        case XmlTokenType.StartElement:
+                            if (FindElement(elements, ref reader, caseInsensitive, ref next) is not { } property)
                             {
-                                // Nothing can be done with the item, so it is passed over without being read.
-                                reader.Skip();
+                                CaptureElement(ref reader, binding, options, ref state, seen);
+                                break;
+                            }
+
+                            if (property.IsUnwrappedCollection)
+                            {
+                                if (property.NeverStored && !property.Populates)
+                                {
+                                    // Nothing can be done with the item, so it is passed over without being read.
+                                    reader.Skip();
+                                    seen[property.Index] = true;
+                                    break;
+                                }
+
+                                current = property;
+                                property.ReadItem(ref reader, GetBuilder(binding, property, ref state));
+                                current = null;
                                 seen[property.Index] = true;
                                 break;
                             }
 
-                            property.ReadItem(ref reader, GetBuilder(binding, property, ref state));
+                            if (seen[property.Index] && !options.AllowDuplicateProperties)
+                            {
+                                throw XmlException.Create($"Duplicate property '{property.Info.Name.LocalName}'.");
+                            }
+
+                            current = property;
+                            property.Read(ref reader, state.Instance, state.Values);
+                            current = null;
                             seen[property.Index] = true;
                             break;
-                        }
+                        case XmlTokenType.Text:
+                        case XmlTokenType.CData:
+                            if (binding.Mixed is { } mixed)
+                            {
+                                mixed.AddItem(GetBuilder(binding, mixed, ref state), new XmlMixedText(Encoding.UTF8.GetString(reader.ValueSpan)));
+                                seen[mixed.Index] = true;
+                            }
+                            else if (reader.TokenType is XmlTokenType.CData)
+                            {
+                                throw XmlException.Create("Unexpected CData in object content.");
+                            }
 
-                        if (seen[property.Index] && !options.AllowDuplicateProperties)
-                        {
-                            throw new XmlException($"Duplicate property '{property.Info.Name.LocalName}'.");
-                        }
-
-                        property.Read(ref reader, state.Instance, state.Values);
-                        seen[property.Index] = true;
-                        break;
-                    case XmlTokenType.Text:
-                    case XmlTokenType.CData:
-                        if (binding.Mixed is { } mixed)
-                        {
-                            mixed.AddItem(GetBuilder(binding, mixed, ref state), new XmlMixedText(Encoding.UTF8.GetString(reader.ValueSpan)));
-                            seen[mixed.Index] = true;
-                        }
-                        else if (reader.TokenType is XmlTokenType.CData)
-                        {
-                            throw new XmlException("Unexpected CData in object content.");
-                        }
-
-                        break;
+                            break;
+                    }
                 }
             }
+            catch (XmlException ex)
+            {
+                // A member could not be read from its element. An item of a collection with no wrapper is an
+                // element of its own, and its position is the number of items read before it.
+                reader.Locate(ex);
+                if (current is { IsUnwrappedCollection: true })
+                {
+                    ex.AddItem(current.Info.Name.LocalName, ((System.Collections.ICollection)GetBuilder(binding, current, ref state)).Count);
+                }
+                else if (current is not null)
+                {
+                    ex.AddElement(current.Info.Name.LocalName);
+                }
 
-            throw new XmlException("The element was not closed.");
+                throw;
+            }
+
+            throw XmlException.Create("The element was not closed.");
         }
 
         /// <summary>
@@ -679,7 +720,18 @@ namespace CloudNimble.Text.Xml.Serialization
                         case XmlTokenType.EndElement:
                             if (hasText)
                             {
-                                text.ReadText(rented is null ? content : rented.AsSpan(0, length), state.Instance, state.Values);
+                                try
+                                {
+                                    text.ReadText(rented is null ? content : rented.AsSpan(0, length), state.Instance, state.Values);
+                                }
+                                catch (XmlException ex)
+                                {
+                                    // The text of the element could not be read as the member it belongs to.
+                                    reader.Locate(ex);
+                                    ex.AddText();
+                                    throw;
+                                }
+
                                 seen[text.Index] = true;
                             }
 
@@ -703,7 +755,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     }
                 }
 
-                throw new XmlException("The element was not closed.");
+                throw XmlException.Create("The element was not closed.");
             }
             finally
             {

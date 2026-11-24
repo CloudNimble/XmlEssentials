@@ -351,14 +351,24 @@ namespace CloudNimble.Text.Xml
         /// <returns>The value.</returns>
         internal static TValue? ReadRoot<TValue>(ref Utf8XmlReader reader, XmlTypeInfo typeInfo)
         {
-            if (typeInfo.Options.ReferenceHandler is { } handler)
+            try
             {
-                return ReadRootWithReferences<TValue>(ref reader, typeInfo, handler);
-            }
+                if (typeInfo.Options.ReferenceHandler is { } handler)
+                {
+                    return ReadRootWithReferences<TValue>(ref reader, typeInfo, handler);
+                }
 
-            return typeInfo is XmlTypeInfo<TValue> typed
-                ? typed.ReadRoot(ref reader)
-                : (TValue?)typeInfo.ReadRootAsObject(ref reader);
+                return typeInfo is XmlTypeInfo<TValue> typed
+                    ? typed.ReadRoot(ref reader)
+                    : (TValue?)typeInfo.ReadRootAsObject(ref reader);
+            }
+            catch (XmlException ex)
+            {
+                // The path of an error starts at the document element.
+                reader.Locate(ex);
+                ex.AddElement(typeInfo.RootName.LocalName);
+                throw;
+            }
         }
 
         /// <summary>
@@ -516,6 +526,13 @@ namespace CloudNimble.Text.Xml
             {
                 return typeInfo.TryReadElement(ref reader, out value);
             }
+            catch (XmlException ex)
+            {
+                // The path of an error in a value that is read from a stream starts at the element of the value.
+                reader.Locate(ex);
+                ex.AddElement(typeInfo.RootName.LocalName);
+                throw;
+            }
             finally
             {
                 XmlReferenceScope.Current = previous;
@@ -668,19 +685,28 @@ namespace CloudNimble.Text.Xml
         internal static void WriteRoot<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo typeInfo)
         {
             ArgumentNullException.ThrowIfNull(writer);
-            if (typeInfo.Options.ReferenceHandler is { } handler)
+            try
             {
-                WriteRootWithReferences(writer, value, typeInfo, handler);
-                return;
-            }
+                if (typeInfo.Options.ReferenceHandler is { } handler)
+                {
+                    WriteRootWithReferences(writer, value, typeInfo, handler);
+                    return;
+                }
 
-            if (typeInfo is XmlTypeInfo<TValue> typed)
+                if (typeInfo is XmlTypeInfo<TValue> typed)
+                {
+                    typed.WriteRoot(writer, value);
+                    return;
+                }
+
+                typeInfo.WriteRootAsObject(writer, value);
+            }
+            catch (XmlException ex)
             {
-                typed.WriteRoot(writer, value);
-                return;
+                // The path of an error is the elements the writer has open.
+                ex.SetPathIfMissing(writer.CurrentPath());
+                throw;
             }
-
-            typeInfo.WriteRootAsObject(writer, value);
         }
 
         /// <summary>
@@ -702,6 +728,12 @@ namespace CloudNimble.Text.Xml
             try
             {
                 typeInfo.WriteRoot(writer, value);
+            }
+            catch (XmlException ex)
+            {
+                // The path of an error is the elements the writer has open.
+                ex.SetPathIfMissing(writer.CurrentPath());
+                throw;
             }
             finally
             {

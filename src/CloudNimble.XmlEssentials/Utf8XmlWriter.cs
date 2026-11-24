@@ -206,7 +206,7 @@ namespace CloudNimble.Text.Xml
                 Flush();
                 if (!_options.SkipValidation && _depth > 0)
                 {
-                    throw new XmlException("The document has unclosed elements.");
+                    throw XmlException.Create("The document has unclosed elements.");
                 }
             }
             finally
@@ -229,7 +229,7 @@ namespace CloudNimble.Text.Xml
                 await FlushAsync().ConfigureAwait(false);
                 if (!_options.SkipValidation && _depth > 0)
                 {
-                    throw new XmlException("The document has unclosed elements.");
+                    throw XmlException.Create("The document has unclosed elements.");
                 }
             }
             finally
@@ -406,7 +406,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (_depth == 0 || !CurrentFrame().TagOpen)
             {
-                throw new XmlException("xsi:nil must be written on a start tag.");
+                throw XmlException.Create("xsi:nil must be written on a start tag.");
             }
 
             EnsureXsi();
@@ -758,7 +758,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (_wroteDeclaration || _seenRoot || _buffered > 0 || _committed > 0)
             {
-                throw new XmlException("The XML declaration must be the first output.");
+                throw XmlException.Create("The XML declaration must be the first output.");
             }
 
             EmitDeclaration();
@@ -1008,7 +1008,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth == 0)
             {
-                throw new XmlException("No element to end.");
+                throw XmlException.Create("No element to end.");
             }
 
             ref var frame = ref CurrentFrame();
@@ -1054,7 +1054,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth == 0)
             {
-                throw new XmlException("No element to end.");
+                throw XmlException.Create("No element to end.");
             }
 
             CloseStartTag();
@@ -1947,7 +1947,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (!_inAttribute)
             {
-                throw new XmlException("No attribute to end.");
+                throw XmlException.Create("No attribute to end.");
             }
 
             WriteRaw("\""u8);
@@ -2035,7 +2035,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (!_options.SkipValidation && Utf8XmlReader.IsReservedNamespace(ns))
                 {
-                    throw new XmlException("The xml and xmlns namespaces cannot be declared as the default namespace.");
+                    throw XmlException.Create("The xml and xmlns namespaces cannot be declared as the default namespace.");
                 }
 
                 PushNs(_depth, [], ns);
@@ -2081,24 +2081,24 @@ namespace CloudNimble.Text.Xml
             ValidateNcName(utf8Prefix);
             if (!_options.SkipValidation && utf8NamespaceUri.IsEmpty && _version is XmlVersion.Version10)
             {
-                throw new XmlException("Prefix undeclaration is not allowed in XML 1.0.");
+                throw XmlException.Create("Prefix undeclaration is not allowed in XML 1.0.");
             }
 
             if (!_options.SkipValidation && utf8Prefix.SequenceEqual("xml"u8) && !utf8NamespaceUri.SequenceEqual(XmlUtf8.Xml))
             {
-                throw new XmlException("The xml prefix cannot be rebound.");
+                throw XmlException.Create("The xml prefix cannot be rebound.");
             }
 
             if (!_options.SkipValidation && utf8Prefix.SequenceEqual("xmlns"u8))
             {
-                throw new XmlException("The xmlns prefix cannot be declared.");
+                throw XmlException.Create("The xmlns prefix cannot be declared.");
             }
 
             if (!_options.SkipValidation
                 && !utf8Prefix.SequenceEqual("xml"u8)
                 && Utf8XmlReader.IsReservedNamespace(utf8NamespaceUri))
             {
-                throw new XmlException("The xml and xmlns namespaces cannot be bound to another prefix.");
+                throw XmlException.Create("The xml and xmlns namespaces cannot be bound to another prefix.");
             }
 
             PushNs(_depth, utf8Prefix, utf8NamespaceUri);
@@ -2208,7 +2208,7 @@ namespace CloudNimble.Text.Xml
 
                 if (_depth == 0)
                 {
-                    throw new XmlException("Text is not allowed at the document level.");
+                    throw XmlException.Create("Text is not allowed at the document level.");
                 }
 
                 CloseStartTag();
@@ -2249,7 +2249,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth == 0)
             {
-                throw new XmlException("Text is not allowed at the document level.");
+                throw XmlException.Create("Text is not allowed at the document level.");
             }
 
             CloseStartTag();
@@ -2556,7 +2556,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (_depth == 0)
                 {
-                    throw new XmlException("Text is not allowed at the document level.");
+                    throw XmlException.Create("Text is not allowed at the document level.");
                 }
 
                 CloseStartTag();
@@ -2627,7 +2627,7 @@ namespace CloudNimble.Text.Xml
                 {
                     // The bytes are not the start of any character, or the text ended inside one. Writing
                     // the whole text in one call reports the same.
-                    throw new XmlException("Invalid UTF-8 in XML value.");
+                    throw XmlException.Create("Invalid UTF-8 in XML value.");
                 }
 
                 WriteStringValue(joined[..consumed]);
@@ -2828,12 +2828,12 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (_depth == 0)
             {
-                throw new XmlException("CDATA is not allowed at the document level.");
+                throw XmlException.Create("CDATA is not allowed at the document level.");
             }
 
             if (utf8Value.IndexOf("]]>"u8) >= 0)
             {
-                throw new XmlException("CDATA must not contain ']]>'.");
+                throw XmlException.Create("CDATA must not contain ']]>'.");
             }
 
             ValidateContentChars(utf8Value);
@@ -2909,7 +2909,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (utf8Value.IndexOf("--"u8) >= 0 || (utf8Value.Length > 0 && utf8Value[^1] is (byte)'-'))
             {
-                throw new XmlException("Comments must not contain '--' or end with '-'.");
+                throw XmlException.Create("Comments must not contain '--' or end with '-'.");
             }
 
             ValidateContentChars(utf8Value);
@@ -3240,6 +3240,35 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Returns the path of the element that is open: the name of each open element from the document
+        /// element down, each after a slash.
+        /// </summary>
+        /// <returns>The path, such as <c>/Order/Lines/Line</c>, or an empty string when no element is open.</returns>
+        /// <remarks>
+        /// The serializer puts this on an <see cref="XmlException"/> that is thrown while it writes. An element
+        /// that is written whole, with no frame of its own, is not in the path: the path then ends at the element
+        /// that holds it.
+        /// </remarks>
+        internal string CurrentPath()
+        {
+            var path = new ArrayBufferWriter<byte>();
+            for (var index = 0; index < _depth; index++)
+            {
+                ref var frame = ref (index < 8 ? ref _framesInline[index] : ref _frames![index]);
+                if (frame.LocalChars is null && frame.Local.Length == 0)
+                {
+                    // An element with no content and a namespace declaration is given a frame with no name.
+                    continue;
+                }
+
+                path.Write("/"u8);
+                AppendFrameName(path, frame);
+            }
+
+            return Encoding.UTF8.GetString(path.WrittenSpan);
+        }
+
+        /// <summary>
         /// Returns a reference to the current element frame.
         /// </summary>
         /// <returns>The current frame.</returns>
@@ -3281,7 +3310,7 @@ namespace CloudNimble.Text.Xml
         {
             if (Utf8.FromUtf16(value, destination, out _, out var written, replaceInvalidSequences: false) is not OperationStatus.Done)
             {
-                throw new XmlException("The text contains half of a surrogate pair.");
+                throw XmlException.Create("The text contains half of a surrogate pair.");
             }
 
             return written;
@@ -3404,7 +3433,7 @@ namespace CloudNimble.Text.Xml
                 _memory = _bufferWriter.GetMemory(Math.Max(needed, 4096));
                 if (_memory.Length == 0)
                 {
-                    throw new XmlException("The destination buffer is too small.");
+                    throw XmlException.Create("The destination buffer is too small.");
                 }
 
                 return;
@@ -3678,7 +3707,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (!TryReadRune(utf8, ref i, out var cp))
                 {
-                    throw new XmlException("Invalid UTF-8 in XML content.");
+                    throw XmlException.Create("Invalid UTF-8 in XML content.");
                 }
 
                 var legal = _version is XmlVersion.Version11
@@ -3686,7 +3715,7 @@ namespace CloudNimble.Text.Xml
                     : XmlChars.IsXml10Char(cp);
                 if (!legal)
                 {
-                    throw new XmlException("Illegal character in a comment, CDATA section, or processing instruction.");
+                    throw XmlException.Create("Illegal character in a comment, CDATA section, or processing instruction.");
                 }
             }
         }
@@ -3700,7 +3729,7 @@ namespace CloudNimble.Text.Xml
         {
             if (!_options.SkipValidation && prefix.SequenceEqual(XmlUtf8.XmlnsPrefix))
             {
-                throw new XmlException("Element names must not use the xmlns prefix.");
+                throw XmlException.Create("Element names must not use the xmlns prefix.");
             }
         }
 
@@ -3713,7 +3742,7 @@ namespace CloudNimble.Text.Xml
         {
             if (!_options.SkipValidation && prefix.SequenceEqual("xmlns"))
             {
-                throw new XmlException("Element names must not use the xmlns prefix.");
+                throw XmlException.Create("Element names must not use the xmlns prefix.");
             }
         }
 
@@ -3798,7 +3827,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (!_options.SkipValidation)
                 {
-                    throw new XmlException("Prefixed names require a namespace URI.");
+                    throw XmlException.Create("Prefixed names require a namespace URI.");
                 }
 
                 return;
@@ -3916,12 +3945,12 @@ namespace CloudNimble.Text.Xml
             ValidateNcName(utf8Target);
             if (!_options.SkipValidation && utf8Target.Length == 3 && (utf8Target[0] | 0x20) is (byte)'x' && (utf8Target[1] | 0x20) is (byte)'m' && (utf8Target[2] | 0x20) is (byte)'l')
             {
-                throw new XmlException("Processing instruction target cannot be 'xml'.");
+                throw XmlException.Create("Processing instruction target cannot be 'xml'.");
             }
 
             if (utf8Data.IndexOf("?>"u8) >= 0)
             {
-                throw new XmlException("Processing instruction data must not contain '?>'.");
+                throw XmlException.Create("Processing instruction data must not contain '?>'.");
             }
 
             ValidateContentChars(utf8Data);
@@ -4017,7 +4046,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth == 0 || !CurrentFrame().TagOpen || _inAttribute)
             {
-                throw new XmlException("Attributes must be written on an open start tag.");
+                throw XmlException.Create("Attributes must be written on an open start tag.");
             }
         }
 
@@ -4042,7 +4071,7 @@ namespace CloudNimble.Text.Xml
         [DoesNotReturn]
         internal static void ThrowSegmentOpen()
         {
-            throw new XmlException("A value is being written in segments. Write its final segment before anything else.");
+            throw XmlException.Create("A value is being written in segments. Write its final segment before anything else.");
         }
 
         /// <summary>
@@ -4069,7 +4098,7 @@ namespace CloudNimble.Text.Xml
 
             if (!_inAttribute && _depth == 0)
             {
-                throw new XmlException("Text is not allowed at the document level.");
+                throw XmlException.Create("Text is not allowed at the document level.");
             }
 
             var carry = _segmentCarry;
@@ -4149,12 +4178,12 @@ namespace CloudNimble.Text.Xml
 
             if (name.IsEmpty)
             {
-                throw new XmlException("Name is empty.");
+                throw XmlException.Create("Name is empty.");
             }
 
             if (name.Length > _maxNameBytes)
             {
-                throw new XmlException($"{nameof(XmlWriterOptions.MaxNameByteCount)} exceeded ({_maxNameBytes}).");
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxNameByteCount)} exceeded ({_maxNameBytes}).");
             }
 
             if (XmlChars.IsAsciiNameStart(name[0]) && name[0] is not (byte)':' && name.IndexOfAnyExcept(XmlChars.AsciiNcNameChars) < 0)
@@ -4165,14 +4194,14 @@ namespace CloudNimble.Text.Xml
             var i = 0;
             if (!TryReadRune(name, ref i, out var cp) || !XmlChars.IsNameStartChar(cp, _version))
             {
-                throw new XmlException("Invalid XML name.");
+                throw XmlException.Create("Invalid XML name.");
             }
 
             while (i < name.Length)
             {
                 if (!TryReadRune(name, ref i, out cp) || !XmlChars.IsNameChar(cp, _version))
                 {
-                    throw new XmlException("Invalid XML name.");
+                    throw XmlException.Create("Invalid XML name.");
                 }
             }
         }
@@ -4191,7 +4220,7 @@ namespace CloudNimble.Text.Xml
             ValidateName(name);
             if (!_options.SkipValidation && name.IndexOf((byte)':') >= 0)
             {
-                throw new XmlException("Invalid XML name.");
+                throw XmlException.Create("Invalid XML name.");
             }
         }
 
@@ -4208,27 +4237,27 @@ namespace CloudNimble.Text.Xml
 
             if (name.IsEmpty)
             {
-                throw new XmlException("Name is empty.");
+                throw XmlException.Create("Name is empty.");
             }
 
             if (Ascii.IsValid(name))
             {
                 if (name.Length > _maxNameBytes)
                 {
-                    throw new XmlException($"{nameof(XmlWriterOptions.MaxNameByteCount)} exceeded ({_maxNameBytes}).");
+                    throw XmlException.Create($"{nameof(XmlWriterOptions.MaxNameByteCount)} exceeded ({_maxNameBytes}).");
                 }
 
                 var start = (byte)name[0];
                 if (!XmlChars.IsAsciiNameStart(start) || start is (byte)':')
                 {
-                    throw new XmlException("Invalid XML name.");
+                    throw XmlException.Create("Invalid XML name.");
                 }
 
                 for (var i = 1; i < name.Length; i++)
                 {
                     if (!XmlChars.IsAsciiNcNameChar((byte)name[i]))
                     {
-                        throw new XmlException("Invalid XML name.");
+                        throw XmlException.Create("Invalid XML name.");
                     }
                 }
 
@@ -4248,7 +4277,7 @@ namespace CloudNimble.Text.Xml
             ref var frame = ref CurrentFrame();
             if (frame.AttributeCount >= _maxAttributes)
             {
-                throw new XmlException($"{nameof(XmlWriterOptions.MaxAttributeCount)} exceeded ({_maxAttributes}).");
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxAttributeCount)} exceeded ({_maxAttributes}).");
             }
 
             frame.AttributeCount++;
@@ -4267,7 +4296,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (NameSpan(AttrLocalAt(i)).SequenceEqual(local) && NameSpan(AttrNsAt(i)).SequenceEqual(ns))
                 {
-                    throw new XmlException("Duplicate attribute.");
+                    throw XmlException.Create("Duplicate attribute.");
                 }
             }
         }
@@ -4580,7 +4609,7 @@ namespace CloudNimble.Text.Xml
                 if (utf8Xml.IndexOfAny((byte)'"', (byte)'<') >= 0)
                 {
                     // Either one could end the value and start something else, which a reader would then accept.
-                    throw new XmlException("The raw XML is not well formed: An attribute value must not contain a quotation mark or '<'.");
+                    throw XmlException.Create("The raw XML is not well formed: An attribute value must not contain a quotation mark or '<'.");
                 }
 
                 document.Write("<r a=\""u8);
@@ -4603,7 +4632,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (hasDeclaration && _committed + _buffered > 0)
                 {
-                    throw new XmlException("The raw XML is not well formed: An XML declaration is allowed only at the start of the document.");
+                    throw XmlException.Create("The raw XML is not well formed: An XML declaration is allowed only at the start of the document.");
                 }
 
                 document.Write(utf8Xml);
@@ -4632,7 +4661,7 @@ namespace CloudNimble.Text.Xml
             }
             catch (XmlException ex)
             {
-                throw new XmlException("The raw XML is not well formed: " + ex.Message, ex);
+                throw XmlException.Create("The raw XML is not well formed: " + ex.Message, ex);
             }
 
             if (_depth > 0)
@@ -4642,7 +4671,7 @@ namespace CloudNimble.Text.Xml
 
             if (roots + (_seenRoot ? 1 : 0) > 1)
             {
-                throw new XmlException("The raw XML is not well formed: Multiple root elements are not allowed.");
+                throw XmlException.Create("The raw XML is not well formed: Multiple root elements are not allowed.");
             }
 
             _seenRoot |= roots == 1;
@@ -4806,14 +4835,14 @@ namespace CloudNimble.Text.Xml
         {
             if (cp is 0)
             {
-                throw new XmlException("Illegal character in XML value.");
+                throw XmlException.Create("Illegal character in XML value.");
             }
 
             if (_version is XmlVersion.Version11)
             {
                 if (!XmlChars.IsXml11Char(cp))
                 {
-                    throw new XmlException("Illegal character in XML value.");
+                    throw XmlException.Create("Illegal character in XML value.");
                 }
 
                 if (XmlChars.IsXml11RestrictedChar(cp) || cp is 0x85 or 0x2028)
@@ -4826,7 +4855,7 @@ namespace CloudNimble.Text.Xml
             }
             else if (!XmlChars.IsXml10Char(cp))
             {
-                throw new XmlException("Illegal character in XML value.");
+                throw XmlException.Create("Illegal character in XML value.");
             }
 
             WriteRaw(slice);
@@ -4860,7 +4889,7 @@ namespace CloudNimble.Text.Xml
                 var start = i;
                 if (!TryReadRune(run, ref i, out var cp))
                 {
-                    throw new XmlException("Invalid UTF-8 in XML value.");
+                    throw XmlException.Create("Invalid UTF-8 in XML value.");
                 }
 
                 WriteValueSlice(run[start..i], cp);
@@ -4931,7 +4960,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (_depth == 0)
                 {
-                    throw new XmlException("Text is not allowed at the document level.");
+                    throw XmlException.Create("Text is not allowed at the document level.");
                 }
 
                 CloseStartTag();
@@ -4955,7 +4984,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth == 0 && _seenRoot)
             {
-                throw new XmlException("Multiple root elements are not allowed.");
+                throw XmlException.Create("Multiple root elements are not allowed.");
             }
 
             if (_depth > 0)
@@ -4970,7 +4999,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth + 1 > _maxDepth)
             {
-                throw new XmlException($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
             }
 
             WriteElementIndent(_depth);
@@ -5042,7 +5071,7 @@ namespace CloudNimble.Text.Xml
                 }
                 else if (!_options.SkipValidation)
                 {
-                    throw new XmlException("Prefixed names require a namespace URI.");
+                    throw XmlException.Create("Prefixed names require a namespace URI.");
                 }
             }
 
@@ -5053,7 +5082,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth == 0 && _seenRoot)
             {
-                throw new XmlException("Multiple root elements are not allowed.");
+                throw XmlException.Create("Multiple root elements are not allowed.");
             }
 
             if (_depth > 0)
@@ -5068,7 +5097,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth + 1 > _maxDepth)
             {
-                throw new XmlException($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
             }
 
             WriteElementIndent(_depth);
@@ -5196,7 +5225,7 @@ namespace CloudNimble.Text.Xml
                 }
                 else if (!_options.SkipValidation)
                 {
-                    throw new XmlException("Prefixed names require a namespace URI.");
+                    throw XmlException.Create("Prefixed names require a namespace URI.");
                 }
             }
 
@@ -5591,7 +5620,7 @@ namespace CloudNimble.Text.Xml
                 ValidateElementPrefix(prefix);
                 if (prefix is not "xml" and not "xmlns" && !_options.SkipValidation)
                 {
-                    throw new XmlException("Prefixed names require a namespace URI.");
+                    throw XmlException.Create("Prefixed names require a namespace URI.");
                 }
             }
 
@@ -5711,7 +5740,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (_depth == 0)
             {
-                throw new XmlException("A leaf element must be written inside an element.");
+                throw XmlException.Create("A leaf element must be written inside an element.");
             }
 
             WriteRaw(closeTag);
@@ -5738,7 +5767,7 @@ namespace CloudNimble.Text.Xml
             ThrowIfDisposed();
             if (_depth == 0)
             {
-                throw new XmlException("A leaf element must be written inside an element.");
+                throw XmlException.Create("A leaf element must be written inside an element.");
             }
 
             if (openTag.Length - 2 > _maxNameBytes)
@@ -5753,7 +5782,7 @@ namespace CloudNimble.Text.Xml
 
             if (_depth + 1 > _maxDepth)
             {
-                throw new XmlException($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
             }
 
             CloseStartTag();

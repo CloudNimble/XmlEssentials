@@ -245,7 +245,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 builder.Append(indent).AppendLine("    {");
                 builder.Append(indent).Append("        if (options.NumberHandling is XmlNumberHandling.Strict && !").Append(number).AppendLine(".IsFinite(value))");
                 builder.Append(indent).AppendLine("        {");
-                builder.Append(indent).AppendLine("            throw new XmlException(\"Named floating-point literals are not allowed when NumberHandling is Strict.\");");
+                builder.Append(indent).AppendLine("            throw XmlMetadataServices.CreateException(\"Named floating-point literals are not allowed when NumberHandling is Strict.\");");
                 builder.Append(indent).AppendLine("        }");
                 builder.AppendLine();
                 builder.Append(indent).AppendLine("        return value;");

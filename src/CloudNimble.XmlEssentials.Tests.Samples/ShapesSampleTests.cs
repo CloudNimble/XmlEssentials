@@ -67,7 +67,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         [TestMethod]
         public void Sample14_Namespaces_RejectWrongNamespace()
         {
-            SampleOutput.Capture(Namespaces.RejectWrongNamespace).Should().Be("The root element is not in namespace 'urn:example:billing'.");
+            SampleOutput.Capture(Namespaces.RejectWrongNamespace).Should().Be("The root element is not in namespace 'urn:example:billing'. Path: /Invoice | LineNumber: 1 | BytePositionInLine: 48.");
         }
 
         [TestMethod]
@@ -110,7 +110,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "Omitted: null\n" +
                 "Empty: empty string\n" +
                 "Nil: null\n" +
-                "Empty number: The value is not a valid integer.");
+                "Empty number: The value is not a valid integer. Path: /Contact/Age | LineNumber: 1 | BytePositionInLine: 33.");
         }
 
         [TestMethod]
@@ -211,7 +211,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "  </Payment>\n" +
                 "</Checkout>\n" +
                 "CardPayment\n" +
-                "Unknown type discriminator 'voucher'.");
+                "Unknown type discriminator 'voucher'. Path: /Checkout/Payment | LineNumber: 1 | BytePositionInLine: 58.");
         }
 
         [TestMethod]
@@ -277,7 +277,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(PreserveReferences.WriteCycleWithoutHandler).Should().Be(
                 "XmlException\n" +
-                "MaxDepth exceeded (64).");
+                "MaxDepth exceeded (64). Path: /Employee/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager.");
         }
 
         [TestMethod]
@@ -313,7 +313,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(MixedContent.RejectUnmappedContent).Should().Be(
                 "Ada\n" +
-                "Unknown element 'Phone'.");
+                "Unknown element 'Phone'. Path: /Contact | LineNumber: 1 | BytePositionInLine: 33.");
         }
 
         [TestMethod]

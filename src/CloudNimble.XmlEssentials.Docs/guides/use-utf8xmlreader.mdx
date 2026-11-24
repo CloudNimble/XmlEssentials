@@ -993,7 +993,7 @@ Path: (not set)
 | `LineNumber` | The line, counting from 1. |
 | `LinePosition` | The position in the line, counting from 1, in UTF-8 bytes and not in characters. |
 | `BytePosition` | The offset from the start of the document, counting from 0. When you read in blocks, it includes the earlier blocks. |
-| `Path` | `null`. The reader doesn't set it. Use the line and the position to find the error. |
+| `Path` | `null`. The reader doesn't set it. Use the line and the position to find the error. `XmlSerializer` sets it: see [Find where the error is](/guides/deserialize#find-where-the-error-is). |
 
 What to know about errors:
 

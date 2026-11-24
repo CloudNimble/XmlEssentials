@@ -110,17 +110,27 @@ namespace CloudNimble.Text.Xml.Serialization
                     var builder = collection.CreateBuilder();
                     if (!reader.IsEmptyElement)
                     {
-                        while (reader.Read())
+                        try
                         {
-                            if (reader.TokenType is XmlTokenType.EndElement)
+                            while (reader.Read())
                             {
-                                break;
-                            }
+                                if (reader.TokenType is XmlTokenType.EndElement)
+                                {
+                                    break;
+                                }
 
-                            if (reader.TokenType is XmlTokenType.StartElement)
-                            {
-                                ReadItem(ref reader, builder);
+                                if (reader.TokenType is XmlTokenType.StartElement)
+                                {
+                                    ReadItem(ref reader, builder);
+                                }
                             }
+                        }
+                        catch (XmlException ex)
+                        {
+                            // An item could not be read. Its position is the number of items read before it.
+                            reader.Locate(ex);
+                            ex.AddItem(System.Text.Encoding.UTF8.GetString(collection.Utf8ItemName), ((System.Collections.ICollection)builder).Count);
+                            throw;
                         }
                     }
 
@@ -160,12 +170,12 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (IsRequired && XmlConverterHelpers.IsNull(value))
             {
-                throw new XmlException($"The required member '{Info.Name.LocalName}' cannot be nil.");
+                throw XmlException.Create($"The required member '{Info.Name.LocalName}' cannot be nil.");
             }
 
             if (NullReadError is not null && XmlConverterHelpers.IsNull(value))
             {
-                throw new XmlException(NullReadError);
+                throw XmlException.Create(NullReadError);
             }
 
             if (Populates && _set is null && XmlConverterHelpers.IsNull(value))
@@ -359,7 +369,7 @@ namespace CloudNimble.Text.Xml.Serialization
             if (NullWriteError is not null && XmlConverterHelpers.IsNull(value) && _ignore is not (XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault))
             {
                 // A null the ignore condition leaves out is not written, so it is not refused either.
-                throw new XmlException(NullWriteError);
+                throw XmlException.Create(NullWriteError);
             }
 
             if (Collection is not null)

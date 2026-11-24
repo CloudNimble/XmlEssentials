@@ -351,7 +351,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 {
                     read.Add(value);
                 }
-            }).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The value is not a valid integer.");
+            }).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The value is not a valid integer. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 17.");
             read.Should().Equal(1, 2);
 
             var truncated = new TrickleStream("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int"u8.ToArray(), 16);
@@ -522,20 +522,20 @@ namespace CloudNimble.XmlEssentials.Tests
             const string message = "Named floating-point literals are not allowed when NumberHandling is Strict.";
             var buffer = new ArrayBufferWriter<byte>();
             FluentActions.Invoking(() => XmlSerializer.Serialize(buffer, double.NaN, StrictNumbers))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Double.");
             buffer.WrittenCount.Should().Be(0);
 
             using var stream = new MemoryStream();
             FluentActions.Invoking(() => XmlSerializer.Serialize(stream, double.NaN, StrictNumbers))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Double.");
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsync(stream, double.NaN, StrictNumbers))
-                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message);
+                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /Double.");
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsyncEnumerable(stream, Values(1.5, double.NaN), StrictNumbers))
-                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message);
+                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /ArrayOfDouble.");
             stream.Length.Should().Be(0);
 
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsyncEnumerable(stream, Values(1.5, double.NaN), topLevelValues: true, StrictNumbers))
-                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message);
+                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /Double.");
             Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<Double>1.5</Double>");
 
             XmlSerializer.Serialize(buffer, 2.5, StrictNumbers);

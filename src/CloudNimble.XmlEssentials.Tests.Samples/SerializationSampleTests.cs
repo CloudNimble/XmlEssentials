@@ -167,7 +167,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         [TestMethod]
         public void Sample07_DeserializeFromXml_RejectUnknown()
         {
-            SampleOutput.Capture(DeserializeFromXml.RejectUnknown).Should().Be("Unknown element 'Warehouse'.");
+            SampleOutput.Capture(DeserializeFromXml.RejectUnknown).Should().Be("Unknown element 'Warehouse'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 40.");
         }
 
         [TestMethod]
@@ -182,9 +182,18 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample07_DeserializeFromXml_InvalidXml()
         {
             SampleOutput.Capture(DeserializeFromXml.InvalidXml).Should().Be(
-                "The root element does not match 'PurchaseOrder'.\n" +
-                "End tag does not match start tag.\n" +
-                "The value is not a valid integer.");
+                "The root element does not match 'PurchaseOrder'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 8.\n" +
+                "End tag does not match start tag. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 40.\n" +
+                "The value is not a valid integer. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 28.");
+        }
+
+        [TestMethod]
+        public void Sample07_DeserializeFromXml_LocateError()
+        {
+            SampleOutput.Capture(DeserializeFromXml.LocateError).Should().Be(
+                "The value is not a valid integer. Path: /Invoice/Lines[1]/Quantity | LineNumber: 4 | BytePositionInLine: 50.\n" +
+                "Path: /Invoice/Lines[1]/Quantity\n" +
+                "Line 4, position 50");
         }
 
         [TestMethod]
@@ -308,15 +317,15 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(RequiredProperties.Run).Should().Be(
                 "ada@contoso.example chose pro\n" +
-                "The required member 'Email' is missing.\n" +
-                "The required member 'Plan' is missing.");
+                "The required member 'Email' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 46.\n" +
+                "The required member 'Plan' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 64.");
         }
 
         [TestMethod]
         public void Sample10_RequiredProperties_NilAndEmpty()
         {
             SampleOutput.Capture(RequiredProperties.NilAndEmpty).Should().Be(
-                "The required member 'Email' cannot be nil.\n" +
+                "The required member 'Email' cannot be nil. Path: /Registration/Email | LineNumber: 2 | BytePositionInLine: 27.\n" +
                 "Email is empty: True");
         }
 
@@ -325,7 +334,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(RequiredProperties.ConstructorParameters).Should().Be(
                 "SPRING: 10% off\n" +
-                "The required constructor parameter 'Code' is missing.\n" +
+                "The required constructor parameter 'Code' is missing. Path: /Coupon | LineNumber: 1 | BytePositionInLine: 45.\n" +
                 "(null): 25% off");
         }
 
@@ -334,9 +343,9 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(RequiredProperties.UnmappedMembers).Should().Be(
                 "Skip: ada@contoso.example chose pro\n" +
-                "Disallow: Unknown element 'Coupon'.\n" +
+                "Disallow: Unknown element 'Coupon'. Path: /Registration | LineNumber: 1 | BytePositionInLine: 73.\n" +
                 "Skip: ada@contoso.example chose pro\n" +
-                "Disallow: Unknown attribute 'source'.");
+                "Disallow: Unknown attribute 'source'. Path: /Registration | LineNumber: 1 | BytePositionInLine: 28.");
         }
 
         [TestMethod]
@@ -358,7 +367,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(ImmutableTypes.ParameterNameCase).Should().Be(
                 "Voltage = 230\n" +
-                "The required constructor parameter 'Name' is missing.");
+                "The required constructor parameter 'Name' is missing. Path: /Measurement | LineNumber: 1 | BytePositionInLine: 66.");
         }
 
         [TestMethod]
@@ -507,11 +516,11 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(ConfigureOptions.StrictDefaults).Should().Be(
                 "General: MS-220\n" +
-                "Strict: Duplicate property 'Sku'.\n" +
+                "Strict: Duplicate property 'Sku'. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 36.\n" +
                 "General: KB-101\n" +
-                "Strict: Comments are not allowed.\n" +
+                "Strict: Comments are not allowed. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 30.\n" +
                 "General: KB-101\n" +
-                "Strict: Unknown element 'Colour'.");
+                "Strict: Unknown element 'Colour'. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 39.");
         }
 
         [TestMethod]

@@ -32,7 +32,7 @@ namespace CloudNimble.Text.Xml.Serialization
             var status = Rune.DecodeFromUtf8(collapsed, out var rune, out var consumed);
             if (status is not OperationStatus.Done || consumed != collapsed.Length || !rune.IsBmp)
             {
-                throw new XmlException("The value is not a single character.");
+                throw XmlException.Create("The value is not a single character.");
             }
 
             return (char)rune.Value;

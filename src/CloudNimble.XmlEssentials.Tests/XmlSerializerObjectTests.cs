@@ -159,10 +159,10 @@ namespace CloudNimble.XmlEssentials.Tests
         public void RequiredCatalog_MissingTitle_Throws()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<RequiredCatalog>("<RequiredCatalog/>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required member 'Title' is missing.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required member 'Title' is missing. Path: /RequiredCatalog | LineNumber: 1 | BytePositionInLine: 19.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<RequiredCatalog>(
                     "<RequiredCatalog><Title xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></RequiredCatalog>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required member 'Title' cannot be nil.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required member 'Title' cannot be nil. Path: /RequiredCatalog/Title | LineNumber: 1 | BytePositionInLine: 95.");
         }
 
         [TestMethod]
@@ -233,7 +233,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             XmlSerializer.Deserialize<Person>("<Person><Name>Ada</Name><Extra>x</Extra><Age>1</Age></Person>")!.Name.Should().Be("Ada");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Name>Ada</Name><Extra>x</Extra></Person>", XmlSerializerOptions.Strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'Extra'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'Extra'. Path: /Person | LineNumber: 1 | BytePositionInLine: 32.");
         }
 
         [TestMethod]
@@ -558,7 +558,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void KindShelf_UnknownDiscriminator_Throws()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<KindShelf>("<KindShelf><Item kind=\"tape\"><Title>x</Title></Item></KindShelf>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'. Path: /KindShelf/Item | LineNumber: 1 | BytePositionInLine: 30.");
         }
 
         [TestMethod]
@@ -630,7 +630,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, ReferenceHandler = XmlReferenceHandler.Preserve };
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Node>(
                 "<Node xmlns:ns1=\"urn:CloudNimble.Text.Xml:refs\" ns1:id=\"1\"><Child ns1:ref=\"99\"/><Name>root</Name></Node>", options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown reference '99'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown reference '99'. Path: /Node/Child | LineNumber: 1 | BytePositionInLine: 81.");
         }
 
         [TestMethod]
@@ -695,7 +695,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void KindProduct_UnknownRootDiscriminator_Throws()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<KindProduct>("<KindProduct kind=\"tape\"><Title>x</Title></KindProduct>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'. Path: /KindProduct | LineNumber: 1 | BytePositionInLine: 26.");
         }
 
         [TestMethod]
@@ -910,7 +910,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void DuplicateProperty_ThrowsWhenDisallowed()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Age>1</Age><Age>2</Age></Person>", XmlSerializerOptions.Strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Duplicate property 'Age'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Duplicate property 'Age'. Path: /Person | LineNumber: 1 | BytePositionInLine: 26.");
         }
 
         [TestMethod]
@@ -1039,7 +1039,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void CtorBox_MissingValue_Throws()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<CtorBox>("<CtorBox/>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Value' is missing.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Value' is missing. Path: /CtorBox | LineNumber: 1 | BytePositionInLine: 11.");
         }
 
         [TestMethod]
@@ -1147,7 +1147,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow,
             };
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person Name=\"Ada\" extra=\"1\"/>", options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown attribute 'extra'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown attribute 'extra'. Path: /Person | LineNumber: 1 | BytePositionInLine: 31.");
         }
 
         [TestMethod]
@@ -1265,7 +1265,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<NamespacedChild>(xml)!.N.Should().Be(1);
             XmlSerializer.Deserialize<NamespacedChild>("<NamespacedChild><N>1</N></NamespacedChild>")!.N.Should().Be(0);
             FluentActions.Invoking(() => XmlSerializer.Deserialize<NamespacedChild>("<NamespacedChild><N>1</N></NamespacedChild>", XmlSerializerOptions.Strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'N'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'N'. Path: /NamespacedChild | LineNumber: 1 | BytePositionInLine: 21.");
         }
 
         [TestMethod]
@@ -1285,7 +1285,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void RequiredTitle_MissingTitle_Throws()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<RequiredTitle>("<RequiredTitle/>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required member 'Title' is missing.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required member 'Title' is missing. Path: /RequiredTitle | LineNumber: 1 | BytePositionInLine: 17.");
             XmlSerializer.Deserialize<RequiredTitle>("<RequiredTitle><Title>Ada</Title></RequiredTitle>")!.Title.Should().Be("Ada");
         }
 
@@ -1386,30 +1386,30 @@ namespace CloudNimble.XmlEssentials.Tests
         public void CData_InsideAnObject_IsRejected()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><![CDATA[x]]><Name>Ada</Name><Age>1</Age></Person>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unexpected CData in object content.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unexpected CData in object content. Path: /Person | LineNumber: 1 | BytePositionInLine: 22.");
         }
 
         [TestMethod]
         public void Person_WrongRoot_IsRejected()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Human><Name>Ada</Name></Human>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Person'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Person'. Path: /Person | LineNumber: 1 | BytePositionInLine: 8.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Name>Ada</Name></Human>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("End tag does not match start tag.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("End tag does not match start tag. Path: /Person | LineNumber: 1 | BytePositionInLine: 33.");
         }
 
         [TestMethod]
         public void Person_InvalidChild_IsRejected()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Name>Ada</Name><Age>nope</Age></Person>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid integer. Path: /Person/Age | LineNumber: 1 | BytePositionInLine: 40.");
         }
 
         [TestMethod]
         public void Person_TruncatedDocument_IsRejected()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<Person><Name>Ada</Name>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unexpected end of XML.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unexpected end of XML. Path: /Person | LineNumber: 1 | BytePositionInLine: 25.");
         }
 
         [TestMethod]
@@ -1419,7 +1419,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 var reader = new Utf8XmlReader("<Person><Name>Ada</Name>"u8, isFinalBlock: false, new XmlReaderState());
                 XmlSerializer.Deserialize<Person>(ref reader);
-            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element was not closed.");
+            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element was not closed. Path: /Person | LineNumber: 1 | BytePositionInLine: 25.");
         }
 
         [TestMethod]

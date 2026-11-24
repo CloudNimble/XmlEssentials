@@ -34,4 +34,4 @@ Path: (not set)
 | `LineNumber` | The line, counting from 1, or `null`. |
 | `LinePosition` | The position in the line, counting from 1, in UTF-8 bytes, or `null`. |
 | `BytePosition` | The offset from the start of the document, counting from 0, or `null`. |
-| `Path` | A path in the document, or `null`. `Utf8XmlReader` doesn't set it. |
+| `Path` | A path in the document, such as `/Order/Lines/Line[1]/@sku`, or `null`. `XmlSerializer` sets it; `Utf8XmlReader` used on its own doesn't. |

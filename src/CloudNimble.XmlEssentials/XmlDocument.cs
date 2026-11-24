@@ -102,7 +102,7 @@ namespace CloudNimble.Text.Xml
                 ThrowIfDisposed();
                 if (_rootIndex < 0)
                 {
-                    throw new XmlException("The document has no root element.");
+                    throw XmlException.Create("The document has no root element.");
                 }
 
                 return new XmlElement(this, _rootIndex);
@@ -352,7 +352,7 @@ namespace CloudNimble.Text.Xml
                 {
                     // The reader ran out of input without reaching a start tag. A document with no element
                     // has nothing to give back.
-                    throw new XmlException("The reader is not on an element and has none left to read.");
+                    throw XmlException.Create("The reader is not on an element and has none left to read.");
                 }
 
                 return document;
@@ -667,7 +667,7 @@ namespace CloudNimble.Text.Xml
                             {
                                 if (_rootIndex >= 0)
                                 {
-                                    throw new XmlException("Multiple root elements are not allowed.");
+                                    throw XmlException.Create("Multiple root elements are not allowed.");
                                 }
 
                                 _rootIndex = _rowCount;
@@ -699,7 +699,7 @@ namespace CloudNimble.Text.Xml
                             {
                                 // ParseValue takes a reader wherever its caller left it, which may be on or
                                 // just before the end tag of an element this document never saw start.
-                                throw new XmlException("End tag without a matching start tag.");
+                                throw XmlException.Create("End tag without a matching start tag.");
                             }
 
                             depth--;
@@ -718,7 +718,7 @@ namespace CloudNimble.Text.Xml
 
                 if (requireDocumentRoot && _rootIndex < 0)
                 {
-                    throw new XmlException("The document has no root element.");
+                    throw XmlException.Create("The document has no root element.");
                 }
 
             }
@@ -1034,7 +1034,7 @@ namespace CloudNimble.Text.Xml
         {
             if (maxDocumentByteCount > 0 && length > maxDocumentByteCount)
             {
-                throw new XmlException($"{nameof(XmlDocumentOptions.MaxDocumentByteCount)} exceeded ({maxDocumentByteCount}).");
+                throw XmlException.Create($"{nameof(XmlDocumentOptions.MaxDocumentByteCount)} exceeded ({maxDocumentByteCount}).");
             }
         }
 

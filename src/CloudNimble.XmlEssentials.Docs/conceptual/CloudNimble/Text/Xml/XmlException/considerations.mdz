@@ -3,6 +3,9 @@
 - **The location is where the reader stopped,** which is at the problem or right after it. For a mismatched end tag, that's the end of the tag.
 - **`BytePosition` counts from the start of the document,** including the blocks before the current one when you read in blocks.
 - **Lines are counted after line ends are normalized,** so a carriage return followed by a line feed is one line end.
-- **`Path` is `null` on exceptions from the reader.** The constructor accepts a path so that code that knows one can supply it.
+- **`XmlSerializer` sets `Path`; the reader on its own does not.** An exception that is thrown while the serializer reads or writes names each element from the document element down to the error: `/Order/Lines/Line[1]/@sku`. An item of a collection has its position after its name, counted from 0 as `System.Text.Json` counts, when a document is read. When an object is written the path is the elements the writer has open, with no positions. `Path` is `null` on an exception from `Utf8XmlReader`, `XmlDocument` or `XmlNode` used on its own.
+- **The serializer fills in the position too.** An exception for a value that can't be converted has `BytePosition`, `LineNumber` and `LinePosition` when it comes from `XmlSerializer.Deserialize`: they say how far the reader had got.
+- **The message ends with the path.** For an exception the library creates, `Message` ends with ` Path: /Order/Lines/Line[1]/@sku | LineNumber: 1 | BytePositionInLine: 55.`, the form `System.Text.Json` uses, or with the path alone when no line is known. An exception you create keeps the message you gave it.
+- **A path you supply is kept.** The constructor accepts a path, and the serializer does not change it.
 - **Not every failure is an `XmlException`.** A `null` argument throws `ArgumentNullException`, a destination that's too small for `CopyString` throws `ArgumentException`, and a disposed writer throws `ObjectDisposedException`.
 - **The class is sealed** and derives from `Exception`, not from `System.Xml.XmlException`.

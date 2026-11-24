@@ -23,7 +23,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override TimeSpan Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            return XmlLexical.TryParseDuration(utf8, out var value) ? value : throw new XmlException("The value is not a valid duration.");
+            return XmlLexical.TryParseDuration(utf8, out var value) ? value : throw XmlException.Create("The value is not a valid duration.");
         }
 
         /// <inheritdoc />

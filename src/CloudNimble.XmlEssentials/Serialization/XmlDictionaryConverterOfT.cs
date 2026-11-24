@@ -124,42 +124,62 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (!reader.IsEmptyElement)
             {
-                while (reader.Read())
+                string? entry = null;
+                try
                 {
-                    if (reader.TokenType is XmlTokenType.EndElement)
+                    while (reader.Read())
                     {
-                        break;
-                    }
-
-                    if (reader.TokenType is not XmlTokenType.StartElement)
-                    {
-                        continue;
-                    }
-
-                    if (reader.LocalNameEquals("Key"u8))
-                    {
-                        var key = _keyInfo.ReadElement(ref reader);
-                        TValue? value = default;
-                        if (reader.Read() && reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Value"u8))
+                        if (reader.TokenType is XmlTokenType.EndElement)
                         {
-                            value = _valueInfo.ReadElement(ref reader);
+                            break;
                         }
 
-                        if (key is not null)
+                        if (reader.TokenType is not XmlTokenType.StartElement)
                         {
-                            map[key] = value!;
+                            continue;
                         }
 
-                        continue;
-                    }
+                        if (reader.LocalNameEquals("Key"u8))
+                        {
+                            entry = "Key";
+                            var key = _keyInfo.ReadElement(ref reader);
+                            TValue? value = default;
+                            if (reader.Read() && reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Value"u8))
+                            {
+                                entry = "Value";
+                                value = _valueInfo.ReadElement(ref reader);
+                            }
 
-                    var name = Encoding.UTF8.GetString(reader.LocalNameSpan);
-                    if (name is not TKey named)
+                            entry = null;
+                            if (key is not null)
+                            {
+                                map[key] = value!;
+                            }
+
+                            continue;
+                        }
+
+                        var name = Encoding.UTF8.GetString(reader.LocalNameSpan);
+                        if (name is not TKey named)
+                        {
+                            throw XmlException.Create($"The element '{name}' is not an entry of a dictionary keyed by '{typeof(TKey)}'.");
+                        }
+
+                        entry = name;
+                        map[named] = _valueInfo.ReadElement(ref reader)!;
+                        entry = null;
+                    }
+                }
+                catch (XmlException ex)
+                {
+                    // The key or the value of an entry could not be read. An entry is an element named for its key.
+                    reader.Locate(ex);
+                    if (entry is not null)
                     {
-                        throw new XmlException($"The element '{name}' is not an entry of a dictionary keyed by '{typeof(TKey)}'.");
+                        ex.AddElement(entry);
                     }
 
-                    map[named] = _valueInfo.ReadElement(ref reader)!;
+                    throw;
                 }
             }
         }

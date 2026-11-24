@@ -893,8 +893,8 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteCData(text); }).Should().Be(message);
             XmlWriterHarness.ThrownMessage(w => w.WriteProcessingInstruction("p", text)).Should().Be(message);
             XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteRawValue(text, skipInputValidation: true); }).Should().Be(message);
-            FluentActions.Invoking(() => XmlSerializer.Serialize(text)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
-            FluentActions.Invoking(() => XmlSerializer.Serialize(new POCOs.Person { Name = text })).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+            FluentActions.Invoking(() => XmlSerializer.Serialize(text)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /String.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new POCOs.Person { Name = text })).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Person.");
         }
 
         [TestMethod]

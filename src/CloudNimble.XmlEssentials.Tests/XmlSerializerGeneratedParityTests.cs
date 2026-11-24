@@ -527,7 +527,7 @@ namespace CloudNimble.XmlEssentials.Tests
                         return string.Join("\n", lines);
                     }
                 }
-                """).Should().Be("c:1\nc:1\nc:1\nUnknown element 'Other'.\nc:1\nUnknown attribute 'other'.\nc:1\nc:1\nc:1\nUnknown attribute 'nil'.\n3");
+                """).Should().Be("c:1\nc:1\nc:1\nUnknown element 'Other'. Path: /Plain | LineNumber: 1 | BytePositionInLine: 40.\nc:1\nUnknown attribute 'other'. Path: /Plain | LineNumber: 1 | BytePositionInLine: 27.\nc:1\nc:1\nc:1\nUnknown attribute 'nil'. Path: /Plain | LineNumber: 1 | BytePositionInLine: 29.\n3");
         }
 
         [TestMethod]
@@ -586,7 +586,12 @@ namespace CloudNimble.XmlEssentials.Tests
                         return string.Join("\n", lines);
                     }
                 }
-                """).Should().Be("1,2.50,3\nThe value is not a valid integer.\nThe value is not a valid decimal.\nThe value is not a valid integer.\n7,0,null");
+                """).Should().Be(
+                    "1,2.50,3\n" +
+                    "The value is not a valid integer. Path: /Tally/Count | LineNumber: 1 | BytePositionInLine: 16.\n" +
+                    "The value is not a valid decimal. Path: /Tally/Price | LineNumber: 1 | BytePositionInLine: 23.\n" +
+                    "The value is not a valid integer. Path: /Tally/Limit | LineNumber: 1 | BytePositionInLine: 16.\n" +
+                    "7,0,null");
         }
 
         [TestMethod]
@@ -1206,7 +1211,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "<Hidden><Secret>5</Secret><Hush>6</Hush><Seen>1</Seen></Hidden>",
                 "8,9,2",
                 "n,3",
-                "XmlException: The required member 'Count' is missing.",
+                "XmlException: The required member 'Count' is missing. Path: /Needs | LineNumber: 1 | BytePositionInLine: 30.",
                 "n!"));
         }
 

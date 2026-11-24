@@ -153,12 +153,12 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (!XmlBoundProperty.NameEquals(ref reader, _rootLocalName, Options.PropertyNameCaseInsensitive))
             {
-                throw new XmlException($"The root element does not match '{RootName.LocalName}'.");
+                throw XmlException.Create($"The root element does not match '{RootName.LocalName}'.");
             }
 
             if (_rootNamespaceUri.Length > 0 && !reader.NamespaceUriEquals(_rootNamespaceUri))
             {
-                throw new XmlException($"The root element is not in namespace '{RootName.NamespaceUri}'.");
+                throw XmlException.Create($"The root element is not in namespace '{RootName.NamespaceUri}'.");
             }
         }
 

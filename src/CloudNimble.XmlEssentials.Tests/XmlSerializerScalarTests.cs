@@ -75,22 +75,22 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<int>("<Int32 xmlns=\"urn:x\">42</Int32>", namespaced).Should().Be(42);
             XmlSerializer.Deserialize<int>("<p:Int32 xmlns:p=\"urn:x\">42</p:Int32>", namespaced).Should().Be(42);
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Int32>42</Int32>", namespaced))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 8.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize("<Int32>42</Int32>", typeof(int), namespaced))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 8.");
         }
 
         [TestMethod]
         public void RootName_MustMatchTheType()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Nope>42</Nope>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Int32'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Int32'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 7.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize("<Nope>42</Nope>", typeof(int)))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Int32'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Int32'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 7.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>(""))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 1.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<!--only a comment-->"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 22.");
         }
 
         [TestMethod]
@@ -170,8 +170,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void ChildElement_InsideAScalar_IsRejected()
         {
-            Rejects<int>("<Int32><x/></Int32>", "Unexpected StartElement in simple content.");
-            Rejects<string>("<String>a<b/>c</String>", "Unexpected StartElement in simple content.");
+            Rejects<int>("<Int32><x/></Int32>", "Unexpected StartElement in simple content.", position: 12);
+            Rejects<string>("<String>a<b/>c</String>", "Unexpected StartElement in simple content.", position: 14);
         }
 
         [TestMethod]
@@ -212,7 +212,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("Type 'System.Int32' cannot be null.");
             Rejects<int>("<Int32" + Nil + "/>", "The element is nil but type 'System.Int32' is not nillable.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize("<Int32" + Nil + "/>", typeof(int)))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is nil but type 'System.Int32' is not nillable.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is nil but type 'System.Int32' is not nillable. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 78.");
         }
 
         [TestMethod]
@@ -243,12 +243,12 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<double>("<Double>1.5</Double>", strict).Should().Be(1.5);
             XmlSerializer.Deserialize<float>("<Single>1.5</Single>", strict).Should().Be(1.5f);
             const string message = "Named floating-point literals are not allowed when NumberHandling is Strict.";
-            FluentActions.Invoking(() => XmlSerializer.Serialize(double.NaN, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
-            FluentActions.Invoking(() => XmlSerializer.Serialize(float.NegativeInfinity, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+            FluentActions.Invoking(() => XmlSerializer.Serialize(double.NaN, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Double.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(float.NegativeInfinity, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Single.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<double>("<Double>INF</Double>", strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid double.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid double. Path: /Double | LineNumber: 1 | BytePositionInLine: 21.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<float>("<Single>NaN</Single>", strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float. Path: /Single | LineNumber: 1 | BytePositionInLine: 21.");
         }
 
         [TestMethod]
@@ -311,12 +311,12 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 var reader = new Utf8XmlReader("<Int32>4"u8, isFinalBlock: false, new XmlReaderState());
                 XmlSerializer.Deserialize<int>(ref reader);
-            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is incomplete: more data is required.");
+            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is incomplete: more data is required. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 8.");
             FluentActions.Invoking(() =>
             {
                 var reader = new Utf8XmlReader("<?xml version=\"1.0\"?>"u8, isFinalBlock: false, new XmlReaderState());
                 XmlSerializer.Deserialize<int>(ref reader);
-            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Expected a start element.");
+            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Expected a start element. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 22.");
         }
 
         [TestMethod]
@@ -349,10 +349,15 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Private Methods
 
-        private static void Rejects<T>(string xml, string message)
+        private static void Rejects<T>(string xml, string message, int position = 0)
         {
+            // The path is the document element, whose name the document gives. The reader has read all of it
+            // unless the test says where it stopped.
+            var name = xml[1..xml.IndexOfAny(['>', '/', ' '])];
+            var stopped = position == 0 ? System.Text.Encoding.UTF8.GetByteCount(xml) + 1 : position;
             FluentActions.Invoking(() => XmlSerializer.Deserialize<T>(xml))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+                .Should().ThrowExactly<XmlException>().Which.Message
+                .Should().Be(message + " Path: /" + name + " | LineNumber: 1 | BytePositionInLine: " + stopped + ".");
         }
 
         private static void RoundTrip<T>(T value, string xml)

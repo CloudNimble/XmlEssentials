@@ -92,7 +92,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
                 if (polymorphism.UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
                 {
-                    throw new XmlException($"Unknown type discriminator '{discriminator}'.");
+                    throw XmlException.Create($"Unknown type discriminator '{discriminator}'.");
                 }
             }
 

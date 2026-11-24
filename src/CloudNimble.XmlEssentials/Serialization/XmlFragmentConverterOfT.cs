@@ -36,7 +36,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
                 if (found)
                 {
-                    throw new XmlException("The element holds more than one element where one XML value is expected.");
+                    throw XmlException.Create("The element holds more than one element where one XML value is expected.");
                 }
 
                 value = ReadValue(ref reader);

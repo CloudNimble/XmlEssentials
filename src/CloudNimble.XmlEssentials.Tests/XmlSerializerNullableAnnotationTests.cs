@@ -35,18 +35,18 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<AnnotatedFlow>("<AnnotatedFlow><Allowed" + Nil + "/></AnnotatedFlow>", Respect)!.Allowed.Should().BeNull();
             XmlSerializer.Deserialize<AnnotatedFlow>("<AnnotatedFlow><Certain" + Nil + "/></AnnotatedFlow>", Respect)!.Certain.Should().BeNull();
             Reading<AnnotatedFlow>("<AnnotatedFlow><Disallowed" + Nil + "/></AnnotatedFlow>", Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Disallowed", "AnnotatedFlow"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Disallowed", "AnnotatedFlow") + " Path: /AnnotatedFlow/Disallowed | LineNumber: 1 | BytePositionInLine: 98.");
             Reading<AnnotatedFlow>("<AnnotatedFlow><Possibly" + Nil + "/></AnnotatedFlow>", Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Possibly", "AnnotatedFlow"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Possibly", "AnnotatedFlow") + " Path: /AnnotatedFlow/Possibly | LineNumber: 1 | BytePositionInLine: 96.");
         }
 
         [TestMethod]
         public void FlowAttributes_DecideWhatIsWritten()
         {
             Writing(new AnnotatedFlow { Allowed = null }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Allowed", "AnnotatedFlow"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Allowed", "AnnotatedFlow") + " Path: /AnnotatedFlow.");
             Writing(new AnnotatedFlow { Certain = null }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Certain", "AnnotatedFlow"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Certain", "AnnotatedFlow") + " Path: /AnnotatedFlow.");
             XmlSerializer.Serialize(new AnnotatedFlow { Disallowed = null!, Possibly = null! }, Respect).Should().Be(
                 "<AnnotatedFlow><Allowed>a</Allowed><Certain>c</Certain><Disallowed" + Nil + "/><Possibly" + Nil + "/></AnnotatedFlow>");
         }
@@ -90,7 +90,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             Reading<AnnotatedRecord>("<AnnotatedRecord><Name" + Nil + "/><Maybe>m</Maybe></AnnotatedRecord>", Respect)
                 .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(
-                    "The constructor parameter 'Name' on type '" + Types + "AnnotatedRecord' doesn't allow null values." + Advice);
+                    "The constructor parameter 'Name' on type '" + Types + "AnnotatedRecord' doesn't allow null values." + Advice + " Path: /AnnotatedRecord/Name | LineNumber: 1 | BytePositionInLine: 94.");
             XmlSerializer.Deserialize<AnnotatedRecord>("<AnnotatedRecord><Name>n</Name><Maybe" + Nil + "/></AnnotatedRecord>", Respect)
                 .Should().Be(new AnnotatedRecord("n", null));
         }
@@ -99,11 +99,11 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_NilForANonNullableMember_IsRejected()
         {
             Reading<Annotated>("<Annotated><Name" + Nil + "/></Annotated>", Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Name", "Annotated"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Name", "Annotated") + " Path: /Annotated/Name | LineNumber: 1 | BytePositionInLine: 88.");
 
             var fields = new XmlSerializerOptions { RespectNullableAnnotations = true, IncludeFields = true };
             Reading<AnnotatedField>("<AnnotatedField><Label" + Nil + "/></AnnotatedField>", fields)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Label", "AnnotatedField"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Label", "AnnotatedField") + " Path: /AnnotatedField/Label | LineNumber: 1 | BytePositionInLine: 94.");
         }
 
         [TestMethod]
@@ -128,32 +128,32 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_NilWrapper_ForANonNullableCollection_IsRejected()
         {
             Reading<AnnotatedShapes>("<AnnotatedShapes><Tags" + Nil + "/></AnnotatedShapes>", Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Tags", "AnnotatedShapes"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Tags", "AnnotatedShapes") + " Path: /AnnotatedShapes/Tags | LineNumber: 1 | BytePositionInLine: 94.");
             Reading<AnnotatedShapes>("<AnnotatedShapes><Map" + Nil + "/></AnnotatedShapes>", Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Map", "AnnotatedShapes"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Setting("Map", "AnnotatedShapes") + " Path: /AnnotatedShapes/Map | LineNumber: 1 | BytePositionInLine: 93.");
         }
 
         [TestMethod]
         public void Write_NullFromANonNullableMember_IsRejected()
         {
             Writing(new Annotated { Name = null! }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Name", "Annotated"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Name", "Annotated") + " Path: /Annotated.");
             Writing(new AnnotatedRecord(null!, "m"), Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Name", "AnnotatedRecord"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Name", "AnnotatedRecord") + " Path: /AnnotatedRecord.");
             Writing(new AnnotatedShapes { Code = null! }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Code", "AnnotatedShapes"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Code", "AnnotatedShapes") + " Path: /AnnotatedShapes.");
             Writing(new AnnotatedShapes { Loose = null! }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Loose", "AnnotatedShapes"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Loose", "AnnotatedShapes") + " Path: /AnnotatedShapes.");
             Writing(new AnnotatedShapes { Map = null! }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Map", "AnnotatedShapes"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Map", "AnnotatedShapes") + " Path: /AnnotatedShapes.");
             Writing(new AnnotatedShapes { Tags = null! }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Tags", "AnnotatedShapes"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Tags", "AnnotatedShapes") + " Path: /AnnotatedShapes.");
             Writing(new AnnotatedText { Body = null! }, Respect)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Body", "AnnotatedText"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Body", "AnnotatedText") + " Path: /AnnotatedText.");
 
             var fields = new XmlSerializerOptions { RespectNullableAnnotations = true, IncludeFields = true };
             Writing(new AnnotatedField { Label = null! }, fields)
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Label", "AnnotatedField"));
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Label", "AnnotatedField") + " Path: /AnnotatedField.");
         }
 
         [TestMethod]
@@ -172,7 +172,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 XmlSerializer.Serialize(new Annotated { Name = null! }, options).Should().Be("<Annotated/>");
                 XmlSerializer.Serialize(new AnnotatedShapes { Code = null!, Loose = null!, Map = null!, Tags = null! }, options).Should().Be("<AnnotatedShapes/>");
                 Writing(new AnnotatedIgnored { Kept = null! }, options)
-                    .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Kept", "AnnotatedIgnored"), "the condition on the member wins over the option");
+                    .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(Getting("Kept", "AnnotatedIgnored") + " Path: /AnnotatedIgnored.", "the condition on the member wins over the option");
             }
 
             XmlSerializer.Serialize(new AnnotatedIgnored { Defaulted = null!, Skipped = null! }, Respect).Should().Be("<AnnotatedIgnored><Kept>k</Kept></AnnotatedIgnored>");

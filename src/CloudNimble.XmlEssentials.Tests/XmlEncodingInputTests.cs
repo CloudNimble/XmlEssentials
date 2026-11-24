@@ -62,7 +62,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             const string xml = "<?xml version=\"1.0\" encoding=\"\"?><a/>";
             FluentActions.Invoking(() => XmlDocument.Parse(xml)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The XML declaration is malformed.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>(xml)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The XML declaration is malformed.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>(xml)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The XML declaration is malformed. Path: /Person | LineNumber: 1 | BytePositionInLine: 34.");
         }
 
         [TestMethod]
@@ -74,7 +74,8 @@ namespace CloudNimble.XmlEssentials.Tests
             var bytes = Encoding.UTF8.GetBytes("<?xml version=\"1.0\" encoding=\"" + encoding + "\"?><Person><Name>Ada</Name></Person>");
             var message = "XmlEssentials is UTF-8 only. Declared encoding '" + encoding + "' is not supported.";
             FluentActions.Invoking(() => XmlDocument.Parse(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>(bytes)).Should().ThrowExactly<XmlException>().Which.Message
+                .Should().Be(message + " Path: /Person | LineNumber: 1 | BytePositionInLine: " + (34 + encoding.Length) + ".");
             FluentActions.Invoking(() => XmlReaderHarness.Drain(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
         }
 
@@ -93,7 +94,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var bytes = withByteOrderMark ? [.. encoding.GetPreamble(), .. text] : text;
             FluentActions.Invoking(() => XmlReaderHarness.Drain(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(NotUtf8);
             FluentActions.Invoking(() => XmlDocument.Parse(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(NotUtf8);
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(NotUtf8);
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>(bytes)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(NotUtf8 + " Path: /Person | LineNumber: 1 | BytePositionInLine: 1.");
         }
 
         [TestMethod]

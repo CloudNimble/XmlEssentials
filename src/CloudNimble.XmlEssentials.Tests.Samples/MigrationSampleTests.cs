@@ -102,7 +102,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(MigrateFromXmlSerializer.Utf16Declaration).Should().Be(
                 "Contoso Freight\n" +
-                "XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.");
+                "XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported. Path: /Shipment | LineNumber: 1 | BytePositionInLine: 40.");
         }
 
         [TestMethod]

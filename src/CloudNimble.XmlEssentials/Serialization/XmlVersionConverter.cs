@@ -25,7 +25,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             return Version.TryParse(XmlLexical.Collapse(utf8), out var value)
                 ? value
-                : throw new XmlException("The value is not a valid version.");
+                : throw XmlException.Create("The value is not a valid version.");
         }
 
         /// <inheritdoc />

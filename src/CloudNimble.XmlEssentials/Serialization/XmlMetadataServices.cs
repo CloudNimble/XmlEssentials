@@ -199,6 +199,28 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Creates the exception that generated code throws for an error it finds while it writes a value.
+        /// </summary>
+        /// <param name="message">The message that describes the error.</param>
+        /// <returns>
+        /// An <see cref="XmlException"/> that the serializer treats as one of its own: when the serializer gives
+        /// it a <see cref="XmlException.Path"/>, the path follows the message.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="message"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// An exception that is created with a constructor of <see cref="XmlException"/> keeps the message it
+        /// was given. Generated code uses this method so that an error reads the same whether a write fast path
+        /// or the serializer found it.
+        /// </remarks>
+        public static XmlException CreateException(string message)
+        {
+            ArgumentNullException.ThrowIfNull(message);
+            return XmlException.Create(message);
+        }
+
+        /// <summary>
         /// Creates metadata for an object type from the metadata of its constructor and members.
         /// </summary>
         /// <typeparam name="T">

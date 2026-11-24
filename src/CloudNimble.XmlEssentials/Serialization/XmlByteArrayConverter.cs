@@ -23,7 +23,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override byte[] Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            return XmlLexical.TryDecodeBase64(utf8, out var value) ? value : throw new XmlException("The value is not valid base64.");
+            return XmlLexical.TryDecodeBase64(utf8, out var value) ? value : throw XmlException.Create("The value is not valid base64.");
         }
 
         /// <inheritdoc />

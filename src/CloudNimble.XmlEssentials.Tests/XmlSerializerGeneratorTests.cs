@@ -536,7 +536,7 @@ namespace CloudNimble.XmlEssentials.Tests
                         return message + "|" + read;
                     }
                 }
-                """).Should().Be("The required constructor parameter 'Age' is missing.|Person { Name = Ada, Age = 0 }");
+                """).Should().Be("The required constructor parameter 'Age' is missing. Path: /Person | LineNumber: 1 | BytePositionInLine: 34.|Person { Name = Ada, Age = 0 }");
         }
 
         [TestMethod]
@@ -709,7 +709,7 @@ namespace CloudNimble.XmlEssentials.Tests
                             + "|" + message;
                     }
                 }
-                """).Should().Be("i:n:7:kept|j:m:2:a,b|The required member 'Name' is missing.");
+                """).Should().Be("i:n:7:kept|j:m:2:a,b|The required member 'Name' is missing. Path: /Entry | LineNumber: 1 | BytePositionInLine: 26.");
         }
 
         [TestMethod]
@@ -822,7 +822,7 @@ namespace CloudNimble.XmlEssentials.Tests
                             Try(() => XmlSerializer.Deserialize($"<Strict><Name{Nil}/></Strict>", AppXmlContext.Default.Strict)!.Name));
                     }
                 }
-                """").Should().Be("null,null,null,4,null,[a;null;]|null,null,null,9,null,[]|,3,1,4,null,[]|The element is nil but type 'System.Int32' is not nillable.|The required member 'Name' cannot be nil.");
+                """").Should().Be("null,null,null,4,null,[a;null;]|null,null,null,9,null,[]|,3,1,4,null,[]|The element is nil but type 'System.Int32' is not nillable. Path: /Holder/Count | LineNumber: 1 | BytePositionInLine: 86.|The required member 'Name' cannot be nil. Path: /Strict/Name | LineNumber: 1 | BytePositionInLine: 85.");
         }
 
         [TestMethod]

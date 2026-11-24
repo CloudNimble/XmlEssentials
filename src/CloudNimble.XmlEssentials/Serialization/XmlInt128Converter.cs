@@ -20,7 +20,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override Int128 Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            return XmlLexical.TryParseInt128(utf8, out var value) ? value : throw new XmlException("The value is not a valid integer.");
+            return XmlLexical.TryParseInt128(utf8, out var value) ? value : throw XmlException.Create("The value is not a valid integer.");
         }
 
         /// <inheritdoc />

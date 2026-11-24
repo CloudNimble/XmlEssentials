@@ -153,16 +153,16 @@ namespace CloudNimble.XmlEssentials.Tests
             // A box of strings: the box of integers, and the box that takes only value types, are not its derived types.
             XmlSerializer.Serialize<ClosedBox<string>>(new ClosedFull<string> { Value = "v" }, options).Should().Be("<ClosedFull><Value>v</Value></ClosedFull>");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<ClosedBox<string>>("<ClosedIntBox/>", options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'ClosedBoxOfString'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'ClosedBoxOfString'. Path: /ClosedBoxOfString | LineNumber: 1 | BytePositionInLine: 16.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<ClosedBox<string>>("<ClosedValueBox/>", options))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'ClosedBoxOfString'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'ClosedBoxOfString'. Path: /ClosedBoxOfString | LineNumber: 1 | BytePositionInLine: 18.");
         }
 
         [TestMethod]
         public void ClosedType_WithNoDerivedTypes_HasNothingToInfer()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<ClosedAlone>("<ClosedAlone/>", Inferring()))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The type '" + Closed + "ClosedAlone' is abstract or an interface, so the element must identify one of its derived types.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The type '" + Closed + "ClosedAlone' is abstract or an interface, so the element must identify one of its derived types. Path: /ClosedAlone | LineNumber: 1 | BytePositionInLine: 15.");
         }
 #endif
 

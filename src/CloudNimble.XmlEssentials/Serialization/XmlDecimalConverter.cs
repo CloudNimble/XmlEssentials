@@ -23,7 +23,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override decimal Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
-            return XmlLexical.TryParseDecimal(utf8, out var value) ? value : throw new XmlException("The value is not a valid decimal.");
+            return XmlLexical.TryParseDecimal(utf8, out var value) ? value : throw XmlException.Create("The value is not a valid decimal.");
         }
 
         /// <inheritdoc />

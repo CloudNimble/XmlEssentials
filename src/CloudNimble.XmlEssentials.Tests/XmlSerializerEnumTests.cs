@@ -137,7 +137,9 @@ namespace CloudNimble.XmlEssentials.Tests
         private static void Rejects<T>(string xml)
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<T>(xml, Name))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid enum member.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(
+                    // The path is the document element, and the reader has read all of it.
+                    "The value is not a valid enum member. Path: /" + typeof(T).Name + " | LineNumber: 1 | BytePositionInLine: " + (xml.Length + 1) + ".");
         }
 
         #endregion

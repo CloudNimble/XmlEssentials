@@ -214,7 +214,7 @@ namespace CloudNimble.Text.Xml.Nodes
         {
             if (node.Parent is not null)
             {
-                throw new XmlException("The node already has a parent.");
+                throw XmlException.Create("The node already has a parent.");
             }
 
             node.SetParent(_owner);

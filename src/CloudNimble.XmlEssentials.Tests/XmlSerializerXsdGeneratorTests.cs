@@ -415,7 +415,7 @@ namespace CloudNimble.XmlEssentials.Tests
             loadContext.Unload();
             result.Should().Be(
                 "<Order xmlns=\"urn:order\" currency=\"USD\"><Id>A-1</Id><Status>Open</Status><Qty xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Line><Sku>sku</Sku><Qty>1</Qty></Line></Order>\n" +
-                "same\nA-1:sku\nThe root element is not in namespace 'urn:order'.");
+                "same\nA-1:sku\nThe root element is not in namespace 'urn:order'. Path: /Order | LineNumber: 1 | BytePositionInLine: 8.");
         }
 
         [TestMethod]

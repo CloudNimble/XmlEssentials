@@ -700,6 +700,19 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gives <paramref name="exception"/> the current byte offset and line when it has no position.
+        /// </summary>
+        /// <param name="exception">An exception that was thrown while this reader was being read from.</param>
+        /// <remarks>
+        /// The serializer calls this for an exception that did not come from the reader, such as a value that
+        /// is not of the type it is read as. The position is where the reader had got to.
+        /// </remarks>
+        internal readonly void Locate(XmlException exception)
+        {
+            exception.SetPositionIfMissing(_documentBytesConsumedBase + _pos, _lineNumber, _pos - _lineStart + 1);
+        }
+
+        /// <summary>
         /// Creates an <see cref="XmlException"/> at the current byte offset and line.
         /// </summary>
         /// <param name="message">The error message.</param>
@@ -707,7 +720,7 @@ namespace CloudNimble.Text.Xml
         internal readonly XmlException Error(string message)
         {
             var linePosition = _pos - _lineStart + 1;
-            return new XmlException(message, _documentBytesConsumedBase + _pos, _lineNumber, linePosition, path: null);
+            return XmlException.Create(message, _documentBytesConsumedBase + _pos, _lineNumber, linePosition, path: null);
         }
 
         /// <summary>

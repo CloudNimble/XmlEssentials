@@ -26,6 +26,16 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
+        public void AbstractType_WithNoDerivedTypes_IsRefusedAsTheReflectionResolverRefusesIt()
+        {
+            // Nothing could be created for it, and writing a value as it would drop the members of the value's own type.
+            FluentActions.Invoking(() => XmlMetadataServices.CreateObjectInfo(new XmlSerializerOptions(), new XmlObjectInfoValues<LonelyShape>()))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.LonelyShape' is not supported.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize<LonelyShape>(null!, new XmlSerializerOptions()))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.LonelyShape' is not supported.");
+        }
+
+        [TestMethod]
         public void ConstructorParameters_AreFilledAndChecked()
         {
             Both(o => XmlSerializer.Serialize(new MetadataLine(2, "s") { Price = 1.5m }, o))
@@ -33,9 +43,9 @@ namespace CloudNimble.XmlEssentials.Tests
             Both(o => XmlSerializer.Deserialize<MetadataLine>("<MetadataLine><Price>1.5</Price><Sku>s</Sku><Qty>2</Qty></MetadataLine>", o)!.ToString())
                 .Should().Be("MetadataLine { Qty = 2, Sku = s, Price = 1.5 }");
             Both(o => XmlSerializer.Deserialize<MetadataLine>("<MetadataLine><Sku>s</Sku></MetadataLine>", o)!.ToString())
-                .Should().Be("XmlException: The required constructor parameter 'Qty' is missing.");
+                .Should().Be("XmlException: The required constructor parameter 'Qty' is missing. Path: /MetadataLine | LineNumber: 1 | BytePositionInLine: 42.");
             Both(o => XmlSerializer.Deserialize<MetadataLine>("<MetadataLine><Qty>2</Qty><Sku" + Nil + "</MetadataLine>", o)!.ToString(), o => o.RespectNullableAnnotations = true)
-                .Should().Be("XmlException: The constructor parameter 'Sku' on type 'CloudNimble.XmlEssentials.Tests.POCOs.MetadataLine' doesn't allow null values. Consider updating its nullability annotation.");
+                .Should().Be("XmlException: The constructor parameter 'Sku' on type 'CloudNimble.XmlEssentials.Tests.POCOs.MetadataLine' doesn't allow null values. Consider updating its nullability annotation. Path: /MetadataLine/Sku | LineNumber: 1 | BytePositionInLine: 102.");
         }
 
         [TestMethod]
@@ -95,7 +105,7 @@ namespace CloudNimble.XmlEssentials.Tests
             Both(o => XmlSerializer.Deserialize<Person>("<Person><name>n</name><AGE>3</AGE></Person>", o)!.Name + XmlSerializer.Deserialize<Person>("<Person><name>n</name><AGE>3</AGE></Person>", o)!.Age,
                 o => o.PropertyNameCaseInsensitive = true).Should().Be("n3");
             Both(o => XmlSerializer.Deserialize<Person>("<Person><Other>1</Other></Person>", o)!.Age.ToString(), o => o.UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow)
-                .Should().Be("XmlException: Unknown element 'Other'.");
+                .Should().Be("XmlException: Unknown element 'Other'. Path: /Person | LineNumber: 1 | BytePositionInLine: 16.");
         }
 
         [TestMethod]
@@ -188,6 +198,16 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlMetadataServices.CanUseSerializeHandler(camel, XmlNamingPolicy.CamelCase, XmlNamingPolicy.CamelCase, XmlPropertyMapping.Element, false).Should().BeTrue();
             FluentActions.Invoking(() => XmlMetadataServices.CanUseSerializeHandler(null!, null, null, XmlPropertyMapping.Element, false))
                 .Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("options");
+        }
+
+        [TestMethod]
+        public void CreateException_MakesAnExceptionWithTheMessage_AndRefusesNull()
+        {
+            var exception = XmlMetadataServices.CreateException("The value is refused.");
+            exception.Message.Should().Be("The value is refused.");
+            exception.Path.Should().BeNull();
+            exception.LineNumber.Should().BeNull();
+            FluentActions.Invoking(() => XmlMetadataServices.CreateException(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("message");
         }
 
         [TestMethod]

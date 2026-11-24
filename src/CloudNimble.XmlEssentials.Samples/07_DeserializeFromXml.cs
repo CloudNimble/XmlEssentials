@@ -207,6 +207,32 @@ namespace CloudNimble.XmlEssentials.Samples
             }
         }
 
+        /// <summary>
+        /// Reads where in the document a value could not be converted, from the exception.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void LocateError(TextWriter output)
+        {
+            const string xml = """
+                <Invoice>
+                  <Number>204</Number>
+                  <Lines><Sku>KB-01</Sku><Quantity>1</Quantity></Lines>
+                  <Lines><Sku>MS-02</Sku><Quantity>two</Quantity></Lines>
+                </Invoice>
+                """;
+
+            try
+            {
+                XmlSerializer.Deserialize<Invoice>(xml);
+            }
+            catch (XmlException ex)
+            {
+                output.WriteLine(ex.Message);
+                output.WriteLine($"Path: {ex.Path}");
+                output.WriteLine($"Line {ex.LineNumber}, position {ex.LinePosition}");
+            }
+        }
+
         #endregion
 
     }

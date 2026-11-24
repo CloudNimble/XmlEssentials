@@ -48,7 +48,7 @@ namespace CloudNimble.XmlEssentials.Tests
             ReadAs(prototype, "<anonymousType><age>4</age><NAME>Bo</NAME></anonymousType>", new XmlSerializerOptions { PropertyNameCaseInsensitive = true })
                 .Should().Be(new { Name = "Bo", Age = 4 });
             FluentActions.Invoking(() => ReadAs(prototype, "<AnonymousType><Age>4</Age></AnonymousType>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Name' is missing.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The required constructor parameter 'Name' is missing. Path: /AnonymousType | LineNumber: 1 | BytePositionInLine: 44.");
 
             static T ReadAs<T>(T prototype, string xml, XmlSerializerOptions? options = null)
             {
@@ -212,7 +212,7 @@ namespace CloudNimble.XmlEssentials.Tests
             read.Node.Should().BeNull();
             read.ElementNode.Should().BeNull();
             FluentActions.Invoking(() => XmlSerializer.Deserialize<XmlValueHolder>("<XmlValueHolder><Node><a/><b/></Node></XmlValueHolder>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element holds more than one element where one XML value is expected.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element holds more than one element where one XML value is expected. Path: /XmlValueHolder/Node | LineNumber: 1 | BytePositionInLine: 31.");
             FluentActions.Invoking(() => XmlSerializer.Serialize(new XmlValueHolder { Node = new XmlTextNode("t") }, Bare))
                 .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                     "Only an element can be serialized as an XML value. The node is a 'CloudNimble.Text.Xml.Nodes.XmlTextNode'.");

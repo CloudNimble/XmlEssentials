@@ -23,7 +23,7 @@ namespace CloudNimble.Text.Xml.Serialization
             if (!XmlLexical.TryParseHalf(utf8, out var value)
                 || (options.NumberHandling is XmlNumberHandling.Strict && !Half.IsFinite(value)))
             {
-                throw new XmlException("The value is not a valid float.");
+                throw XmlException.Create("The value is not a valid float.");
             }
 
             return value;
@@ -34,7 +34,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (options.NumberHandling is XmlNumberHandling.Strict && !Half.IsFinite(value))
             {
-                throw new XmlException("Named floating-point literals are not allowed when NumberHandling is Strict.");
+                throw XmlException.Create("Named floating-point literals are not allowed when NumberHandling is Strict.");
             }
 
             if (Half.IsNaN(value))

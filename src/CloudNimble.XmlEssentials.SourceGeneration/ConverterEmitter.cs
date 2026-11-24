@@ -75,7 +75,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 // with no condition of its own follows the options.
                 builder.Append(indent).Append("if (options.RespectNullableAnnotations && ").Append(access).Append(" is null")
                     .Append(member.IgnoreCondition == -1 ? " && options.DefaultIgnoreCondition is not (XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault)" : "")
-                    .Append(") throw new XmlException(\"The property or field '").Append(Escape(member.ClrName)).Append("' on type '\" + typeof(").Append(member.NullGetOwner)
+                    .Append(") throw XmlMetadataServices.CreateException(\"The property or field '").Append(Escape(member.ClrName)).Append("' on type '\" + typeof(").Append(member.NullGetOwner)
                     .AppendLine(") + \"' doesn't allow getting null values. Consider updating its nullability annotation.\");");
             }
 

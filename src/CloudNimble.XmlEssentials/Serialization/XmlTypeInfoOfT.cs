@@ -71,7 +71,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             return IsNillable
                 ? true
-                : throw new XmlException($"The element is nil but type '{typeof(T)}' is not nillable.");
+                : throw XmlException.Create($"The element is nil but type '{typeof(T)}' is not nillable.");
         }
 
         /// <summary>

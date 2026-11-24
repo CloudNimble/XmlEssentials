@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -149,10 +150,25 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (!DeclaredType.IsAssignableFrom(derived.Type))
             {
-                throw new XmlException($"The element identifies the type '{derived.Type}', which is not a '{DeclaredType}'.");
+                throw XmlException.Create($"The element identifies the type '{derived.Type}', which is not a '{DeclaredType}'.");
             }
 
-            return derived.Info.ReadElementAsObject(ref reader);
+            if (Placement is not XmlDiscriminatorPlacement.ElementName)
+            {
+                return derived.Info.ReadElementAsObject(ref reader);
+            }
+
+            try
+            {
+                return derived.Info.ReadElementAsObject(ref reader);
+            }
+            catch (XmlException ex)
+            {
+                // The element is named for the derived type, not for the member or the item it is the value of.
+                reader.Locate(ex);
+                ex.NameElement(Encoding.UTF8.GetString(derived.Utf8Name));
+                throw;
+            }
         }
 
         /// <summary>
@@ -175,7 +191,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
                     if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
                     {
-                        throw new XmlException($"Unknown type discriminator '{discriminator}'.");
+                        throw XmlException.Create($"Unknown type discriminator '{discriminator}'.");
                     }
                 }
 

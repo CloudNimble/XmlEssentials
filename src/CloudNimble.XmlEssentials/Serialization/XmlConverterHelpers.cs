@@ -72,7 +72,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (!TryMoveToStartElement(ref reader))
             {
-                throw new XmlException("Expected a start element.");
+                throw XmlException.Create("Expected a start element.");
             }
         }
 
@@ -132,7 +132,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     case XmlTokenType.ProcessingInstruction:
                         break;
                     default:
-                        throw new XmlException($"Unexpected {reader.TokenType} in simple content.");
+                        throw XmlException.Create($"Unexpected {reader.TokenType} in simple content.");
                 }
             }
 

@@ -336,7 +336,7 @@ namespace CloudNimble.Text.Xml
         {
             if (!TryGetAttribute(localName, out var value))
             {
-                throw new XmlException($"Attribute '{localName}' was not found.");
+                throw XmlException.Create($"Attribute '{localName}' was not found.");
             }
 
             return value;
@@ -368,7 +368,7 @@ namespace CloudNimble.Text.Xml
             ArgumentNullException.ThrowIfNull(namespaceUri);
             if (!TryFindAttribute(localName, namespaceUri, out var value))
             {
-                throw new XmlException($"Attribute '{localName}' was not found.");
+                throw XmlException.Create($"Attribute '{localName}' was not found.");
             }
 
             return value;
@@ -398,7 +398,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a boolean.");
+                throw XmlException.Create("The value is not a boolean.");
             }
 
             return value;
@@ -428,7 +428,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not valid base64.");
+                throw XmlException.Create("The value is not valid base64.");
             }
 
             return value!;
@@ -460,7 +460,7 @@ namespace CloudNimble.Text.Xml
         {
             if (!TryGetChild(localName, out var value))
             {
-                throw new XmlException($"Child element '{localName}' was not found.");
+                throw XmlException.Create($"Child element '{localName}' was not found.");
             }
 
             return value;
@@ -493,7 +493,7 @@ namespace CloudNimble.Text.Xml
         {
             if (!TryGetChild(localName, namespaceUri, out var value))
             {
-                throw new XmlException($"Child element '{localName}' was not found.");
+                throw XmlException.Create($"Child element '{localName}' was not found.");
             }
 
             return value;
@@ -528,7 +528,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid dateTime.");
+                throw XmlException.Create("The value is not a valid dateTime.");
             }
 
             return value;
@@ -561,7 +561,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid dateTime.");
+                throw XmlException.Create("The value is not a valid dateTime.");
             }
 
             return value;
@@ -591,7 +591,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid decimal.");
+                throw XmlException.Create("The value is not a valid decimal.");
             }
 
             return value;
@@ -624,7 +624,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid double.");
+                throw XmlException.Create("The value is not a valid double.");
             }
 
             return value;
@@ -654,7 +654,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid GUID.");
+                throw XmlException.Create("The value is not a valid GUID.");
             }
 
             return value;
@@ -717,7 +717,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid integer.");
+                throw XmlException.Create("The value is not a valid integer.");
             }
 
             return value;
@@ -747,7 +747,7 @@ namespace CloudNimble.Text.Xml
             XmlDocument.ReturnScratch(rented);
             if (!parsed)
             {
-                throw new XmlException("The value is not a valid integer.");
+                throw XmlException.Create("The value is not a valid integer.");
             }
 
             return value;
@@ -1103,7 +1103,7 @@ namespace CloudNimble.Text.Xml
 
             if (typed && row.Kind is XmlValueKind.Nil)
             {
-                throw new XmlException("The element is nil and has no value.");
+                throw XmlException.Create("The element is nil and has no value.");
             }
 
             var first = _index + 1 + row.AttributeCount;

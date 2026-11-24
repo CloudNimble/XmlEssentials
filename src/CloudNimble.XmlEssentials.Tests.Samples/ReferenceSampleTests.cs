@@ -84,7 +84,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "01:30:00\n" +
                 "0102030405\n" +
                 "Delivered\n" +
-                "The value is not a valid decimal.");
+                "The value is not a valid decimal. Path: /Decimal | LineNumber: 1 | BytePositionInLine: 24.");
         }
 
         [TestMethod]
@@ -156,7 +156,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample39_SecurityAndThreadSafety()
         {
             SampleOutput.Capture(SecurityAndThreadSafety.Run).Should().Be(
-                "Line 2: DTD is not allowed.\n" +
+                "Line 2: DTD is not allowed. Path: /Person | LineNumber: 2 | BytePositionInLine: 1.\n" +
                 "Line 1: DTD is not allowed.");
         }
 
@@ -165,8 +165,8 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(SecurityAndThreadSafety.EnforceLimits).Should().Be(
                 "MaxDepth exceeded (64).\n" +
-                "MaxTextByteCount exceeded (256).\n" +
-                "MaxNameByteCount exceeded (64).");
+                "MaxTextByteCount exceeded (256). Path: /Person/Name | LineNumber: 1 | BytePositionInLine: 315.\n" +
+                "MaxNameByteCount exceeded (64). Path: /Person | LineNumber: 1 | BytePositionInLine: 310.");
         }
 
         [TestMethod]
@@ -194,7 +194,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         {
             SampleOutput.Capture(SecurityAndThreadSafety.RejectUndeclaredTypes).Should().Be(
                 "CourierCarrier\n" +
-                "Unknown type discriminator 'System.Diagnostics.Process, System'.");
+                "Unknown type discriminator 'System.Diagnostics.Process, System'. Path: /Delivery/Carrier | LineNumber: 2 | BytePositionInLine: 112.");
         }
 
         [TestMethod]

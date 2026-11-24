@@ -66,24 +66,24 @@ namespace CloudNimble.XmlEssentials.Tests
         public void AbstractType_ElementThatNamesNoDerivedType_IsRejected()
         {
             const string message = "The type 'CloudNimble.XmlEssentials.Tests.POCOs.NamedShape' is abstract or an interface, so the element must identify one of its derived types.";
-            Message<XmlException>(() => XmlSerializer.Deserialize<NamedShape>("<NamedShape><Label>a</Label></NamedShape>")).Should().Be(message);
-            Message<XmlException>(() => XmlSerializer.Deserialize<PolyItem<NamedShape>>("<PolyItemOfNamedShape><Item><Label>a</Label></Item></PolyItemOfNamedShape>")).Should().Be(message);
-            Message<XmlException>(() => XmlSerializer.Deserialize<PolyList<NamedShape>>("<PolyListOfNamedShape><Items><Label>a</Label></Items></PolyListOfNamedShape>")).Should().Be(message);
-            Message<XmlException>(() => XmlSerializer.Deserialize<PolyWrapped<NamedShape>>("<PolyWrappedOfNamedShape><Items><NamedShape><Label>a</Label></NamedShape></Items></PolyWrappedOfNamedShape>")).Should().Be(message);
-            Message<XmlException>(() => XmlSerializer.Deserialize<NamedShape>("<Other/>")).Should().Be("The root element does not match 'NamedShape'.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<NamedShape>("<NamedShape><Label>a</Label></NamedShape>")).Should().Be(message + " Path: /NamedShape | LineNumber: 1 | BytePositionInLine: 13.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<PolyItem<NamedShape>>("<PolyItemOfNamedShape><Item><Label>a</Label></Item></PolyItemOfNamedShape>")).Should().Be(message + " Path: /PolyItemOfNamedShape/Item | LineNumber: 1 | BytePositionInLine: 29.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<PolyList<NamedShape>>("<PolyListOfNamedShape><Items><Label>a</Label></Items></PolyListOfNamedShape>")).Should().Be(message + " Path: /PolyListOfNamedShape/Items[0] | LineNumber: 1 | BytePositionInLine: 30.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<PolyWrapped<NamedShape>>("<PolyWrappedOfNamedShape><Items><NamedShape><Label>a</Label></NamedShape></Items></PolyWrappedOfNamedShape>")).Should().Be(message + " Path: /PolyWrappedOfNamedShape/Items/NamedShape[0] | LineNumber: 1 | BytePositionInLine: 45.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<NamedShape>("<Other/>")).Should().Be("The root element does not match 'NamedShape'. Path: /NamedShape | LineNumber: 1 | BytePositionInLine: 9.");
         }
 
         [TestMethod]
         public void AbstractType_MissingDiscriminator_IsRejected()
         {
             Message<XmlException>(() => XmlSerializer.Deserialize<KindShape>("<KindShape><Label>a</Label></KindShape>"))
-                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.KindShape' is abstract or an interface, so the element must identify one of its derived types.");
+                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.KindShape' is abstract or an interface, so the element must identify one of its derived types. Path: /KindShape | LineNumber: 1 | BytePositionInLine: 12.");
             Message<XmlException>(() => XmlSerializer.Deserialize<IKindShape>("<IKindShape><Label>a</Label></IKindShape>"))
-                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.IKindShape' is abstract or an interface, so the element must identify one of its derived types.");
+                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.IKindShape' is abstract or an interface, so the element must identify one of its derived types. Path: /IKindShape | LineNumber: 1 | BytePositionInLine: 13.");
             Message<XmlException>(() => XmlSerializer.Deserialize<PolyItem<TypedShape>>("<PolyItemOfTypedShape><Item><Label>a</Label></Item></PolyItemOfTypedShape>"))
-                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.TypedShape' is abstract or an interface, so the element must identify one of its derived types.");
+                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.TypedShape' is abstract or an interface, so the element must identify one of its derived types. Path: /PolyItemOfTypedShape/Item | LineNumber: 1 | BytePositionInLine: 29.");
             Message<XmlException>(() => XmlSerializer.Deserialize<PolyList<ITypedShape>>("<PolyListOfITypedShape><Items><Label>a</Label></Items></PolyListOfITypedShape>"))
-                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.ITypedShape' is abstract or an interface, so the element must identify one of its derived types.");
+                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.ITypedShape' is abstract or an interface, so the element must identify one of its derived types. Path: /PolyListOfITypedShape/Items[0] | LineNumber: 1 | BytePositionInLine: 31.");
         }
 
         [TestMethod]
@@ -111,9 +111,9 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void AbstractType_UnknownDiscriminator_IsRejected()
         {
-            Message<XmlException>(() => XmlSerializer.Deserialize<KindShape>("<KindShape kind=\"hexagon\"/>")).Should().Be("Unknown type discriminator 'hexagon'.");
-            Message<XmlException>(() => XmlSerializer.Deserialize<ITypedShape>("<ITypedShape " + Xsi + " xsi:type=\"hexagon\"/>")).Should().Be("Unknown type discriminator 'hexagon'.");
-            Message<XmlException>(() => XmlSerializer.Deserialize<PolyItem<IKindShape>>("<PolyItemOfIKindShape><Item kind=\"hexagon\"/></PolyItemOfIKindShape>")).Should().Be("Unknown type discriminator 'hexagon'.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<KindShape>("<KindShape kind=\"hexagon\"/>")).Should().Be("Unknown type discriminator 'hexagon'. Path: /KindShape | LineNumber: 1 | BytePositionInLine: 28.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<ITypedShape>("<ITypedShape " + Xsi + " xsi:type=\"hexagon\"/>")).Should().Be("Unknown type discriminator 'hexagon'. Path: /ITypedShape | LineNumber: 1 | BytePositionInLine: 88.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<PolyItem<IKindShape>>("<PolyItemOfIKindShape><Item kind=\"hexagon\"/></PolyItemOfIKindShape>")).Should().Be("Unknown type discriminator 'hexagon'. Path: /PolyItemOfIKindShape/Item | LineNumber: 1 | BytePositionInLine: 45.");
         }
 
         [TestMethod]
@@ -137,7 +137,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var xml = XmlSerializer.Serialize<LooseShape>(new LooseTriangle { Label = "t", Height = 4 }, Bare);
             xml.Should().Be("<LooseShape><Label>t</Label></LooseShape>");
             Message<XmlException>(() => XmlSerializer.Deserialize<LooseShape>(xml))
-                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.LooseShape' is abstract or an interface, so the element must identify one of its derived types.");
+                .Should().Be("The type 'CloudNimble.XmlEssentials.Tests.POCOs.LooseShape' is abstract or an interface, so the element must identify one of its derived types. Path: /LooseShape | LineNumber: 1 | BytePositionInLine: 13.");
         }
 
         [TestMethod]

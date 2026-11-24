@@ -26,7 +26,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             return Uri.TryCreate(Encoding.UTF8.GetString(XmlLexical.Collapse(utf8)), UriKind.RelativeOrAbsolute, out var value)
                 ? value
-                : throw new XmlException("The value is not a valid URI.");
+                : throw XmlException.Create("The value is not a valid URI.");
         }
 
         /// <inheritdoc />

@@ -84,11 +84,11 @@ namespace CloudNimble.XmlEssentials.Tests
             var product = XmlSerializer.Deserialize<Product>("<BOOK><Title>x</Title><Author>Ada</Author></BOOK>", loose);
             product.Should().BeOfType<Book>().Which.Author.Should().Be("Ada");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<person/>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Person'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Person'. Path: /Person | LineNumber: 1 | BytePositionInLine: 10.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Person>("<People/>", loose))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Person'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Person'. Path: /Person | LineNumber: 1 | BytePositionInLine: 10.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Product>("<book><Title>x</Title></book>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Product'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Product'. Path: /Product | LineNumber: 1 | BytePositionInLine: 7.");
         }
 
         [TestMethod]
@@ -102,7 +102,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<CafeOrder>(xml).Should().BeEquivalentTo(new CafeOrder { Cream = "x", Sugar = "y" });
             XmlSerializer.Deserialize<CafeOrder>("<Café><crème>x</crème><SUGAR>y</SUGAR></Café>", loose).Should().BeEquivalentTo(new CafeOrder { Sugar = "y" });
             FluentActions.Invoking(() => XmlSerializer.Deserialize<CafeOrder>("<café/>", loose))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Café'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Café'. Path: /Café | LineNumber: 1 | BytePositionInLine: 9.");
         }
 
         [TestMethod]
@@ -154,10 +154,10 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<Book>("<Dvd><Title>x</Title></Dvd>"))
                 .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(
-                    "The element identifies the type 'CloudNimble.XmlEssentials.Tests.POCOs.Dvd', which is not a 'CloudNimble.XmlEssentials.Tests.POCOs.Book'.");
+                    "The element identifies the type 'CloudNimble.XmlEssentials.Tests.POCOs.Dvd', which is not a 'CloudNimble.XmlEssentials.Tests.POCOs.Book'. Path: /Book | LineNumber: 1 | BytePositionInLine: 6.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<KindBook>("<KindBook kind=\"dvd\"><Title>x</Title></KindBook>"))
                 .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(
-                    "The element identifies the type 'CloudNimble.XmlEssentials.Tests.POCOs.KindDvd', which is not a 'CloudNimble.XmlEssentials.Tests.POCOs.KindBook'.");
+                    "The element identifies the type 'CloudNimble.XmlEssentials.Tests.POCOs.KindDvd', which is not a 'CloudNimble.XmlEssentials.Tests.POCOs.KindBook'. Path: /KindBook | LineNumber: 1 | BytePositionInLine: 22.");
             XmlSerializer.Deserialize<Book>("<Book><Title>x</Title><Author>Ada</Author></Book>")!.Author.Should().Be("Ada");
             XmlSerializer.Deserialize<KindBook>("<KindBook kind=\"book\"><Title>x</Title></KindBook>")!.Title.Should().Be("x");
             XmlSerializer.Deserialize<KindBook>("<KindBook><Title>y</Title></KindBook>")!.Title.Should().Be("y");
@@ -181,11 +181,11 @@ namespace CloudNimble.XmlEssentials.Tests
             var near = XmlSerializer.Deserialize<NearProduct>("<NearProduct><Title>x</Title></NearProduct>")!;
             near.Should().BeOfType<NearProduct>().Which.Title.Should().Be("x");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<NearProduct>("<NearSpecialBook><Title>x</Title></NearSpecialBook>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'NearProduct'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'NearProduct'. Path: /NearProduct | LineNumber: 1 | BytePositionInLine: 18.");
             XmlSerializer.Deserialize<FallbackProduct>("<FallbackProduct kind=\"tape\"><Title>x</Title></FallbackProduct>")
                 .Should().BeOfType<FallbackProduct>();
             FluentActions.Invoking(() => XmlSerializer.Deserialize<KindProduct>("<KindProduct kind=\"tape\"><Title>x</Title></KindProduct>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown type discriminator 'tape'. Path: /KindProduct | LineNumber: 1 | BytePositionInLine: 26.");
         }
 
         #endregion
