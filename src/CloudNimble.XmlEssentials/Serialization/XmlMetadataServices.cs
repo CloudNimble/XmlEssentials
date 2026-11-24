@@ -402,24 +402,6 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Creates the built-in converter for the specified enumeration type.
-        /// </summary>
-        /// <typeparam name="T">
-        /// The enumeration type to convert.
-        /// </typeparam>
-        /// <returns>
-        /// A converter for type <typeparamref name="T"/>.
-        /// </returns>
-        /// <remarks>
-        /// The method makes the converter without closing a generic type through reflection, which Native AOT cannot do.
-        /// </remarks>
-        public static XmlConverter<T> CreateEnumConverter<T>()
-            where T : struct, Enum
-        {
-            return new XmlEnumConverter<T>();
-        }
-
-        /// <summary>
         /// Writes the specified value as the content of the current element, by using the specified metadata.
         /// </summary>
         /// <typeparam name="T">

@@ -8,7 +8,7 @@ To do the same things in application code, use the public entry points instead:
 
 | Instead of | Use |
 | --- | --- |
-| `CreateObjectInfo`, `CreateValueInfo`, `CreateEnumConverter` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
+| `CreateObjectInfo`, `CreateValueInfo` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
 | `Read`, `ReadAttribute` | `XmlSerializer.Deserialize` with type info, or `Utf8XmlReader` directly. |
 | `Write`, `WriteAttribute` | `XmlSerializer.Serialize` with type info, or `Utf8XmlWriter` directly. |
 | `WriteLeafStart`, `WriteLeafEnd` | `Utf8XmlWriter.WriteStartElement` and `WriteEndElement`. |

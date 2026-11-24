@@ -966,21 +966,15 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <returns><see langword="true"/> when the member is serialized.</returns>
         internal static bool TryCreateModel(XmlMemberFacts member, XmlSerializerOptions options, int declarationIndex, out XmlMemberModel model)
         {
+            // The checks that turn a member away come first, the cheapest first: the two that read a flag, and then
+            // the two that look for an attribute.
             model = default;
-            var memberType = member.MemberType;
-            if (member.IsIndexer)
+            if (member.IsIndexer || !member.HasGetter)
             {
                 return false;
             }
 
-            var include = member.IsDefined(typeof(XmlIncludeAttribute));
-            var isPublic = member.IsPublic;
-            if (!isPublic && !include)
-            {
-                return false;
-            }
-
-            if (!member.HasGetter)
+            if (!member.IsPublic && !member.IsDefined(typeof(XmlIncludeAttribute)))
             {
                 return false;
             }
@@ -990,6 +984,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return false;
             }
 
+            var memberType = member.MemberType;
             if (member.IsDefined(typeof(XmlExtensionDataAttribute)))
             {
                 if (memberType != typeof(XmlExtensionData))

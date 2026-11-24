@@ -373,16 +373,6 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void XmlMetadataServices_CreateEnumConverter_RoundTripsAName()
-        {
-            var converter = XmlMetadataServices.CreateEnumConverter<XmlTokenType>();
-            var info = XmlMetadataServices.CreateValueInfo(new XmlSerializerOptions { OmitXmlDeclaration = true }, converter);
-            var xml = XmlSerializer.Serialize(XmlTokenType.StartElement, info);
-            xml.Should().Be("<XmlTokenType>StartElement</XmlTokenType>");
-            XmlSerializer.Deserialize(xml, info).Should().Be(XmlTokenType.StartElement);
-        }
-
-        [TestMethod]
         public void XmlSerializableAttribute_StoresTheType()
         {
             var attribute = new XmlSerializableAttribute<int> { TypeInfoPropertyName = "N", GenerationMode = XmlSourceGenerationMode.Metadata };

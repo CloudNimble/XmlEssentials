@@ -34,7 +34,7 @@ To do the same things in application code, use the public entry points instead:
 
 | Instead of | Use |
 | --- | --- |
-| `CreateObjectInfo`, `CreateValueInfo`, `CreateEnumConverter` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
+| `CreateObjectInfo`, `CreateValueInfo` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
 | `Read`, `ReadAttribute` | `XmlSerializer.Deserialize` with type info, or `Utf8XmlReader` directly. |
 | `Write`, `WriteAttribute` | `XmlSerializer.Serialize` with type info, or `Utf8XmlWriter` directly. |
 | `WriteLeafStart`, `WriteLeafEnd` | `Utf8XmlWriter.WriteStartElement` and `WriteEndElement`. |
@@ -279,29 +279,6 @@ The serialization metadata for type *TDictionary*.
 Generated contexts call this method instead of closing a generic converter through reflection, which Native AOT
 cannot do for a key or value type that is a value type. A converter the caller supplied for the dictionary type
 is used in place of the built-in one.
-
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateEnumConverter
-
-Creates the built-in converter for the specified enumeration type.
-
-#### Syntax
-
-```csharp
-public static CloudNimble.Text.Xml.Serialization.XmlConverter<T> CreateEnumConverter<T>() where T : struct, System.Enum
-```
-
-#### Returns
-
-Type: `CloudNimble.Text.Xml.Serialization.XmlConverter<T>`
-A converter for type *T*.
-
-#### Type Parameters
-
-- `T` - The enumeration type to convert.
-
-#### Remarks
-
-The method makes the converter without closing a generic type through reflection, which Native AOT cannot do.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateEnumInfo
 
@@ -566,73 +543,6 @@ not a built-in scalar, and a type mapped member by member. Making a converter fo
 or closes a generic type at run time, which Native AOT cannot do. The next resolver in
 [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) is then asked, and a type nobody lists is reported as
 not supported.
-
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Read
-
-Reads the element that the reader is positioned on, by using the specified metadata.
-
-#### Syntax
-
-```csharp
-public static T Read<T>(ref CloudNimble.Text.Xml.Utf8XmlReader reader, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, positioned on the start tag of the element. |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | The metadata for type *T*. |
-
-#### Returns
-
-Type: `T?`
-The value that the element represents. For an element marked `xsi:nil="true"`, the default value of
-*T* is returned unless the converter handles [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
-
-#### Type Parameters
-
-- `T` - The type of the value to read.
-
-#### Exceptions
-
-| Exception | Description |
-|-----------|-------------|
-| `ArgumentNullException` | *typeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | The element is marked `xsi:nil="true"`, type *T* cannot be [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null), and the
-converter does not handle [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-
-### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReadAttribute
-
-Reads the attribute that the reader is positioned on, by using the specified metadata.
-
-#### Syntax
-
-```csharp
-public static T ReadAttribute<T>(ref CloudNimble.Text.Xml.Utf8XmlReader reader, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> typeInfo)
-```
-
-#### Parameters
-
-| Name | Type | Description |
-|------|------|-------------|
-| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader, positioned on an attribute. |
-| `typeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>` | The metadata for type *T*. |
-
-#### Returns
-
-Type: `T?`
-The value that the attribute represents.
-
-#### Type Parameters
-
-- `T` - The type of the value to read.
-
-#### Exceptions
-
-| Exception | Description |
-|-----------|-------------|
-| `ArgumentNullException` | *typeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Write
 
