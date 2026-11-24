@@ -124,7 +124,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
                 {
-                    writer.WriteStartElement(derived.Utf8Name);
+                    derived.WriteStart(writer);
                 }
                 else
                 {
@@ -159,6 +159,12 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (Wrapped)
             {
+                if (Utf8ItemNamespaceUri is { } itemNamespace)
+                {
+                    writer.WriteStartElement(Utf8ItemName, itemNamespace);
+                    return;
+                }
+
                 writer.WriteStartElement(Utf8ItemName);
                 return;
             }

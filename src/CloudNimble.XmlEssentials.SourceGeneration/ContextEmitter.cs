@@ -183,6 +183,43 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     builder.Append(indent).Append("        seeded.UnknownTypeHandling = (XmlUnknownTypeHandling)").Append(context.Options.UnknownTypeHandling).AppendLine(";");
                 }
 
+                if (context.Options.EmitByteOrderMark)
+                {
+                    builder.Append(indent).AppendLine("        seeded.EmitByteOrderMark = true;");
+                }
+
+                if (context.Options.EnumHandling != 0)
+                {
+                    builder.Append(indent).Append("        seeded.EnumHandling = (XmlEnumHandling)").Append(context.Options.EnumHandling).AppendLine(";");
+                }
+
+                // The write fast path writes every member it was compiled with, so it is not used with options that
+                // leave read-only members out: the serializer writes from the metadata then.
+                if (context.Options.IgnoreReadOnlyFields)
+                {
+                    builder.Append(indent).AppendLine("        seeded.IgnoreReadOnlyFields = true;");
+                }
+
+                if (context.Options.IgnoreReadOnlyProperties)
+                {
+                    builder.Append(indent).AppendLine("        seeded.IgnoreReadOnlyProperties = true;");
+                }
+
+                if (context.Options.MaxDepth != 0)
+                {
+                    builder.Append(indent).Append("        seeded.MaxDepth = ").Append(context.Options.MaxDepth).AppendLine(";");
+                }
+
+                if (context.Options.PropertyNameCaseInsensitive)
+                {
+                    builder.Append(indent).AppendLine("        seeded.PropertyNameCaseInsensitive = true;");
+                }
+
+                if (context.Options.XmlVersion != 0)
+                {
+                    builder.Append(indent).Append("        seeded.XmlVersion = (XmlVersion)").Append(context.Options.XmlVersion).AppendLine(";");
+                }
+
                 // The write fast path reads the ignore condition from the options when it runs, and it is used only
                 // when the mapping of the options is the one it was compiled for, so the seed sets both.
                 if (context.Options.DefaultIgnoreCondition != 0)

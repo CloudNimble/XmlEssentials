@@ -116,7 +116,7 @@ DoS limits: [XML fidelity](02-xml-fidelity.md#dos-limits-defaults). Null/root: [
 
 ## Async and streaming
 
-- **Reader:** resumable. `IsFinalBlock=false` + incomplete token → `Read()` returns false; caller saves `CurrentState` and feeds the next buffer. `CurrentState` is an **opaque snapshot** (element stack, xmlns scopes as copied strings, partial token, positions) — not `Options` alone. Token-spanning `ReadOnlySequence` uses `HasValueSequence` / `ValueSequence`.
+- **Reader:** resumable. `IsFinalBlock=false` + incomplete token → `Read()` returns false; caller saves `CurrentState` and feeds the next buffer. `CurrentState` is an **opaque snapshot** (element stack, xmlns scopes as copied strings, partial token, positions) — not `Options` alone. A multi-segment `ReadOnlySequence` is copied into one buffer before it is read, so a value is always in `ValueSpan`.
 - **Serializer async from `Stream`:** object graph = buffer-then-parse (STJ `DeserializeAsync`). **Checking `MaxDocumentByteCount` on each grow.**
 - **Serializer async to `Stream`:** `Utf8XmlWriter` on the stream, `FlushAsync`.
 - **`IAsyncEnumerable`:** `DeserializeAsyncEnumerable` / `SerializeAsyncEnumerable` (STJ net11, including `topLevelValues`). XML: `false` = children of one document element; `true` = successive documents in the stream.

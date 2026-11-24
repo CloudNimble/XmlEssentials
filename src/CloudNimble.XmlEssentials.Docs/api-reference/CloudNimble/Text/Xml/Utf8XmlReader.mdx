@@ -329,7 +329,7 @@ A document type declaration, an encoding other than UTF-8, and any entity other 
 
 - An empty element is one token with `IsEmptyElement` set. There's no end token for it.
 - Attributes aren't tokens in the `Read` sequence. You visit them with `MoveToNextAttribute`.
-- `HasValueSequence` is always `false` and `ValueSequence` is always empty. The value is always in `ValueSpan`.
+- The value is always in `ValueSpan`. A multi-segment sequence is copied into one buffer before it is read.
 - A copy of a reader shares working memory with the original.
 - `XmlReaderState` holds the open elements and namespace bindings, so taking it allocates.
 
@@ -714,22 +714,6 @@ Type: `bool`
 [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the current start tag has at least one attribute; otherwise,
 [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> HasValueSequence
-
-Gets a value that indicates which `Value` property to use to get the token value.
-
-#### Syntax
-
-```csharp
-public bool HasValueSequence { get; }
-```
-
-#### Property Value
-
-Type: `bool`
-[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) in all cases. The value is never a multi-segment sequence, so use
-[Utf8XmlReader.ValueSpan](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#valuespan) to get it.
-
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsEmptyElement
 
 Gets a value that indicates whether the current start tag is an empty element (`<e/>`).
@@ -879,21 +863,6 @@ public bool ValueIsEscaped { get; }
 Type: `bool`
 [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the value held character or entity references, or line ends that were
 normalized; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueSequence
-
-Gets the value of the last processed token as a [ReadOnlySequence`1](https://learn.microsoft.com/dotnet/api/system.buffers.readonlysequence-1).
-
-#### Syntax
-
-```csharp
-public System.Buffers.ReadOnlySequence<byte> ValueSequence { get; }
-```
-
-#### Property Value
-
-Type: `System.Buffers.ReadOnlySequence<byte>`
-An empty sequence in all cases. Use [Utf8XmlReader.ValueSpan](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#valuespan) to get the value.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ValueSpan
 

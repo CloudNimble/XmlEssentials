@@ -76,6 +76,41 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         internal bool HasSeed { get; }
 
+        /// <summary>
+        /// Gets whether a byte order mark is written.
+        /// </summary>
+        internal bool EmitByteOrderMark { get; }
+
+        /// <summary>
+        /// Gets the enumeration handling value.
+        /// </summary>
+        internal int EnumHandling { get; }
+
+        /// <summary>
+        /// Gets whether read-only fields are ignored.
+        /// </summary>
+        internal bool IgnoreReadOnlyFields { get; }
+
+        /// <summary>
+        /// Gets whether read-only properties are ignored.
+        /// </summary>
+        internal bool IgnoreReadOnlyProperties { get; }
+
+        /// <summary>
+        /// Gets the maximum depth, where 0 is the default of the options.
+        /// </summary>
+        internal int MaxDepth { get; }
+
+        /// <summary>
+        /// Gets whether names are matched without regard to ASCII case when reading.
+        /// </summary>
+        internal bool PropertyNameCaseInsensitive { get; }
+
+        /// <summary>
+        /// Gets the XML version value.
+        /// </summary>
+        internal int XmlVersion { get; }
+
         #endregion
 
         #region Constructors
@@ -109,7 +144,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             bool includeFields,
             bool respectNullableAnnotations,
             int preferredObjectCreationHandling,
-            int unknownTypeHandling)
+            int unknownTypeHandling,
+            bool emitByteOrderMark = false,
+            int enumHandling = 0,
+            bool ignoreReadOnlyFields = false,
+            bool ignoreReadOnlyProperties = false,
+            int maxDepth = 0,
+            bool propertyNameCaseInsensitive = false,
+            int xmlVersion = 0)
         {
             HasSeed = hasSeed;
             WriteIndented = writeIndented;
@@ -124,6 +166,13 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             RespectNullableAnnotations = respectNullableAnnotations;
             PreferredObjectCreationHandling = preferredObjectCreationHandling;
             UnknownTypeHandling = unknownTypeHandling;
+            EmitByteOrderMark = emitByteOrderMark;
+            EnumHandling = enumHandling;
+            IgnoreReadOnlyFields = ignoreReadOnlyFields;
+            IgnoreReadOnlyProperties = ignoreReadOnlyProperties;
+            MaxDepth = maxDepth;
+            PropertyNameCaseInsensitive = propertyNameCaseInsensitive;
+            XmlVersion = xmlVersion;
         }
 
         #endregion
@@ -145,7 +194,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 && IncludeFields == other.IncludeFields
                 && RespectNullableAnnotations == other.RespectNullableAnnotations
                 && PreferredObjectCreationHandling == other.PreferredObjectCreationHandling
-                && UnknownTypeHandling == other.UnknownTypeHandling;
+                && UnknownTypeHandling == other.UnknownTypeHandling
+                && EmitByteOrderMark == other.EmitByteOrderMark
+                && EnumHandling == other.EnumHandling
+                && IgnoreReadOnlyFields == other.IgnoreReadOnlyFields
+                && IgnoreReadOnlyProperties == other.IgnoreReadOnlyProperties
+                && MaxDepth == other.MaxDepth
+                && PropertyNameCaseInsensitive == other.PropertyNameCaseInsensitive
+                && XmlVersion == other.XmlVersion;
         }
 
         /// <inheritdoc />

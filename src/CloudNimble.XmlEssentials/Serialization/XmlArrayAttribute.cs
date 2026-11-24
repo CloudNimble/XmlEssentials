@@ -28,17 +28,6 @@ namespace CloudNimble.Text.Xml.Serialization
         public string? ElementName { get; set; }
 
         /// <summary>
-        /// Gets or sets a value that indicates whether a <see langword="null"/> collection is nillable.
-        /// </summary>
-        /// <value>
-        /// <see langword="true"/> if a <see langword="null"/> collection is nillable; otherwise, <see langword="false"/>. The default is <see langword="false"/>.
-        /// </value>
-        /// <remarks>
-        /// The serializer treats every collection member as nillable and does not read this property.
-        /// </remarks>
-        public bool IsNullable { get; set; }
-
-        /// <summary>
         /// Gets or sets the namespace URI of the wrapper element.
         /// </summary>
         /// <value>

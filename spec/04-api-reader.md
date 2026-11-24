@@ -180,14 +180,12 @@ public ref struct Utf8XmlReader
     public readonly long BytesConsumed { get; }
     public readonly int CurrentDepth { get; }
     public readonly XmlReaderState CurrentState { get; }
-    public readonly bool HasValueSequence { get; }
     public readonly bool IsFinalBlock { get; }
     public readonly SequencePosition Position { get; }
     public readonly long TokenStartIndex { get; }
     public readonly XmlTokenType TokenType { get; }
     public readonly XmlVersion Version { get; }   // after declaration; Version10 if omitted
     public readonly bool ValueIsEscaped { get; }
-    public readonly ReadOnlySequence<byte> ValueSequence { get; }
     public readonly ReadOnlySpan<byte> ValueSpan { get; }
 
     public readonly bool IsEmptyElement { get; }

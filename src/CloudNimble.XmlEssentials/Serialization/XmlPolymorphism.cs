@@ -106,7 +106,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             foreach (var derived in Derived)
             {
-                if (reader.LocalNameEquals(derived.Utf8Name) || System.Text.Ascii.EqualsIgnoreCase(reader.LocalNameSpan, derived.Utf8Name))
+                if (derived.Matches(ref reader, caseInsensitive: true))
                 {
                     return derived;
                 }
@@ -125,7 +125,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             foreach (var derived in Derived)
             {
-                if (XmlBoundProperty.NameEquals(ref reader, derived.Utf8Name, caseInsensitive))
+                if (derived.Matches(ref reader, caseInsensitive))
                 {
                     return true;
                 }

@@ -74,8 +74,8 @@ This attribute is analogous to `JsonSourceGenerationOptionsAttribute` in `System
 
 ## Considerations
 
-- **The generator acts on some of the properties.** `GenerationMode`, `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `IncludeFields`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `PreferredObjectCreationHandling`, `RespectNullableAnnotations`, and `UnknownTypeHandling` take effect.
-- **The other properties aren't copied to the options.** Setting `DiscriminatorPlacement`, `EnumHandling`, `EmitByteOrderMark`, `IgnoreReadOnlyFields`, `IgnoreReadOnlyProperties`, `MaxDepth`, `PropertyNameCaseInsensitive`, `UseStringEnumConverter`, or `XmlVersion` leaves the options of `Default` at their defaults. To use those settings, pass an `XmlSerializerOptions` instance to the constructor of the context.
+- **The generator acts on every property.** `GenerationMode` chooses what is generated. Every other property is copied to the options of `Default`: `WriteIndented`, `OmitXmlDeclaration`, `EmitByteOrderMark`, `XmlVersion`, `DefaultNamespace`, `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `PropertyNameCaseInsensitive`, `IncludeFields`, `IgnoreReadOnlyFields`, `IgnoreReadOnlyProperties`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `EnumHandling`, `MaxDepth`, `PreferredObjectCreationHandling`, `RespectNullableAnnotations`, and `UnknownTypeHandling`.
+- **`IgnoreReadOnlyFields` and `IgnoreReadOnlyProperties` turn the write fast path off.** The fast path writes every member it was compiled with, so with either of these the context writes from the metadata. The output is the same as the reflection resolver's.
 - **The write fast path is compiled for the attribute's values.** The naming policies, `DefaultPropertyMapping`, and `IncludeFields` fix the names and the choice of members in the write fast path. When you pass options to the constructor that differ in one of them, the fast path isn't used: a context in the default mode writes from the metadata and follows your options.
 - **The output uses `Environment.NewLine` and the default layout.** The attribute has no `NewLine`, `EmptyElementStyle`, `AttributeStyle`, or `AttributesPerLine` property. Pass options to the constructor to choose the line ending, the form of an empty element, or the layout of attributes.
 
@@ -170,22 +170,6 @@ public CloudNimble.Text.Xml.XmlPropertyMapping DefaultPropertyMapping { get; set
 
 Type: `CloudNimble.Text.Xml.XmlPropertyMapping`
 One of the enumeration values that specifies the default mapping of members. The default is [XmlPropertyMapping.Element](/api-reference/CloudNimble/Text/Xml/XmlPropertyMapping).
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DiscriminatorPlacement
-
-Gets or sets where the type discriminator of a polymorphic type is written.
-
-#### Syntax
-
-```csharp
-public CloudNimble.Text.Xml.XmlDiscriminatorPlacement DiscriminatorPlacement { get; set; }
-```
-
-#### Property Value
-
-Type: `CloudNimble.Text.Xml.XmlDiscriminatorPlacement`
-One of the enumeration values that specifies where the type discriminator is written. The default is
-[XmlDiscriminatorPlacement.ElementName](/api-reference/CloudNimble/Text/Xml/XmlDiscriminatorPlacement).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ElementNamingPolicy
 
@@ -416,22 +400,6 @@ public CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling UnknownTypeHand
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling`
 One of the enumeration values. The default is [XmlUnknownTypeHandling.XmlElement](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnknownTypeHandling).
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UseStringEnumConverter
-
-Gets or sets a value that indicates whether enumeration values are written as names even when
-[XmlSourceGenerationOptionsAttribute.EnumHandling](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute#enumhandling) is [XmlEnumHandling.Integer](/api-reference/CloudNimble/Text/Xml/XmlEnumHandling).
-
-#### Syntax
-
-```csharp
-public bool UseStringEnumConverter { get; set; }
-```
-
-#### Property Value
-
-Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if enumeration values are always written as names; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteIndented
 

@@ -27,10 +27,22 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets or sets the namespace URI of the element that identifies the derived type.
         /// </summary>
         /// <value>
-        /// The namespace URI. The default is <see langword="null"/>.
+        /// The namespace URI. The default is <see langword="null"/>, which writes the element under its name
+        /// alone, so it is in the default namespace that is in scope. An empty string puts the element in no
+        /// namespace.
         /// </value>
         /// <remarks>
-        /// The serializer does not read this property.
+        /// <para>
+        /// The value applies when the derived type is identified by the name of its element, which is
+        /// <see cref="XmlDiscriminatorPlacement.ElementName"/>. With another placement there is no such element,
+        /// and a value that is not <see langword="null"/> is refused with a <see cref="NotSupportedException"/>
+        /// the first time the type is used.
+        /// </para>
+        /// <para>
+        /// When a document is read, a derived type that has a namespace is matched by its local name and its
+        /// namespace, so two derived types can have one local name in two namespaces. A derived type with no
+        /// namespace is matched by its local name alone.
+        /// </para>
         /// </remarks>
         public string? Namespace { get; set; }
 

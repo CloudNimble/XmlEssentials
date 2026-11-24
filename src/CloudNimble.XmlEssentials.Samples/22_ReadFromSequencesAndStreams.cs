@@ -37,7 +37,6 @@ namespace CloudNimble.XmlEssentials.Samples
             }
 
             output.WriteLine($"Single segment: {sequence.IsSingleSegment}");
-            output.WriteLine($"HasValueSequence: {reader.HasValueSequence}");
             output.WriteLine($"Consumed {reader.BytesConsumed} of {sequence.Length} bytes");
         }
 

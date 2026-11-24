@@ -350,8 +350,6 @@ Mouse & pad: 11 bytes, escaped in the source = True, is Keyboard = False
 A span from the reader is valid until the reader moves. `ValueSpan`, `LocalNameSpan`, `PrefixSpan`, and `NamespaceUriSpan` point into your input or into a buffer the reader reuses for the next decoded value. Copy what you need to keep (`CopyString`, `GetString`, or `ToArray`) before you call `Read` again. `CopyString` throws an `ArgumentException` when the destination is too small.
 </Warning>
 
-`HasValueSequence` is always `false` and `ValueSequence` is always empty. They exist so that code written for `Utf8JsonReader` ports without change. Always read the value from `ValueSpan`.
-
 ## Read namespaces
 
 The reader resolves namespaces for you. On a start tag, an end tag, or an attribute:
@@ -665,7 +663,6 @@ while (reader.Read())
 }
 
 output.WriteLine($"Single segment: {sequence.IsSingleSegment}");
-output.WriteLine($"HasValueSequence: {reader.HasValueSequence}");
 output.WriteLine($"Consumed {reader.BytesConsumed} of {sequence.Length} bytes");
 ```
 
@@ -698,7 +695,6 @@ The code produces the following output:
 Item: Keyboard
 Item: Mouse
 Single segment: False
-HasValueSequence: False
 Consumed 54 of 54 bytes
 ```
 

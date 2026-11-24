@@ -582,10 +582,8 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
     public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
     public bool RespectNullableAnnotations { get; set; }
     public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
-    public bool UseStringEnumConverter { get; set; }
     public XmlEnumHandling EnumHandling { get; set; }
     public int MaxDepth { get; set; }
-    public XmlDiscriminatorPlacement DiscriminatorPlacement { get; set; }
 }
 ```
 

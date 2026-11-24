@@ -70,7 +70,6 @@ Not every value is reported by both DOMs:
 | Value | `XmlElement` (read-only document) | `XmlNode` (mutable tree) |
 | --- | --- | --- |
 | `Undefined` | A default `XmlElement`, which refers to no node | Never |
-| `Document` | Never | Never |
 | `Element` | An element with a start tag and an end tag | Every `XmlElementNode` |
 | `EmptyElement` | An element written as `<e/>` | Never |
 | `Nil` | An element whose `xsi:nil` is `true` or `1` | Never |
@@ -90,7 +89,6 @@ Not every value is reported by both DOMs:
 | Name | Value | Description |
 |------|-------|-------------|
 | `Undefined` | 0 | No node. This is the kind of a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement). |
-| `Document` | 1 | A document node. Neither [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) nor the mutable tree reports this kind. |
 | `Element` | 2 | An element with a start tag and an end tag. |
 | `EmptyElement` | 3 | An empty-element tag (`<e/>`). |
 | `Attribute` | 4 | An attribute. |

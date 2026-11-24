@@ -70,7 +70,9 @@ The code produces the following output:
 - The attribute has an effect only on a collection that also has `[XmlArray]`. On a collection with no wrapper, the repeated elements keep the member's name. To rename those, use `[XmlElement("Name")]` or `[XmlPropertyName("Name")]` on the member.
 - Without the attribute, each item of a wrapped collection is named after its .NET type, converted by the element naming policy.
 - A name set here isn't converted by a naming policy.
-- The serializer doesn't read the `Namespace` property.
+- `Namespace` is the namespace of the items of a collection in a wrapper, which is a member with `[XmlArray]`. Left `null`, an item is written under its name alone, so it is in the namespace of its wrapper when the wrapper has one. An empty string puts the items in no namespace (`xmlns=""`). This is what `System.Xml.Serialization` writes.
+- With no wrapper the item is the element of the member, so `Namespace` names nothing: the item has the namespace of the member.
+- When a collection is read, every element in the wrapper is an item, whatever its name and namespace.
 - For collections whose items are of different derived types, see [Polymorphism](/guides/polymorphism).
 
 ## Constructors
@@ -201,11 +203,18 @@ public string Namespace { get; set; }
 #### Property Value
 
 Type: `string?`
-The namespace URI of the item elements. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+The namespace URI of the item elements. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null), which writes an item
+under its name alone, so it is in the default namespace that is in scope: the namespace of the wrapper
+when the wrapper has one. An empty string puts the items in no namespace.
 
 #### Remarks
 
-The serializer does not read this property.
+The value applies to the items of a collection in a wrapper, which is a member with
+[XmlArrayAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayAttribute). With no wrapper an item is the element of the member, and has the
+namespace of the member.
+
+The value is used when the items are written. When they are read, every element in the wrapper is an
+item, whatever its name and namespace.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Type <Badge color="blue">Override</Badge>
 

@@ -71,7 +71,7 @@ Set `Namespace` to put the document element in an XML namespace. See [Namespaces
 - When reading, the document element must have this name, or the serializer throws an `XmlException`. The name is matched with case unless `PropertyNameCaseInsensitive` is set, which ignores the case of ASCII letters for the document element as it does for members.
 - The attribute names the type as a document element. When the type is the type of a member of another object, the element is named after that member.
 - When `Namespace` is `null`, `XmlSerializerOptions.DefaultNamespace` is used.
-- The serializer doesn't read `IsNullable`. A `null` reference at the root is written as the document element marked `xsi:nil="true"` whatever its value.
+- A `null` reference at the root is always written as the document element marked `xsi:nil="true"`.
 
 ## Constructors
 
@@ -145,25 +145,6 @@ public string ElementName { get; set; }
 Type: `string?`
 The local name of the document element. If the value is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or empty, the name of the type is used,
 converted by the element naming policy. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNullable
-
-Gets or sets a value that indicates whether a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) value of the type is nillable.
-
-#### Syntax
-
-```csharp
-public bool IsNullable { get; set; }
-```
-
-#### Property Value
-
-Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) value of the type is nillable; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
-
-#### Remarks
-
-The serializer does not read this property. Nillability follows the type: a reference type or a [Nullable`1](https://learn.microsoft.com/dotnet/api/system.nullable-1) is nillable.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
 

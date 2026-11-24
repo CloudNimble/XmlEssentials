@@ -142,7 +142,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 SymbolHelpers.GetBool(attribute, "IncludeFields"),
                 SymbolHelpers.GetBool(attribute, "RespectNullableAnnotations"),
                 SymbolHelpers.GetInt(attribute, "PreferredObjectCreationHandling", 0),
-                SymbolHelpers.GetInt(attribute, "UnknownTypeHandling", 0));
+                SymbolHelpers.GetInt(attribute, "UnknownTypeHandling", 0),
+                SymbolHelpers.GetBool(attribute, "EmitByteOrderMark"),
+                SymbolHelpers.GetInt(attribute, "EnumHandling", 0),
+                SymbolHelpers.GetBool(attribute, "IgnoreReadOnlyFields"),
+                SymbolHelpers.GetBool(attribute, "IgnoreReadOnlyProperties"),
+                SymbolHelpers.GetInt(attribute, "MaxDepth", 0),
+                SymbolHelpers.GetBool(attribute, "PropertyNameCaseInsensitive"),
+                SymbolHelpers.GetInt(attribute, "XmlVersion", 0));
         }
 
         #endregion

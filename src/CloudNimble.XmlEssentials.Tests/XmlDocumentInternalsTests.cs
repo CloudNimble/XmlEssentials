@@ -61,7 +61,8 @@ namespace CloudNimble.XmlEssentials.Tests
         public void TokenType_UnknownKind_IsNone()
         {
             using var document = XmlDocument.Parse("<e/>");
-            var index = document.AddRow(new XmlDbRow { Kind = XmlValueKind.Document });
+            // 1 is a value the enumeration does not name.
+            var index = document.AddRow(new XmlDbRow { Kind = (XmlValueKind)1 });
             new XmlElement(document, index).TokenType.Should().Be(XmlTokenType.None);
             var buffer = new ArrayBufferWriter<byte>();
             using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))

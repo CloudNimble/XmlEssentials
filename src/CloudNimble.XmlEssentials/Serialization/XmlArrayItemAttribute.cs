@@ -26,10 +26,20 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets or sets the namespace URI of the item elements.
         /// </summary>
         /// <value>
-        /// The namespace URI of the item elements. The default is <see langword="null"/>.
+        /// The namespace URI of the item elements. The default is <see langword="null"/>, which writes an item
+        /// under its name alone, so it is in the default namespace that is in scope: the namespace of the wrapper
+        /// when the wrapper has one. An empty string puts the items in no namespace.
         /// </value>
         /// <remarks>
-        /// The serializer does not read this property.
+        /// <para>
+        /// The value applies to the items of a collection in a wrapper, which is a member with
+        /// <see cref="XmlArrayAttribute"/>. With no wrapper an item is the element of the member, and has the
+        /// namespace of the member.
+        /// </para>
+        /// <para>
+        /// The value is used when the items are written. When they are read, every element in the wrapper is an
+        /// item, whatever its name and namespace.
+        /// </para>
         /// </remarks>
         public string? Namespace { get; set; }
 

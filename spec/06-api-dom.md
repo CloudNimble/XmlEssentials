@@ -10,7 +10,6 @@ namespace CloudNimble.Text.Xml;
 public enum XmlValueKind : byte
 {
     Undefined = 0,
-    Document = 1,
     Element = 2,
     EmptyElement = 3,
     Attribute = 4,

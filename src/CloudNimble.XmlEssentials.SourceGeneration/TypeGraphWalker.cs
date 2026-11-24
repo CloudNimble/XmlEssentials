@@ -1153,6 +1153,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     : isWrapped
                         ? Naming.Convert(elementType.Name, ElementPolicy(options))
                         : local;
+
+                // An item with a namespace of its own is written by the engine, which declares the namespace.
+                FastPathBlocked |= isWrapped && arrayItem is not null && SymbolHelpers.GetString(arrayItem, "Namespace") is not null;
             }
 
             var isRequired = SymbolHelpers.GetAttribute(member, SymbolHelpers.RequiredAttribute) is not null || member is IPropertySymbol { IsRequired: true };

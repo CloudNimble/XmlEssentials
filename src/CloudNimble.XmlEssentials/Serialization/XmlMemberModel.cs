@@ -58,6 +58,12 @@ namespace CloudNimble.Text.Xml.Serialization
         internal string ItemLocalName { get; }
 
         /// <summary>
+        /// Gets the namespace of the item elements of a collection in a wrapper, or null when none was given and
+        /// an item is written under its name alone, in the default namespace that is in scope.
+        /// </summary>
+        internal string? ItemNamespaceUri { get; }
+
+        /// <summary>
         /// Gets whether the member is the simple content of the parent element.
         /// </summary>
         internal bool IsText { get; }
@@ -121,7 +127,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="isWrapped">Whether a collection is wrapped.</param>
         /// <param name="itemLocalName">The item element name for a collection.</param>
         /// <param name="converterType">The converter CLR type, or null to use <paramref name="type"/>.</param>
-        internal XmlMemberModel(XmlMemberFacts member, Type type, string localName, string namespaceUri, int order, int declarationIndex, bool isRequired, bool isNillable, XmlIgnoreCondition ignore, bool canSet, bool isAttribute, bool isText, bool isCData, bool isCollection = false, bool isWrapped = false, string itemLocalName = "", Type? converterType = null)
+        /// <param name="itemNamespaceUri">The namespace of the item elements, or null when none was given.</param>
+        internal XmlMemberModel(XmlMemberFacts member, Type type, string localName, string namespaceUri, int order, int declarationIndex, bool isRequired, bool isNillable, XmlIgnoreCondition ignore, bool canSet, bool isAttribute, bool isText, bool isCData, bool isCollection = false, bool isWrapped = false, string itemLocalName = "", Type? converterType = null, string? itemNamespaceUri = null)
         {
             Member = member;
             Type = type;
@@ -140,6 +147,7 @@ namespace CloudNimble.Text.Xml.Serialization
             IsCollection = isCollection;
             IsWrapped = isWrapped;
             ItemLocalName = itemLocalName;
+            ItemNamespaceUri = itemNamespaceUri;
         }
 
         #endregion

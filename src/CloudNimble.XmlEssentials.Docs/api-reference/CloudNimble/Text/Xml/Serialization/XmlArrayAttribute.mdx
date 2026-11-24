@@ -133,7 +133,7 @@ Wrapper missing: null
 - `System.Xml.Serialization.XmlSerializer` wraps collections by default. This serializer doesn't, so add `[XmlArray]` when you need XML that matches what that serializer produced.
 - The default item name is the .NET type name of the item, such as `Int32`, `String`, or the name of your class, converted by the element naming policy.
 - `[XmlPropertyName]` on the same member takes precedence over `ElementName`, and `[XmlPropertyOrder]` and `[XmlElement(Order = n)]` take precedence over `Order`.
-- The serializer doesn't read `IsNullable`. A `null` wrapped collection is written as the wrapper marked `xsi:nil="true"`. It is left out when the ignore condition that applies to the member is `WhenWritingNull` or `WhenWritingDefault`.
+- A `null` wrapped collection is written as the wrapper marked `xsi:nil="true"`. It is left out when the ignore condition that applies to the member is `WhenWritingNull` or `WhenWritingDefault`.
 - The attribute applies to collections. A dictionary is always written inside an element named after the member, without it.
 
 ## Constructors
@@ -212,25 +212,6 @@ converted by the element naming policy. The default is [`null`](https://learn.mi
 #### Remarks
 
 An [XmlPropertyNameAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyNameAttribute) on the same member takes precedence over this property.
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNullable
-
-Gets or sets a value that indicates whether a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) collection is nillable.
-
-#### Syntax
-
-```csharp
-public bool IsNullable { get; set; }
-```
-
-#### Property Value
-
-Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) collection is nillable; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
-
-#### Remarks
-
-The serializer treats every collection member as nillable and does not read this property.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespace
 

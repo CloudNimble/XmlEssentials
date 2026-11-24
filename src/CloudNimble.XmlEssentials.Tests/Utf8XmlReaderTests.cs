@@ -114,7 +114,6 @@ namespace CloudNimble.XmlEssentials.Tests
             reader.CurrentDepth.Should().Be(0);
             reader.BytesConsumed.Should().Be(3);
             reader.IsFinalBlock.Should().BeTrue();
-            reader.HasValueSequence.Should().BeFalse();
             reader.NamespaceUriSpan.IsEmpty.Should().BeTrue();
             reader.NamespaceUriEquals("").Should().BeTrue();
             reader.NamespaceUriEquals(""u8).Should().BeTrue();
@@ -775,8 +774,6 @@ namespace CloudNimble.XmlEssentials.Tests
             reader.Read().Should().BeTrue();
             reader.LocalNameEquals("e").Should().BeTrue();
             reader.Position.Should().Be(sequence.GetPosition(reader.BytesConsumed));
-            reader.HasValueSequence.Should().BeFalse();
-            reader.ValueSequence.IsEmpty.Should().BeTrue();
             reader.TokenStartIndex.Should().Be(0);
         }
 

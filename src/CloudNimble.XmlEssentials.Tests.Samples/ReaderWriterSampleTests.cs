@@ -186,7 +186,6 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "Item: Keyboard\n" +
                 "Item: Mouse\n" +
                 "Single segment: False\n" +
-                "HasValueSequence: False\n" +
                 "Consumed 54 of 54 bytes");
         }
 

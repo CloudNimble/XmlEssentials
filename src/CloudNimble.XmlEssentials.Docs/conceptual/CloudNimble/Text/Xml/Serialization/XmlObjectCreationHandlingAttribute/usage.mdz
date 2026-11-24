@@ -11,6 +11,6 @@ public sealed class Playlist
 
 Apply it to a type to set the handling for every member of the type that can be populated.
 
-`Populate` on a member that can't be populated throws an `InvalidOperationException` the first time the type is used. That covers an array, an immutable collection, a value with a custom converter, a polymorphic type, and a value type with no setter. On a type that is created through a constructor with parameters, it throws a `NotSupportedException`.
+`Populate` on a member that can't be populated throws an `InvalidOperationException` the first time the type is used. That covers an array, an immutable or frozen collection, a collection declared as a read-only interface such as `IEnumerable<T>`, a single value such as a `string` or a number, a value with a custom converter, mixed content, a polymorphic type, and a value type with no setter. On a type that is created through a constructor with parameters, or on a member of such a type, it throws a `NotSupportedException`.
 
 See [Populate a collection that already holds a value](/guides/collections#populate-a-collection-that-already-holds-a-value).

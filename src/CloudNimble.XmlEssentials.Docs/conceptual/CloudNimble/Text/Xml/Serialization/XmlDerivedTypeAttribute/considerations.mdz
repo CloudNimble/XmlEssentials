@@ -1,5 +1,7 @@
 - The type argument is checked by the compiler, which is why the attribute is generic. The serializer doesn't verify that `T` derives from the type the attribute is on, so keep the two in the same hierarchy.
 - The discriminator is always a string. `TypeDiscriminator` is typed as `object` to match the shape of `JsonDerivedTypeAttribute`, but there is no integer form.
 - When the discriminator is an element name, the element naming policy of the options is applied to it. When it is an attribute value, it is written as declared.
-- `Namespace` is not read by the serializer. A derived type's element is written in the namespace that is in scope.
+- `Namespace` is the namespace of the element that is named for the derived type. Left `null`, the element is written under its name alone, in the default namespace that is in scope. An empty string puts it in no namespace.
+- A derived type that has a namespace is matched by its local name and its namespace when a document is read, so two derived types can have one local name in two namespaces. A derived type with no namespace is matched by its local name alone.
+- `Namespace` applies when the discriminator is the element name. With `XmlDiscriminatorPlacement.Attribute` or `XsiType` there is no such element, and a `Namespace` that isn't `null` throws a `NotSupportedException` the first time the type is used.
 - In `System.Xml.Serialization`, the same job is done by `[XmlInclude(typeof(T))]`. In this library `[XmlInclude]` means something else: it opts a non-public member in to serialization.

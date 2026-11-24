@@ -157,12 +157,12 @@ The attributes in this table exist in both libraries under the same name. The ri
 
 | Attribute | In XmlEssentials | Differences |
 | --- | --- | --- |
-| `[XmlRoot]` | [`XmlRootAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute) | `ElementName`, `Namespace`, `IsNullable`. No `DataType`. Can also be applied to an interface. |
+| `[XmlRoot]` | [`XmlRootAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute) | `ElementName`, `Namespace`. No `DataType` or `IsNullable`: a `null` root is always written as an element marked `xsi:nil="true"`. Can also be applied to an interface. |
 | `[XmlElement]` | [`XmlElementAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlElementAttribute) | `ElementName`, `Namespace`, `Order`, `IsNullable`. No `DataType` or `Form`. `Type` is read-only: write `[XmlElement<Book>("Book")]` in place of `[XmlElement("Book", typeof(Book))]`. An unset `Order` is `-1`. |
 | `[XmlAttribute]` | [`XmlAttributeAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlAttributeAttribute) | `AttributeName`, `Namespace`. No `DataType`, `Form`, or `Type`. |
 | `[XmlText]` | [`XmlTextAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTextAttribute) | No properties. A type can have one `[XmlText]` member. For interleaved text and elements, see [Mixed content](/guides/mixed-content). |
 | `[XmlIgnore]` | [`XmlIgnoreAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute) | Adds `Condition`, which takes the place of the `ShouldSerialize` and `Specified` patterns. See [Ignore properties](/guides/ignore-properties). |
-| `[XmlArray]` | [`XmlArrayAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayAttribute) | `ElementName`, `Namespace`, `Order`, `IsNullable`. No `Form`. Required when you want a wrapper element. See [Collections](#collections). |
+| `[XmlArray]` | [`XmlArrayAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayAttribute) | `ElementName`, `Namespace`, `Order`. No `Form` or `IsNullable`: a `null` collection is always written as the wrapper marked `xsi:nil="true"`. Required when you want a wrapper element. See [Collections](#collections). |
 | `[XmlArrayItem]` | [`XmlArrayItemAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayItemAttribute) | `ElementName`, `Namespace`. No `DataType`, `Form`, `IsNullable`, or `NestingLevel`. `Type` is read-only: write `[XmlArrayItem<Book>("Book")]`. |
 | `[XmlInclude]` | [`XmlIncludeAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIncludeAttribute) | **Different meaning.** See the warning that follows. |
 

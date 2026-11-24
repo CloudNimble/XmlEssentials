@@ -307,6 +307,10 @@ namespace CloudNimble.Text.Xml.Serialization
                 collection = member.Member.CreateCollectionBinding is { } createBinding
                     ? createBinding(typeof(TValue), member.IsWrapped, utf8ItemName, itemInfo, mixed)
                     : XmlCollectionBinding.Create(typeof(TValue), itemClr, member.IsWrapped, utf8ItemName, itemInfo, mixed);
+                if (member.ItemNamespaceUri is { } itemNamespace)
+                {
+                    collection.SetItemNamespace(Encoding.UTF8.GetBytes(itemNamespace));
+                }
             }
 
             var derivedSource = mixed ? null : collectionElement ?? member.ConverterType;
@@ -1110,6 +1114,7 @@ namespace CloudNimble.Text.Xml.Serialization
             var isCollection = false;
             var isWrapped = false;
             var itemLocal = "";
+            string? itemNamespace = null;
             if (!isAttribute && !isText && !hasConverter && member.IsCollection(out var elementType))
             {
                 isCollection = true;
@@ -1143,12 +1148,16 @@ namespace CloudNimble.Text.Xml.Serialization
                     : isWrapped
                         ? options.ConvertElementName(XmlBuiltInConverters.GetXmlTypeName(itemClr))
                         : local;
+
+                // Inside a wrapper an item has a name of its own, and so a namespace of its own. With no wrapper the
+                // item is the member's element, which has the member's namespace.
+                itemNamespace = isWrapped ? arrayItem?.Namespace : null;
             }
 
             var isRequired = member.IsDefined(typeof(XmlRequiredAttribute))
                 || member.IsRequiredMember;
             var isNillable = !memberType.IsValueType || Nullable.GetUnderlyingType(memberType) is not null || element is { IsNullable: true } || typed is [{ IsNullable: true }, ..] || isCollection;
-            model = new XmlMemberModel(member, memberType, local, ns, order, declarationIndex, isRequired, isNillable, ignore, canSet, isAttribute, isText, isCData, isCollection, isWrapped, itemLocal, typed is { Count: > 0 } ? typed[0].Type : null);
+            model = new XmlMemberModel(member, memberType, local, ns, order, declarationIndex, isRequired, isNillable, ignore, canSet, isAttribute, isText, isCData, isCollection, isWrapped, itemLocal, typed is { Count: > 0 } ? typed[0].Type : null, itemNamespace);
             return true;
         }
 
@@ -1279,6 +1288,11 @@ namespace CloudNimble.Text.Xml.Serialization
             var derivedList = new List<XmlDerivedBinding>();
             foreach (var attr in type.GetCustomAttributes<XmlDerivedTypeAttribute>(inherit: true))
             {
+                if (attr.Namespace is not null && placement is not XmlDiscriminatorPlacement.ElementName)
+                {
+                    throw new NotSupportedException($"[{nameof(XmlDerivedTypeAttribute)}] for '{attr.DerivedType}' on '{type}' sets {nameof(XmlDerivedTypeAttribute.Namespace)}, which is the namespace of the element named for the derived type. The discriminator of '{type}' is not an element name.");
+                }
+
                 var disc = attr.TypeDiscriminator as string ?? attr.DerivedType.Name;
                 var elementName = placement is XmlDiscriminatorPlacement.ElementName
                     ? options.ConvertElementName(disc)
@@ -1287,7 +1301,8 @@ namespace CloudNimble.Text.Xml.Serialization
                     Encoding.UTF8.GetBytes(elementName),
                     attr.DerivedType,
                     options.GetTypeInfo(attr.DerivedType),
-                    disc));
+                    disc,
+                    attr.Namespace is { } derivedNamespace ? Encoding.UTF8.GetBytes(derivedNamespace) : null));
             }
 
             return derivedList.Count > 0 ? derivedList.ToArray() : null;

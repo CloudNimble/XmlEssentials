@@ -81,7 +81,7 @@ The state holds more than `JsonReaderState` does. To resume inside a document, t
 | Proposed | XmlEssentials | Status |
 | --- | --- | --- |
 | `BytesConsumed`, `CurrentDepth`, `CurrentState`, `IsFinalBlock`, `Position`, `TokenStartIndex`, `TokenType`, `ValueIsEscaped`, `ValueSpan` | The same names | Same. `CurrentState` returns `XmlReaderState`. |
-| `HasValueSequence`, `ValueSequence` | The same names | Different shape. The members exist, and `HasValueSequence` is always `false` and `ValueSequence` is always empty: a multi-segment sequence is copied into one buffer before it's read, so every value is in `ValueSpan`. |
+| `HasValueSequence`, `ValueSequence` | No counterpart | A multi-segment sequence is copied into one buffer before it is read, so every value is in `ValueSpan`. |
 | `IsEmptyElement`, `AttributeCount` | The same names | Same. |
 | `LocalNameSpan`, `NamespaceUriSpan`, `PrefixSpan` | The same names | Same. |
 | | `HasAttributes`, `Version` | Added. `Version` is the XML version of the document being read. |
@@ -145,11 +145,11 @@ The proposed attributes are in `System.Text.Xml.Serialization` and are named `Xm
 
 | Proposed | XmlEssentials | Status |
 | --- | --- | --- |
-| `XmlDataRootAttribute` with `ElementName`, `Namespace`, `IsNullable` | [`XmlRootAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute) | Renamed. Can also be applied to an interface. |
+| `XmlDataRootAttribute` with `ElementName`, `Namespace`, `IsNullable` | [`XmlRootAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute) | Renamed. No `IsNullable`: a `null` root is always written as an element marked `xsi:nil="true"`. Can also be applied to an interface. |
 | `XmlDataElementAttribute` with `ElementName`, `Namespace`, `Order`, `IsNullable`, `Type` | [`XmlElementAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlElementAttribute) and `XmlElementAttribute<T>` | Different shape. `Type` is read-only. To name a type, use the generic attribute: `[XmlElement<Book>("Book")]`. The non-generic class isn't sealed, so that the generic one can derive from it. An unset `Order` is `-1`. |
 | `XmlDataAttributeAttribute` with `AttributeName`, `Namespace` | [`XmlAttributeAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlAttributeAttribute) | Renamed. |
 | `XmlDataTextAttribute` | [`XmlTextAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTextAttribute) | Renamed. |
-| `XmlDataArrayAttribute` with `ElementName`, `Namespace`, `Order`, `IsNullable` | [`XmlArrayAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayAttribute) | Renamed. An unset `Order` is `-1`. |
+| `XmlDataArrayAttribute` with `ElementName`, `Namespace`, `Order`, `IsNullable` | [`XmlArrayAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayAttribute) | Renamed. No `IsNullable`: a `null` collection is always written as the wrapper marked `xsi:nil="true"`. An unset `Order` is `-1`. |
 | `XmlDataIgnoreAttribute` | [`XmlIgnoreAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute) | Renamed. Adds `Condition`, as `JsonIgnoreAttribute` has. |
 | `XmlDataTypeAttribute` with `TypeName`, `Namespace` | | Not implemented. |
 | `XmlDataIncludeAttribute(Type)` with `TypeName`, `Namespace` | [`XmlDerivedTypeAttribute<T>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) with a discriminator argument and `Namespace` | Different shape. A generic attribute named after `JsonDerivedTypeAttribute`. `[XmlPolymorphic]` chooses whether the discriminator is the element name, an attribute, or `xsi:type`. |
@@ -228,7 +228,7 @@ The overloads that take options use reflection and are marked with `RequiresUnre
 | `abstract XmlTypeInfo? GetTypeInfo(Type type)` | The same member | Same. |
 | `XmlDataSerializableAttribute(Type)` with `TypeInfoPropertyName` | `XmlSerializableAttribute<T>` with `TypeInfoPropertyName` | Renamed, and the type is a type argument, not a constructor argument. Adds `GenerationMode`. |
 | `XmlDataSourceGenerationOptionsAttribute` with `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, `IncludeFields`, `IgnoreReadOnlyProperties`, `IgnoreReadOnlyFields` | `XmlSourceGenerationOptionsAttribute` with the same six properties | Renamed. |
-| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `DiscriminatorPlacement`, `EmitByteOrderMark`, `EnumHandling`, `GenerationMode`, `MaxDepth`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `UseStringEnumConverter`, `XmlVersion` on the options attribute | Added. |
+| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `EmitByteOrderMark`, `EnumHandling`, `GenerationMode`, `MaxDepth`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `XmlVersion` on the options attribute | Added. |
 | | `XmlSourceGenerationMode`, `XmlKnownNamingPolicy`, `XmlMetadataServices`, `DefaultXmlTypeInfoResolver`, `XmlPropertyInfo` | Added. |
 
 ## Beyond the proposal

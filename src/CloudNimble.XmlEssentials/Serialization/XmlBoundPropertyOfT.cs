@@ -425,7 +425,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (Polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
                 {
-                    writer.WriteStartElement(derived.Utf8Name);
+                    derived.WriteStart(writer);
                 }
                 else
                 {

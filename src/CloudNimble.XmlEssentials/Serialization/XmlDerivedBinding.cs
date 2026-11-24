@@ -31,6 +31,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         internal byte[] Utf8Name { get; }
 
+        /// <summary>
+        /// Gets the UTF-8 namespace of the element named for the derived type, or null when none was given and the
+        /// element is written under its name alone.
+        /// </summary>
+        internal byte[]? Utf8NamespaceUri { get; }
+
         #endregion
 
         #region Constructors
@@ -42,14 +48,50 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="type">The derived CLR type.</param>
         /// <param name="info">The type info.</param>
         /// <param name="discriminator">The discriminator string.</param>
-        internal XmlDerivedBinding(byte[] utf8Name, Type type, XmlTypeInfo info, string discriminator)
+        /// <param name="utf8NamespaceUri">The UTF-8 namespace of the element named for the derived type, or null when none was given.</param>
+        internal XmlDerivedBinding(byte[] utf8Name, Type type, XmlTypeInfo info, string discriminator, byte[]? utf8NamespaceUri = null)
         {
             Utf8Name = utf8Name;
+            Utf8NamespaceUri = utf8NamespaceUri;
             Type = type;
             Info = info;
             Discriminator = discriminator;
         }
 
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Returns whether the reader is on the element named for the derived type.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <param name="caseInsensitive">Whether ASCII case is ignored in the local name.</param>
+        /// <returns><see langword="true"/> when the element is the one for this derived type.</returns>
+        /// <remarks>
+        /// The local name decides, as it does for a member. A derived type that was given a namespace is matched
+        /// on the namespace as well, so two derived types can have one local name in two namespaces.
+        /// </remarks>
+        internal bool Matches(ref Utf8XmlReader reader, bool caseInsensitive)
+        {
+            return XmlBoundProperty.NameEquals(ref reader, Utf8Name, caseInsensitive)
+                && (Utf8NamespaceUri is null || reader.NamespaceUriSpan.SequenceEqual(Utf8NamespaceUri));
+        }
+
+        /// <summary>
+        /// Writes the start tag of the element named for the derived type.
+        /// </summary>
+        /// <param name="writer">The writer.</param>
+        internal void WriteStart(Utf8XmlWriter writer)
+        {
+            if (Utf8NamespaceUri is { } namespaceUri)
+            {
+                writer.WriteStartElement(Utf8Name, namespaceUri);
+                return;
+            }
+
+            writer.WriteStartElement(Utf8Name);
+        }
         #endregion
 
     }

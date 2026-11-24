@@ -65,15 +65,6 @@ namespace CloudNimble.Text.Xml.Serialization
         public string? DefaultNamespace { get; set; }
 
         /// <summary>
-        /// Gets or sets where the type discriminator of a polymorphic type is written.
-        /// </summary>
-        /// <value>
-        /// One of the enumeration values that specifies where the type discriminator is written. The default is
-        /// <see cref="XmlDiscriminatorPlacement.ElementName"/>.
-        /// </value>
-        public XmlDiscriminatorPlacement DiscriminatorPlacement { get; set; }
-
-        /// <summary>
         /// Gets or sets the built-in naming policy that converts type and member names to XML element names.
         /// </summary>
         /// <value>
@@ -189,15 +180,6 @@ namespace CloudNimble.Text.Xml.Serialization
         /// One of the enumeration values. The default is <see cref="XmlUnknownTypeHandling.XmlElement"/>.
         /// </value>
         public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value that indicates whether enumeration values are written as names even when
-        /// <see cref="EnumHandling"/> is <see cref="XmlEnumHandling.Integer"/>.
-        /// </summary>
-        /// <value>
-        /// <see langword="true"/> if enumeration values are always written as names; otherwise, <see langword="false"/>. The default is <see langword="false"/>.
-        /// </value>
-        public bool UseStringEnumConverter { get; set; }
 
         /// <summary>
         /// Gets or sets a value that indicates whether the output is indented.

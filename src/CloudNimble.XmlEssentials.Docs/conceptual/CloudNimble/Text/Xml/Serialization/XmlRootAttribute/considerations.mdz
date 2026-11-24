@@ -2,4 +2,4 @@
 - When reading, the document element must have this name, or the serializer throws an `XmlException`. The name is matched with case unless `PropertyNameCaseInsensitive` is set, which ignores the case of ASCII letters for the document element as it does for members.
 - The attribute names the type as a document element. When the type is the type of a member of another object, the element is named after that member.
 - When `Namespace` is `null`, `XmlSerializerOptions.DefaultNamespace` is used.
-- The serializer doesn't read `IsNullable`. A `null` reference at the root is written as the document element marked `xsi:nil="true"` whatever its value.
+- A `null` reference at the root is always written as the document element marked `xsi:nil="true"`.

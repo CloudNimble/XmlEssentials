@@ -127,6 +127,8 @@ The process and the current tables are in `spec/23-optimization.md`. Read it bef
 
 * The documentation is built by `dotnet build` (with `-c Release` or `-c Debug`). The docs project (DotNetDocs.Sdk) turns the C# doc XML files into Mintlify-Enhanced Markdown and generates `docs.json` as part of that build.
 * **Ignore `docs.json`.** Never edit it by hand, never restore or "fix" its contents, and do not treat a change the build makes to it as a regression. Whatever the build produces is correct.
+* **Placeholder files are fine.** The build creates a set of `.mdz` files under `conceptual/` for every type, each starting with a `TODO: REMOVE THIS COMMENT` line. DotNetDocs ignores a file that still has that line, so it never reaches the published documentation. Write a section when the type needs it; otherwise leave the placeholder. Do not report placeholders as unfinished work, count them, or ask whether to fill them.
+* **Document what exists, not what was removed.** The guides, the conceptual notes and the XML doc comments describe the library as a reader finds it. Do not add a note about a member, option or behavior that the reader would never know existed: something that was removed, renamed, or never shipped. "There is no `X`" and "unlike before, ..." are noise to someone who never saw `X`. When a member is removed, delete what was written about it; do not replace it with an explanation of its absence. The record of a removal belongs in `/spec`. The one exception is a page whose subject is a comparison with another API (a migration guide, the proposal comparison): there, saying that the other API's member has no counterpart is the point.
 * XML documentation comments must be consistent, succinct, and as useful as possible.
 
 # Build Process

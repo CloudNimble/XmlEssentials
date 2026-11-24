@@ -163,7 +163,6 @@ public sealed class XmlRootAttribute : Attribute
     public XmlRootAttribute(string elementName);
     public string? ElementName { get; set; }
     public string? Namespace { get; set; }
-    public bool IsNullable { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
@@ -206,7 +205,6 @@ public sealed class XmlArrayAttribute : Attribute
     public string? ElementName { get; set; }
     public string? Namespace { get; set; }
     public int Order { get; set; } // default -1 = unset
-    public bool IsNullable { get; set; }
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]

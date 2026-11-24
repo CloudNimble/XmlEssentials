@@ -3,7 +3,6 @@ Not every value is reported by both DOMs:
 | Value | `XmlElement` (read-only document) | `XmlNode` (mutable tree) |
 | --- | --- | --- |
 | `Undefined` | A default `XmlElement`, which refers to no node | Never |
-| `Document` | Never | Never |
 | `Element` | An element with a start tag and an end tag | Every `XmlElementNode` |
 | `EmptyElement` | An element written as `<e/>` | Never |
 | `Nil` | An element whose `xsi:nil` is `true` or `1` | Never |

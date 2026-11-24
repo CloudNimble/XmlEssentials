@@ -381,7 +381,8 @@ When a member is populated:
 
 The following can't be populated. `PreferredObjectCreationHandling` leaves them as they are under `Replace`, and `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` on such a member throws an `InvalidOperationException` the first time the type is used:
 
-- An array, an immutable or frozen collection, and a collection declared as a read-only interface such as `IEnumerable<T>` or `IReadOnlyList<T>`.
+- An array, an immutable or frozen collection, a collection or dictionary that is a value type, and a collection declared as a read-only interface such as `IEnumerable<T>` or `IReadOnlyList<T>`.
+- A single value such as a `string` or a number.
 - A value that has a custom converter, and mixed content.
 - A polymorphic type.
 - A value type with no setter.

@@ -76,7 +76,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 foreach (var derived in polymorphism.Derived)
                 {
-                    if (XmlBoundProperty.NameEquals(ref reader, derived.Utf8Name, Options.PropertyNameCaseInsensitive))
+                    if (derived.Matches(ref reader, Options.PropertyNameCaseInsensitive))
                     {
                         return (T?)polymorphism.ReadDerived(ref reader, derived);
                     }
@@ -114,7 +114,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
                 {
-                    writer.WriteStartElement(derived.Utf8Name);
+                    derived.WriteStart(writer);
                 }
                 else
                 {

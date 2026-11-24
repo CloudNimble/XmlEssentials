@@ -14,11 +14,6 @@ namespace CloudNimble.Text.Xml
         Undefined = 0,
 
         /// <summary>
-        /// A document node. Neither <see cref="XmlDocument"/> nor the mutable tree reports this kind.
-        /// </summary>
-        Document = 1,
-
-        /// <summary>
         /// An element with a start tag and an end tag.
         /// </summary>
         Element = 2,

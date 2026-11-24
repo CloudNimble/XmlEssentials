@@ -24,12 +24,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// The whole end tag of an item inside a wrapper, when it can be written from bytes built ahead of time, or null.
         /// </summary>
-        internal readonly byte[]? ItemLeafCloseTag;
+        internal byte[]? ItemLeafCloseTag;
 
         /// <summary>
         /// The whole start tag of an item inside a wrapper, when the item name is an ASCII NCName, or null.
         /// </summary>
-        internal readonly byte[]? ItemLeafOpenTag;
+        internal byte[]? ItemLeafOpenTag;
 
         /// <summary>
         /// Whether the collection holds mixed text and child elements.
@@ -40,6 +40,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The UTF-8 local name of each item element inside a wrapper.
         /// </summary>
         internal readonly byte[] Utf8ItemName;
+
+        /// <summary>
+        /// The UTF-8 namespace of each item element inside a wrapper, or null when none was given and an item is
+        /// written under its name alone.
+        /// </summary>
+        internal byte[]? Utf8ItemNamespaceUri;
 
         /// <summary>
         /// Whether a wrapper element surrounds the items.
@@ -92,6 +98,21 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             var bindingType = typeof(XmlCollectionBinding<>).MakeGenericType(elementType);
             return (XmlCollectionBinding)Activator.CreateInstance(bindingType, collectionType, wrapped, utf8ItemName, itemTypeInfo, mixed)!;
+        }
+
+        /// <summary>
+        /// Gives the item elements a namespace of their own.
+        /// </summary>
+        /// <param name="utf8NamespaceUri">The UTF-8 namespace. Empty is no namespace.</param>
+        /// <remarks>
+        /// An item with a namespace is written through the writer, which declares the namespace, so the tags
+        /// that were built for an item with a bare name are not used.
+        /// </remarks>
+        internal void SetItemNamespace(byte[] utf8NamespaceUri)
+        {
+            Utf8ItemNamespaceUri = utf8NamespaceUri;
+            ItemLeafOpenTag = null;
+            ItemLeafCloseTag = null;
         }
 
         /// <summary>

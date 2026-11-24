@@ -24,7 +24,7 @@ A document type declaration, an encoding other than UTF-8, and any entity other 
 
 - An empty element is one token with `IsEmptyElement` set. There's no end token for it.
 - Attributes aren't tokens in the `Read` sequence. You visit them with `MoveToNextAttribute`.
-- `HasValueSequence` is always `false` and `ValueSequence` is always empty. The value is always in `ValueSpan`.
+- The value is always in `ValueSpan`. A multi-segment sequence is copied into one buffer before it is read.
 - A copy of a reader shares working memory with the original.
 - `XmlReaderState` holds the open elements and namespace bindings, so taking it allocates.
 

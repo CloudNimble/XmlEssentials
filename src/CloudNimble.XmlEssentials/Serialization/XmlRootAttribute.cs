@@ -22,17 +22,6 @@ namespace CloudNimble.Text.Xml.Serialization
         public string? ElementName { get; set; }
 
         /// <summary>
-        /// Gets or sets a value that indicates whether a <see langword="null"/> value of the type is nillable.
-        /// </summary>
-        /// <value>
-        /// <see langword="true"/> if a <see langword="null"/> value of the type is nillable; otherwise, <see langword="false"/>. The default is <see langword="false"/>.
-        /// </value>
-        /// <remarks>
-        /// The serializer does not read this property. Nillability follows the type: a reference type or a <see cref="Nullable{T}"/> is nillable.
-        /// </remarks>
-        public bool IsNullable { get; set; }
-
-        /// <summary>
         /// Gets or sets the namespace URI of the document element.
         /// </summary>
         /// <value>

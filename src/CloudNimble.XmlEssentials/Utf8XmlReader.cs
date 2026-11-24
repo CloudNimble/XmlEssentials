@@ -240,15 +240,6 @@ namespace CloudNimble.Text.Xml
         public readonly bool HasAttributes => _attributeCount > 0;
 
         /// <summary>
-        /// Gets a value that indicates which <c>Value</c> property to use to get the token value.
-        /// </summary>
-        /// <value>
-        /// <see langword="false"/> in all cases. The value is never a multi-segment sequence, so use
-        /// <see cref="ValueSpan"/> to get it.
-        /// </value>
-        public readonly bool HasValueSequence => false;
-
-        /// <summary>
         /// Gets a value that indicates whether the current start tag is an empty element (<c>&lt;e/&gt;</c>).
         /// </summary>
         /// <value>
@@ -400,14 +391,6 @@ namespace CloudNimble.Text.Xml
         /// normalized; otherwise, <see langword="false"/>.
         /// </value>
         public readonly bool ValueIsEscaped => _inAttribute ? CurrentAttribute().ValueIsEscaped : _valueIsEscaped;
-
-        /// <summary>
-        /// Gets the value of the last processed token as a <see cref="ReadOnlySequence{T}"/>.
-        /// </summary>
-        /// <value>
-        /// An empty sequence in all cases. Use <see cref="ValueSpan"/> to get the value.
-        /// </value>
-        public readonly ReadOnlySequence<byte> ValueSequence => ReadOnlySequence<byte>.Empty;
 
         /// <summary>
         /// Gets the value of the last processed token as a read-only span of UTF-8 bytes.

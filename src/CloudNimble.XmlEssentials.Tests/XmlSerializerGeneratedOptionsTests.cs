@@ -514,6 +514,167 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void EverySeed_ReachesTheOptionsOfTheDefaultContext()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public enum Level
+                {
+                    Low,
+                    High,
+                }
+
+                public sealed class Item
+                {
+                    public Item? Child { get; set; }
+
+                    public readonly int Fixed = 3;
+
+                    public Level Level { get; set; }
+
+                    public List<Level> Levels { get; set; } = new();
+
+                    [XmlAttribute]
+                    public Level Mark { get; set; }
+
+                    public Level? Maybe { get; set; }
+
+                    public string Name { get; set; } = "";
+
+                    public string ReadOnly => "ro";
+                }
+
+                [XmlSourceGenerationOptions(
+                    EmitByteOrderMark = true,
+                    EnumHandling = XmlEnumHandling.Integer,
+                    IgnoreReadOnlyFields = true,
+                    IgnoreReadOnlyProperties = true,
+                    IncludeFields = true,
+                    MaxDepth = 3,
+                    PropertyNameCaseInsensitive = true,
+                    XmlVersion = XmlVersion.Version11)]
+                [XmlSerializable<Item>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                // This seed leaves the write fast path in use, so the fast path is what writes the enumerations.
+                [XmlSourceGenerationOptions(EnumHandling = XmlEnumHandling.Integer, OmitXmlDeclaration = true)]
+                [XmlSerializable<Item>]
+                internal partial class EnumXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static XmlSerializerOptions Same() => new XmlSerializerOptions
+                    {
+                        EmitByteOrderMark = true,
+                        EnumHandling = XmlEnumHandling.Integer,
+                        IgnoreReadOnlyFields = true,
+                        IgnoreReadOnlyProperties = true,
+                        IncludeFields = true,
+                        MaxDepth = 3,
+                        PropertyNameCaseInsensitive = true,
+                        XmlVersion = XmlVersion.Version11,
+                    };
+
+                    private static string Text(byte[] bytes) => System.Text.Encoding.UTF8.GetString(bytes).Replace("﻿", "<BOM>");
+
+                    private static string Thrown(Action action)
+                    {
+                        try
+                        {
+                            action();
+                            return "nothing was thrown";
+                        }
+                        catch (Exception ex)
+                        {
+                            return ex.GetType().Name + ": " + ex.Message;
+                        }
+                    }
+
+                    public static string Run()
+                    {
+                        var options = AppXmlContext.Default.Options;
+                        var value = new Item { Level = Level.High, Levels = { Level.Low, Level.High }, Mark = Level.High, Maybe = Level.High, Name = "n" };
+                        var deep = new Item { Child = new Item { Child = new Item { Child = new Item() } } };
+
+                        var generated = Text(XmlSerializer.SerializeToUtf8Bytes(value, AppXmlContext.Default.Item));
+                        var reflected = Text(XmlSerializer.SerializeToUtf8Bytes(value, Same()));
+                        var generatedDepth = Thrown(() => XmlSerializer.Serialize(deep, AppXmlContext.Default.Item));
+                        var reflectedDepth = Thrown(() => XmlSerializer.Serialize(deep, Same()));
+                        var fast = XmlSerializer.Serialize(value, EnumXmlContext.Default.Item);
+                        var slow = XmlSerializer.Serialize(value, new XmlSerializerOptions { EnumHandling = XmlEnumHandling.Integer, OmitXmlDeclaration = true });
+
+                        return string.Join("\n",
+                            options.EmitByteOrderMark + "," + options.EnumHandling + "," + options.IgnoreReadOnlyFields + "," + options.IgnoreReadOnlyProperties + "," + options.MaxDepth + "," + options.PropertyNameCaseInsensitive + "," + options.XmlVersion,
+                            generated == reflected ? generated : generated + " <> reflection: " + reflected,
+                            XmlSerializer.Deserialize("<Item MARK=\"1\"><NAME>x</NAME><level>1</level></Item>", AppXmlContext.Default.Item)!.Name,
+                            generatedDepth == reflectedDepth ? generatedDepth : generatedDepth + " <> reflection: " + reflectedDepth,
+                            fast == slow ? fast : fast + " <> reflection: " + slow);
+                    }
+                }
+                """).Should().Be(
+                    "True,Integer,True,True,3,True,Version11\n" +
+                    "<BOM><?xml version=\"1.1\" encoding=\"utf-8\"?><Item Mark=\"1\"><Child xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Level>1</Level><Levels>0</Levels><Levels>1</Levels><Maybe>1</Maybe><Name>n</Name></Item>\n" +
+                    "x\n" +
+                    "XmlException: MaxDepth exceeded (3).\n" +
+                    "<Item Mark=\"1\"><Child xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Level>1</Level><Levels>0</Levels><Levels>1</Levels><Maybe>1</Maybe><Name>n</Name><ReadOnly>ro</ReadOnly></Item>");
+        }
+
+        [TestMethod]
+        public void ElementNamespaces_AreFollowedByAGeneratedContext()
+        {
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                [XmlDerivedType<Circle>("shape", Namespace = "urn:round")]
+                [XmlDerivedType<Square>("shape", Namespace = "urn:square")]
+                public abstract class Shape
+                {
+                }
+
+                public sealed class Circle : Shape
+                {
+                    public int Radius { get; set; }
+                }
+
+                public sealed class Square : Shape
+                {
+                    public int Side { get; set; }
+                }
+
+                public sealed class Drawing
+                {
+                    [XmlArray(Namespace = "urn:w")]
+                    [XmlArrayItem("i", Namespace = "urn:i")]
+                    public List<int> Numbers { get; set; } = new();
+
+                    [XmlArray]
+                    public List<Shape> Shapes { get; set; } = new();
+                }
+
+                [XmlSourceGenerationOptions(OmitXmlDeclaration = true)]
+                [XmlSerializable<Drawing>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var value = new Drawing { Numbers = { 1 }, Shapes = { new Circle { Radius = 2 }, new Square { Side = 3 } } };
+                        var generated = XmlSerializer.Serialize(value, AppXmlContext.Default.Drawing);
+                        var reflected = XmlSerializer.Serialize(value, new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        var read = XmlSerializer.Deserialize(generated, AppXmlContext.Default.Drawing)!;
+                        return (generated == reflected ? generated : generated + " <> reflection: " + reflected)
+                            + "|" + read.Numbers[0] + "," + read.Shapes[0].GetType().Name + "," + read.Shapes[1].GetType().Name;
+                    }
+                }
+                """).Should().Be(
+                    "<Drawing><Numbers xmlns=\"urn:w\"><i xmlns=\"urn:i\">1</i></Numbers><Shapes><shape xmlns=\"urn:round\"><Radius>2</Radius></shape><shape xmlns=\"urn:square\"><Side>3</Side></shape></Shapes></Drawing>|1,Circle,Square");
+        }
+
+        [TestMethod]
         public void NamesAreMatchedWithoutCase_WhenTheOptionsAskForIt()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
