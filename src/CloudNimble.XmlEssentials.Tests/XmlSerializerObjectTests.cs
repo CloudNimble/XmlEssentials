@@ -617,6 +617,20 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Mixed_OnAMemberThatIsNotACollectionOfMixedContentItems_ThrowsAtTypeInfo()
+        {
+            FluentActions.Invoking(() => Bare.GetTypeInfo<MixedOfObjects>())
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
+                    "Member 'CloudNimble.XmlEssentials.Tests.POCOs.MixedOfObjects.Content' is marked [XmlMixedAttribute] but is not a collection of XmlMixedContentItem.");
+            FluentActions.Invoking(() => Bare.GetTypeInfo<MixedNotACollection>())
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
+                    "Member 'CloudNimble.XmlEssentials.Tests.POCOs.MixedNotACollection.Content' is marked [XmlMixedAttribute] but is not a collection of XmlMixedContentItem.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new MixedOfObjects { Content = { "text" } }))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
+                    "Member 'CloudNimble.XmlEssentials.Tests.POCOs.MixedOfObjects.Content' is marked [XmlMixedAttribute] but is not a collection of XmlMixedContentItem.");
+        }
+
+        [TestMethod]
         public void TwoMixed_ThrowsAtTypeInfo()
         {
             FluentActions.Invoking(() => Bare.GetTypeInfo<TwoMixed>())

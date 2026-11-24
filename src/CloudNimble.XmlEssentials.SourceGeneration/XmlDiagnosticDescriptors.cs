@@ -12,10 +12,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         #region Fields
 
         /// <summary>
-        /// XMLXE001: the annotated type is not a partial class that inherits <c>XmlSerializerContext</c>.
+        /// XMLESS001: the annotated type is not a partial class that inherits <c>XmlSerializerContext</c>.
         /// </summary>
         internal static readonly DiagnosticDescriptor ContextMustBePartial = new(
-            id: "XMLXE001",
+            id: "XMLESS001",
             title: "XmlSerializerContext must be a partial class",
             messageFormat: "'{0}' must be a partial class that inherits XmlSerializerContext",
             category: "XmlEssentials",
@@ -23,10 +23,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE002: the type cannot be serialized.
+        /// XMLESS002: the type cannot be serialized.
         /// </summary>
         internal static readonly DiagnosticDescriptor UnsupportedType = new(
-            id: "XMLXE002",
+            id: "XMLESS002",
             title: "Unsupported type",
             messageFormat: "The type '{0}' cannot be serialized by XmlEssentials",
             category: "XmlEssentials",
@@ -34,10 +34,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE003: a complex type is mapped as an XML attribute.
+        /// XMLESS003: a complex type is mapped as an XML attribute.
         /// </summary>
         internal static readonly DiagnosticDescriptor ComplexTypeAsAttribute = new(
-            id: "XMLXE003",
+            id: "XMLESS003",
             title: "Complex types cannot be attributes",
             messageFormat: "Member '{0}.{1}' is mapped as an XML attribute",
             category: "XmlEssentials",
@@ -45,10 +45,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE004: more than one simple-content member.
+        /// XMLESS004: more than one simple-content member.
         /// </summary>
         internal static readonly DiagnosticDescriptor MultipleTextMembers = new(
-            id: "XMLXE004",
+            id: "XMLESS004",
             title: "Multiple text members",
             messageFormat: "The type '{0}' has more than one [XmlText] or [XmlCData]",
             category: "XmlEssentials",
@@ -56,10 +56,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE005: more than one bindable constructor.
+        /// XMLESS005: more than one bindable constructor.
         /// </summary>
         internal static readonly DiagnosticDescriptor AmbiguousConstructors = new(
-            id: "XMLXE005",
+            id: "XMLESS005",
             title: "Ambiguous constructors",
             messageFormat: "The type '{0}' has more than one constructor that can bind its members",
             category: "XmlEssentials",
@@ -67,10 +67,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE006: a mapped name is not a valid XML Name.
+        /// XMLESS006: a mapped name is not a valid XML Name.
         /// </summary>
         internal static readonly DiagnosticDescriptor InvalidXmlName = new(
-            id: "XMLXE006",
+            id: "XMLESS006",
             title: "Invalid XML name",
             messageFormat: "The XML name '{0}' on '{1}' is not a valid XML Name",
             category: "XmlEssentials",
@@ -78,10 +78,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE007: BCL XmlInclude or our XmlInclude on a type.
+        /// XMLESS007: BCL XmlInclude or our XmlInclude on a type.
         /// </summary>
         internal static readonly DiagnosticDescriptor UseXmlDerivedType = new(
-            id: "XMLXE007",
+            id: "XMLESS007",
             title: "Use [XmlDerivedType]",
             messageFormat: "The type '{0}' uses XmlIncludeAttribute; use [XmlDerivedType] for known derived types",
             category: "XmlEssentials",
@@ -89,10 +89,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE010: include/import is not an AdditionalFile, or the schema contains a DTD.
+        /// XMLESS010: include/import is not an AdditionalFile, or the schema contains a DTD.
         /// </summary>
         internal static readonly DiagnosticDescriptor SchemaResolution = new(
-            id: "XMLXE010",
+            id: "XMLESS010",
             title: "Schema include or DTD is not allowed",
             messageFormat: "{0}",
             category: "XmlEssentials",
@@ -100,10 +100,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE011: unsupported schema construct.
+        /// XMLESS011: unsupported schema construct.
         /// </summary>
         internal static readonly DiagnosticDescriptor UnsupportedSchemaConstruct = new(
-            id: "XMLXE011",
+            id: "XMLESS011",
             title: "Unsupported schema construct",
             messageFormat: "{0}",
             category: "XmlEssentials",
@@ -111,10 +111,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE012: generated C# name collision.
+        /// XMLESS012: generated C# name collision.
         /// </summary>
         internal static readonly DiagnosticDescriptor GeneratedNameCollision = new(
-            id: "XMLXE012",
+            id: "XMLESS012",
             title: "Generated name collision",
             messageFormat: "The generated C# name '{0}' is used more than once",
             category: "XmlEssentials",
@@ -122,10 +122,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE013: generated member XML name is invalid.
+        /// XMLESS013: generated member XML name is invalid.
         /// </summary>
         internal static readonly DiagnosticDescriptor GeneratedInvalidXmlName = new(
-            id: "XMLXE013",
+            id: "XMLESS013",
             title: "Invalid generated XML name",
             messageFormat: "The XML name '{0}' is not a valid XML Name",
             category: "XmlEssentials",
@@ -133,10 +133,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE015: a complex type is mapped as the text of an element.
+        /// XMLESS015: a complex type is mapped as the text of an element.
         /// </summary>
         internal static readonly DiagnosticDescriptor ComplexTypeAsText = new(
-            id: "XMLXE015",
+            id: "XMLESS015",
             title: "Complex types cannot be text",
             messageFormat: "Member '{0}.{1}' is mapped as XML text, and its type is not a single value",
             category: "XmlEssentials",
@@ -144,10 +144,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE017: a required member is marked as never read.
+        /// XMLESS018: the schema allows something the generated types cannot read or write.
+        /// </summary>
+        internal static readonly DiagnosticDescriptor UnmappedSchemaConstruct = new(
+            id: "XMLESS018",
+            title: "Schema construct is not mapped",
+            messageFormat: "{0}",
+            category: "XmlEssentials",
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+        /// <summary>
+        /// XMLESS017: a required member is marked as never read.
         /// </summary>
         internal static readonly DiagnosticDescriptor RequiredMemberNeverRead = new(
-            id: "XMLXE017",
+            id: "XMLESS017",
             title: "Required member is never read",
             messageFormat: "'{0}' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read",
             category: "XmlEssentials",

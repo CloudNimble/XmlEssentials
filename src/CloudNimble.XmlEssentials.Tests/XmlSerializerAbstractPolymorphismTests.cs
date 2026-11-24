@@ -109,6 +109,26 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void XsiType_IsAQName_SoThePrefixADocumentChoseIsNotPartOfTheName()
+        {
+            // A producer that binds a prefix to the namespace of its types writes the prefix in xsi:type.
+            XmlSerializer.Deserialize<QualifiedShape>("<p:QualifiedShape xmlns:p=\"urn:p\" " + Xsi + " xsi:type=\"p:circle\"><Label>a</Label></p:QualifiedShape>")
+                .Should().BeOfType<QualifiedCircle>().Which.Label.Should().Be("a");
+            XmlSerializer.Deserialize<QualifiedShape>("<QualifiedShape " + Xsi + " xsi:type=\"circle\"/>").Should().BeOfType<QualifiedCircle>();
+            XmlSerializer.Deserialize<PolyItem<QualifiedShape>>("<PolyItemOfQualifiedShape xmlns:p=\"urn:p\" " + Xsi + "><Item xsi:type=\"p:circle\"/></PolyItemOfQualifiedShape>")!
+                .Item.Should().BeOfType<QualifiedCircle>();
+
+            // A discriminator that was declared with a colon is matched as it is written, before any prefix is set aside.
+            XmlSerializer.Deserialize<QualifiedShape>("<QualifiedShape " + Xsi + " xsi:type=\"q:circle\"/>").Should().BeOfType<QualifiedSquare>();
+
+            // The local part still has to be a declared type.
+            Message<XmlException>(() => XmlSerializer.Deserialize<QualifiedShape>("<QualifiedShape " + Xsi + " xsi:type=\"p:hexagon\"/>"))
+                .Should().Be("Unknown type discriminator 'p:hexagon'. Path: /QualifiedShape | LineNumber: 1 | BytePositionInLine: 93.");
+            Message<XmlException>(() => XmlSerializer.Deserialize<QualifiedShape>("<QualifiedShape " + Xsi + " xsi:type=\":circle\"/>"))
+                .Should().Be("Unknown type discriminator ':circle'. Path: /QualifiedShape | LineNumber: 1 | BytePositionInLine: 91.");
+        }
+
+        [TestMethod]
         public void AbstractType_UnknownDiscriminator_IsRejected()
         {
             Message<XmlException>(() => XmlSerializer.Deserialize<KindShape>("<KindShape kind=\"hexagon\"/>")).Should().Be("Unknown type discriminator 'hexagon'. Path: /KindShape | LineNumber: 1 | BytePositionInLine: 28.");

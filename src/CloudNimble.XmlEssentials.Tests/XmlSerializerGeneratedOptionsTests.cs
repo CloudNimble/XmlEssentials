@@ -528,7 +528,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable<Bad>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id is "XMLXE017").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
+            diagnostics.Where(d => d.Id is "XMLESS017").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
                 .Should().Equal("'Bad.Name' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read");
         }
 

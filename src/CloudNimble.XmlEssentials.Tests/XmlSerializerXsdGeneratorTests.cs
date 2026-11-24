@@ -9,7 +9,7 @@ namespace CloudNimble.XmlEssentials.Tests
 {
 
     /// <summary>
-    /// XSD AdditionalFiles generator: POCOs, context, shared emit, XMLXE010–013.
+    /// XSD AdditionalFiles generator: POCOs, context, shared emit, XMLESS010–013.
     /// </summary>
     [TestClass]
     public class XmlSerializerXsdGeneratorTests
@@ -21,6 +21,11 @@ namespace CloudNimble.XmlEssentials.Tests
         /// The namespace of the serialization attributes and types, as symbols print it.
         /// </summary>
         internal const string S = "CloudNimble.Text.Xml.Serialization";
+
+        /// <summary>
+        /// The attribute on an element that is not nillable, so that a null is left out and not written as nil.
+        /// </summary>
+        internal const string Ignore = " [" + S + ".XmlIgnoreAttribute(Condition = " + S + ".XmlIgnoreCondition.WhenWritingNull)]";
 
         internal const string OrderSchema = """
             <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:order" elementFormDefault="qualified">
@@ -73,11 +78,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 "  Open",
                 "  Closed",
                 "class XmlEssentials.Generated.Order_Line [" + S + ".XmlRootAttribute(\"Line\", Namespace = \"urn:order\")]",
-                "  string? Sku",
+                "  string? Sku" + Ignore,
                 "  int Qty",
                 "class XmlEssentials.Generated.Order [" + S + ".XmlRootAttribute(\"Order\", Namespace = \"urn:order\")]",
                 "  string? currency [" + S + ".XmlAttributeAttribute(\"currency\")]",
-                "  string? Id",
+                "  string? Id" + Ignore,
                 "  XmlEssentials.Generated.Status Status",
                 "  int? Qty",
                 "  System.Collections.Generic.List<XmlEssentials.Generated.Order_Line>? Line",
@@ -136,7 +141,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void IncludeMergesTypesFromAnotherAdditionalFile()
         {
             const string types = """
-                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:order">
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:order" elementFormDefault="qualified">
                   <xs:complexType name="Address">
                     <xs:sequence>
                       <xs:element name="City" type="xs:string"/>
@@ -145,7 +150,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 </xs:schema>
                 """;
             const string order = """
-                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:order">
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:order" elementFormDefault="qualified">
                   <xs:include schemaLocation="types.xsd"/>
                   <xs:element name="Customer">
                     <xs:complexType>
@@ -163,16 +168,16 @@ namespace CloudNimble.XmlEssentials.Tests
             diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Should().BeEmpty();
             XmlSerializerGeneratorTests.Declared(compilation, generated).Should().Equal(
                 "class XmlEssentials.Generated.Customer [" + S + ".XmlRootAttribute(\"Customer\", Namespace = \"urn:order\")]",
-                "  XmlEssentials.Generated.Address? Home",
+                "  XmlEssentials.Generated.Address? Home" + Ignore,
                 "class XmlEssentials.Generated.Address [" + S + ".XmlRootAttribute(\"Address\", Namespace = \"urn:order\")]",
-                "  string? City",
+                "  string? City" + Ignore,
                 "class XmlEssentials.Generated.OrderXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Customer>, " + S + ".XmlSerializableAttribute<XmlEssentials.Generated.Address>]",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Customer> Customer",
                 "  " + S + ".XmlTypeInfo<XmlEssentials.Generated.Address> Address");
         }
 
         [TestMethod]
-        public void MissingImport_ReportsXMLXE010()
+        public void MissingImport_ReportsXMLESS010()
         {
             const string schema = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -190,11 +195,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE010");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS010");
         }
 
         [TestMethod]
-        public void AbsoluteUriImport_ReportsXMLXE010()
+        public void AbsoluteUriImport_ReportsXMLESS010()
         {
             const string schema = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -212,11 +217,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE010");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS010");
         }
 
         [TestMethod]
-        public void DtdInSchema_ReportsXMLXE010()
+        public void DtdInSchema_ReportsXMLESS010()
         {
             const string schema = """
                 <?xml version="1.0"?>
@@ -237,11 +242,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE010");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS010");
         }
 
         [TestMethod]
-        public void Redefine_ReportsXMLXE011()
+        public void Redefine_ReportsXMLESS011()
         {
             const string schema = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -259,11 +264,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE011");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS011");
         }
 
         [TestMethod]
-        public void NameCollision_ReportsXMLXE012()
+        public void NameCollision_ReportsXMLESS012()
         {
             const string schema = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -287,11 +292,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE012");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS012");
         }
 
         [TestMethod]
-        public void InvalidElementName_ReportsXMLXE013()
+        public void InvalidElementName_ReportsXMLESS013()
         {
             const string schema = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -308,14 +313,14 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("root.xsd", schema)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE013");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS013");
         }
 
         [TestMethod]
         public void ClassNames_AreSharedOnlyWithinOneNamespace()
         {
             const string first = """
-                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:first">
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:first" elementFormDefault="qualified">
                   <xs:element name="Order">
                     <xs:complexType>
                       <xs:sequence>
@@ -326,7 +331,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 </xs:schema>
                 """;
             const string second = """
-                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:second">
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:second" elementFormDefault="qualified">
                   <xs:element name="Order">
                     <xs:complexType>
                       <xs:sequence>
@@ -349,10 +354,10 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("first.xsd", first), new TestAdditionalText("second.xsd", second)],
                 options);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().BeEmpty();
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().BeEmpty();
             XmlSerializerGeneratorTests.Declared(compilation, generated).Should().Equal(
                 "class App.First.Order [" + S + ".XmlRootAttribute(\"Order\", Namespace = \"urn:first\")]",
-                "  string? Id",
+                "  string? Id" + Ignore,
                 "class App.Second.Order [" + S + ".XmlRootAttribute(\"Order\", Namespace = \"urn:second\")]",
                 "  int Total",
                 "class App.First.FirstXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<App.First.Order>]",
@@ -366,8 +371,8 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("first.xsd", first), new TestAdditionalText("second.xsd", second)],
                 null);
-            sameNamespace.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id + ": " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
-                .Should().Equal("XMLXE012: The generated C# name 'Order' is used more than once");
+            sameNamespace.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id + ": " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture))
+                .Should().Equal("XMLESS012: The generated C# name 'Order' is used more than once");
         }
 
         [TestMethod]
@@ -476,7 +481,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "public static class Marker { }",
                 [new TestAdditionalText("service.wsdl", wsdl)],
                 null);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE")).Should().BeEmpty();
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS")).Should().BeEmpty();
             generated.Should().BeEmpty();
         }
 

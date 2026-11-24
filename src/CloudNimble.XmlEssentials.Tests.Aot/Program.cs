@@ -35,6 +35,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
                 CheckReflectionIsOff();
                 personXml = CheckPersonRoundTrip();
                 orderXml = CheckOrderFromXsd();
+                CheckShapesFromXsd();
                 inventoryXml = CheckInventoryRoundTrip();
                 EngineFeatures.Check();
                 CheckReader();
@@ -139,6 +140,33 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
 
             CheckEqual(XmlSerializer.Serialize(read, context.Order), expected, "xsd-order-roundtrip");
             return xml;
+        }
+
+        /// <summary>
+        /// Reads a document for the XSD-generated shapes, whose types derive from each other, and writes it back.
+        /// </summary>
+        /// <remarks>
+        /// The document names the derived type with a prefix in <c>xsi:type</c>, as a document written against the
+        /// schema by another producer does. The optional elements it leaves out are left out again.
+        /// </remarks>
+        internal static void CheckShapesFromXsd()
+        {
+            const string document =
+                "<d:drawing xmlns:d=\"urn:shapes\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" scale=\"1.5\">" +
+                "<d:Main xsi:type=\"d:Ring\" id=\"1\"><d:Name>m</d:Name><d:Radius>3</d:Radius></d:Main>" +
+                "<d:Mode>next-day</d:Mode><d:Tags><d:Tag>a</d:Tag><d:Tag>b</d:Tag></d:Tags></d:drawing>";
+            const string expected =
+                "<drawing xmlns=\"urn:shapes\" scale=\"1.5\">" +
+                "<Main xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"Ring\" id=\"1\"><Name>m</Name><Radius>3</Radius></Main>" +
+                "<Mode>next-day</Mode><Tags><Tag>a</Tag><Tag>b</Tag></Tags></drawing>";
+            var context = new ShapesXmlContext(new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultNamespace = "urn:shapes" });
+            var read = XmlSerializer.Deserialize(document, context.Drawing);
+            if (read?.Main is not Ring { id: 1, Name: "m", Radius: 3, Inner: null } || read.Mode is not Mode.next_day || read.Note is not null || read.Tags is not ["a", "b"])
+            {
+                throw new InvalidOperationException("xsd-shapes was not read as the document gives it.");
+            }
+
+            CheckEqual(XmlSerializer.Serialize(read, context.Drawing), expected, "xsd-shapes-roundtrip");
         }
 
         /// <summary>

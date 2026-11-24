@@ -254,7 +254,7 @@ Context attributes: [serializer page](07-api-serializer.md#type-info--context). 
 | Known derived type | `[XmlDerivedType]` |
 | BCL known-types (`System.Xml.Serialization.XmlIncludeAttribute`) | **not used, not honored** |
 
-XMLXE007 (generator): `System.Xml.Serialization.XmlIncludeAttribute` present on this **type graph** (typically on the **class**, BCL muscle memory). Message: use `[XmlDerivedType]`. Optionally also our `[XmlInclude]` on a type (invalid target). The runtime library does not reference BCL XML; the generator inspects consumer symbols.
+XMLESS007 (generator): `System.Xml.Serialization.XmlIncludeAttribute` present on this **type graph** (typically on the **class**, BCL muscle memory). Message: use `[XmlDerivedType]`. Optionally also our `[XmlInclude]` on a type (invalid target). The runtime library does not reference BCL XML; the generator inspects consumer symbols.
 
 ---
 

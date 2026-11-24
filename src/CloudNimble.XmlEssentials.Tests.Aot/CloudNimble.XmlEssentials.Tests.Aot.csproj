@@ -32,6 +32,10 @@
 			<XmlEssentialsNamespace>CloudNimble.XmlEssentials.Tests.Aot.Generated</XmlEssentialsNamespace>
 			<XmlEssentialsContext>OrderXmlContext</XmlEssentialsContext>
 		</AdditionalFiles>
+		<AdditionalFiles Include="Schemas\shapes.xsd">
+			<XmlEssentialsNamespace>CloudNimble.XmlEssentials.Tests.Aot.Generated</XmlEssentialsNamespace>
+			<XmlEssentialsContext>ShapesXmlContext</XmlEssentialsContext>
+		</AdditionalFiles>
 	</ItemGroup>
 
 </Project>

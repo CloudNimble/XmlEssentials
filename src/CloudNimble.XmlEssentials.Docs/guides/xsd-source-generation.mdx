@@ -180,7 +180,7 @@ For the schema above, the generator writes two classes for the `Catalog` element
 public partial class Catalog
 {
     [XmlAttribute("published")]
-    public global::System.DateOnly published { get; set; }
+    public global::System.DateOnly? published { get; set; }
 
     public global::System.Collections.Generic.List<global::CloudNimble.XmlEssentials.Samples.Schemas.Catalog_Product>? Product { get; set; }
 
@@ -192,6 +192,7 @@ public partial class Catalog_Product
     [XmlAttribute("sku")]
     public string? sku { get; set; }
 
+    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]
     public string? Name { get; set; }
 
     public decimal Price { get; set; }
@@ -200,6 +201,7 @@ public partial class Catalog_Product
 
     public double? Weight { get; set; }
 
+    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]
     public global::CloudNimble.XmlEssentials.Samples.Schemas.Supplier? Supplier { get; set; }
 
 }
@@ -216,6 +218,8 @@ What to notice:
 
 - **Names come from the schema unchanged.** The attributes `published` and `sku` become properties with those exact names, lowercase included. A character that isn't valid in a C# identifier becomes an underscore.
 - **An anonymous complex type is named after its parent.** The `Product` element inside `Catalog` becomes `Catalog_Product`.
+- **An attribute is optional unless the schema says `use="required"`.** `published` is a `DateOnly?`, so that it can be absent.
+- **Only `nillable="true"` allows `xsi:nil`.** `Weight` is nillable, so a `null` is written as `xsi:nil="true"`. `Name` and `Supplier` aren't, so a `null` is left out: that is what `[XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]` says.
 - **Every class is `public partial`.** Add members in a file of your own instead of editing generated code.
 - **`xs:documentation` becomes a `<summary>` comment** on the class. Documentation on child elements and attributes isn't copied.
 
@@ -275,57 +279,67 @@ The members of the generated classes have no namespace of their own, so when rea
 | `xs:base64Binary` | `byte[]` |
 | `xs:anyURI` | `Uri` |
 | A named `xs:simpleType` with `xs:enumeration` values | An `enum` with one member for each value |
+| A named or inline `xs:simpleType` that restricts another type without enumerations | The C# type of the type it restricts: an `xs:int` with a range is an `int` |
 | A named `xs:complexType` | A class |
 
 <Note>
-A named simple type that restricts a base type without enumerations, such as an `xs:int` with a range or an `xs:string` with a pattern, maps to `string`. Types such as `xs:positiveInteger`, `xs:hexBinary`, and `xs:token` map to `string` too.
+Types such as `xs:positiveInteger`, `xs:hexBinary`, and `xs:token` map to `string`, and so does a simple type that is a list or a union. Facets such as `pattern` and `minInclusive` aren't checked.
 </Note>
-
 ### Structure
 
 | XSD construct | Generated code |
 | --- | --- |
-| Global `xs:element` with a complex type, inline or by name | A class named after the element, with `[XmlRoot]`. |
+| Named `xs:complexType` | A class named after the type. |
+| Global `xs:element` whose type is a named complex type | No class of its own. The element's name is the `[XmlRoot]` name of the type's class. When several elements share a type, the first one names the root and the generator reports `XMLESS018`. |
+| Global `xs:element` with an inline `xs:complexType` | A class named after the element, with `[XmlRoot]`. |
 | Global `xs:element` with a simple type | Nothing. |
-| `xs:sequence`, `xs:all` | One property for each child element. |
-| `xs:choice` | One property for each alternative. The choice isn't enforced, and the generator reports `XMLXE011`. |
+| `xs:sequence`, `xs:all`, and a sequence nested in another | One property for each child element, in the order of the schema. |
 | `xs:element` with `maxOccurs` greater than 1 or `unbounded` | A `List<T>?` property, written as repeated elements with no wrapper. |
-| `xs:element` with `nillable="true"` and a value type | A nullable property, such as `double?`. |
+| `xs:element` whose inline type is a sequence of one repeating element and nothing else | A `List<T>?` property with `[XmlArray]` and `[XmlArrayItem]`: the outer element is the wrapper. |
+| `xs:element` with `minOccurs="0"` | A property that can be `null`, such as `int?`. A `null` is left out of the document. |
+| `xs:element` with `nillable="true"` | A property that can be `null`. A `null` is written with `xsi:nil="true"`. |
+| `xs:element` that is neither optional nor nillable, with a reference type | A property that can be `null`, because C# allows it. A `null` is left out, since the schema doesn't allow `xsi:nil` there. |
 | `xs:element` with an inline `xs:complexType` | A class named *Parent*_*Element*. |
-| `xs:attribute` | A property with `[XmlAttribute]`. |
-| `xs:simpleContent` with an extension | A `Value` property with `[XmlText]`, and a property for each attribute. |
-| `xs:complexContent` with an extension | A class with the base type's members followed by its own. The classes don't inherit from each other. |
+| `xs:element ref` | A property of the type of the global element it names. |
+| `xs:attribute` | A property with `[XmlAttribute]`. A value type is nullable unless the attribute has `use="required"`. `use="prohibited"` gives no property. |
+| `xs:attribute ref` | A property of the type of the global attribute it names. `xml:lang`, `xml:space` and `xml:base` keep the XML namespace. |
+| `xs:group ref`, `xs:attributeGroup ref` | The properties of the group it names, as if they were declared in place. |
+| `xs:simpleContent` with an extension of a simple type | A `Value` property with `[XmlText]`, and a property for each attribute. |
+| `xs:complexContent` or `xs:simpleContent` that extends a named complex type | A class derived from the base type's class, with only its own members. The base class lists it with `[XmlPolymorphic]` and `[XmlDerivedType]`, so a value declared as the base type is written with `xsi:type` when it is of the derived type. |
+| `abstract="true"` on a complex type | An `abstract` class. |
 | `xs:any`, `xs:anyAttribute` | One `XmlExtensionData? Extra` property with `[XmlExtensionData]`. |
+| An enumeration value that isn't a C# identifier, such as `back-order` | A member with underscores for the invalid characters (`back_order`) and `[XmlPropertyName("back-order")]`, so the document still holds the schema's value. |
 | `xs:annotation` with `xs:documentation` on a global element or a complex type | A `<summary>` comment on the class. |
-| `xs:include`, `xs:import` | The generator looks for the other schema by file name among the `.xsd` items of the project, and reports `XMLXE010` when it isn't there. Schemas that span several files aren't covered by a sample in this documentation, so check the generated code when you use them. |
+| `xs:include`, `xs:import` | The generator looks for the other schema by file name among the `.xsd` items of the project, and reports `XMLESS010` when it isn't there. Schemas that span several files aren't covered by a sample in this documentation, so check the generated code when you use them. |
+
+A document names a derived type the way the schema says: with `xsi:type`. The value is a qualified name, so `xsi:type="s:Circle"` and `xsi:type="Circle"` are both read as the `Circle` class, whatever prefix the document chose.
 
 ### Not mapped
 
-The generator doesn't act on the following. Where an ID is shown, it reports that diagnostic as information and continues.
+The generator doesn't act on the following. It reports `XMLESS011` as information when the documents stay the same, and `XMLESS018` as a warning when a document the schema allows can't be read or written as the schema describes it.
 
 | XSD construct | What happens |
 | --- | --- |
-| `minOccurs`, `use="required"`, `default`, `fixed` | Ignored. No member is marked as required and no default is applied. |
+| `xs:choice` | One optional property for each alternative. That exactly one is present isn't enforced (`XMLESS011`). |
+| A sequence, choice or group with `maxOccurs` greater than 1 | Each element in it becomes a list. The order between the elements of different lists isn't kept (`XMLESS018`). |
+| `substitutionGroup` | Not mapped (`XMLESS018`). Where the head element is allowed, only the head element itself is read and written. |
+| `mixed="true"` | The elements are mapped. The text between them isn't read or written (`XMLESS018`). |
+| Local elements of a schema that has a `targetNamespace` and isn't `elementFormDefault="qualified"` | The schema puts them in no namespace. The generated classes write them in the target namespace (`XMLESS018`). |
+| A `ref`, a group, an attribute group or a base type that isn't in the schema or its includes | A `ref` becomes a `string` property; the members of a missing group or base type aren't generated (`XMLESS018`). |
+| `xs:restriction` of a named complex type | A derived class with no members of its own. What it restricts isn't enforced (`XMLESS011`). |
+| `default`, `fixed` | Not applied to the property (`XMLESS011`). |
 | Facets: `pattern`, `minInclusive`, `maxLength`, and the others except `enumeration` | Ignored. Values aren't validated. |
-| An element or attribute declared with `ref` | A `string` member named after the referenced declaration. |
-| A model group nested in another, and `xs:group` or `xs:attributeGroup` references | Ignored. |
-| `substitutionGroup` on a local element | Ignored (`XMLXE011`). |
-| `xs:key`, `xs:keyref`, `xs:unique` | Ignored. `XMLXE011` is reported for those at the top level of the schema or of a complex type. |
-| `xs:redefine`, `xs:notation` | Ignored (`XMLXE011`). |
-| An enumeration value that isn't a C# identifier, such as `back-order` | The member name has underscores for the invalid characters (`back_order`), and that name is what's written and read. |
-
-<Warning>
-Check the last row against your schema. The generated enumeration reads and writes its member names, so a value that had to be changed no longer matches the schema's value.
-</Warning>
-
+| `xs:key`, `xs:keyref`, `xs:unique` | Ignored (`XMLESS011`). |
+| `xs:redefine`, `xs:notation` | Ignored (`XMLESS011`). |
 ## Diagnostics
 
 | ID | Severity | When |
 | --- | --- | --- |
-| `XMLXE010` | Error | The schema contains a DTD or isn't well formed, or an `xs:include` or `xs:import` has no `schemaLocation`, has one with a URI scheme, or names a file that isn't an `.xsd` item of the project. Schemas are never downloaded. |
-| `XMLXE011` | Information | The schema uses a construct that's ignored or simplified, as the tables above show. |
-| `XMLXE012` | Error | Two components produce the same C# type name in one C# namespace. Schema files that generate into different namespaces may each have a class of the same name. |
-| `XMLXE013` | Error | An element or attribute name in the schema isn't a valid XML name. |
+| `XMLESS010` | Error | The schema contains a DTD or isn't well formed, or an `xs:include` or `xs:import` has no `schemaLocation`, has one with a URI scheme, or names a file that isn't an `.xsd` item of the project. Schemas are never downloaded. |
+| `XMLESS011` | Information | The schema says something the generated code doesn't act on, and the documents stay the same. |
+| `XMLESS012` | Error | Two components produce the same C# name: two types in one C# namespace, two members of one class (an element and an attribute of the same name, or a member named like its class), or two values of one enumeration. Schema files that generate into different namespaces may each have a class of the same name. |
+| `XMLESS013` | Error | An element or attribute name in the schema isn't a valid XML name. |
+| `XMLESS018` | Warning | The schema allows a document that the generated classes can't read or write as the schema describes it. The message names the construct and what happens instead. |
 
 ## Options and the generated context
 

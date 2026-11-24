@@ -1379,6 +1379,13 @@ namespace CloudNimble.Text.Xml.Serialization
 
                 if (member.Member.IsDefined(typeof(XmlMixedAttribute)))
                 {
+                    // Mixed content is read into and written from XmlMixedContentItem only. A member of another
+                    // type would be written as nothing and could not be read, so it is refused here.
+                    if (!member.Member.IsCollection(out var mixedItem) || mixedItem != typeof(XmlMixedContentItem))
+                    {
+                        throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' is marked [{nameof(XmlMixedAttribute)}] but is not a collection of {nameof(XmlMixedContentItem)}.");
+                    }
+
                     mixedCount++;
                     continue;
                 }

@@ -56,7 +56,7 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void NonPartialContext_ReportsXMLXE001()
+        public void NonPartialContext_ReportsXMLESS001()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -74,11 +74,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE001");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS001");
         }
 
         [TestMethod]
-        public void ComplexAttribute_ReportsXMLXE003()
+        public void ComplexAttribute_ReportsXMLESS003()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -100,11 +100,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE003");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS003");
         }
 
         [TestMethod]
-        public void TwoTextMembers_ReportsXMLXE004()
+        public void TwoTextMembers_ReportsXMLESS004()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -123,7 +123,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE004");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS004");
         }
 
         [TestMethod]
@@ -222,7 +222,7 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void IntPtrMember_ReportsXMLXE002()
+        public void IntPtrMember_ReportsXMLESS002()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -238,11 +238,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE002");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS002");
         }
 
         [TestMethod]
-        public void UnboundGeneric_IsRejectedByTheCompiler_AndReportsXMLXE002()
+        public void UnboundGeneric_IsRejectedByTheCompiler_AndReportsXMLESS002()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -255,12 +255,12 @@ namespace CloudNimble.XmlEssentials.Tests
             // The type is a type argument of the attribute, and the language does not allow an unbound one there.
             // The generator still sees the attribute, reports the type, and generates nothing from it.
             var (compilation, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE002");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS002");
             compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.Id + ": " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal("CS7003: Unexpected use of an unbound generic name");
         }
 
         [TestMethod]
-        public void AmbiguousConstructors_ReportsXMLXE005()
+        public void AmbiguousConstructors_ReportsXMLESS005()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -279,11 +279,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE005");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS005");
         }
 
         [TestMethod]
-        public void InvalidXmlName_ReportsXMLXE006()
+        public void InvalidXmlName_ReportsXMLESS006()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -300,11 +300,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE006");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS006");
         }
 
         [TestMethod]
-        public void BclXmlInclude_ReportsXMLXE007()
+        public void BclXmlInclude_ReportsXMLESS007()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -321,11 +321,11 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE007");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS007");
         }
 
         [TestMethod]
-        public void TwoXmlConstructors_ReportsXMLXE005()
+        public void TwoXmlConstructors_ReportsXMLESS005()
         {
             const string source = """
                 using CloudNimble.Text.Xml.Serialization;
@@ -345,7 +345,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """;
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLXE005");
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal("XMLESS005");
         }
 
         [TestMethod]
@@ -751,14 +751,14 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow("public sealed class Odd { public Odd(string Name, int extra) { this.Name = Name; } public string Name { get; } }", "XMLXE002", DisplayName = "no constructor can be called: one parameter is not a member and has no default")]
-        [DataRow("public sealed class Odd { [XmlConstructor] public Odd(string Name) { this.Name = Name; } [XmlConstructor] public Odd(string Name, int Age) { this.Name = Name; this.Age = Age; } public string Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two marked constructors")]
-        [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(int Age) { this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two constructors that bind as many members")]
+        [DataRow("public sealed class Odd { public Odd(string Name, int extra) { this.Name = Name; } public string Name { get; } }", "XMLESS002", DisplayName = "no constructor can be called: one parameter is not a member and has no default")]
+        [DataRow("public sealed class Odd { [XmlConstructor] public Odd(string Name) { this.Name = Name; } [XmlConstructor] public Odd(string Name, int Age) { this.Name = Name; this.Age = Age; } public string Name { get; } public int Age { get; } }", "XMLESS005", DisplayName = "two marked constructors")]
+        [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(int Age) { this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLESS005", DisplayName = "two constructors that bind as many members")]
         public void GeneratedContext_ConstructorThatCannotBeChosenOrCalled_IsReported(string type, string expectedId)
         {
             var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + type + "\n[XmlSerializable<Odd>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id.StartsWith("XMLXE", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal(expectedId);
+            diagnostics.Where(d => d.Id.StartsWith("XMLESS", System.StringComparison.Ordinal)).Select(d => d.Id).Should().Equal(expectedId);
         }
 
         [TestMethod]

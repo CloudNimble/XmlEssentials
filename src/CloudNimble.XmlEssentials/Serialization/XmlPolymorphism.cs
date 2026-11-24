@@ -95,6 +95,21 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
+            // The value of xsi:type is a QName. A document that binds a prefix to the namespace of its types
+            // writes "p:Circle", and the prefix is whatever that document chose, so the type is found by the
+            // local part. A discriminator that was declared with a colon has been matched above, as it is written.
+            if (Placement is XmlDiscriminatorPlacement.XsiType && discriminator.IndexOf(':') is > 0 and var colon)
+            {
+                var local = discriminator.AsSpan(colon + 1);
+                foreach (var derived in Derived)
+                {
+                    if (local.SequenceEqual(derived.Discriminator))
+                    {
+                        return derived;
+                    }
+                }
+            }
+
             return null;
         }
 

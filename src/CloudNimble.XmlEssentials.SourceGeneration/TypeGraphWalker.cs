@@ -645,7 +645,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         /// <param name="type">The type.</param>
         /// <param name="clrName">The fully qualified name.</param>
-        /// <returns><see langword="true"/> when XMLXE002 applies.</returns>
+        /// <returns><see langword="true"/> when XMLESS002 applies.</returns>
         internal static bool IsUnsupported(ITypeSymbol type, string clrName)
         {
             if (type is IPointerTypeSymbol || type.TypeKind is TypeKind.Pointer)
@@ -829,8 +829,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <remarks>
         /// A constructor marked <c>[XmlConstructor]</c> is used. Otherwise the public constructor with the most
         /// parameters is used, among those whose every parameter is named like a member. A parameter no
-        /// member fills must have a default value. XMLXE005 is reported when the choice is ambiguous, and
-        /// XMLXE002 when no constructor can be used. A constructor that is not accessible is called through an accessor.
+        /// member fills must have a default value. XMLESS005 is reported when the choice is ambiguous, and
+        /// XMLESS002 when no constructor can be used. A constructor that is not accessible is called through an accessor.
         /// </remarks>
         internal static void BindConstructor(INamedTypeSymbol type, List<MemberSpec> members, List<Diagnostic> diagnostics, out IMethodSymbol? chosenConstructor)
         {

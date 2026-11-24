@@ -145,7 +145,7 @@ Use the `NameStartChar` / `NameChar` productions of the **document version**. Bo
 | `Utf8XmlReader` | Yes. Sequence of `Text`, `StartElement`, `Text`, `EndElement`. |
 | `Utf8XmlWriter` | Yes. Callers write text and elements in any order. |
 | DOM (`XmlDocument` / `XmlNode`) | Yes. Element children is an ordered list of nodes (text, element, comment, PI, CDATA). |
-| `XmlSerializer` object **mapping** | **Yes.** `[XmlMixed]` on a `List<XmlNode>` / `List<object>` / content DTO list. See [object mapping](09-object-mapping.md#mixed-content). |
+| `XmlSerializer` object **mapping** | **Yes.** `[XmlMixed]` on a collection of `XmlMixedContentItem`. See [object mapping](09-object-mapping.md#mixed-content). |
 | Types **without** `[XmlMixed]` | If the type has `[XmlText]` **and** child-element members: `NotSupportedException` at type-info build (use `[XmlMixed]`). If the type has no `[XmlText]` and the payload has both text and child elements: unmapped-member handling. |
 
 Simple content:

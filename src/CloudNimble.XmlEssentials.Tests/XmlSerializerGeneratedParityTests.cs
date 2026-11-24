@@ -531,8 +531,8 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow("public sealed class Inner { public int A { get; set; } } public sealed class Note { [XmlText] public Inner? Body { get; set; } }", "XMLXE015", "Member 'Note.Body' is mapped as XML text, and its type is not a single value", DisplayName = "text that is an object")]
-        [DataRow("public sealed class Note { [XmlText] public List<string> Body { get; set; } = new(); }", "XMLXE015", "Member 'Note.Body' is mapped as XML text, and its type is not a single value", DisplayName = "text that is a collection")]
+        [DataRow("public sealed class Inner { public int A { get; set; } } public sealed class Note { [XmlText] public Inner? Body { get; set; } }", "XMLESS015", "Member 'Note.Body' is mapped as XML text, and its type is not a single value", DisplayName = "text that is an object")]
+        [DataRow("public sealed class Note { [XmlText] public List<string> Body { get; set; } = new(); }", "XMLESS015", "Member 'Note.Body' is mapped as XML text, and its type is not a single value", DisplayName = "text that is a collection")]
         public void TextMembersThatAreNotASingleValue_AreReportedRatherThanDropped(string types, string id, string expectedMessage)
         {
             var source = Usings + types + "\n[XmlSerializable<Note>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
@@ -1603,6 +1603,45 @@ namespace CloudNimble.XmlEssentials.Tests
                 + "<Words><ArrayOfString><string>a</string></ArrayOfString></Words><Blobs><base64Binary>AQ==</base64Binary></Blobs>"
                 + "<Ids><guid>00000000-0000-0000-0000-000000000000</guid></Ids><Parts><PartOfInt32><Value>5</Value></PartOfInt32></Parts></Holder>"
                 + "\nsame\n1,3,4,a,1,00000000-0000-0000-0000-000000000000,5\n1,3,4,a,1,00000000-0000-0000-0000-000000000000,5");
+        }
+
+        [TestMethod]
+        public void MixedMember_ThatIsNotACollectionOfMixedContentItems_IsRefused_AsTheReflectionResolverRefusesIt()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public sealed class Page
+                {
+                    [XmlMixed]
+                    public List<object> Content { get; set; } = new();
+                }
+
+                [XmlSerializable<Page>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Try(Func<string> work)
+                    {
+                        try
+                        {
+                            return work();
+                        }
+                        catch (Exception ex)
+                        {
+                            return ex.GetType().Name + ": " + ex.Message;
+                        }
+                    }
+
+                    public static string Run()
+                    {
+                        var generated = Try(() => XmlSerializer.Serialize(new Page(), AppXmlContext.Default.Page));
+                        var reflected = Try(() => XmlSerializer.Serialize(new Page(), new XmlSerializerOptions()));
+                        return generated + "\n" + (generated == reflected ? "same" : "reflection: " + reflected);
+                    }
+                }
+                """).Should().Be("NotSupportedException: Member 'Page.Content' is marked [XmlMixedAttribute] but is not a collection of XmlMixedContentItem.\nsame");
         }
 
         [TestMethod]

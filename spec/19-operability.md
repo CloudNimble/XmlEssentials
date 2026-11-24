@@ -24,7 +24,7 @@ See [PR plan](22-pr-plan.md).
 | --- | --- | --- |
 | Parser complexity | High | Frozen subset; PR 2a–2d |
 | CS0104 | Medium | Docs; never `using System.Xml` in samples |
-| BCL `[XmlInclude]` | Medium | XMLXE007 |
+| BCL `[XmlInclude]` | Medium | XMLESS007 |
 | Unwrapped empty vs null | Medium | Documented; prefer `[XmlArray]` |
 | Coverage gate ignored by MTP | High | Exact CI: `--coverage` then `coverage-gate.cs` — not runsettings |
 | Mapping drift | High | Shared tests both paths |

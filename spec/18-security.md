@@ -14,7 +14,7 @@ Part of the [XmlEssentials spec](README.md).
 | Sensitive data in XML | Medium | Library does not log payload values. Callers' problem. |
 | HashDoS on extension data keys | Low | `XmlName` dictionary uses ordinal string hash (framework). |
 
-No authentication, no PII store, no telemetry. Schema files are compile-time AdditionalFiles only; the generator must not fetch URLs. `<!DOCTYPE` in instance **or** schema documents is `XmlException` / XMLXE010. `WriteRawValue(..., skipInputValidation: true)` is the unsafe hatch; document it as "do not use on untrusted input".
+No authentication, no PII store, no telemetry. Schema files are compile-time AdditionalFiles only; the generator must not fetch URLs. `<!DOCTYPE` in instance **or** schema documents is `XmlException` / XMLESS010. `WriteRawValue(..., skipInputValidation: true)` is the unsafe hatch; document it as "do not use on untrusted input".
 
 Privacy: none. The library does not phone home.
 

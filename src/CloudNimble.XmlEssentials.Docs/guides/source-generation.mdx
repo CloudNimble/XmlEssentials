@@ -272,25 +272,26 @@ You can add several generated contexts to `XmlSerializerOptions.TypeInfoResolver
 
 ## Understand the diagnostics
 
-The generator reports problems as compiler diagnostics in the `XmlEssentials` category. All are errors except `XMLXE011`.
+The generator reports problems as compiler diagnostics in the `XmlEssentials` category. All are errors except `XMLESS011`, which is information, and `XMLESS018`, which is a warning.
 
 | ID | Message | Cause and fix |
 | --- | --- | --- |
-| `XMLXE001` | '*type*' must be a partial class that inherits XmlSerializerContext | A class has `[XmlSerializable]` but isn't `partial` or doesn't derive from `XmlSerializerContext`. Add the modifier or the base class. |
-| `XMLXE002` | The type '*type*' cannot be serialized by XmlEssentials | The type is a pointer, `IntPtr`, `UIntPtr`, or an open generic type, or the generator can't call a constructor: a constructor parameter that no member fills has no default value, or a class has neither a parameterless constructor nor one whose parameters all match members. |
-| `XMLXE003` | Member '*type*.*member*' is mapped as an XML attribute | A member with `[XmlAttribute]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
-| `XMLXE004` | The type '*type*' has more than one [XmlText] or [XmlCData] | An element has one text content. Keep the attribute on one member. |
-| `XMLXE005` | The type '*type*' has more than one constructor that can bind its members | Two constructors are marked `[XmlConstructor]`, or none is marked and two public constructors bind the same number of members. Mark one. |
-| `XMLXE006` | The XML name '*name*' on '*member*' is not a valid XML Name | The name of a member, after the naming policy, can't be an element or attribute name. Rename it with `[XmlElement]`, `[XmlAttribute]`, or `[XmlPropertyName]`. |
-| `XMLXE007` | The type '*type*' uses XmlIncludeAttribute; use [XmlDerivedType] for known derived types | The type or one of its members carries `System.Xml.Serialization.XmlIncludeAttribute`, which this library doesn't read. Declare derived types with `[XmlDerivedType]`. |
-| `XMLXE010` | Varies | A schema file has a DTD, isn't well formed, or includes or imports a schema that isn't an `AdditionalFiles` item. See [Generate types from an XSD](/guides/xsd-source-generation). |
-| `XMLXE011` | Varies | Information only. A schema uses a construct the generator ignores or simplifies. |
-| `XMLXE012` | The generated C# name '*name*' is used more than once | Two schema components produce the same class or enumeration name. |
-| `XMLXE013` | The XML name '*name*' is not a valid XML Name | A schema names an element or attribute with a name that isn't a valid XML name. |
-| `XMLXE015` | Member '*type*.*member*' is mapped as XML text, and its type is not a single value | A member with `[XmlText]` or `[XmlCData]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
-| `XMLXE017` | '*member*' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read | A required member is marked `[XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]`. Remove one of the two. |
+| `XMLESS001` | '*type*' must be a partial class that inherits XmlSerializerContext | A class has `[XmlSerializable]` but isn't `partial` or doesn't derive from `XmlSerializerContext`. Add the modifier or the base class. |
+| `XMLESS002` | The type '*type*' cannot be serialized by XmlEssentials | The type is a pointer, `IntPtr`, `UIntPtr`, or an open generic type, or the generator can't call a constructor: a constructor parameter that no member fills has no default value, or a class has neither a parameterless constructor nor one whose parameters all match members. |
+| `XMLESS003` | Member '*type*.*member*' is mapped as an XML attribute | A member with `[XmlAttribute]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
+| `XMLESS004` | The type '*type*' has more than one [XmlText] or [XmlCData] | An element has one text content. Keep the attribute on one member. |
+| `XMLESS005` | The type '*type*' has more than one constructor that can bind its members | Two constructors are marked `[XmlConstructor]`, or none is marked and two public constructors bind the same number of members. Mark one. |
+| `XMLESS006` | The XML name '*name*' on '*member*' is not a valid XML Name | The name of a member, after the naming policy, can't be an element or attribute name. Rename it with `[XmlElement]`, `[XmlAttribute]`, or `[XmlPropertyName]`. |
+| `XMLESS007` | The type '*type*' uses XmlIncludeAttribute; use [XmlDerivedType] for known derived types | The type or one of its members carries `System.Xml.Serialization.XmlIncludeAttribute`, which this library doesn't read. Declare derived types with `[XmlDerivedType]`. |
+| `XMLESS010` | Varies | A schema file has a DTD, isn't well formed, or includes or imports a schema that isn't an `AdditionalFiles` item. See [Generate types from an XSD](/guides/xsd-source-generation). |
+| `XMLESS011` | Varies | Information only. A schema says something the generated code doesn't act on, and the documents stay the same. |
+| `XMLESS012` | The generated C# name '*name*' is used more than once | Two schema components produce the same class or enumeration name. |
+| `XMLESS013` | The XML name '*name*' is not a valid XML Name | A schema names an element or attribute with a name that isn't a valid XML name. |
+| `XMLESS015` | Member '*type*.*member*' is mapped as XML text, and its type is not a single value | A member with `[XmlText]` or `[XmlCData]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
+| `XMLESS018` | Varies | Warning. A schema allows a document that the generated classes can't read or write as the schema describes it. See [Generate types from an XSD](/guides/xsd-source-generation#not-mapped). |
+| `XMLESS017` | '*member*' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read | A required member is marked `[XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]`. Remove one of the two. |
 
-The IDs `XMLXE008`, `XMLXE009`, `XMLXE014`, and `XMLXE016` aren't used.
+The IDs `XMLESS008`, `XMLESS009`, `XMLESS014`, and `XMLESS016` aren't used.
 
 ## See also
 

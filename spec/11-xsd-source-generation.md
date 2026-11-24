@@ -13,7 +13,7 @@ No `XmlSchemaSet`. No `XmlUrlResolver`. No schema documents on the Native AOT pu
 
 ## Input
 
-MSBuild `AdditionalFiles` with `*.xsd` (and `*.wsdl` **ignored** — WSDL is out of scope). `xsd:include` / `xsd:import` resolve **only** to other AdditionalFiles in the same compilation, by file name or relative URI that maps to an AdditionalFile. Network, `file://` outside the compilation, and DTD inside a schema document are **errors** (XMLXE010).
+MSBuild `AdditionalFiles` with `*.xsd` (and `*.wsdl` **ignored** — WSDL is out of scope). `xsd:include` / `xsd:import` resolve **only** to other AdditionalFiles in the same compilation, by file name or relative URI that maps to an AdditionalFile. Network, `file://` outside the compilation, and DTD inside a schema document are **errors** (XMLESS010).
 
 ```xml
 <ItemGroup>
@@ -36,10 +36,10 @@ Defaults: C# namespace = root namespace + `.Generated`; context name = `{FileNam
 
 For each schema (and its includes/imports):
 
-1. One `partial` class per global `xs:element` / `xs:complexType` (element-first like `xsd.exe`; complex types used only as named types become classes too).
+1. One `partial` class per named `xs:complexType`, named for the type, and one per global `xs:element` with an anonymous complex type, named for the element. A global element whose type is a named complex type gets no class of its own: its name is the `[XmlRoot]` name of the type's class (the first such element, with XMLESS018 when there are several).
 2. Our mapping attributes: `[XmlRoot]`, `[XmlElement]`, `[XmlAttribute]`, `[XmlArray]` / `[XmlArrayItem]`, `[XmlText]`, nillable → nillable members.
-3. `xs:choice` / substitution groups → `[XmlDerivedType]` + `[XmlPolymorphic]` (not BCL `[XmlInclude]`).
-4. `xs:simpleType` restrictions → CLR type + converter where needed (enumerations → enum; patterns are **not** validated at runtime unless a converter is generated that enforces them — default: map to `string` and do not emit a regex validator; AOT must not pull `Regex` unless the consumer asked).
+3. `xs:extension` and `xs:restriction` of a named complex type → a derived class, and `[XmlPolymorphic(DiscriminatorPlacement = XsiType)]` + `[XmlDerivedType<T>("TypeName")]` on every class it derives from (not BCL `[XmlInclude]`). `xs:choice` and substitution groups are **not** mapped as polymorphism: a choice is one optional member per alternative (XMLESS011), and a substitution group is reported (XMLESS018). See decision 73 in [`24`](24-doc-findings-resolution.md).
+4. `xs:simpleType` restrictions → the CLR type of the type they restrict, named or inline (enumerations → enum, with `[XmlPropertyName]` on a member whose value is not a C# identifier; patterns are **not** validated at runtime unless a converter is generated that enforces them — default: map to `string` and do not emit a regex validator; AOT must not pull `Regex` unless the consumer asked).
 5. A `partial` `XmlSerializerContext` with `[XmlSerializable<T>]` for every generated root and reachable type.
 6. XML doc comments from `xs:annotation` / `xs:documentation`.
 
@@ -72,21 +72,31 @@ Hand-written contexts that reference generated types still go through Serializer
 | XSD | C# |
 | --- | --- |
 | `xs:string` etc. | CLR + [lexical rules](02-xml-fidelity.md) |
-| `xs:nillable` | nillable member; write `xsi:nil` |
-| `maxOccurs="unbounded"` | `List<T>` unwrapped unless `xs:sequence` wrapper name differs — then `[XmlArray]` |
-| `xs:attribute` | `[XmlAttribute]` |
+| `nillable="true"` | a member that can be null; a null is written as `xsi:nil` |
+| `minOccurs="0"` | a member that can be null (`int?` for a value type); a null is left out |
+| neither, on a reference type | a member that can be null because C# allows it; a null is left out with `[XmlIgnore(Condition = WhenWritingNull)]`, since only `nillable` permits `xsi:nil` |
+| `maxOccurs` > 1 | `List<T>`, unwrapped |
+| an element whose anonymous type is a sequence of one repeating element and nothing else | `List<T>` with `[XmlArray]` / `[XmlArrayItem]`: the outer element is the wrapper |
+| `xs:attribute` | `[XmlAttribute]`; a value type is nullable unless `use="required"`; `use="prohibited"` gives no member; `ref="xml:lang"` keeps the XML namespace |
+| `ref` on an element or attribute | the type of the global declaration |
+| `xs:group ref`, `xs:attributeGroup ref` | the members of the named group, in place |
+| a sequence nested in a sequence | its members, in place |
 | `xs:anyAttribute` | `[XmlExtensionData]` attribute bag |
 | `xs:any` | an `[XmlExtensionData]` member of type `XmlExtensionData` |
-| substitution group | `[XmlDerivedType]` on the head |
-| `xs:extension` of complex type | CLR inheritance; **default** member order is base then derived. `[XmlPropertyOrder]` is **not** auto-emitted (schema sequence is per type, which matches default walk). |
+| `xs:extension` of a named complex type (complex or simple content) | CLR inheritance, with only the extension's own members on the derived class; **default** member order is base then derived. `[XmlPropertyOrder]` is **not** auto-emitted (schema sequence is per type, which matches default walk). |
+| `abstract="true"` | an `abstract` class |
 | anonymous complex type | nested class named `{Parent}_{Element}` |
 
+Not mapped, and reported: `xs:choice` (optional members, XMLESS011); a repeating sequence, choice or group (members that each repeat, order between them lost, XMLESS018); `substitutionGroup` (XMLESS018); `mixed="true"` (text not read or written, XMLESS018); unqualified local elements in a target namespace, which are written qualified (XMLESS018); a `ref`, group or base type that is not in the schema (XMLESS018); `xs:restriction` of a named complex type, which is a derived class with no members (XMLESS011); `default` and `fixed` (XMLESS011). Members keep the order of the schema: the generator does not sort them with an unstable sort.
+
+A type that is abstract or has derived types, and any type that holds one, has no write fast path.
 ## Diagnostics
 
-- XMLXE010: include/import not in AdditionalFiles, or DTD in a schema document
-- XMLXE011: unsupported construct (`xs:redefine`, `xs:notation`, identity constraints as runtime checks — identity constraints are **ignored** with XMLXE011 **info**, not error; `xs:key` does not emit runtime validation)
-- XMLXE012: name collision in generated C#
-- XMLXE013: invalid XML name for a generated member
+- XMLESS010: include/import not in AdditionalFiles, or DTD in a schema document
+- XMLESS011 (info): the schema says something the generated code does not act on, and the documents stay the same (`xs:redefine`, `xs:notation`, identity constraints, `xs:choice`, `default`, `fixed`, a restriction of a complex type)
+- XMLESS012: name collision in generated C#: two types in one namespace, two members of one class, a member named like its class, or two values of one enumeration
+- XMLESS013: invalid XML name for a generated member
+- XMLESS018 (warning): the schema allows a document the generated types cannot read or write as the schema describes it (substitution groups, a repeating model group, mixed content, unqualified local elements in a target namespace, a missing `ref`, group or base type, several global elements of one type)
 
 ## Non-goals (this generator)
 

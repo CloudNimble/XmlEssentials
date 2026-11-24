@@ -232,7 +232,7 @@ Unwrapped empty and unwrapped null both omit. Prefer wrapped collections or non-
 
 ## Mixed content
 
-`[XmlMixed]` on a member of type `List<XmlNode>`, `List<object>`, or `IList<XmlMixedContentItem>` maps interleaved text and elements:
+`[XmlMixed]` on a collection of `XmlMixedContentItem` (a `List<XmlMixedContentItem>`, an array, or another supported collection of it) maps interleaved text and elements. A member of any other type is `NotSupportedException` when the type is bound ("Member '…' is marked [XmlMixedAttribute] but is not a collection of XmlMixedContentItem."), in the reflection resolver and in a generated context alike:
 
 ```csharp
 public sealed class Paragraph
@@ -246,7 +246,7 @@ public sealed class XmlMixedText : XmlMixedContentItem { public string Text { ge
 public sealed class XmlMixedElement : XmlMixedContentItem { public Nodes.XmlElementNode Element { get; set; } }
 ```
 
-POCOs in the list use `[XmlDerivedType]` / `[XmlElement]` for child element names. Text nodes become `XmlMixedText`. Every child element becomes an `XmlMixedElement`, including one named like the mixed member itself. A type with `[XmlMixed]` **and** ordinary element properties is `NotSupportedException` at type-info build. Simple content (`[XmlAttribute]` + `[XmlText]`) stays the leaf-element case.
+Text nodes become `XmlMixedText`. Every child element becomes an `XmlMixedElement`, including one named like the mixed member itself. A type with `[XmlMixed]` **and** ordinary element properties is `NotSupportedException` at type-info build. Simple content (`[XmlAttribute]` + `[XmlText]`) stays the leaf-element case.
 
 ## Polymorphism
 
@@ -301,7 +301,7 @@ Wrapped with `[XmlArray("Items")]`:
 <Products kind="book">...</Products>
 ```
 
-**XsiType placement:** writes `xsi:type="Book"` (our writer, not `System.Xml`).
+**XsiType placement:** writes `xsi:type="Book"` (our writer, not `System.Xml`). The value is read as a QName: a discriminator is matched as it is written first, and then by the local part after a prefix, so `xsi:type="p:Book"` is `Book` whatever prefix the document chose. The namespace the prefix is bound to is not checked.
 
 Unknown derived types: `UnknownDerivedTypeHandling` (default `FailSerialization`).
 

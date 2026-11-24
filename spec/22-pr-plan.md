@@ -158,7 +158,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 - **Status:** Implemented (uncommitted)
 - **Title:** `feat: XmlSerializerContext source generator packed in XmlEssentials`
 - **Depends on:** PR 6e
-- **Files:** generator (`IsSourceGeneratorProject`, `IsRoslynComponent`, pack both analyzer folders), `[XmlSerializable]`, `Default` singleton, XMLXE007 = BCL `XmlIncludeAttribute`
+- **Files:** generator (`IsSourceGeneratorProject`, `IsRoslynComponent`, pack both analyzer folders), `[XmlSerializable]`, `Default` singleton, XMLESS007 = BCL `XmlIncludeAttribute`
 - **Description:** **Metadata and Serialization** modes (`Default` = both). Interceptors for `XmlSerializer` calls that pass no options ([K42](01-identity-and-decisions.md#key-decisions)).
 
 ## PR 7b: XSD generator
@@ -166,7 +166,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 - **Status:** Implemented (uncommitted)
 - **Title:** `feat: XSD AdditionalFiles generator emitting types and AOT serialize`
 - **Depends on:** PR 7
-- **Files:** XsdGenerator in the same analyzer DLL, AdditionalFiles tests, XMLXE010–013, [11](11-xsd-source-generation.md)
+- **Files:** XsdGenerator in the same analyzer DLL, AdditionalFiles tests, XMLESS010–013, [11](11-xsd-source-generation.md)
 - **Description:** `.xsd` → POCOs + context + ser/deser via shared emit. No runtime schema. Import only AdditionalFiles.
 
 ## PR 8: AOT / trimming tests

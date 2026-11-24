@@ -71,17 +71,17 @@ Primary library csproj:
 3. Emit `public static TContext Default { get; }` and `XmlTypeInfo<T>` properties (`Default.Person`).
 4. For every object type, emit its metadata (`XmlObjectInfoValues<T>` handed to `XmlMetadataServices.CreateObjectInfo`). In **Default** and **Serialization** mode, also emit the write fast path for each type that can have one, as the `SerializeHandler` of that metadata. No generated code reads XML.
 5. Diagnostics (not warnings-as-silent-skip):
-   - XMLXE001: type not partial / not inheriting context
-   - XMLXE002: truly unsupported types (open generics that cannot close, `IntPtr`, pointers). **Do not fire** on `Dictionary<,>` maps, `[XmlMixed]`, `[XmlExtensionData]` bags, or `IAsyncEnumerable` at the `SerializeAsyncEnumerable` entry point.
-   - XMLXE003: attribute mapping on complex type
-   - XMLXE004: multiple `[XmlText]`
-   - XMLXE005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, two public constructors that bind the same number of members)
-   - Constructor choice follows the reflection resolver: the marked constructor, else the public one with the most parameters among those whose every parameter is named like a member. A constructor that is not accessible from the context is called through `[UnsafeAccessor]`. XMLXE002 is also reported when no constructor can be used: a parameter no member fills has no default, or a class has no parameterless constructor and none that binds.
-   - XMLXE015: a text member (`[XmlText]`, `[XmlCData]`) whose type is not a single value and has no `[XmlConverter]`.
-   - XMLXE017: a required member is marked `[XmlIgnore(Condition = WhenReading)]`, so it would never be read.
-   - XMLXE006: invalid XML name after policy
-   - XMLXE007: `System.Xml.Serialization.XmlIncludeAttribute` present on this type graph (class or member). Message: use `[XmlDerivedType]`. Also diagnose our `[XmlInclude]` applied to a **type** (invalid target). Looking at BCL `XmlIncludeAttribute` on the **consumer** compilation is allowed and required; the runtime library still has zero BCL XML references.
-   - XMLXE008, XMLXE009, XMLXE014 and XMLXE016 are retired and their numbers are not reused. They reported derived types, a converter on a member, mixed content and populating as things generated code could not do. The runtime engine does all four from the metadata.
+   - XMLESS001: type not partial / not inheriting context
+   - XMLESS002: truly unsupported types (open generics that cannot close, `IntPtr`, pointers). **Do not fire** on `Dictionary<,>` maps, `[XmlMixed]`, `[XmlExtensionData]` bags, or `IAsyncEnumerable` at the `SerializeAsyncEnumerable` entry point.
+   - XMLESS003: attribute mapping on complex type
+   - XMLESS004: multiple `[XmlText]`
+   - XMLESS005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, two public constructors that bind the same number of members)
+   - Constructor choice follows the reflection resolver: the marked constructor, else the public one with the most parameters among those whose every parameter is named like a member. A constructor that is not accessible from the context is called through `[UnsafeAccessor]`. XMLESS002 is also reported when no constructor can be used: a parameter no member fills has no default, or a class has no parameterless constructor and none that binds.
+   - XMLESS015: a text member (`[XmlText]`, `[XmlCData]`) whose type is not a single value and has no `[XmlConverter]`.
+   - XMLESS017: a required member is marked `[XmlIgnore(Condition = WhenReading)]`, so it would never be read.
+   - XMLESS006: invalid XML name after policy
+   - XMLESS007: `System.Xml.Serialization.XmlIncludeAttribute` present on this type graph (class or member). Message: use `[XmlDerivedType]`. Also diagnose our `[XmlInclude]` applied to a **type** (invalid target). Looking at BCL `XmlIncludeAttribute` on the **consumer** compilation is allowed and required; the runtime library still has zero BCL XML references.
+   - XMLESS008, XMLESS009, XMLESS014 and XMLESS016 are retired and their numbers are not reused. They reported derived types, a converter on a member, mixed content and populating as things generated code could not do. The runtime engine does all four from the metadata.
 
 `[XmlSourceGenerationOptions]` is a **default seed**; context ctor `XmlSerializerOptions` win. `GenerationMode` chooses what is generated, and every other property of the attribute is copied to the options of `Default`. `IgnoreReadOnlyFields` and `IgnoreReadOnlyProperties` turn the write fast path off, because it writes every member it was compiled with; the context then writes from the metadata. Where a discriminator is written is not an option: it is set on the type, with `[XmlPolymorphic]` ([07](07-api-serializer.md#type-info--context)).
 

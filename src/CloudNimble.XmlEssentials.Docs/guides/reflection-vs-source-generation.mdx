@@ -122,7 +122,7 @@ For the full procedure, see [How to use source generation](/guides/source-genera
 | When the contract is built | At run time, on the first call for each type and options instance, by reflecting over the type. | The metadata is generated at compile time. The serializer creates the type info from it at run time, without reflecting over the type. |
 | Overloads you call | Those that take a value and optional `XmlSerializerOptions`. | Those that take an `XmlTypeInfo<T>` or an `XmlSerializerContext`. |
 | Trimming and Native AOT | Not safe. The overloads carry `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. | Safe. The overloads carry no trimming or AOT annotations. |
-| Mapping errors | Found at run time, when the type is first used. | Many are compiler errors, `XMLXE001` and up. |
+| Mapping errors | Found at run time, when the type is first used. | Many are compiler errors, `XMLESS001` and up. |
 | `XmlSerializerOptions` settings | All apply. | All apply, with the same result. See [Set options](/guides/source-generation#set-options). |
 | Custom converters | Supported, on a type, on a member, and in the options. | Supported, on a type, on a member, and in the options. See [Custom converters](/guides/custom-converters#use-a-converter-with-source-generation). |
 | `[XmlDerivedType]` polymorphism | Supported. | Supported. |

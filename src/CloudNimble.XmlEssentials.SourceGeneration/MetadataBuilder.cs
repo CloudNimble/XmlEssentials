@@ -93,7 +93,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// Builds the body of the method that creates the type info of a class the schema generator wrote.
         /// </summary>
         /// <param name="typeName">The fully qualified name of the class.</param>
-        /// <param name="members">The members, as the class declares them.</param>
+        /// <param name="members">The members, as the class and its base classes declare them.</param>
+        /// <param name="isAbstract">Whether the class is abstract, and so has no creator.</param>
         /// <returns>The statements, in the form <see cref="Build"/> returns them.</returns>
         /// <remarks>
         /// The class does not exist as a symbol while the generator runs, so its metadata is written from the same
@@ -101,13 +102,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <see cref="XsdParser.EmitPoco"/> puts on them. The property type is inferred from the getter, which spares
         /// naming a nullable type that depends on whether the type is a value type.
         /// </remarks>
-        internal static string BuildFromMembers(string typeName, IEnumerable<MemberSpec> members)
+        internal static string BuildFromMembers(string typeName, IEnumerable<MemberSpec> members, bool isAbstract = false)
         {
             var body = new StringBuilder();
             body.Append("var objectInfo = new XmlObjectInfoValues<").Append(typeName).AppendLine(">");
             body.AppendLine("{");
             body.AppendLine(HandlerLine);
-            body.Append("    ObjectCreator = static () => new ").Append(typeName).AppendLine("(),");
+            if (!isAbstract)
+            {
+                // An abstract class is never created: a document names one of its derived classes.
+                body.Append("    ObjectCreator = static () => new ").Append(typeName).AppendLine("(),");
+            }
+
             body.AppendLine("    PropertyMetadataInitializer = static _ => new XmlPropertyInfoValues[]");
             body.AppendLine("    {");
             foreach (var member in members)
@@ -119,7 +125,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
                 else if (member.IsAttribute)
                 {
-                    attributes = "new XmlAttributeAttribute(\"" + ContextEmitter.Escape(member.LocalName) + "\")";
+                    attributes = "new XmlAttributeAttribute(\"" + ContextEmitter.Escape(member.LocalName) + "\")"
+                        + (member.NamespaceUri.Length > 0 ? " { Namespace = \"" + ContextEmitter.Escape(member.NamespaceUri) + "\" }" : "");
                 }
                 else if (member.IsText)
                 {
@@ -136,6 +143,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 else
                 {
                     attributes = "";
+                }
+
+                if (member.IgnoreCondition == 3)
+                {
+                    attributes += (attributes.Length > 0 ? ", " : "") + "new XmlIgnoreAttribute { Condition = XmlIgnoreCondition.WhenWritingNull }";
                 }
 
                 var source = "__Property(\"" + member.ClrName + "\", static (" + typeName + " obj) => obj." + member.ClrName + ", static (obj, value) => obj." + member.ClrName + " = value"
