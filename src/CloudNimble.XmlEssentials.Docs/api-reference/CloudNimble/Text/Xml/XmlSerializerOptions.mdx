@@ -353,6 +353,66 @@ every attribute on the line of the start tag.
 
 The value is passed to the writer as [XmlWriterOptions.AttributeStyle](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#attributestyle).
 
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Bcl
+
+Gets a read-only, singleton instance of [XmlSerializerOptions](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) that writes what
+`System.Xml.Serialization.XmlSerializer` writes.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlSerializerOptions Bcl { get; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlSerializerOptions`
+A read-only instance created with [XmlSerializerDefaults.Bcl](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults).
+
+#### Examples
+
+```csharp
+string xml = XmlSerializer.Serialize(order, XmlSerializerOptions.Bcl);
+```
+
+#### Remarks
+
+Use it when the documents have to stay the ones the old serializer wrote, for a consumer that already
+reads them. It sets:
+
+
+
+
+To change one of them, create an instance with [XmlSerializerOptions..ctor](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#.ctor)
+and [XmlSerializerDefaults.Bcl](/api-reference/CloudNimble/Text/Xml/XmlSerializerDefaults), which is not read-only.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CharHandling
+
+Gets or sets a value that specifies how a [Char](https://learn.microsoft.com/dotnet/api/system.char) is written and read.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlCharHandling CharHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlCharHandling`
+One of the enumeration values that specifies whether a [Char](https://learn.microsoft.com/dotnet/api/system.char) is the character or its
+number. The default is [XmlCharHandling.Character](/api-reference/CloudNimble/Text/Xml/XmlCharHandling).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Remarks
+
+The value applies to an element, an attribute and an item of a collection alike. Under
+[XmlCharHandling.Number](/api-reference/CloudNimble/Text/Xml/XmlCharHandling) a value that is not a number from 0 to 65535 is an error.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Converters
 
 Gets the list of user-defined converters that were registered.
@@ -413,6 +473,42 @@ The default buffer size, in bytes. The default is 0, which means 16,384.
 
 This is the size of the first buffer rented when serializing, and of the first read buffer of
 `DeserializeAsyncEnumerable`.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultCollectionMapping
+
+Gets or sets a value that specifies how collection members without a mapping attribute are mapped to
+XML.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlCollectionMapping DefaultCollectionMapping { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlCollectionMapping`
+One of the enumeration values that specifies whether the items of an unannotated collection member
+are written as repeated elements or inside a wrapper element. The default is
+[XmlCollectionMapping.Unwrapped](/api-reference/CloudNimble/Text/Xml/XmlCollectionMapping).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Remarks
+
+With [XmlCollectionMapping.Wrapped](/api-reference/CloudNimble/Text/Xml/XmlCollectionMapping), a collection member is written as `[XmlArray]`
+writes it: one element named for the member, with an element for each item named for the item's type.
+An empty collection is an empty wrapper element. This is what
+`System.Xml.Serialization.XmlSerializer` does by default.
+
+`[XmlElement]` on a member writes its items with no wrapper under either value, and
+          `[XmlArray]` writes a wrapper under either value. `[XmlArrayItem]` names the items of a
+          wrapped collection, including one this property wraps. Dictionaries and `byte[]` are not
+          collections for this purpose. The same value is used to read.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultIgnoreCondition
 
@@ -639,7 +735,7 @@ The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-refe
 #### Remarks
 
 A field is read-only if it is declared `readonly`. Fields are considered only when
-[XmlSerializerOptions.IncludeFields](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#includefields) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+[XmlSerializerOptions.IncludeFields](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#includefields) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). A collection or a dictionary is not ignored.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IgnoreReadOnlyProperties
 
@@ -665,7 +761,9 @@ The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-refe
 
 #### Remarks
 
-A property is read-only if it has no `set` or `init` accessor.
+A property is read-only if it has no `set` or `init` accessor. A
+collection or a dictionary is not ignored: it is written from its getter, and filled through it when
+[XmlSerializerOptions.PreferredObjectCreationHandling](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#preferredobjectcreationhandling) is [XmlObjectCreationHandling.Populate](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectCreationHandling).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IncludeFields
 
@@ -887,7 +985,7 @@ The maximum length of a name, in bytes. The default is 0, which means 1024.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
 
-Gets or sets the maximum size, in bytes, of one text node that is read.
+Gets or sets the maximum size of a text node, a CDATA section, an attribute value, or the data of a processing instruction that is read.
 
 #### Syntax
 
@@ -898,13 +996,99 @@ public int MaxTextByteCount { get; set; }
 #### Property Value
 
 Type: `int`
-The maximum size of a text node, in bytes. The default is 0, which means 16,777,216.
+The maximum size of each, in UTF-8 bytes as they appear in the document. The default is 0, which means
+16,777,216.
 
 #### Exceptions
 
 | Exception | Description |
 |-----------|-------------|
 | `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberOrder
+
+Gets or sets a value that specifies where the fields of a type come among its members.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlMemberOrder MemberOrder { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlMemberOrder`
+One of the enumeration values that specifies whether the fields of a class come after its properties
+or before them. The default is [XmlMemberOrder.PropertiesFirst](/api-reference/CloudNimble/Text/Xml/XmlMemberOrder).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Remarks
+
+The value matters only for a type with both, and only when [XmlSerializerOptions.IncludeFields](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#includefields) is
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) or a field is marked to be included. An explicit order on a member takes
+precedence.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Namespaces
+
+Gets or sets the namespace declarations that are written on the document element, each as a prefix
+and the namespace URI it is bound to.
+
+#### Syntax
+
+```csharp
+public System.Collections.Generic.IReadOnlyDictionary<string, string> Namespaces { get; set; }
+```
+
+#### Property Value
+
+Type: `System.Collections.Generic.IReadOnlyDictionary<string, string>?`
+The declarations, keyed by prefix, in the order they are written, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for none.
+An empty prefix is the default namespace. The default is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentException` | The property is set to declarations of which one cannot be written: a prefix that is not an XML name
+without a colon, the `xmlns` prefix, the `xml` prefix or its namespace bound to anything but
+each other, the `xmlns` namespace, or a namespace URI that is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) or empty. |
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Examples
+
+```csharp
+var options = new XmlSerializerOptions { Namespaces = KnownNamespaces.Podcast };
+string xml = XmlSerializer.Serialize(feed, options);
+```
+
+#### Remarks
+
+Without this property the serializer declares a namespace where it is first needed and chooses how:
+as the default namespace of an element, or with a generated prefix such as `ns1` for an attribute.
+A namespace that is declared here is in scope for the whole document, so every element and attribute
+in it is written with the prefix given here. A declaration is written whether or not anything uses it.
+When two prefixes are bound to one namespace, the one declared last is used. The declarations are
+written in the order given, with one exception: the declaration that names the namespace of the
+document element itself comes first, because the element's start tag needs it.
+
+The declarations are copied when the property is set. Use
+[XmlDocument.DiscoverNamespaces](/api-reference/CloudNimble/Text/Xml/XmlDocument#discovernamespaces) to take them from
+an existing document, [KnownNamespaces](/api-reference/CloudNimble/Text/Xml/KnownNamespaces) for those of a well-known format, or
+[XmlNamespaceDeclarationAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNamespaceDeclarationAttribute) to state them on the type. These declarations take
+precedence over the type's.
+
+An empty prefix declares the default namespace on the document element, so an element with no
+namespace of its own is in that namespace. When the document element has a namespace of its own that
+is not this one and has no prefix declared, the two cannot both be written, and serialization throws an
+[InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception).
+
+The property affects writing only. When the serializer reads, it compares namespace URIs and never
+prefixes.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> NewLine
 
@@ -1274,6 +1458,34 @@ rejected. The default is [XmlUnmappedMemberHandling.Skip](/api-reference/CloudNi
 | Exception | Description |
 |-----------|-------------|
 | `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UtcOffsetHandling
+
+Gets or sets a value that specifies how a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset) whose offset is zero is written.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlUtcOffsetHandling UtcOffsetHandling { get; set; }
+```
+
+#### Property Value
+
+Type: `CloudNimble.Text.Xml.XmlUtcOffsetHandling`
+One of the enumeration values that specifies whether a zero offset is written as `+00:00` or as
+`Z`. The default is [XmlUtcOffsetHandling.WriteOffset](/api-reference/CloudNimble/Text/Xml/XmlUtcOffsetHandling).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The property is set after this instance has become read-only. |
+
+#### Remarks
+
+Only writing changes: `Z`, `+00:00` and `-00:00` are all read as a zero offset under
+either value. A [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime) is not affected; its [Kind](https://learn.microsoft.com/dotnet/api/system.datetime.kind) decides what
+is written.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Web
 

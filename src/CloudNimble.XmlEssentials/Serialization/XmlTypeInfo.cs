@@ -140,10 +140,7 @@ namespace CloudNimble.Text.Xml.Serialization
         internal static XmlName CreateRootName(Type type, XmlSerializerOptions options)
         {
             var root = (XmlRootAttribute?)Attribute.GetCustomAttribute(type, typeof(XmlRootAttribute), inherit: true);
-            var local = root?.ElementName is { Length: > 0 } name
-                ? name
-                : options.ConvertElementName(XmlBuiltInConverters.GetXmlTypeName(type));
-            return new XmlName(local, root?.Namespace ?? options.DefaultNamespace);
+            return new XmlName(XmlTypeNames.ElementName(type, options), root?.Namespace ?? options.DefaultNamespace);
         }
 
         /// <summary>

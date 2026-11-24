@@ -178,6 +178,20 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine($"{fromName!.Status}, {fromNumber!.Status}");
         }
 
+        /// <summary>
+        /// Gives an enumeration member an XML name of its own, and reads names in any case.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void RenameEnumValues(TextWriter output)
+        {
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            output.WriteLine(XmlSerializer.Serialize(ShippingMethod.NextDay, options));
+
+            ShippingMethod renamed = XmlSerializer.Deserialize<ShippingMethod>("<ShippingMethod>next-day</ShippingMethod>");
+            ShippingMethod anyCase = XmlSerializer.Deserialize<ShippingMethod>("<ShippingMethod>STANDARD</ShippingMethod>");
+            output.WriteLine($"{renamed}, {anyCase}");
+        }
+
         #endregion
 
     }

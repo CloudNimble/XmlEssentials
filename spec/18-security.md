@@ -7,7 +7,7 @@ Part of the [XmlEssentials spec](README.md).
 | XXE / external entity | **Critical** | DTD is a hard error. No entity resolver, no network fetch, no file fetch. |
 | Billion laughs (entity expansion) | **Critical** | No general entities. Five predefined only. |
 | Deeply nested elements | High | `MaxDepth` default 64. `0` means default, not unlimited. |
-| Attribute / name / text bombs | High | `MaxAttributeCount` (includes xmlns*), `MaxNameByteCount`, `MaxTextByteCount`, `MaxCommentByteCount`. `0` on these means table default. |
+| Attribute / name / text bombs | High | `MaxAttributeCount` (includes xmlns*), `MaxNameByteCount`, `MaxTextByteCount` (text, CDATA, attribute values, processing instruction data), `MaxCommentByteCount`. `0` on these means table default. |
 | Unbounded stream deserialize | High | `MaxDocumentByteCount` `0` = unbounded **by choice**. When set, enforce **while** buffering, not after. Callers who leave 0 accept memory DoS. |
 | Quadratic well-formedness | Medium | Namespace stack is O(depth × decls); skip-validation writer path documented as unsafe for untrusted output. |
 | SSRF via `xsi:schemaLocation` | Low | We do not fetch schemas. Attribute is data. |

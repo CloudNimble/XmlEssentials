@@ -523,6 +523,45 @@ The end tag to pass to `WriteLeafEnd`, or null when nothing was written.
 
 For an item of a collection that is the document root. The caller writes exactly one value.
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryWriteStartDocumentElement <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
+
+Starts an element as the document element of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type), with the namespaces of
+[XmlSerializerOptions.Namespaces](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#namespaces) and of the type's
+[XmlNamespaceDeclarationAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNamespaceDeclarationAttribute)s declared on it, when there are any and the writer is
+at the document level.
+
+#### Syntax
+
+```csharp
+internal bool TryWriteStartDocumentElement(CloudNimble.Text.Xml.Utf8XmlWriter writer, System.ReadOnlySpan<byte> utf8LocalName, System.ReadOnlySpan<byte> utf8NamespaceUri)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The local name of the element. |
+| `utf8NamespaceUri` | `System.ReadOnlySpan<byte>` | The namespace of the element, or empty. |
+
+#### Returns
+
+Type: `bool`
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) when nothing was written, and the caller starts the element itself.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The declared namespaces cannot be written on the element. |
+
+#### Remarks
+
+The name is a parameter because a document element is not always named for the type: a value of a
+derived type is written under the derived type's name, and a sequence under a name of its own.
+
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteContentAsObject <Badge color="gray">Inherited</Badge> <Badge color="orange">Abstract</Badge>
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
@@ -583,7 +622,10 @@ internal abstract void WriteRootAsObject(CloudNimble.Text.Xml.Utf8XmlWriter writ
 
 <Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
 
-Writes the start tag of the document element, declaring its namespace when it has one.
+Writes the start tag of the element named for [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type), declaring its namespace when it has
+one. When it is the document element, the namespaces of
+[XmlSerializerOptions.Namespaces](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#namespaces) and of the type's
+[XmlNamespaceDeclarationAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNamespaceDeclarationAttribute)s are declared on it.
 
 #### Syntax
 
@@ -596,6 +638,38 @@ internal void WriteStartRoot(CloudNimble.Text.Xml.Utf8XmlWriter writer)
 | Name | Type | Description |
 |------|------|-------------|
 | `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The declared namespaces cannot be written on the document element. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteStartRoot <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
+
+Writes the start tag of an element in the namespace of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type) under another local name:
+the element that holds a sequence of values of the type.
+
+#### Syntax
+
+```csharp
+internal void WriteStartRoot(CloudNimble.Text.Xml.Utf8XmlWriter writer, System.ReadOnlySpan<byte> utf8LocalName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `writer` | `CloudNimble.Text.Xml.Utf8XmlWriter` | The writer. |
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The local name of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | The declared namespaces cannot be written on the document element. |
 
 ## Related APIs
 

@@ -1157,6 +1157,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return false;
             }
 
+            if (ignoreCondition == 6)
+            {
+                // WhenWritingNullReference: a null reference is left out, a nullable value with no value is not.
+                ignoreCondition = memberType is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } ? 0 : 3;
+            }
+
             if (SymbolHelpers.GetAttribute(member, SymbolHelpers.ExtensionDataAttribute) is not null)
             {
                 // Extension data is kept by the runtime library; the write fast path does not write it.
@@ -1247,7 +1253,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 isCollection = true;
                 var array = SymbolHelpers.GetAttribute(member, SymbolHelpers.ArrayAttribute);
                 var arrayItem = SymbolHelpers.GetAttribute(member, SymbolHelpers.ArrayItemAttribute);
-                isWrapped = array is not null;
+                // [XmlArray] wraps a collection, and so does the default of the options unless [XmlElement] says
+                // the items are the member's own elements.
+                isWrapped = array is not null || (options.DefaultCollectionMapping == 1 && element is null);
                 if (array is not null)
                 {
                     var arrayName = SymbolHelpers.GetString(array, "ElementName") ?? SymbolHelpers.GetConstructorString(array, 0);
@@ -1266,7 +1274,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 itemLocal = arrayItem is not null && (SymbolHelpers.GetString(arrayItem, "ElementName") ?? SymbolHelpers.GetConstructorString(arrayItem, 0)) is { Length: > 0 } itemName
                     ? itemName
                     : isWrapped
-                        ? Naming.Convert(elementType.Name, ElementPolicy(options))
+                        ? XmlTypeNameSymbols.ElementName(elementType, ElementPolicy(options))
                         : local;
 
                 // An item with a namespace of its own is written by the engine, which declares the namespace.

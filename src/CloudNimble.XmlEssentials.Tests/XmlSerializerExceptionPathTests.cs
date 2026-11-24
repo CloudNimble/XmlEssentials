@@ -63,8 +63,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Read_OfADocumentElementThatIsNotAnObject_StartsThePathThere()
         {
-            Describe(() => XmlSerializer.Deserialize<int>("<Int32>x</Int32>", Bare)).Should().Be("/Int32|1:17|The value is not a valid integer. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 17.");
-            Describe(() => XmlSerializer.Deserialize<List<int>>("<ListOfInt32><Int32>1</Int32><Int32>x</Int32></ListOfInt32>", Bare)).Should().Be("/ListOfInt32/Int32[1]|1:46|The value is not a valid integer. Path: /ListOfInt32/Int32[1] | LineNumber: 1 | BytePositionInLine: 46.");
+            Describe(() => XmlSerializer.Deserialize<int>("<int>x</int>", Bare)).Should().Be("/int|1:13|The value is not a valid integer. Path: /int | LineNumber: 1 | BytePositionInLine: 13.");
+            Describe(() => XmlSerializer.Deserialize<List<int>>("<ArrayOfInt><int>1</int><int>x</int></ArrayOfInt>", Bare)).Should().Be("/ArrayOfInt/int[1]|1:37|The value is not a valid integer. Path: /ArrayOfInt/int[1] | LineNumber: 1 | BytePositionInLine: 37.");
             Describe(() => XmlSerializer.Deserialize<Dictionary<string, int>>("<DictionaryOfStringInt32><a>x</a></DictionaryOfStringInt32>", Bare)).Should().Be("/DictionaryOfStringInt32/a|1:34|The value is not a valid integer. Path: /DictionaryOfStringInt32/a | LineNumber: 1 | BytePositionInLine: 34.");
             Describe(() => XmlSerializer.Deserialize<PathShape>("<circle><Radius>x</Radius></circle>", Bare)).Should().Be("/circle/Radius|1:27|The value is not a valid integer. Path: /circle/Radius | LineNumber: 1 | BytePositionInLine: 27.");
             Describe(() => XmlSerializer.Deserialize<Dictionary<int, int>>("<DictionaryOfInt32Int32><Key>1</Key><Value>x</Value></DictionaryOfInt32Int32>", Bare)).Should().Be("/DictionaryOfInt32Int32/Value|1:53|The value is not a valid integer. Path: /DictionaryOfInt32Int32/Value | LineNumber: 1 | BytePositionInLine: 53.");

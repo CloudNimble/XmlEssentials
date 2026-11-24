@@ -118,7 +118,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Read_NilInsideACollectionOrDictionary_IsAccepted()
         {
             var read = XmlSerializer.Deserialize<AnnotatedShapes>(
-                "<AnnotatedShapes><Item" + Nil + "/><Map><a" + Nil + "/></Map><Tags><String" + Nil + "/></Tags></AnnotatedShapes>", Respect)!;
+                "<AnnotatedShapes><Item" + Nil + "/><Map><a" + Nil + "/></Map><Tags><string" + Nil + "/></Tags></AnnotatedShapes>", Respect)!;
             read.Loose.Should().Equal([null!]);
             read.Map.Should().Equal(new Dictionary<string, string> { ["a"] = null! });
             read.Tags.Should().Equal([null!]);
@@ -160,7 +160,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Write_NullInsideACollectionOrDictionary_IsAccepted()
         {
             XmlSerializer.Serialize(new AnnotatedShapes { Loose = [null!], Map = { ["a"] = null! }, Tags = [null!] }, Respect).Should().Be(
-                "<AnnotatedShapes Code=\"c\"><Item" + Nil + "/><Map><a" + Nil + "/></Map><Tags><String" + Nil + "/></Tags></AnnotatedShapes>");
+                "<AnnotatedShapes Code=\"c\"><Item" + Nil + "/><Map><a" + Nil + "/></Map><Tags><string" + Nil + "/></Tags></AnnotatedShapes>");
         }
 
         [TestMethod]

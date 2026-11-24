@@ -134,7 +134,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """ + Compare).Should().Be(
-                "<Kinds><Queue>1</Queue><Queue>2</Queue><Stack>2</Stack><Stack>1</Stack><Set>3</Set><Array>4</Array><Array>5</Array><List><String>a</String></List>" +
+                "<Kinds><Queue>1</Queue><Queue>2</Queue><Stack>2</Stack><Stack>1</Stack><Set>3</Set><Array>4</Array><Array>5</Array><List><string>a</string></List>" +
                 "<View><v>6</v></View><Map><m>7</m></Map><Nulls><n xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Nulls>" +
                 "<Numbers>8</Numbers><Numbers>9</Numbers><Sequence>10</Sequence><Data>AQI=</Data></Kinds>" +
                 "\nsame\n1,2|2,1|HashSet`1:3|4,5|a|6|7|True|Int32[]:8,9|List`1:10|1,2\n1,2|2,1|HashSet`1:3|4,5|a|6|7|True|Int32[]:8,9|List`1:10|1,2");
@@ -238,7 +238,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """).Should().Be(
                 "yes,no,yes,yes,yes,no,no,no,yes,yes\n" +
-                "<Second><B>2</B></Second><First><A>1</A></First>:1:5:<SecondArray><Second><B>7</B></Second></SecondArray>:True:True\n" +
+                "<Second><B>2</B></Second><First><A>1</A></First>:1:5:<ArrayOfSecond><Second><B>7</B></Second></ArrayOfSecond>:True:True\n" +
                 "The type 'Third' is not supported.\n" +
                 "The type 'Second' is not supported by 'FirstContext'.");
         }
@@ -659,11 +659,11 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """ + Compare).Should().Be(
-                "<Grid><Rows><Int32>1</Int32><Int32>2</Int32></Rows><Rows><Int32>3</Int32></Rows><Named><a><Int32>4</Int32><Int32>5</Int32></a></Named>" +
-                "<Queues><q><Int32>6</Int32></q></Queues><Tint>Green</Tint></Grid>\nsame\n1,2/3|4,5|6|Green\n1,2/3|4,5|6|Green\n" +
-                "<Grid><Rows><Int32>1</Int32><Int32>2</Int32></Rows><Rows><Int32>3</Int32></Rows><Named><a><Int32>4</Int32><Int32>5</Int32></a></Named>" +
-                "<Queues><q><Int32>6</Int32></q></Queues><Tint>g</Tint></Grid>\nsame\n1,2/3|4,5|6|Green\n1,2/3|4,5|6|Green\n" +
-                "<ListOfInt32Array><Int32Array><Int32>7</Int32></Int32Array><Int32Array><Int32>8</Int32><Int32>9</Int32></Int32Array></ListOfInt32Array>\nsame\n7/8,9\n7/8,9");
+                "<Grid><Rows><int>1</int><int>2</int></Rows><Rows><int>3</int></Rows><Named><a><int>4</int><int>5</int></a></Named>" +
+                "<Queues><q><int>6</int></q></Queues><Tint>Green</Tint></Grid>\nsame\n1,2/3|4,5|6|Green\n1,2/3|4,5|6|Green\n" +
+                "<Grid><Rows><int>1</int><int>2</int></Rows><Rows><int>3</int></Rows><Named><a><int>4</int><int>5</int></a></Named>" +
+                "<Queues><q><int>6</int></q></Queues><Tint>g</Tint></Grid>\nsame\n1,2/3|4,5|6|Green\n1,2/3|4,5|6|Green\n" +
+                "<ArrayOfArrayOfInt><ArrayOfInt><int>7</int></ArrayOfInt><ArrayOfInt><int>8</int><int>9</int></ArrayOfInt></ArrayOfArrayOfInt>\nsame\n7/8,9\n7/8,9");
         }
 
         [TestMethod]
@@ -1363,20 +1363,20 @@ namespace CloudNimble.XmlEssentials.Tests
                     public static string Run()
                     {
                         const string all =
-                            "<Array><Int32>9</Int32></Array><GetOnly><Int32>9</Int32></GetOnly><GetOnlyMap><a>5</a><b>2</b></GetOnlyMap><Loose>8</Loose><Loose>9</Loose>" +
-                            "<Map><b>2</b></Map><Marked><Int32>9</Int32></Marked><NullGetOnly><Int32>9</Int32></NullGetOnly><NullSettable><Int32>9</Int32></NullSettable>" +
-                            "<Queue><Int32>9</Int32></Queue><Replaced><Int32>9</Int32></Replaced><Sequence><Int32>9</Int32></Sequence><Set><Int32>9</Int32></Set>" +
-                            "<Settable><Int32>9</Int32></Settable><Stack><Int32>8</Int32><Int32>9</Int32></Stack>";
-                        const string marked = "<MarkedType><Array><Int32>9</Int32></Array><Items><Int32>9</Int32></Items><Name>x</Name></MarkedType>";
-                        const string constructed = "<WithConstructor><Name>n</Name><Items><Int32>9</Int32></Items></WithConstructor>";
+                            "<Array><int>9</int></Array><GetOnly><int>9</int></GetOnly><GetOnlyMap><a>5</a><b>2</b></GetOnlyMap><Loose>8</Loose><Loose>9</Loose>" +
+                            "<Map><b>2</b></Map><Marked><int>9</int></Marked><NullGetOnly><int>9</int></NullGetOnly><NullSettable><int>9</int></NullSettable>" +
+                            "<Queue><int>9</int></Queue><Replaced><int>9</int></Replaced><Sequence><int>9</int></Sequence><Set><int>9</int></Set>" +
+                            "<Settable><int>9</int></Settable><Stack><int>8</int><int>9</int></Stack>";
+                        const string marked = "<MarkedType><Array><int>9</int></Array><Items><int>9</int></Items><Name>x</Name></MarkedType>";
+                        const string constructed = "<WithConstructor><Name>n</Name><Items><int>9</int></Items></WithConstructor>";
                         const string held = "<Holder><Child><B>2</B></Child></Holder>";
                         const string replacing = "<ReplacingHolder><Child><B>2</B></Child></ReplacingHolder>";
                         return string.Join("\n",
                             ReadTarget(false, all),
                             ReadTarget(true, all),
-                            ReadTarget(true, "<Fixed><Int32>9</Int32></Fixed>"),
+                            ReadTarget(true, "<Fixed><int>9</int></Fixed>"),
                             ReadTarget(true, "<FixedMap><b>2</b></FixedMap>"),
-                            ReadTarget(false, "<Fixed><Int32>9</Int32></Fixed>"),
+                            ReadTarget(false, "<Fixed><int>9</int></Fixed>"),
                             ReadTarget(true, "<Map" + Nil + "<Settable" + Nil),
                             ReadTarget(true, "<GetOnly" + Nil),
                             ReadTarget(true, "<GetOnlyMap" + Nil),
@@ -1534,6 +1534,75 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """ + Compare).Should().Be("<feed xmlns:b=\"urn:b\" xmlns:a=\"urn:a\" b:id=\"7\"><a:x>1</a:x></feed>\nsame\n7,1\n7,1");
+        }
+
+        [TestMethod]
+        public void ItemsOfAWrappedCollection_AreNamedForTheirType_AsTheReflectionResolverNamesThem()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                [XmlRoot("line-item")]
+                public sealed class Line
+                {
+                    public int N { get; set; }
+                }
+
+                public sealed class Holder
+                {
+                    [XmlArray]
+                    public List<Line> Lines { get; set; } = new();
+
+                    [XmlArray]
+                    public List<int> Numbers { get; set; } = new();
+
+                    [XmlArray]
+                    public List<uint?> Counts { get; set; } = new();
+
+                    [XmlArray]
+                    public List<string[]> Words { get; set; } = new();
+
+                    [XmlArray]
+                    public List<byte[]> Blobs { get; set; } = new();
+
+                    [XmlArray]
+                    public List<Guid> Ids { get; set; } = new();
+
+                    [XmlArray]
+                    public List<Outer<int>.Part> Parts { get; set; } = new();
+                }
+
+                public sealed class Outer<T>
+                {
+                    public sealed class Part
+                    {
+                        public T? Value { get; set; }
+                    }
+                }
+
+                [XmlSerializable<Holder>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        var holder = new Holder();
+                        holder.Lines.Add(new Line { N = 1 });
+                        holder.Numbers.Add(3);
+                        holder.Counts.Add(4);
+                        holder.Words.Add(new[] { "a" });
+                        holder.Blobs.Add(new byte[] { 1 });
+                        holder.Ids.Add(Guid.Empty);
+                        holder.Parts.Add(new Outer<int>.Part { Value = 5 });
+                        return Both.Write(holder, o => new AppXmlContext(o).Holder, h => h.Lines.Count + "," + h.Numbers[0] + "," + h.Counts[0] + "," + h.Words[0][0] + "," + h.Blobs[0][0] + "," + h.Ids[0] + "," + h.Parts[0].Value);
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<Holder><Lines><line-item><N>1</N></line-item></Lines><Numbers><int>3</int></Numbers><Counts><unsignedInt>4</unsignedInt></Counts>"
+                + "<Words><ArrayOfString><string>a</string></ArrayOfString></Words><Blobs><base64Binary>AQ==</base64Binary></Blobs>"
+                + "<Ids><guid>00000000-0000-0000-0000-000000000000</guid></Ids><Parts><PartOfInt32><Value>5</Value></PartOfInt32></Parts></Holder>"
+                + "\nsame\n1,3,4,a,1,00000000-0000-0000-0000-000000000000,5\n1,3,4,a,1,00000000-0000-0000-0000-000000000000,5");
         }
 
         [TestMethod]

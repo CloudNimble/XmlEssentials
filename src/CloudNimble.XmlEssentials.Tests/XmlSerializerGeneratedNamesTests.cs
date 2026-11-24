@@ -85,7 +85,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """ + Compare).Should().Be(
-                "<Order xmlns:ns1=\"urn:attr\" ns1:Code=\"X\"><Address xmlns=\"urn:addr\">here</Address><Total>5</Total><Tags xmlns=\"urn:arr\"><String>a</String><String>b</String></Tags><Lines xmlns=\"urn:line\">l1</Lines><Lines xmlns=\"urn:line\">l2</Lines></Order>\n" +
+                "<Order xmlns:ns1=\"urn:attr\" ns1:Code=\"X\"><Address xmlns=\"urn:addr\">here</Address><Total>5</Total><Tags xmlns=\"urn:arr\"><string>a</string><string>b</string></Tags><Lines xmlns=\"urn:line\">l1</Lines><Lines xmlns=\"urn:line\">l2</Lines></Order>\n" +
                 "same\n" +
                 "here,X,5,a+b,l1+l2\n" +
                 "here,X,5,a+b,l1+l2");

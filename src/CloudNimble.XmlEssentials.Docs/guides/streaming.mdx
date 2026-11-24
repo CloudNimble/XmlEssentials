@@ -93,10 +93,10 @@ boiler: 73
 
 Know the following about the wrapped form:
 
-- The document element is named `ArrayOf` followed by the root name of `T`. Each value is written under the root name of `T`. You can't change the wrapper's name. The wrapper is in the same namespace as the values, so `XmlSerializerOptions.DefaultNamespace` is declared once, on the wrapper.
+- The document element is named `ArrayOf` followed by the root name of `T` with a capital first letter, which is the name a `List<T>` or a `T[]` has at the root. Each value is written under the root name of `T`. You can't change the wrapper's name. The wrapper is in the same namespace as the values, so `XmlSerializerOptions.DefaultNamespace` is declared once, on the wrapper.
 - With a `ReferenceHandler`, the values of the document share one set of references: an object that two values hold is written once, and it is read back as one object. With `topLevelValues` each value is a document of its own, with references of its own.
 - `DeserializeAsyncEnumerable` reads every child of the document element as a `T`. It doesn't check the name of the document element or the names of its children, so it can read a sequence that another system wrapped in an element of its own, such as `<Feed>`.
-- `Deserialize<List<T>>` and `Deserialize<T[]>` can't read this document. They expect the root names `ListOf...` and `...Array`, and they throw an `XmlException` for `ArrayOf...`. Read a document written by `SerializeAsyncEnumerable` with `DeserializeAsyncEnumerable`.
+- `Deserialize<List<T>>` and `Deserialize<T[]>` read this document, and `DeserializeAsyncEnumerable` reads what `Serialize` writes for a `List<T>` or a `T[]`: the three write the same thing.
 - An empty sequence writes an empty document element, and reading it produces no values.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/19_Streaming.cs)

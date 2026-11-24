@@ -444,6 +444,35 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Returns the members with the fields of each class before its properties.
+        /// </summary>
+        /// <param name="facts">The members, those of one class after those of another.</param>
+        /// <returns>
+        /// The same members. The classes keep their order, and so do the fields of a class among themselves and
+        /// its properties among themselves.
+        /// </returns>
+        internal static List<XmlMemberFacts> OrderFieldsFirst(List<XmlMemberFacts> facts)
+        {
+            var classes = new List<Type>();
+            foreach (var member in facts)
+            {
+                if (!classes.Contains(member.DeclaringType))
+                {
+                    classes.Add(member.DeclaringType);
+                }
+            }
+
+            var ordered = new List<XmlMemberFacts>(facts.Count);
+            foreach (var declaring in classes)
+            {
+                ordered.AddRange(facts.FindAll(member => member.DeclaringType == declaring && member.IsField));
+                ordered.AddRange(facts.FindAll(member => member.DeclaringType == declaring && !member.IsField));
+            }
+
+            return ordered;
+        }
+
+        /// <summary>
         /// Turns the facts of the members of a type into the models of the ones that are serialized, in the order
         /// they are written.
         /// </summary>
@@ -466,6 +495,11 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </remarks>
         internal static List<XmlMemberModel> CreateModels(List<XmlMemberFacts> facts, XmlSerializerOptions options)
         {
+            if (options.MemberOrder is XmlMemberOrder.FieldsFirst)
+            {
+                facts = OrderFieldsFirst(facts);
+            }
+
             // The members are taken from the most derived type down. First, which of them are candidates: an ignored
             // override stands for the property it overrides, so that one is not serialized either.
             var candidates = new bool[facts.Count];
@@ -1129,8 +1163,13 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             var canSet = member.HasSetter;
-            if (!canSet && ((!member.IsField && options.IgnoreReadOnlyProperties) || (member.IsField && options.IgnoreReadOnlyFields)))
+            if (!canSet
+                && ((!member.IsField && options.IgnoreReadOnlyProperties) || (member.IsField && options.IgnoreReadOnlyFields))
+                && !member.IsCollection(out _)
+                && !XmlCollectionShape.IsDictionary(memberType, out _, out _))
             {
+                // A collection needs no setter to be written, or to be filled, so it is not a read-only member
+                // in this sense. System.Text.Json makes the same exception.
                 return false;
             }
 
@@ -1139,6 +1178,11 @@ namespace CloudNimble.Text.Xml.Serialization
             // written and read as under Never.
             var ignore = member.GetCustomAttribute<XmlIgnoreAttribute>()?.Condition
                 ?? (options.DefaultIgnoreCondition is XmlIgnoreCondition.WhenWriting or XmlIgnoreCondition.WhenReading ? XmlIgnoreCondition.Never : options.DefaultIgnoreCondition);
+            if (ignore is XmlIgnoreCondition.WhenWritingNullReference)
+            {
+                ignore = Nullable.GetUnderlyingType(memberType) is null ? XmlIgnoreCondition.WhenWritingNull : XmlIgnoreCondition.Never;
+            }
+
             var xmlName = member.GetCustomAttribute<XmlPropertyNameAttribute>()?.Name;
             var isAttribute = false;
             var isText = false;
@@ -1216,7 +1260,10 @@ namespace CloudNimble.Text.Xml.Serialization
                     arrayItem = candidate;
                 }
 
-                isWrapped = array is not null;
+                // [XmlArray] wraps a collection, and so does the default of the options unless [XmlElement] says
+                // the items are the member's own elements.
+                isWrapped = array is not null
+                    || (options.DefaultCollectionMapping is XmlCollectionMapping.Wrapped && element is null && typed is not { Count: > 0 });
                 if (array is not null)
                 {
                     local = xmlName
@@ -1232,7 +1279,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 itemLocal = arrayItem?.ElementName is { Length: > 0 } itemName
                     ? itemName
                     : isWrapped
-                        ? options.ConvertElementName(XmlBuiltInConverters.GetXmlTypeName(itemClr))
+                        ? XmlTypeNames.ElementName(itemClr, options)
                         : local;
 
                 // Inside a wrapper an item has a name of its own, and so a namespace of its own. With no wrapper the

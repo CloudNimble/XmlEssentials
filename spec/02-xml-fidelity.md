@@ -216,11 +216,11 @@ maps to `[XmlAttribute] string Currency` + `[XmlText] decimal Amount`.
 | `MaxAttributeCount` | 1000 (includes xmlns*) | Reader, **writer** (`XmlWriterOptions`), serializer, document | apply default |
 | `MaxNameByteCount` | 1024 | Reader, **writer** (`XmlWriterOptions`), serializer, document | apply default |
 | `MaxCommentByteCount` | 1_048_576 | Reader, serializer, document — **not writer** (caller-supplied strings) | apply default |
-| `MaxTextByteCount` | 16_777_216 | Reader, serializer, document (per text/CDATA node) — **not writer** | apply default |
+| `MaxTextByteCount` | 16_777_216 | Reader, serializer, document (per text node, CDATA section, attribute value, and processing instruction's data, each on its own, counted in the bytes of the document before references and line ends are decoded; not the XML declaration) — **not writer** | apply default |
 | `MaxDocumentByteCount` | 0 (unbounded) | `XmlDocument.Parse`, stream deserialize, serializer async | **unbounded** |
 | `DefaultBufferSize` | 16_384 | Stream async / buffer growth | apply default |
 
-`default(XmlReaderOptions)` / `default(XmlWriterOptions)` is all zeros. **Every max-* except `MaxDocumentByteCount` treats `0` as “use the Default column.”** `MaxDocumentByteCount == 0` stays unbounded. When a cap is set, enforce it **while** `ArrayBufferWriter` grows, not after. Exceeding a limit is `XmlException` with the limit named in the message.
+`default(XmlReaderOptions)` / `default(XmlWriterOptions)` is all zeros. **Every max-* except `MaxDocumentByteCount` treats `0` as “use the Default column.”** `MaxDocumentByteCount == 0` stays unbounded. When a cap is set, enforce it **while** `ArrayBufferWriter` grows, not after. The same holds for input that arrives in blocks: a text node, CDATA section, attribute value, processing instruction or comment whose end has not arrived is refused as soon as the part that has arrived is over its limit (`Utf8XmlReader.NeedMoreOf`), and the exception gives the position of the start of the token. The methods that take a whole `Stream` read it to its end before parsing, so while they read only `MaxDocumentByteCount` bounds them. Exceeding a limit is `XmlException` with the limit named in the message.
 
 ## Lexical rules (XSD 1.0, invariant)
 
@@ -236,10 +236,10 @@ Authority: [XML Schema Part 2: Datatypes, Second Edition](https://www.w3.org/TR/
 | `bool` | `boolean` | `true` / `false` | `true`, `false`, `1`, `0`. Case-sensitive. |
 | `sbyte` `short` `int` `long` | `byte` `short` `int` `long` | invariant decimal, `-` when negative | `[+-]?[0-9]+`, in range. A leading `+` and leading zeros are legal. No group separators, hex, fraction, or exponent. |
 | `byte` `ushort` `uint` `ulong` | `unsignedByte` … `unsignedLong` | invariant decimal | `[+]?[0-9]+`, in range. `-0` is zero; any other negative is out of range. |
-| `float` / `double` | `float` / `double` | round-trip (`G9`/`G17`) or `INF` / `-INF` / `NaN` | `[+-]?` decimal mantissa, optional `[eE][+-]?[0-9]+`; or `INF`, `-INF`, `NaN`. **Documented extension:** the three literals in any letter case. `+INF` (XSD 1.1) and `Infinity` are rejected. `XmlNumberHandling.Strict` rejects the literals. |
+| `float` / `double` | `float` / `double` | the shortest text that reads back as the same value (`0.1`, `1E+20`, `1E-07`, `-0`), as System.Text.Json and `XmlConvert` write it; or `INF` / `-INF` / `NaN` | `[+-]?` decimal mantissa, optional `[eE][+-]?[0-9]+`; or `INF`, `-INF`, `NaN`. **Documented extension:** the three literals in any letter case. `+INF` (XSD 1.1) and `Infinity` are rejected. `XmlNumberHandling.Strict` rejects the literals. |
 | `decimal` | `decimal` | invariant, **no exponent** | `[+-]?` digits with an optional fraction (`12`, `12.5`, `.5`, `5.`). **Exponent is rejected** (`1E+2` is a `double`). |
-| `DateTime` | `dateTime` | no zone if `Unspecified`; `Z` if `Utc`; offset if `Local` | `YYYY-MM-DDThh:mm:ss[.f+][Z\|(+\|-)hh:mm]`. No zone → `Unspecified`; `Z` or `+00:00` → `Utc`; other offset → converted to `Local`. |
-| `DateTimeOffset` | `dateTime` | offset or `Z` | Same form. No zone takes the local offset at that instant (as `XmlConvert.ToDateTimeOffset` does). |
+| `DateTime` | `dateTime` | no zone if `Unspecified`; `Z` if `Utc`; offset if `Local` | `YYYY-MM-DDThh:mm:ss[.f+][Z\|(+\|-)hh:mm]`. No zone → `Unspecified`; `Z`, `+00:00` or `-00:00` → `Utc`; other offset → converted to `Local`. |
+| `DateTimeOffset` | `dateTime` | always the offset; a zero offset is `+00:00` (as System.Text.Json writes it) unless `UtcOffsetHandling = WriteZ` asks for `Z` (as `XmlConvert` and `System.Xml.Serialization` write it) | Same form; `Z`, `+00:00` and `-00:00` are all a zero offset. No zone takes the local offset at that instant (as `XmlConvert.ToDateTimeOffset` does). |
 | `DateOnly` | `date` | `yyyy-MM-dd` | `YYYY-MM-DD` with an optional zone, which is validated and dropped. |
 | `TimeOnly` | `time` | `xs:time` | `hh:mm:ss[.f+]` with an optional zone, which is validated and dropped. |
 | `TimeSpan` | `duration` | `xs:duration` (`PT1H2M3S`, …): parts that are zero are left out, zero is `PT0S`, and a fraction of a second has up to seven digits with no trailing zeros, so every tick is written (`PT1.5S`, `PT0.0000001S`) | `[-]P[nD][T[nH][nM][n[.n]S]]`: at least one component, in that order, at least one after `T`, a fraction only on seconds. |

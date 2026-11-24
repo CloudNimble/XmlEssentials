@@ -24,7 +24,7 @@ output.WriteLine(XmlSerializer.Serialize(board, options));
 The code produces the following output:
 
 ```xml
-<Scoreboard><Player>Ada</Player><Scores><Int32>90</Int32><Int32>85</Int32></Scores></Scoreboard>
+<Scoreboard><Player>Ada</Player><Scores><int>90</int><int>85</int></Scores></Scoreboard>
 ```
 
 ### Empty and null collections

@@ -64,6 +64,11 @@ The name overrides any naming policy, and takes precedence over the name set by 
 [XmlAttributeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlAttributeAttribute), or [XmlArrayAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayAttribute) on the same member. This attribute is
 analogous to `JsonPropertyNameAttribute` in `System.Text.Json`.
 
+On a member of an enumeration, the name is the text the member is written as and read from, as
+`JsonStringEnumMemberNameAttribute` is in `System.Text.Json`. It replaces the C# name and is
+matched exactly, while a C# name is matched without regard to case. A name cannot start or end with
+white space, and the name of a [FlagsAttribute](https://learn.microsoft.com/dotnet/api/system.flagsattribute) member cannot contain any.
+
 ## Considerations
 
 - The name takes precedence over a name set in `[XmlElement]`, `[XmlAttribute]`, or `[XmlArray]` on the same member, and a naming policy doesn't convert it.

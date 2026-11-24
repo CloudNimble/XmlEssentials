@@ -50,8 +50,92 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Int32Array_RoundTripsAsTheRoot()
         {
             var xml = XmlSerializer.Serialize(new[] { 1, 2 }, Bare);
-            xml.Should().Be("<Int32Array><Int32>1</Int32><Int32>2</Int32></Int32Array>");
+            xml.Should().Be("<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>");
             XmlSerializer.Deserialize<int[]>(xml).Should().Equal(1, 2);
+        }
+
+        [TestMethod]
+        [DataRow(typeof(bool), "boolean")]
+        [DataRow(typeof(byte), "unsignedByte")]
+        [DataRow(typeof(sbyte), "byte")]
+        [DataRow(typeof(short), "short")]
+        [DataRow(typeof(ushort), "unsignedShort")]
+        [DataRow(typeof(int), "int")]
+        [DataRow(typeof(uint), "unsignedInt")]
+        [DataRow(typeof(long), "long")]
+        [DataRow(typeof(ulong), "unsignedLong")]
+        [DataRow(typeof(float), "float")]
+        [DataRow(typeof(double), "double")]
+        [DataRow(typeof(decimal), "decimal")]
+        [DataRow(typeof(char), "char")]
+        [DataRow(typeof(string), "string")]
+        [DataRow(typeof(DateTime), "dateTime")]
+        [DataRow(typeof(DateTimeOffset), "dateTimeOffset")]
+        [DataRow(typeof(DateOnly), "dateOnly")]
+        [DataRow(typeof(TimeOnly), "timeOnly")]
+        [DataRow(typeof(Guid), "guid")]
+        [DataRow(typeof(byte[]), "base64Binary")]
+        [DataRow(typeof(TimeSpan), "TimeSpan")]
+        [DataRow(typeof(DayOfWeek), "DayOfWeek")]
+        [DataRow(typeof(int?), "int")]
+        [DataRow(typeof(Person), "Person")]
+        [DataRow(typeof(int[]), "ArrayOfInt")]
+        [DataRow(typeof(List<int>), "ArrayOfInt")]
+        [DataRow(typeof(HashSet<int>), "ArrayOfInt")]
+        [DataRow(typeof(IEnumerable<int>), "ArrayOfInt")]
+        [DataRow(typeof(int?[]), "ArrayOfInt")]
+        [DataRow(typeof(string[]), "ArrayOfString")]
+        [DataRow(typeof(uint[]), "ArrayOfUnsignedInt")]
+        [DataRow(typeof(DateTime[]), "ArrayOfDateTime")]
+        [DataRow(typeof(byte[][]), "ArrayOfBase64Binary")]
+        [DataRow(typeof(int[][]), "ArrayOfArrayOfInt")]
+        [DataRow(typeof(List<List<int>>), "ArrayOfArrayOfInt")]
+        [DataRow(typeof(Person[]), "ArrayOfPerson")]
+        [DataRow(typeof(List<Person>), "ArrayOfPerson")]
+        [DataRow(typeof(NamedLine), "line-item")]
+        [DataRow(typeof(List<NamedLine>), "ArrayOfLineitem")]
+        [DataRow(typeof(KeyValuePair<int, string>), "KeyValuePairOfInt32String")]
+        [DataRow(typeof(OuterBox<int>.Part), "PartOfInt32")]
+        [DataRow(typeof(Dictionary<string, int>), "DictionaryOfStringInt32")]
+        [DataRow(typeof(Dictionary<string, int?>), "DictionaryOfStringNullableOfInt32")]
+        [DataRow(typeof(Dictionary<string, List<int>>), "DictionaryOfStringListOfInt32")]
+        [DataRow(typeof(Dictionary<string, byte[]>), "DictionaryOfStringArrayOfByte")]
+        public void DocumentElement_IsNamedAsXmlSerializerNamesTheType(Type type, string name)
+        {
+            // Probed against System.Xml.Serialization on .NET 11: an XML Schema name for a built-in type,
+            // ArrayOf and the item name for every kind of collection, and the CLR names of the arguments in the
+            // name of any other generic type. The last six have no counterpart there and follow the same rule.
+            Bare.GetTypeInfo(type).RootName.Should().Be(new XmlName(name));
+        }
+
+        [TestMethod]
+        public void Collections_OfOneItemType_WriteTheSameDocument_AndReadEachOthers()
+        {
+            const string xml = "<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>";
+            XmlSerializer.Serialize(new[] { 1, 2 }, Bare).Should().Be(xml);
+            XmlSerializer.Serialize(new List<int> { 1, 2 }, Bare).Should().Be(xml);
+            XmlSerializer.Serialize(new Queue<int>([1, 2]), Bare).Should().Be(xml);
+            XmlSerializer.Deserialize<int[]>(xml).Should().Equal(1, 2);
+            XmlSerializer.Deserialize<List<int>>(xml).Should().Equal(1, 2);
+            XmlSerializer.Deserialize<HashSet<int>>(xml).Should().Equal(1, 2);
+            XmlSerializer.Deserialize<IReadOnlyList<int>>(xml).Should().Equal(1, 2);
+        }
+
+        [TestMethod]
+        public void TypeNamedByXmlRoot_HasThatName_AsAnItemOfACollection()
+        {
+            // [XmlRoot] names the type wherever the type names an element: at the root, as an item of a
+            // collection at the root, and as an item of a collection in a wrapper.
+            var lines = new List<NamedLine> { new() { N = 1 }, new() { N = 2 } };
+            const string list = "<ArrayOfLineitem><line-item><N>1</N></line-item><line-item><N>2</N></line-item></ArrayOfLineitem>";
+            XmlSerializer.Serialize(lines, Bare).Should().Be(list);
+            Array.ConvertAll(XmlSerializer.Deserialize<NamedLine[]>(list)!, line => line.N).Should().Equal(1, 2);
+
+            var holder = new NamedLineHolder { Lines = lines, Numbers = [3], Words = [["a", "b"]] };
+            const string held = "<NamedLineHolder><Lines><line-item><N>1</N></line-item><line-item><N>2</N></line-item></Lines>"
+                + "<Numbers><int>3</int></Numbers><Words><ArrayOfString><string>a</string><string>b</string></ArrayOfString></Words></NamedLineHolder>";
+            XmlSerializer.Serialize(holder, Bare).Should().Be(held);
+            XmlSerializer.Serialize(XmlSerializer.Deserialize<NamedLineHolder>(held), Bare).Should().Be(held);
         }
 
         [TestMethod]
@@ -146,8 +230,8 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<NamespacedOptionalCount>(namespaced, options)!.Count.Should().Be(255);
             XmlSerializer.Serialize(new NullableText { Value = 255 }, options).Should().Be("<NullableText>ff</NullableText>");
             XmlSerializer.Deserialize<NullableText>("<NullableText>ff</NullableText>", options)!.Value.Should().Be(255);
-            XmlSerializer.Serialize<int?>(255, options).Should().Be("<Int32>ff</Int32>");
-            XmlSerializer.Deserialize<int?>("<Int32>ff</Int32>", options).Should().Be(255);
+            XmlSerializer.Serialize<int?>(255, options).Should().Be("<int>ff</int>");
+            XmlSerializer.Deserialize<int?>("<int>ff</int>", options).Should().Be(255);
             XmlSerializer.Serialize(new Person { Name = "Ada", Age = 255 }, options).Should().Be("<Person><Name>Ada</Name><Age>ff</Age></Person>");
         }
 
@@ -155,8 +239,8 @@ namespace CloudNimble.XmlEssentials.Tests
         public void NullableScalars_RoundTripAsMembersItemsAndRoots()
         {
             XmlSerializer.Serialize(new List<int?> { 1, null, 3 }, Bare)
-                .Should().Be($"<ListOfInt32><Int32>1</Int32><Int32 xmlns:xsi=\"{XsiNamespace}\" xsi:nil=\"true\"/><Int32>3</Int32></ListOfInt32>");
-            XmlSerializer.Deserialize<List<int?>>($"<ListOfInt32><Int32>1</Int32><Int32 xmlns:xsi=\"{XsiNamespace}\" xsi:nil=\"true\"/><Int32>3</Int32></ListOfInt32>")
+                .Should().Be($"<ArrayOfInt><int>1</int><int xmlns:xsi=\"{XsiNamespace}\" xsi:nil=\"true\"/><int>3</int></ArrayOfInt>");
+            XmlSerializer.Deserialize<List<int?>>($"<ArrayOfInt><int>1</int><int xmlns:xsi=\"{XsiNamespace}\" xsi:nil=\"true\"/><int>3</int></ArrayOfInt>")
                 .Should().Equal(1, null, 3);
             XmlSerializer.Serialize<DayOfWeek?>(DayOfWeek.Friday, Bare).Should().Be("<DayOfWeek>Friday</DayOfWeek>");
             XmlSerializer.Deserialize<DayOfWeek?>("<DayOfWeek>Friday</DayOfWeek>").Should().Be(DayOfWeek.Friday);
@@ -298,7 +382,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Serialize(new Dictionary<string, string> { ["a"] = string.Empty, ["b"] = "x" }, Bare)
                 .Should().Be("<DictionaryOfStringString><a></a><b>x</b></DictionaryOfStringString>");
             XmlSerializer.Serialize(new Dictionary<string, byte[]> { ["a"] = [], ["b"] = [1] }, Bare)
-                .Should().Be("<DictionaryOfStringByteArray><a></a><b>AQ==</b></DictionaryOfStringByteArray>");
+                .Should().Be("<DictionaryOfStringArrayOfByte><a></a><b>AQ==</b></DictionaryOfStringArrayOfByte>");
         }
 
         [TestMethod]
@@ -463,9 +547,9 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Serialize(new Person { Name = "", Age = 0 }, Bare).Should().Be("<Person><Name></Name><Age>0</Age></Person>");
             XmlSerializer.Serialize(new Catalog { Title = "", Items = [""] }, Bare).Should().Be("<Catalog><Items></Items><Title></Title></Catalog>");
             XmlSerializer.Serialize(new WrappedCatalog { Title = "t", Items = [""] }, Bare).Should().Be("<WrappedCatalog><Items><Item></Item></Items><Title>t</Title></WrappedCatalog>");
-            XmlSerializer.Serialize(new List<string> { "" }, Bare).Should().Be("<ListOfString><String></String></ListOfString>");
-            XmlSerializer.Serialize(new List<byte[]> { Array.Empty<byte>() }, Bare).Should().Be("<ListOfByteArray><ByteArray></ByteArray></ListOfByteArray>");
-            XmlSerializer.Serialize("", Bare).Should().Be("<String></String>");
+            XmlSerializer.Serialize(new List<string> { "" }, Bare).Should().Be("<ArrayOfString><string></string></ArrayOfString>");
+            XmlSerializer.Serialize(new List<byte[]> { Array.Empty<byte>() }, Bare).Should().Be("<ArrayOfBase64Binary><base64Binary></base64Binary></ArrayOfBase64Binary>");
+            XmlSerializer.Serialize("", Bare).Should().Be("<string></string>");
             XmlSerializer.Deserialize<Person>("<Person><Name></Name><Age>0</Age></Person>")!.Name.Should().Be("");
         }
 
@@ -542,7 +626,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void HashSetOfInt32_RoundTripsAsTheRoot()
         {
             var xml = XmlSerializer.Serialize(new HashSet<int> { 7 }, Bare);
-            xml.Should().Be("<HashSetOfInt32><Int32>7</Int32></HashSetOfInt32>");
+            xml.Should().Be("<ArrayOfInt><int>7</int></ArrayOfInt>");
             XmlSerializer.Deserialize<HashSet<int>>(xml).Should().Equal(7);
         }
 

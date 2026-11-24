@@ -77,8 +77,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void StrictDefaults_RejectComments_WhereGeneralDefaultsSkipThem()
         {
-            XmlSerializer.Deserialize<int>("<Int32><!--c-->42</Int32>").Should().Be(42);
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Int32><!--c-->42</Int32>", XmlSerializerOptions.Strict))
+            XmlSerializer.Deserialize<int>("<int><!--c-->42</int>").Should().Be(42);
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<int><!--c-->42</int>", XmlSerializerOptions.Strict))
                 .Should().ThrowExactly<XmlException>();
         }
 
@@ -87,7 +87,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var used = new XmlSerializerOptions { OmitXmlDeclaration = true };
             used.Converters.IsReadOnly.Should().BeFalse();
-            XmlSerializer.Serialize(1, used).Should().Be("<Int32>1</Int32>");
+            XmlSerializer.Serialize(1, used).Should().Be("<int>1</int>");
             used.IsReadOnly.Should().BeTrue();
             used.Converters.IsReadOnly.Should().BeTrue();
             used.TypeInfoResolverChain.IsReadOnly.Should().BeTrue();
@@ -281,14 +281,14 @@ namespace CloudNimble.XmlEssentials.Tests
                 XmlVersion = XmlVersion.Version11,
             };
             XmlSerializer.SerializeToUtf8Bytes(7, options).Should().Equal(
-                [0xEF, 0xBB, 0xBF, .. "<?xml version=\"1.1\" encoding=\"utf-8\"?>\n<Int32>7</Int32>"u8]);
+                [0xEF, 0xBB, 0xBF, .. "<?xml version=\"1.1\" encoding=\"utf-8\"?>\n<int>7</int>"u8]);
         }
 
         [TestMethod]
         public void NamingPolicy_NamesTheRoot_ElementPolicyFirst()
         {
             XmlSerializer.Serialize(1, new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNamingPolicy = XmlNamingPolicy.SnakeCaseUpper })
-                .Should().Be("<INT32>1</INT32>");
+                .Should().Be("<INT>1</INT>");
             XmlSerializer.Serialize(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero), new XmlSerializerOptions
             {
                 ElementNamingPolicy = XmlNamingPolicy.KebabCaseLower,
@@ -309,10 +309,10 @@ namespace CloudNimble.XmlEssentials.Tests
 
             var negating = new XmlSerializerOptions { OmitXmlDeclaration = true };
             negating.Converters.Add(new NegatingIntConverter());
-            XmlSerializer.Serialize(5, negating).Should().Be("<Int32>-5</Int32>");
-            XmlSerializer.Serialize((int?)5, negating).Should().Be("<Int32>-5</Int32>");
-            XmlSerializer.Deserialize<int?>("<Int32>-5</Int32>", negating).Should().Be(5);
-            XmlSerializer.Serialize((int?)5, bare).Should().Be("<Int32>5</Int32>");
+            XmlSerializer.Serialize(5, negating).Should().Be("<int>-5</int>");
+            XmlSerializer.Serialize((int?)5, negating).Should().Be("<int>-5</int>");
+            XmlSerializer.Deserialize<int?>("<int>-5</int>", negating).Should().Be(5);
+            XmlSerializer.Serialize((int?)5, bare).Should().Be("<int>5</int>");
 
             var listed = new XmlSerializerOptions();
             var sentinel = new SentinelIntConverter();
@@ -412,13 +412,13 @@ namespace CloudNimble.XmlEssentials.Tests
             var number = options.GetTypeInfo(typeof(int));
             number.Type.Should().Be(typeof(int));
             number.Options.Should().BeSameAs(options);
-            number.RootName.Should().Be(new XmlName("int32", "urn:x"));
+            number.RootName.Should().Be(new XmlName("int", "urn:x"));
             number.IsNillable.Should().BeFalse();
             number.Converter.Should().BeSameAs(options.GetConverter(typeof(int)));
-            options.GetTypeInfo<int?>().RootName.Should().Be(new XmlName("int32", "urn:x"));
+            options.GetTypeInfo<int?>().RootName.Should().Be(new XmlName("int", "urn:x"));
             options.GetTypeInfo<int?>().IsNillable.Should().BeTrue();
             options.GetTypeInfo<string>().IsNillable.Should().BeTrue();
-            options.GetTypeInfo<byte[]>().RootName.Should().Be(new XmlName("byteArray", "urn:x"));
+            options.GetTypeInfo<byte[]>().RootName.Should().Be(new XmlName("base64Binary", "urn:x"));
         }
 
         [TestMethod]
@@ -508,7 +508,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var context = new PrimitiveXmlContext();
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
             options.TypeInfoResolverChain.Add(context);
-            XmlSerializer.Serialize(5, options).Should().Be("<Int32>5</Int32>");
+            XmlSerializer.Serialize(5, options).Should().Be("<int>5</int>");
             options.GetTypeInfo<int>().Options.Should().BeSameAs(options);
             options.GetTypeInfo<POCOs.Person>().Options.Should().BeSameAs(context.Options);
             context.Options.GetTypeInfo<int>().Options.Should().BeSameAs(context.Options);
@@ -525,8 +525,8 @@ namespace CloudNimble.XmlEssentials.Tests
             var context = new PrimitiveXmlContext(options);
             context.Options.Should().BeSameAs(options);
             options.TypeInfoResolver.Should().BeSameAs(context);
-            XmlSerializer.Serialize(5, context).Should().Be("<Int32>5</Int32>");
-            XmlSerializer.Serialize(5, options).Should().Be("<Int32>5</Int32>");
+            XmlSerializer.Serialize(5, context).Should().Be("<int>5</int>");
+            XmlSerializer.Serialize(5, options).Should().Be("<int>5</int>");
 
             FluentActions.Invoking(() => new PrimitiveXmlContext(XmlSerializerOptions.Default))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(ReadOnlyMessage);

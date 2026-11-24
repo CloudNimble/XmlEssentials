@@ -354,7 +354,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var converter = (XmlConverter<int>)XmlSerializerOptions.Default.GetConverter(typeof(int));
             var info = XmlMetadataServices.CreateValueInfo(new XmlSerializerOptions { OmitXmlDeclaration = true }, converter);
             var xml = XmlSerializer.Serialize(7, info);
-            xml.Should().Be("<Int32>7</Int32>");
+            xml.Should().Be("<int>7</int>");
             XmlSerializer.Deserialize(xml, info).Should().Be(7);
             var buffer = new ArrayBufferWriter<byte>();
             var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });

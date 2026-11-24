@@ -24,7 +24,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
-        private const string Xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><Int32>42</Int32>";
+        private const string Xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><int>42</int>";
         private static readonly XmlSerializerContext Context = new PrimitiveXmlContext();
         private static readonly XmlTypeInfo<int> TypeInfo = XmlSerializerOptions.Default.GetTypeInfo<int>();
         private static readonly byte[] Utf8 = Encoding.UTF8.GetBytes(Xml);
@@ -56,7 +56,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Serialize_ToWriter_WritesOneElementAndLeavesTheDocumentToTheCaller()
         {
-            const string element = "<r><Int32>42</Int32></r>";
+            const string element = "<r><int>42</int></r>";
             ToWriter(writer => XmlSerializer.Serialize(writer, 42)).Should().Be(element);
             ToWriter(writer => XmlSerializer.Serialize(writer, 42, TypeInfo)).Should().Be(element);
             ToWriter(writer => XmlSerializer.Serialize(writer, 42, Context)).Should().Be(element);
@@ -114,35 +114,35 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Serialize_ToDocument()
         {
             using var fromOptions = XmlSerializer.SerializeToDocument(42);
-            fromOptions.RootElement.GetRawXml().Should().Be("<Int32>42</Int32>");
+            fromOptions.RootElement.GetRawXml().Should().Be("<int>42</int>");
             using var fromTypeInfo = XmlSerializer.SerializeToDocument(42, TypeInfo);
-            fromTypeInfo.RootElement.GetRawXml().Should().Be("<Int32>42</Int32>");
+            fromTypeInfo.RootElement.GetRawXml().Should().Be("<int>42</int>");
             using var fromContext = XmlSerializer.SerializeToDocument(42, Context);
-            fromContext.RootElement.GetRawXml().Should().Be("<Int32>42</Int32>");
+            fromContext.RootElement.GetRawXml().Should().Be("<int>42</int>");
             using var fromObject = XmlSerializer.SerializeToDocument((object)42, typeof(int));
-            fromObject.RootElement.GetRawXml().Should().Be("<Int32>42</Int32>");
+            fromObject.RootElement.GetRawXml().Should().Be("<int>42</int>");
             using var fromObjectContext = XmlSerializer.SerializeToDocument((object)42, typeof(int), Context);
-            fromObjectContext.RootElement.GetRawXml().Should().Be("<Int32>42</Int32>");
+            fromObjectContext.RootElement.GetRawXml().Should().Be("<int>42</int>");
         }
 
         [TestMethod]
         public void Serialize_ToElement()
         {
-            XmlSerializer.SerializeToElement(42).GetRawXml().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToElement(42, TypeInfo).GetRawXml().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToElement(42, Context).GetRawXml().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToElement((object)42, typeof(int)).GetRawXml().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToElement((object)42, typeof(int), Context).GetRawXml().Should().Be("<Int32>42</Int32>");
+            XmlSerializer.SerializeToElement(42).GetRawXml().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToElement(42, TypeInfo).GetRawXml().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToElement(42, Context).GetRawXml().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToElement((object)42, typeof(int)).GetRawXml().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToElement((object)42, typeof(int), Context).GetRawXml().Should().Be("<int>42</int>");
         }
 
         [TestMethod]
         public void Serialize_ToNode()
         {
-            XmlSerializer.SerializeToNode(42)!.ToString().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToNode(42, TypeInfo)!.ToString().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToNode(42, Context)!.ToString().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToNode((object)42, typeof(int))!.ToString().Should().Be("<Int32>42</Int32>");
-            XmlSerializer.SerializeToNode((object)42, typeof(int), Context)!.ToString().Should().Be("<Int32>42</Int32>");
+            XmlSerializer.SerializeToNode(42)!.ToString().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToNode(42, TypeInfo)!.ToString().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToNode(42, Context)!.ToString().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToNode((object)42, typeof(int))!.ToString().Should().Be("<int>42</int>");
+            XmlSerializer.SerializeToNode((object)42, typeof(int), Context)!.ToString().Should().Be("<int>42</int>");
         }
 
         [TestMethod]
@@ -163,7 +163,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<int>(Xml.AsSpan(), Context).Should().Be(42);
             XmlSerializer.Deserialize(Xml.AsSpan(), typeof(int)).Should().Be(42);
             XmlSerializer.Deserialize(Xml.AsSpan(), typeof(int), Context).Should().Be(42);
-            XmlSerializer.Deserialize<string>("<String>é☃𝄞</String>".AsSpan()).Should().Be("é☃𝄞");
+            XmlSerializer.Deserialize<string>("<string>é☃𝄞</string>".AsSpan()).Should().Be("é☃𝄞");
         }
 
         [TestMethod]
@@ -262,8 +262,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Deserialize_FromElement()
         {
-            using var document = XmlDocument.Parse("<r><Int32>42</Int32></r>");
-            var element = document.RootElement.GetChild("Int32");
+            using var document = XmlDocument.Parse("<r><int>42</int></r>");
+            var element = document.RootElement.GetChild("int");
             XmlSerializer.Deserialize<int>(element).Should().Be(42);
             XmlSerializer.Deserialize(element, TypeInfo).Should().Be(42);
             XmlSerializer.Deserialize<int>(element, Context).Should().Be(42);
@@ -275,14 +275,14 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Deserialize_FromElement_KeepsNamespacesDeclaredOnItsAncestors()
         {
             var namespaced = new XmlSerializerOptions { DefaultNamespace = "urn:x" };
-            using var document = XmlDocument.Parse("<r xmlns:p=\"urn:x\"><p:Int32>42</p:Int32></r>");
-            XmlSerializer.Deserialize<int>(document.RootElement.GetChild("Int32", "urn:x"), namespaced).Should().Be(42);
+            using var document = XmlDocument.Parse("<r xmlns:p=\"urn:x\"><p:int>42</p:int></r>");
+            XmlSerializer.Deserialize<int>(document.RootElement.GetChild("int", "urn:x"), namespaced).Should().Be(42);
         }
 
         [TestMethod]
         public void Deserialize_FromSequence_SplitInsideTextAndReferences()
         {
-            var utf8 = "<String>a&amp;b<!--c-->cd&#233;</String>"u8.ToArray();
+            var utf8 = "<string>a&amp;b<!--c-->cd&#233;</string>"u8.ToArray();
             for (var split = 1; split < utf8.Length; split++)
             {
                 var first = new ByteSequenceSegment(utf8.AsMemory(0, split), 0);
@@ -296,14 +296,14 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var control = ((char)1).ToString();
             var nextLine = ((char)0x85).ToString();
-            const string version11 = "<?xml version=\"1.1\"?><String>a&#x1;b&#x85;c</String>";
+            const string version11 = "<?xml version=\"1.1\"?><string>a&#x1;b&#x85;c</string>";
             using var document11 = XmlDocument.Parse(version11);
             XmlSerializer.Deserialize<string>(version11).Should().Be("a" + control + "b" + nextLine + "c");
             XmlSerializer.Deserialize<string>(document11).Should().Be("a" + control + "b" + nextLine + "c");
             XmlSerializer.Deserialize<string>(document11.RootElement).Should().Be("a" + control + "b" + nextLine + "c");
             XmlSerializer.Deserialize<string>(document11.RootElement.CloneNode()).Should().Be("a" + control + "b" + nextLine + "c");
 
-            const string version10 = "<String>a&#x85;b&#x2028;c\u007Fd</String>";
+            const string version10 = "<string>a&#x85;b&#x2028;c\u007Fd</string>";
             var expected = "a" + nextLine + "b" + ((char)0x2028) + "c" + ((char)0x7F) + "d";
             using var document10 = XmlDocument.Parse(version10);
             XmlSerializer.Deserialize<string>(version10).Should().Be(expected);

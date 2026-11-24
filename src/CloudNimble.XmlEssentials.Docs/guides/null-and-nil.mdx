@@ -90,6 +90,8 @@ When this document is read, `Nickname` and `Age` are never assigned. They are `n
 
 To leave out one member instead of all of them, use `[XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]`. See [Ignore properties](/guides/ignore-properties).
 
+`XmlIgnoreCondition.WhenWritingNullReference` leaves out `null` references only. A nullable value type with no value, such as an `int?`, is still written with `xsi:nil="true"`. That is how `System.Xml.Serialization.XmlSerializer` treats the two, and it is the condition [`XmlSerializerOptions.Bcl`](/guides/migrate/from-xmlserializer#keep-the-old-defaults) uses.
+
 <Note>
 A `null` collection that has an `[XmlArray]` wrapper is a `null` member like any other. `WhenWritingNull` leaves the wrapper out, and by default the wrapper is written with `xsi:nil="true"`, which reads back as `null`. An empty collection is different: it is written as an empty wrapper and reads back as an empty collection. The ignore condition applies to members only. A `null` item of a collection and a `null` value of a dictionary are always written, marked `xsi:nil="true"`, as System.Text.Json always writes them as `null`. See [Collections](/guides/collections).
 </Note>

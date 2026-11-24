@@ -36,8 +36,8 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Serialize(new { Name = "Ada", Age = 3 }, Bare).Should().Be("<AnonymousType><Name>Ada</Name><Age>3</Age></AnonymousType>");
             XmlSerializer.Serialize(new { Inner = new { A = 1 } }, Bare).Should().Be("<AnonymousType><Inner><A>1</A></Inner></AnonymousType>");
             XmlSerializer.Serialize(new[] { new { A = 1 }, new { A = 2 } }, Bare)
-                .Should().Be("<AnonymousTypeArray><AnonymousType><A>1</A></AnonymousType><AnonymousType><A>2</A></AnonymousType></AnonymousTypeArray>");
-            XmlSerializer.Serialize(new List<object> { new { A = 1 } }, Bare).Should().Be("<ListOfObject><AnonymousType><A>1</A></AnonymousType></ListOfObject>");
+                .Should().Be("<ArrayOfAnonymousType><AnonymousType><A>1</A></AnonymousType><AnonymousType><A>2</A></AnonymousType></ArrayOfAnonymousType>");
+            XmlSerializer.Serialize(new List<object> { new { A = 1 } }, Bare).Should().Be("<ArrayOfAnyType><AnonymousType><A>1</A></AnonymousType></ArrayOfAnyType>");
         }
 
         [TestMethod]
@@ -60,15 +60,15 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Object_AsTheRoot_IsWrittenAsTheTypeTheValueHas()
         {
             XmlSerializer.Serialize<object>(new Person { Name = "Ada", Age = 3 }, Bare).Should().Be("<Person><Name>Ada</Name><Age>3</Age></Person>");
-            XmlSerializer.Serialize<object>(5, Bare).Should().Be("<Int32>5</Int32>");
-            XmlSerializer.Serialize<object>("s", Bare).Should().Be("<String>s</String>");
+            XmlSerializer.Serialize<object>(5, Bare).Should().Be("<int>5</int>");
+            XmlSerializer.Serialize<object>("s", Bare).Should().Be("<string>s</string>");
             XmlSerializer.Serialize<object>(new { A = 1 }, Bare).Should().Be("<AnonymousType><A>1</A></AnonymousType>");
-            XmlSerializer.Serialize<object>(new List<int> { 1 }, Bare).Should().Be("<ListOfInt32><Int32>1</Int32></ListOfInt32>");
+            XmlSerializer.Serialize<object>(new List<int> { 1 }, Bare).Should().Be("<ArrayOfInt><int>1</int></ArrayOfInt>");
             XmlSerializer.Serialize<object>(new Book { Title = "t", Author = "a" }, Bare).Should().Be("<Book><Title>t</Title><Author>a</Author></Book>");
             XmlSerializer.Serialize(new Person { Name = "Ada", Age = 3 }, typeof(object), Bare).Should().Be("<Person><Name>Ada</Name><Age>3</Age></Person>");
-            XmlSerializer.Serialize<object>(new object(), Bare).Should().Be("<Object/>");
-            XmlSerializer.Serialize<object?>(null, new XmlSerializerOptions { OmitXmlDeclaration = true }).Should().Be("<Object " + Nil + "/>");
-            Encoding.UTF8.GetString(XmlSerializer.SerializeToUtf8Bytes<object>(5, Bare)).Should().Be("<Int32>5</Int32>");
+            XmlSerializer.Serialize<object>(new object(), Bare).Should().Be("<anyType/>");
+            XmlSerializer.Serialize<object?>(null, new XmlSerializerOptions { OmitXmlDeclaration = true }).Should().Be("<anyType " + Nil + "/>");
+            Encoding.UTF8.GetString(XmlSerializer.SerializeToUtf8Bytes<object>(5, Bare)).Should().Be("<int>5</int>");
         }
 
         [TestMethod]
@@ -99,8 +99,8 @@ namespace CloudNimble.XmlEssentials.Tests
             element.Document!.IsPooled.Should().BeFalse();
             XmlSerializer.Deserialize<Person>(element).Should().BeEquivalentTo(new Person { Name = "Ada", Age = 3 });
 
-            XmlSerializer.Deserialize<object>("<Object " + Nil + "/>").Should().BeNull();
-            XmlSerializer.Deserialize("<Int32>5</Int32>", typeof(object)).Should().BeOfType<XmlElement>().Which.GetInt32().Should().Be(5);
+            XmlSerializer.Deserialize<object>("<anyType " + Nil + "/>").Should().BeNull();
+            XmlSerializer.Deserialize("<int>5</int>", typeof(object)).Should().BeOfType<XmlElement>().Which.GetInt32().Should().Be(5);
 
             var holder = XmlSerializer.Deserialize<ObjectHolder>(
                 "<ObjectHolder><Any>5</Any><Items>1</Items><Items><Name>Ada</Name></Items><Map><n>1.5</n></Map></ObjectHolder>")!;

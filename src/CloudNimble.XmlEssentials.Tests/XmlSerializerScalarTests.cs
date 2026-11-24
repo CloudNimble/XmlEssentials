@@ -28,170 +28,170 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void BuiltInTypes_WriteOneElementNamedAfterTheType_AndReadItBack()
         {
-            RoundTrip(true, "<Boolean>true</Boolean>");
-            RoundTrip(false, "<Boolean>false</Boolean>");
-            RoundTrip((byte)255, "<Byte>255</Byte>");
-            RoundTrip((sbyte)-128, "<SByte>-128</SByte>");
-            RoundTrip((short)-32768, "<Int16>-32768</Int16>");
-            RoundTrip((ushort)65535, "<UInt16>65535</UInt16>");
-            RoundTrip(-2147483648, "<Int32>-2147483648</Int32>");
-            RoundTrip(4294967295u, "<UInt32>4294967295</UInt32>");
-            RoundTrip(-9223372036854775808L, "<Int64>-9223372036854775808</Int64>");
-            RoundTrip(18446744073709551615UL, "<UInt64>18446744073709551615</UInt64>");
-            RoundTrip(1.5f, "<Single>1.5</Single>");
-            RoundTrip(-0.25, "<Double>-0.25</Double>");
-            RoundTrip(79228162514264337593543950335m, "<Decimal>79228162514264337593543950335</Decimal>");
-            RoundTrip("a <b> & \"c\"", "<String>a &lt;b> &amp; \"c\"</String>");
-            RoundTrip('é', "<Char>é</Char>");
-            RoundTrip(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"), "<Guid>00112233-4455-6677-8899-aabbccddeeff</Guid>");
-            RoundTrip(new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc), "<DateTime>2020-01-02T03:04:05Z</DateTime>");
-            RoundTrip(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.FromHours(-7)), "<DateTimeOffset>2020-01-02T03:04:05-07:00</DateTimeOffset>");
-            RoundTrip(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero), "<DateTimeOffset>2020-01-02T03:04:05+00:00</DateTimeOffset>");
-            RoundTrip(new DateOnly(2020, 1, 2), "<DateOnly>2020-01-02</DateOnly>");
-            RoundTrip(new TimeOnly(3, 4, 5), "<TimeOnly>03:04:05</TimeOnly>");
+            RoundTrip(true, "<boolean>true</boolean>");
+            RoundTrip(false, "<boolean>false</boolean>");
+            RoundTrip((byte)255, "<unsignedByte>255</unsignedByte>");
+            RoundTrip((sbyte)-128, "<byte>-128</byte>");
+            RoundTrip((short)-32768, "<short>-32768</short>");
+            RoundTrip((ushort)65535, "<unsignedShort>65535</unsignedShort>");
+            RoundTrip(-2147483648, "<int>-2147483648</int>");
+            RoundTrip(4294967295u, "<unsignedInt>4294967295</unsignedInt>");
+            RoundTrip(-9223372036854775808L, "<long>-9223372036854775808</long>");
+            RoundTrip(18446744073709551615UL, "<unsignedLong>18446744073709551615</unsignedLong>");
+            RoundTrip(1.5f, "<float>1.5</float>");
+            RoundTrip(-0.25, "<double>-0.25</double>");
+            RoundTrip(79228162514264337593543950335m, "<decimal>79228162514264337593543950335</decimal>");
+            RoundTrip("a <b> & \"c\"", "<string>a &lt;b> &amp; \"c\"</string>");
+            RoundTrip('é', "<char>é</char>");
+            RoundTrip(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"), "<guid>00112233-4455-6677-8899-aabbccddeeff</guid>");
+            RoundTrip(new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc), "<dateTime>2020-01-02T03:04:05Z</dateTime>");
+            RoundTrip(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.FromHours(-7)), "<dateTimeOffset>2020-01-02T03:04:05-07:00</dateTimeOffset>");
+            RoundTrip(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero), "<dateTimeOffset>2020-01-02T03:04:05+00:00</dateTimeOffset>");
+            RoundTrip(new DateOnly(2020, 1, 2), "<dateOnly>2020-01-02</dateOnly>");
+            RoundTrip(new TimeOnly(3, 4, 5), "<timeOnly>03:04:05</timeOnly>");
             RoundTrip(TimeSpan.FromHours(1), "<TimeSpan>PT1H</TimeSpan>");
             RoundTrip(new Uri("https://example.com/a?b=1&c=2"), "<Uri>https://example.com/a?b=1&amp;c=2</Uri>");
             RoundTrip(new Uri("relative/path", UriKind.Relative), "<Uri>relative/path</Uri>");
             RoundTrip(new Version(1, 2), "<Version>1.2</Version>");
             RoundTrip(new Version(2147483647, 2147483647, 2147483647, 2147483647), "<Version>2147483647.2147483647.2147483647.2147483647</Version>");
-            XmlSerializer.Serialize(new byte[] { 1, 2, 3 }, Bare).Should().Be("<ByteArray>AQID</ByteArray>");
-            XmlSerializer.Deserialize<byte[]>("<ByteArray>AQID</ByteArray>").Should().Equal(1, 2, 3);
+            XmlSerializer.Serialize(new byte[] { 1, 2, 3 }, Bare).Should().Be("<base64Binary>AQID</base64Binary>");
+            XmlSerializer.Deserialize<byte[]>("<base64Binary>AQID</base64Binary>").Should().Equal(1, 2, 3);
         }
 
         [TestMethod]
         public void Declaration_IsWrittenUnlessOmitted_AndWebDefaultsUseCamelCase()
         {
-            XmlSerializer.Serialize(42).Should().Be(Declaration + "<Int32>42</Int32>");
-            XmlSerializer.Serialize(42, XmlSerializerOptions.Web).Should().Be("<int32>42</int32>");
-            XmlSerializer.Deserialize<int>(Declaration + "<Int32>42</Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<int>("<int32>42</int32>", XmlSerializerOptions.Web).Should().Be(42);
+            XmlSerializer.Serialize(42).Should().Be(Declaration + "<int>42</int>");
+            XmlSerializer.Serialize(42, XmlSerializerOptions.Web).Should().Be("<int>42</int>");
+            XmlSerializer.Deserialize<int>(Declaration + "<int>42</int>").Should().Be(42);
+            XmlSerializer.Deserialize<int>("<int>42</int>", XmlSerializerOptions.Web).Should().Be(42);
         }
 
         [TestMethod]
         public void DefaultNamespace_IsDeclaredOnTheRoot_AndRequiredWhenReading()
         {
             var namespaced = new XmlSerializerOptions { DefaultNamespace = "urn:x", OmitXmlDeclaration = true };
-            XmlSerializer.Serialize(42, namespaced).Should().Be("<Int32 xmlns=\"urn:x\">42</Int32>");
-            XmlSerializer.Deserialize<int>("<Int32 xmlns=\"urn:x\">42</Int32>", namespaced).Should().Be(42);
-            XmlSerializer.Deserialize<int>("<p:Int32 xmlns:p=\"urn:x\">42</p:Int32>", namespaced).Should().Be(42);
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Int32>42</Int32>", namespaced))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 8.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize("<Int32>42</Int32>", typeof(int), namespaced))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 8.");
+            XmlSerializer.Serialize(42, namespaced).Should().Be("<int xmlns=\"urn:x\">42</int>");
+            XmlSerializer.Deserialize<int>("<int xmlns=\"urn:x\">42</int>", namespaced).Should().Be(42);
+            XmlSerializer.Deserialize<int>("<p:int xmlns:p=\"urn:x\">42</p:int>", namespaced).Should().Be(42);
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<int>42</int>", namespaced))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'. Path: /int | LineNumber: 1 | BytePositionInLine: 6.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize("<int>42</int>", typeof(int), namespaced))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element is not in namespace 'urn:x'. Path: /int | LineNumber: 1 | BytePositionInLine: 6.");
         }
 
         [TestMethod]
         public void RootName_MustMatchTheType()
         {
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Nope>42</Nope>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Int32'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 7.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'int'. Path: /int | LineNumber: 1 | BytePositionInLine: 7.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize("<Nope>42</Nope>", typeof(int)))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Int32'. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 7.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'int'. Path: /int | LineNumber: 1 | BytePositionInLine: 7.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>(""))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 1.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element. Path: /int | LineNumber: 1 | BytePositionInLine: 1.");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<!--only a comment-->"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 22.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Document does not have a root element. Path: /int | LineNumber: 1 | BytePositionInLine: 22.");
         }
 
         [TestMethod]
         public void LexicalForms_FollowXsd_SurroundingWhitespaceIsCollapsed()
         {
-            XmlSerializer.Deserialize<int>("<Int32>+007</Int32>").Should().Be(7);
-            XmlSerializer.Deserialize<int>("<Int32>\r\n  42\t</Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<bool>("<Boolean>1</Boolean>").Should().BeTrue();
-            XmlSerializer.Deserialize<bool>("<Boolean> 0 </Boolean>").Should().BeFalse();
-            XmlSerializer.Deserialize<char>("<Char> Z </Char>").Should().Be('Z');
+            XmlSerializer.Deserialize<int>("<int>+007</int>").Should().Be(7);
+            XmlSerializer.Deserialize<int>("<int>\r\n  42\t</int>").Should().Be(42);
+            XmlSerializer.Deserialize<bool>("<boolean>1</boolean>").Should().BeTrue();
+            XmlSerializer.Deserialize<bool>("<boolean> 0 </boolean>").Should().BeFalse();
+            XmlSerializer.Deserialize<char>("<char> Z </char>").Should().Be('Z');
             XmlSerializer.Deserialize<Version>("<Version> 1.2.3 </Version>").Should().Be(new Version(1, 2, 3));
             XmlSerializer.Deserialize<Uri>("<Uri> https://example.com/ </Uri>").Should().Be(new Uri("https://example.com/"));
-            XmlSerializer.Deserialize<string>("<String> kept as written </String>").Should().Be(" kept as written ");
+            XmlSerializer.Deserialize<string>("<string> kept as written </string>").Should().Be(" kept as written ");
         }
 
         [TestMethod]
         public void InvalidLexicalForm_ThrowsXmlException_NamingTheKindOfValue()
         {
-            Rejects<bool>("<Boolean>yes</Boolean>", "The value is not a boolean.");
-            Rejects<byte>("<Byte>256</Byte>", "The value is not a valid integer.");
-            Rejects<sbyte>("<SByte>128</SByte>", "The value is not a valid integer.");
-            Rejects<short>("<Int16>32768</Int16>", "The value is not a valid integer.");
-            Rejects<ushort>("<UInt16>-1</UInt16>", "The value is not a valid integer.");
-            Rejects<int>("<Int32>1.0</Int32>", "The value is not a valid integer.");
-            Rejects<uint>("<UInt32>-1</UInt32>", "The value is not a valid integer.");
-            Rejects<long>("<Int64>9223372036854775808</Int64>", "The value is not a valid integer.");
-            Rejects<ulong>("<UInt64>-1</UInt64>", "The value is not a valid integer.");
-            Rejects<float>("<Single>nope</Single>", "The value is not a valid float.");
-            Rejects<double>("<Double>nope</Double>", "The value is not a valid double.");
-            Rejects<decimal>("<Decimal>1e2</Decimal>", "The value is not a valid decimal.");
-            Rejects<char>("<Char>ab</Char>", "The value is not a single character.");
-            Rejects<char>("<Char>𝄞</Char>", "The value is not a single character.");
-            Rejects<Guid>("<Guid>nope</Guid>", "The value is not a valid GUID.");
-            Rejects<DateTime>("<DateTime>March 5, 2020</DateTime>", "The value is not a valid dateTime.");
-            Rejects<DateTimeOffset>("<DateTimeOffset>nope</DateTimeOffset>", "The value is not a valid dateTime.");
-            Rejects<DateOnly>("<DateOnly>2020-13-01</DateOnly>", "The value is not a valid date.");
-            Rejects<TimeOnly>("<TimeOnly>25:00:00</TimeOnly>", "The value is not a valid time.");
+            Rejects<bool>("<boolean>yes</boolean>", "The value is not a boolean.");
+            Rejects<byte>("<unsignedByte>256</unsignedByte>", "The value is not a valid integer.");
+            Rejects<sbyte>("<byte>128</byte>", "The value is not a valid integer.");
+            Rejects<short>("<short>32768</short>", "The value is not a valid integer.");
+            Rejects<ushort>("<unsignedShort>-1</unsignedShort>", "The value is not a valid integer.");
+            Rejects<int>("<int>1.0</int>", "The value is not a valid integer.");
+            Rejects<uint>("<unsignedInt>-1</unsignedInt>", "The value is not a valid integer.");
+            Rejects<long>("<long>9223372036854775808</long>", "The value is not a valid integer.");
+            Rejects<ulong>("<unsignedLong>-1</unsignedLong>", "The value is not a valid integer.");
+            Rejects<float>("<float>nope</float>", "The value is not a valid float.");
+            Rejects<double>("<double>nope</double>", "The value is not a valid double.");
+            Rejects<decimal>("<decimal>1e2</decimal>", "The value is not a valid decimal.");
+            Rejects<char>("<char>ab</char>", "The value is not a single character.");
+            Rejects<char>("<char>𝄞</char>", "The value is not a single character.");
+            Rejects<Guid>("<guid>nope</guid>", "The value is not a valid GUID.");
+            Rejects<DateTime>("<dateTime>March 5, 2020</dateTime>", "The value is not a valid dateTime.");
+            Rejects<DateTimeOffset>("<dateTimeOffset>nope</dateTimeOffset>", "The value is not a valid dateTime.");
+            Rejects<DateOnly>("<dateOnly>2020-13-01</dateOnly>", "The value is not a valid date.");
+            Rejects<TimeOnly>("<timeOnly>25:00:00</timeOnly>", "The value is not a valid time.");
             Rejects<TimeSpan>("<TimeSpan>PT1D</TimeSpan>", "The value is not a valid duration.");
             Rejects<Uri>("<Uri>http://exa mple</Uri>", "The value is not a valid URI.");
             Rejects<Version>("<Version>1</Version>", "The value is not a valid version.");
-            Rejects<byte[]>("<ByteArray>!!!!</ByteArray>", "The value is not valid base64.");
+            Rejects<byte[]>("<base64Binary>!!!!</base64Binary>", "The value is not valid base64.");
         }
 
         [TestMethod]
         public void EmptyElement_IsAnEmptyStringUriOrByteArray_AndInvalidForEveryOtherType()
         {
-            XmlSerializer.Serialize("", Bare).Should().Be("<String></String>");
-            XmlSerializer.Deserialize<string>("<String/>").Should().Be("");
-            XmlSerializer.Deserialize<string>("<String></String>").Should().Be("");
-            XmlSerializer.Deserialize<byte[]>("<ByteArray/>").Should().BeEmpty();
+            XmlSerializer.Serialize("", Bare).Should().Be("<string></string>");
+            XmlSerializer.Deserialize<string>("<string/>").Should().Be("");
+            XmlSerializer.Deserialize<string>("<string></string>").Should().Be("");
+            XmlSerializer.Deserialize<byte[]>("<base64Binary/>").Should().BeEmpty();
             XmlSerializer.Deserialize<Uri>("<Uri/>").Should().Be(new Uri("", UriKind.Relative));
-            Rejects<int>("<Int32/>", "The value is not a valid integer.");
-            Rejects<int>("<Int32></Int32>", "The value is not a valid integer.");
-            Rejects<int?>("<Int32/>", "The value is not a valid integer.");
-            Rejects<bool>("<Boolean/>", "The value is not a boolean.");
-            Rejects<char>("<Char/>", "The value is not a single character.");
-            Rejects<Guid>("<Guid/>", "The value is not a valid GUID.");
+            Rejects<int>("<int/>", "The value is not a valid integer.");
+            Rejects<int>("<int></int>", "The value is not a valid integer.");
+            Rejects<int?>("<int/>", "The value is not a valid integer.");
+            Rejects<bool>("<boolean/>", "The value is not a boolean.");
+            Rejects<char>("<char/>", "The value is not a single character.");
+            Rejects<Guid>("<guid/>", "The value is not a valid GUID.");
             Rejects<Version>("<Version/>", "The value is not a valid version.");
         }
 
         [TestMethod]
         public void Content_SplitByCommentsInstructionsCDataOrReferences_IsReadAsOneValue()
         {
-            XmlSerializer.Deserialize<int>("<Int32><!--c-->42<?pi d?></Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<int>("<Int32>4<!--c-->2</Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<int>("<Int32><![CDATA[4]]>2</Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<int>("<Int32>&#52;2</Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<int>("<Int32>&#52;<!--c-->&#50;</Int32>").Should().Be(42);
-            XmlSerializer.Deserialize<string>("<String>a<![CDATA[<b>]]>c&amp;d<!--e-->f</String>").Should().Be("a<b>c&df");
-            XmlSerializer.Deserialize<string>("<String><![CDATA[]]>tail</String>").Should().Be("tail");
+            XmlSerializer.Deserialize<int>("<int><!--c-->42<?pi d?></int>").Should().Be(42);
+            XmlSerializer.Deserialize<int>("<int>4<!--c-->2</int>").Should().Be(42);
+            XmlSerializer.Deserialize<int>("<int><![CDATA[4]]>2</int>").Should().Be(42);
+            XmlSerializer.Deserialize<int>("<int>&#52;2</int>").Should().Be(42);
+            XmlSerializer.Deserialize<int>("<int>&#52;<!--c-->&#50;</int>").Should().Be(42);
+            XmlSerializer.Deserialize<string>("<string>a<![CDATA[<b>]]>c&amp;d<!--e-->f</string>").Should().Be("a<b>c&df");
+            XmlSerializer.Deserialize<string>("<string><![CDATA[]]>tail</string>").Should().Be("tail");
 
             var part = new string('x', 300);
-            var split = "<String>" + part + "<!--c-->" + part + "<![CDATA[" + part + "]]>" + part + "<?pi d?>" + string.Concat(System.Linq.Enumerable.Repeat(part + "<!--c-->", 20)) + "</String>";
+            var split = "<string>" + part + "<!--c-->" + part + "<![CDATA[" + part + "]]>" + part + "<?pi d?>" + string.Concat(System.Linq.Enumerable.Repeat(part + "<!--c-->", 20)) + "</string>";
             XmlSerializer.Deserialize<string>(split).Should().Be(string.Concat(System.Linq.Enumerable.Repeat(part, 24)));
         }
 
         [TestMethod]
         public void ChildElement_InsideAScalar_IsRejected()
         {
-            Rejects<int>("<Int32><x/></Int32>", "Unexpected StartElement in simple content.", position: 12);
-            Rejects<string>("<String>a<b/>c</String>", "Unexpected StartElement in simple content.", position: 14);
+            Rejects<int>("<int><x/></int>", "Unexpected StartElement in simple content.", position: 10);
+            Rejects<string>("<string>a<b/>c</string>", "Unexpected StartElement in simple content.", position: 14);
         }
 
         [TestMethod]
         public void Null_IsWrittenAsXsiNil_AndReadBack()
         {
-            XmlSerializer.Serialize<string?>(null, Bare).Should().Be("<String" + Nil + "/>");
-            XmlSerializer.Serialize((int?)null, Bare).Should().Be("<Int32" + Nil + "/>");
-            XmlSerializer.Serialize((object?)null, typeof(string), Bare).Should().Be("<String" + Nil + "/>");
-            XmlSerializer.Serialize((object?)null, typeof(int?), Bare).Should().Be("<Int32" + Nil + "/>");
-            XmlSerializer.Serialize((int?)8, Bare).Should().Be("<Int32>8</Int32>");
-            XmlSerializer.Serialize((object)8, typeof(int?), Bare).Should().Be("<Int32>8</Int32>");
+            XmlSerializer.Serialize<string?>(null, Bare).Should().Be("<string" + Nil + "/>");
+            XmlSerializer.Serialize((int?)null, Bare).Should().Be("<int" + Nil + "/>");
+            XmlSerializer.Serialize((object?)null, typeof(string), Bare).Should().Be("<string" + Nil + "/>");
+            XmlSerializer.Serialize((object?)null, typeof(int?), Bare).Should().Be("<int" + Nil + "/>");
+            XmlSerializer.Serialize((int?)8, Bare).Should().Be("<int>8</int>");
+            XmlSerializer.Serialize((object)8, typeof(int?), Bare).Should().Be("<int>8</int>");
 
-            XmlSerializer.Deserialize<string>("<String" + Nil + "/>").Should().BeNull();
-            XmlSerializer.Deserialize<string>("<String" + Nil + ">ignored</String>").Should().BeNull();
-            XmlSerializer.Deserialize("<String" + Nil + ">ignored</String>", typeof(string)).Should().BeNull();
-            XmlSerializer.Deserialize<int?>("<Int32" + Nil + "/>").Should().BeNull();
-            XmlSerializer.Deserialize<int?>("<Int32" + Nil + ">9</Int32>").Should().BeNull();
-            XmlSerializer.Deserialize<int?>("<Int32>8</Int32>").Should().Be(8);
-            XmlSerializer.Deserialize<int?>("<Int32 xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"false\">8</Int32>").Should().Be(8);
-            XmlSerializer.Deserialize<string>("<String other=\"1\">a</String>").Should().Be("a");
+            XmlSerializer.Deserialize<string>("<string" + Nil + "/>").Should().BeNull();
+            XmlSerializer.Deserialize<string>("<string" + Nil + ">ignored</string>").Should().BeNull();
+            XmlSerializer.Deserialize("<string" + Nil + ">ignored</string>", typeof(string)).Should().BeNull();
+            XmlSerializer.Deserialize<int?>("<int" + Nil + "/>").Should().BeNull();
+            XmlSerializer.Deserialize<int?>("<int" + Nil + ">9</int>").Should().BeNull();
+            XmlSerializer.Deserialize<int?>("<int>8</int>").Should().Be(8);
+            XmlSerializer.Deserialize<int?>("<int xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"false\">8</int>").Should().Be(8);
+            XmlSerializer.Deserialize<string>("<string other=\"1\">a</string>").Should().Be("a");
         }
 
         [TestMethod]
@@ -200,8 +200,8 @@ namespace CloudNimble.XmlEssentials.Tests
             foreach (var condition in new[] { XmlIgnoreCondition.Never, XmlIgnoreCondition.WhenWritingNull, XmlIgnoreCondition.WhenWritingDefault })
             {
                 var options = new XmlSerializerOptions { DefaultIgnoreCondition = condition, OmitXmlDeclaration = true };
-                XmlSerializer.Serialize<string?>(null, options).Should().Be("<String" + Nil + "/>");
-                XmlSerializer.Serialize((int?)null, options).Should().Be("<Int32" + Nil + "/>");
+                XmlSerializer.Serialize<string?>(null, options).Should().Be("<string" + Nil + "/>");
+                XmlSerializer.Serialize((int?)null, options).Should().Be("<int" + Nil + "/>");
             }
         }
 
@@ -210,9 +210,9 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             FluentActions.Invoking(() => XmlSerializer.Serialize((object?)null, typeof(int)))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("Type 'System.Int32' cannot be null.");
-            Rejects<int>("<Int32" + Nil + "/>", "The element is nil but type 'System.Int32' is not nillable.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize("<Int32" + Nil + "/>", typeof(int)))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is nil but type 'System.Int32' is not nillable. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 78.");
+            Rejects<int>("<int" + Nil + "/>", "The element is nil but type 'System.Int32' is not nillable.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize("<int" + Nil + "/>", typeof(int)))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is nil but type 'System.Int32' is not nillable. Path: /int | LineNumber: 1 | BytePositionInLine: 76.");
         }
 
         [TestMethod]
@@ -220,35 +220,35 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
             options.Converters.Add(new SentinelIntConverter());
-            XmlSerializer.Deserialize<int>("<Int32" + Nil + "/>", options).Should().Be(-1);
-            XmlSerializer.Deserialize<int>("<Int32" + Nil + ">9</Int32>", options).Should().Be(-1);
-            XmlSerializer.Deserialize("<Int32" + Nil + "/>", typeof(int), options).Should().Be(-1);
-            XmlSerializer.Deserialize<int>("<Int32>7</Int32>", options).Should().Be(7);
+            XmlSerializer.Deserialize<int>("<int" + Nil + "/>", options).Should().Be(-1);
+            XmlSerializer.Deserialize<int>("<int" + Nil + ">9</int>", options).Should().Be(-1);
+            XmlSerializer.Deserialize("<int" + Nil + "/>", typeof(int), options).Should().Be(-1);
+            XmlSerializer.Deserialize<int>("<int>7</int>", options).Should().Be(7);
         }
 
         [TestMethod]
         public void NamedFloatingPointLiterals_AreWrittenAndRead_UnlessNumberHandlingIsStrict()
         {
-            XmlSerializer.Serialize(double.NaN, Bare).Should().Be("<Double>NaN</Double>");
-            XmlSerializer.Serialize(double.PositiveInfinity, Bare).Should().Be("<Double>INF</Double>");
-            XmlSerializer.Serialize(double.NegativeInfinity, Bare).Should().Be("<Double>-INF</Double>");
-            XmlSerializer.Serialize(float.NaN, Bare).Should().Be("<Single>NaN</Single>");
-            XmlSerializer.Serialize(float.PositiveInfinity, Bare).Should().Be("<Single>INF</Single>");
-            XmlSerializer.Deserialize<double>("<Double>NaN</Double>").Should().Be(double.NaN);
-            XmlSerializer.Deserialize<double>("<Double>-INF</Double>").Should().Be(double.NegativeInfinity);
-            XmlSerializer.Deserialize<float>("<Single>INF</Single>").Should().Be(float.PositiveInfinity);
+            XmlSerializer.Serialize(double.NaN, Bare).Should().Be("<double>NaN</double>");
+            XmlSerializer.Serialize(double.PositiveInfinity, Bare).Should().Be("<double>INF</double>");
+            XmlSerializer.Serialize(double.NegativeInfinity, Bare).Should().Be("<double>-INF</double>");
+            XmlSerializer.Serialize(float.NaN, Bare).Should().Be("<float>NaN</float>");
+            XmlSerializer.Serialize(float.PositiveInfinity, Bare).Should().Be("<float>INF</float>");
+            XmlSerializer.Deserialize<double>("<double>NaN</double>").Should().Be(double.NaN);
+            XmlSerializer.Deserialize<double>("<double>-INF</double>").Should().Be(double.NegativeInfinity);
+            XmlSerializer.Deserialize<float>("<float>INF</float>").Should().Be(float.PositiveInfinity);
 
             var strict = new XmlSerializerOptions { NumberHandling = XmlNumberHandling.Strict, OmitXmlDeclaration = true };
-            XmlSerializer.Serialize(1.5, strict).Should().Be("<Double>1.5</Double>");
-            XmlSerializer.Deserialize<double>("<Double>1.5</Double>", strict).Should().Be(1.5);
-            XmlSerializer.Deserialize<float>("<Single>1.5</Single>", strict).Should().Be(1.5f);
+            XmlSerializer.Serialize(1.5, strict).Should().Be("<double>1.5</double>");
+            XmlSerializer.Deserialize<double>("<double>1.5</double>", strict).Should().Be(1.5);
+            XmlSerializer.Deserialize<float>("<float>1.5</float>", strict).Should().Be(1.5f);
             const string message = "Named floating-point literals are not allowed when NumberHandling is Strict.";
-            FluentActions.Invoking(() => XmlSerializer.Serialize(double.NaN, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Double.");
-            FluentActions.Invoking(() => XmlSerializer.Serialize(float.NegativeInfinity, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Single.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<double>("<Double>INF</Double>", strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid double. Path: /Double | LineNumber: 1 | BytePositionInLine: 21.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<float>("<Single>NaN</Single>", strict))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float. Path: /Single | LineNumber: 1 | BytePositionInLine: 21.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(double.NaN, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /double.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(float.NegativeInfinity, strict)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /float.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<double>("<double>INF</double>", strict))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid double. Path: /double | LineNumber: 1 | BytePositionInLine: 21.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<float>("<float>NaN</float>", strict))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a valid float. Path: /float | LineNumber: 1 | BytePositionInLine: 19.");
         }
 
         [TestMethod]
@@ -309,20 +309,20 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             FluentActions.Invoking(() =>
             {
-                var reader = new Utf8XmlReader("<Int32>4"u8, isFinalBlock: false, new XmlReaderState());
+                var reader = new Utf8XmlReader("<int>4"u8, isFinalBlock: false, new XmlReaderState());
                 XmlSerializer.Deserialize<int>(ref reader);
-            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is incomplete: more data is required. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 8.");
+            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is incomplete: more data is required. Path: /int | LineNumber: 1 | BytePositionInLine: 6.");
             FluentActions.Invoking(() =>
             {
                 var reader = new Utf8XmlReader("<?xml version=\"1.0\"?>"u8, isFinalBlock: false, new XmlReaderState());
                 XmlSerializer.Deserialize<int>(ref reader);
-            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Expected a start element. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 22.");
+            }).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Expected a start element. Path: /int | LineNumber: 1 | BytePositionInLine: 22.");
         }
 
         [TestMethod]
         public void ReaderOverload_ReadsOneElement_AndLeavesTheReaderOnItsEnd()
         {
-            var reader = new Utf8XmlReader("<r><Int32>1</Int32><Int32>2</Int32></r>"u8);
+            var reader = new Utf8XmlReader("<r><int>1</int><int>2</int></r>"u8);
             reader.Read();
             reader.Read();
             XmlSerializer.Deserialize<int>(ref reader).Should().Be(1);
@@ -336,12 +336,12 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void WholeDocumentOverloads_RejectAnythingAfterTheRootThatIsNotWellFormed()
         {
-            XmlSerializer.Deserialize<int>("<Int32>1</Int32><!--after--> ").Should().Be(1);
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Int32>1</Int32><Int32>2</Int32>"))
+            XmlSerializer.Deserialize<int>("<int>1</int><!--after--> ").Should().Be(1);
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<int>1</int><int>2</int>"))
                 .Should().ThrowExactly<XmlException>();
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<Int32>1</Int32>junk"))
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<int>("<int>1</int>junk"))
                 .Should().ThrowExactly<XmlException>();
-            FluentActions.Invoking(() => XmlSerializer.Deserialize("<Int32>1</Int32></Int32>", typeof(int)))
+            FluentActions.Invoking(() => XmlSerializer.Deserialize("<int>1</int></int>", typeof(int)))
                 .Should().ThrowExactly<XmlException>();
         }
 

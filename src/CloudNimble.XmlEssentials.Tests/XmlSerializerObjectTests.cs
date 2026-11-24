@@ -368,9 +368,9 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void ListOfInt32_WritesItemTypeNames()
         {
-            XmlSerializer.Serialize(new List<int> { 1, 2 }, Bare).Should().Be("<ListOfInt32><Int32>1</Int32><Int32>2</Int32></ListOfInt32>");
-            XmlSerializer.Deserialize<List<int>>("<ListOfInt32><Int32>1</Int32><Int32>2</Int32></ListOfInt32>").Should().Equal(1, 2);
-            XmlSerializer.Deserialize<int[]>("<Int32Array><Int32>3</Int32></Int32Array>").Should().Equal(3);
+            XmlSerializer.Serialize(new List<int> { 1, 2 }, Bare).Should().Be("<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>");
+            XmlSerializer.Deserialize<List<int>>("<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>").Should().Equal(1, 2);
+            XmlSerializer.Deserialize<int[]>("<ArrayOfInt><int>3</int></ArrayOfInt>").Should().Equal(3);
         }
 
         [TestMethod]
@@ -397,8 +397,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void BareArray_UsesTheMemberNameAsTheWrapper()
         {
-            XmlSerializer.Serialize(new BareArray { Values = [1, 2] }, Bare).Should().Be("<BareArray><Values><Int32>1</Int32><Int32>2</Int32></Values></BareArray>");
-            XmlSerializer.Deserialize<BareArray>("<BareArray><Values><Int32>1</Int32><Int32>2</Int32></Values></BareArray>")!.Values.Should().Equal(1, 2);
+            XmlSerializer.Serialize(new BareArray { Values = [1, 2] }, Bare).Should().Be("<BareArray><Values><int>1</int><int>2</int></Values></BareArray>");
+            XmlSerializer.Deserialize<BareArray>("<BareArray><Values><int>1</int><int>2</int></Values></BareArray>")!.Values.Should().Equal(1, 2);
         }
 
         [TestMethod]
@@ -792,7 +792,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void CollectionOfInt32_RoundTrips()
         {
             var xml = XmlSerializer.Serialize(new Collection<int> { 1, 2 }, Bare);
-            xml.Should().Be("<CollectionOfInt32><Int32>1</Int32><Int32>2</Int32></CollectionOfInt32>");
+            xml.Should().Be("<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>");
             XmlSerializer.Deserialize<Collection<int>>(xml).Should().Equal(1, 2);
         }
 
@@ -847,7 +847,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void HashSetOfInt32_RoundTrips()
         {
             var xml = XmlSerializer.Serialize(new HashSet<int> { 7 }, Bare);
-            xml.Should().Be("<HashSetOfInt32><Int32>7</Int32></HashSetOfInt32>");
+            xml.Should().Be("<ArrayOfInt><int>7</int></ArrayOfInt>");
             XmlSerializer.Deserialize<HashSet<int>>(xml).Should().Equal(7);
         }
 

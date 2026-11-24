@@ -116,7 +116,7 @@ Do **not** use `dotnet test --settings coverlet.runsettings` (VSTest DataCollect
 - **Status:** Done (`c24bee9` on `dev`; small-element reader and writer speed work followed in `97b91b2`)
 - **Title:** `feat: XmlSerializerOptions, XmlConverter, primitive XmlSerializer`
 - **Depends on:** PR 4
-- **Description:** Scalars. Root name via policy (`<Int32>42</Int32>` identity). Null root = xsi:nil. Full [07](07-api-serializer.md) overload families including TValue+context deserialize.
+- **Description:** Scalars. Root name via policy (`<int>42</int>` identity). Null root = xsi:nil. Full [07](07-api-serializer.md) overload families including TValue+context deserialize.
 
 ## PR 6a: POCO elements
 

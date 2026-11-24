@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -11,26 +13,101 @@ namespace CloudNimble.Text.Xml.Serialization
     /// </summary>
     /// <typeparam name="T">The enum type.</typeparam>
     /// <remarks>
+    /// <para>
     /// Names and values are read from the type once. Values are held as the raw bits of the underlying type,
     /// zero-extended to 64 bits, so no value is boxed and <see cref="ulong"/> enums keep their full range.
     /// Reading accepts a name or a number whatever the handling is. A number must fit the underlying type, and
     /// for an enum without <see cref="FlagsAttribute"/> it must be a declared member.
+    /// </para>
+    /// <para>
+    /// A member is written under its C# name, or under the name <see cref="XmlPropertyNameAttribute"/> gives it.
+    /// Names are matched as <c>System.Text.Json</c> matches them: the exact name first; then a C# name without
+    /// regard to case. A name given by the attribute is matched exactly and replaces the C# name. When two
+    /// members have one name, the first is read.
+    /// </para>
     /// </remarks>
-    internal sealed class XmlEnumConverter<T> : XmlValueConverter<T>
+    internal sealed class XmlEnumConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] T> : XmlValueConverter<T>
         where T : struct, Enum
     {
 
         #region Fields
 
+        private static readonly string[] s_clrNames = Enum.GetNames<T>();
         private static readonly bool s_flags = typeof(T).IsDefined(typeof(FlagsAttribute), inherit: false);
-        private static readonly byte[][] s_names = Array.ConvertAll(Enum.GetNames<T>(), Encoding.UTF8.GetBytes);
+        private static readonly string? s_nameError;
+        private static readonly byte[][] s_names = new byte[s_clrNames.Length][];
+        private static readonly bool[] s_renamed = new bool[s_clrNames.Length];
         private static readonly int s_shift = 64 - (8 * Unsafe.SizeOf<T>());
         private static readonly bool s_signed = Type.GetTypeCode(typeof(T)) is TypeCode.SByte or TypeCode.Int16 or TypeCode.Int32 or TypeCode.Int64;
         private static readonly ulong[] s_values = Array.ConvertAll(Enum.GetValues<T>(), ToBits);
 
         #endregion
 
+        #region Constructors
+
+        /// <summary>
+        /// Reads the names of the members, once for the type.
+        /// </summary>
+        /// <remarks>
+        /// A name that cannot be read back is recorded here and reported by the instance constructor, so that
+        /// the caller gets the reason and not a type initialization failure.
+        /// </remarks>
+        static XmlEnumConverter()
+        {
+            for (var i = 0; i < s_clrNames.Length; i++)
+            {
+                var name = s_clrNames[i];
+                // Every name Enum.GetNames returns is a public static field of the type.
+                if (typeof(T).GetField(name, BindingFlags.Public | BindingFlags.Static)!.GetCustomAttribute<XmlPropertyNameAttribute>() is { } renamed)
+                {
+                    name = renamed.Name;
+                    s_renamed[i] = true;
+                    s_nameError ??= CheckName(s_clrNames[i], name);
+                }
+
+                s_names[i] = Encoding.UTF8.GetBytes(name);
+            }
+        }
+
+        /// <summary>
+        /// Creates the converter.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// A member has an <see cref="XmlPropertyNameAttribute"/> with a name that could not be read back.
+        /// </exception>
+        public XmlEnumConverter()
+        {
+            if (s_nameError is not null)
+            {
+                throw new InvalidOperationException(s_nameError);
+            }
+        }
+
+        #endregion
+
         #region Private Methods
+
+        /// <summary>
+        /// Returns why the name an attribute gives a member cannot be used, or null when it can.
+        /// </summary>
+        /// <param name="member">The C# name of the member.</param>
+        /// <param name="name">The name the attribute gives it.</param>
+        /// <returns>The reason, or null.</returns>
+        /// <remarks>
+        /// White space around a value is not part of it, and the names of a flags value are separated by white
+        /// space, so a name with white space in those places would be written and never read back.
+        /// </remarks>
+        internal static string? CheckName(string member, string name)
+        {
+            if (s_flags && name.AsSpan().IndexOfAny(" \t\r\n") >= 0)
+            {
+                return $"The name '{name}' of '{typeof(T)}.{member}' contains white space, which separates the names of a [Flags] value.";
+            }
+
+            return name.AsSpan().Trim(" \t\r\n").Length == name.Length
+                ? null
+                : $"The name '{name}' of '{typeof(T)}.{member}' starts or ends with white space, which is not part of a value.";
+        }
 
         /// <summary>
         /// Returns the enum value whose underlying bits are the low bits of <paramref name="bits"/>.
@@ -164,15 +241,30 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Returns the index of the member named <paramref name="name"/>.
+        /// Returns the index of the member named <paramref name="name"/>: the first member with exactly that
+        /// name, or else the first whose C# name is that name without regard to case.
         /// </summary>
         /// <param name="name">The UTF-8 name.</param>
         /// <returns>The index, or -1.</returns>
+        /// <remarks>
+        /// A member that <see cref="XmlPropertyNameAttribute"/> renames is matched by that name exactly, and
+        /// no longer by its C# name. This is how <c>JsonStringEnumConverter</c> matches names.
+        /// </remarks>
         private static int IndexOfName(ReadOnlySpan<byte> name)
         {
             for (var i = 0; i < s_names.Length; i++)
             {
                 if (name.SequenceEqual(s_names[i]))
+                {
+                    return i;
+                }
+            }
+
+            // Only a value that matched nothing gets here, so the string it costs is not on the usual path.
+            var text = Encoding.UTF8.GetString(name);
+            for (var i = 0; i < s_clrNames.Length; i++)
+            {
+                if (!s_renamed[i] && string.Equals(text, s_clrNames[i], StringComparison.OrdinalIgnoreCase))
                 {
                     return i;
                 }

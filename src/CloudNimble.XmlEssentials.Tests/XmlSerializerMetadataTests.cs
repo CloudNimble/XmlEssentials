@@ -101,7 +101,7 @@ namespace CloudNimble.XmlEssentials.Tests
             Both(o => XmlSerializer.Serialize(order, o), o => { o.IncludeFields = true; o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull; })
                 .Should().Be("<MetadataOrder Id=\"7\"><Counts/><Lines/><Origin><X>0</X><Y>0</Y></Origin><Revision>9</Revision></MetadataOrder>");
             Both(o => XmlSerializer.Serialize(order, o), o => { o.IgnoreReadOnlyProperties = true; o.DefaultPropertyMapping = XmlPropertyMapping.Attribute; o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingDefault; })
-                .Should().Be("<MetadataOrder Id=\"7\"><Counts/></MetadataOrder>", "a value type that holds its default value is left out");
+                .Should().Be("<MetadataOrder Id=\"7\"><Counts/><Lines/></MetadataOrder>", "a value type that holds its default value is left out, and a collection with no setter is not");
             Both(o => XmlSerializer.Deserialize<Person>("<Person><name>n</name><AGE>3</AGE></Person>", o)!.Name + XmlSerializer.Deserialize<Person>("<Person><name>n</name><AGE>3</AGE></Person>", o)!.Age,
                 o => o.PropertyNameCaseInsensitive = true).Should().Be("n3");
             Both(o => XmlSerializer.Deserialize<Person>("<Person><Other>1</Other></Person>", o)!.Age.ToString(), o => o.UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow)
@@ -111,7 +111,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Populate_SetsMembersOnTheObjectsThatExist()
         {
-            const string xml = "<PopulateNested><Inner><Child><B>2</B></Child><List><Int32>9</Int32></List><Size>4</Size></Inner></PopulateNested>";
+            const string xml = "<PopulateNested><Inner><Child><B>2</B></Child><List><int>9</int></List><Size>4</Size></Inner></PopulateNested>";
             Func<XmlSerializerOptions, string> read = o =>
             {
                 var nested = XmlSerializer.Deserialize<PopulateNested>(xml, o)!;
@@ -179,7 +179,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 var options = new XmlSerializerOptions();
                 configure?.Invoke(options);
-                return XmlMetadataServices.CanUseSerializeHandler(options, null, null, XmlPropertyMapping.Element, false, typeof(Person), typeof(int));
+                return XmlMetadataServices.CanUseSerializeHandler(options, null, null, XmlPropertyMapping.Element, XmlCollectionMapping.Unwrapped, false, typeof(Person), typeof(int));
             }
 
             Can().Should().BeTrue();
@@ -190,13 +190,21 @@ namespace CloudNimble.XmlEssentials.Tests
             Can(o => o.IncludeFields = true).Should().BeFalse();
             Can(o => o.IgnoreReadOnlyProperties = true).Should().BeFalse();
             Can(o => o.IgnoreReadOnlyFields = true).Should().BeFalse();
+            Can(o => o.DefaultCollectionMapping = XmlCollectionMapping.Wrapped).Should().BeFalse();
+            Can(o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNullReference).Should().BeFalse("the fast path does not tell a nullable value from a reference");
+            Can(o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull).Should().BeTrue();
+            Can(o => o.CharHandling = XmlCharHandling.Number).Should().BeFalse();
+            Can(o => o.UtcOffsetHandling = XmlUtcOffsetHandling.WriteZ).Should().BeFalse();
+            Can(o => o.MemberOrder = XmlMemberOrder.FieldsFirst).Should().BeFalse();
             Can(o => o.ReferenceHandler = XmlReferenceHandler.Preserve).Should().BeFalse();
             Can(o => o.Converters.Add(new HexInt32Converter())).Should().BeFalse("the fast path writes an int directly");
             Can(o => o.WriteIndented = true).Should().BeTrue("the writer indents whatever writes to it");
 
             var camel = new XmlSerializerOptions { PropertyNamingPolicy = XmlNamingPolicy.CamelCase };
-            XmlMetadataServices.CanUseSerializeHandler(camel, XmlNamingPolicy.CamelCase, XmlNamingPolicy.CamelCase, XmlPropertyMapping.Element, false).Should().BeTrue();
-            FluentActions.Invoking(() => XmlMetadataServices.CanUseSerializeHandler(null!, null, null, XmlPropertyMapping.Element, false))
+            XmlMetadataServices.CanUseSerializeHandler(camel, XmlNamingPolicy.CamelCase, XmlNamingPolicy.CamelCase, XmlPropertyMapping.Element, XmlCollectionMapping.Unwrapped, false).Should().BeTrue();
+            var wrapped = new XmlSerializerOptions { DefaultCollectionMapping = XmlCollectionMapping.Wrapped };
+            XmlMetadataServices.CanUseSerializeHandler(wrapped, null, null, XmlPropertyMapping.Element, XmlCollectionMapping.Wrapped, false).Should().BeTrue("the fast path was generated with a wrapper");
+            FluentActions.Invoking(() => XmlMetadataServices.CanUseSerializeHandler(null!, null, null, XmlPropertyMapping.Element, XmlCollectionMapping.Unwrapped, false))
                 .Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("options");
         }
 

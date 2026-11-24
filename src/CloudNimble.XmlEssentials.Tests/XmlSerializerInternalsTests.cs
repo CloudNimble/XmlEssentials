@@ -55,7 +55,7 @@ namespace CloudNimble.XmlEssentials.Tests
             options.GetConverter(typeof(PopulateChild)).CanPopulate.Should().BeTrue();
 
             var threw = false;
-            var reader = new Utf8XmlReader("<Int32>1</Int32>"u8);
+            var reader = new Utf8XmlReader("<int>1</int>"u8);
             reader.Read();
             try
             {

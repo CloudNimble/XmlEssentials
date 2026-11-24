@@ -41,6 +41,24 @@ namespace CloudNimble.Text.Xml.Serialization
         public XmlKnownNamingPolicy AttributeNamingPolicy { get; set; }
 
         /// <summary>
+        /// Gets or sets how a <see cref="char"/> is written and read: the character, or its number.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlCharHandling.Character"/>.
+        /// </value>
+        public XmlCharHandling CharHandling { get; set; }
+
+        /// <summary>
+        /// Gets or sets the default mapping of a collection member that has no mapping attribute: repeated
+        /// elements, or a wrapper element.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies the default mapping of collection members. The default is
+        /// <see cref="XmlCollectionMapping.Unwrapped"/>.
+        /// </value>
+        public XmlCollectionMapping DefaultCollectionMapping { get; set; }
+
+        /// <summary>
         /// Gets or sets the default mapping of a member that has no mapping attribute: a child element or an XML attribute.
         /// </summary>
         /// <value>
@@ -133,6 +151,14 @@ namespace CloudNimble.Text.Xml.Serialization
         public int MaxDepth { get; set; }
 
         /// <summary>
+        /// Gets or sets where the fields of a type come among its members: after its properties, or before them.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlMemberOrder.PropertiesFirst"/>.
+        /// </value>
+        public XmlMemberOrder MemberOrder { get; set; }
+
+        /// <summary>
         /// Gets or sets a value that indicates whether the XML declaration is omitted.
         /// </summary>
         /// <value>
@@ -180,6 +206,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// One of the enumeration values. The default is <see cref="XmlUnknownTypeHandling.XmlElement"/>.
         /// </value>
         public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
+
+        /// <summary>
+        /// Gets or sets how a <see cref="System.DateTimeOffset"/> whose offset is zero is written: <c>+00:00</c> or <c>Z</c>.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlUtcOffsetHandling.WriteOffset"/>.
+        /// </value>
+        public XmlUtcOffsetHandling UtcOffsetHandling { get; set; }
 
         /// <summary>
         /// Gets or sets a value that indicates whether the output is indented.

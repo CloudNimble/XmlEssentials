@@ -251,8 +251,8 @@ namespace CloudNimble.XmlEssentials.Tests
             var options = new XmlSerializerOptions { Namespaces = new Dictionary<string, string> { ["a"] = "urn:a" }, OmitXmlDeclaration = true };
 
             // A single value, a collection, and a value of a derived type, which is written under that type's name.
-            XmlSerializer.Serialize(5, options).Should().Be("<Int32 xmlns:a=\"urn:a\">5</Int32>");
-            XmlSerializer.Serialize(new List<int> { 1, 2 }, options).Should().Be("<ListOfInt32 xmlns:a=\"urn:a\"><Int32>1</Int32><Int32>2</Int32></ListOfInt32>");
+            XmlSerializer.Serialize(5, options).Should().Be("<int xmlns:a=\"urn:a\">5</int>");
+            XmlSerializer.Serialize(new List<int> { 1, 2 }, options).Should().Be("<ArrayOfInt xmlns:a=\"urn:a\"><int>1</int><int>2</int></ArrayOfInt>");
             XmlSerializer.Serialize<NamedShape>(new NamedCircle { Label = "c", Radius = 2 }, options).Should().Be(
                 "<NamedCircle xmlns:a=\"urn:a\"><Label>c</Label><Radius>2</Radius></NamedCircle>");
         }

@@ -38,8 +38,10 @@ namespace CloudNimble.XmlEssentials.Tests
                 ],
                 PropertyMetadataInitializer = static _ =>
                 [
-                    Property<MetadataLine, int>(nameof(MetadataLine.Qty), static l => l.Qty, null),
-                    new XmlPropertyInfoValues<string> { PropertyName = nameof(MetadataLine.Sku), DeclaringType = typeof(MetadataLine), Getter = static o => ((MetadataLine)o).Sku, IsGetNullable = false, IsSetNullable = false },
+                    // The properties of a record have init accessors, which are setters: a generated context
+                    // calls them through an accessor, and here reflection stands in for it.
+                    Property<MetadataLine, int>(nameof(MetadataLine.Qty), static l => l.Qty, static (l, v) => typeof(MetadataLine).GetProperty(nameof(MetadataLine.Qty))!.SetValue(l, v)),
+                    new XmlPropertyInfoValues<string> { PropertyName = nameof(MetadataLine.Sku), DeclaringType = typeof(MetadataLine), Getter = static o => ((MetadataLine)o).Sku, Setter = static (o, v) => typeof(MetadataLine).GetProperty(nameof(MetadataLine.Sku))!.SetValue(o, v), IsGetNullable = false, IsSetNullable = false },
                     Property<MetadataLine, decimal>(nameof(MetadataLine.Price), static l => l.Price, static (l, v) => l.Price = v),
                 ],
             }),

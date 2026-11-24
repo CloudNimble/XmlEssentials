@@ -31,6 +31,7 @@ A reference type and `Nullable<T>` are nillable. `[XmlElement(IsNullable = true)
 
 - `Never` (default): a null element member is written, marked `xsi:nil="true"`.
 - `WhenWritingNull`: a null member is left out.
+- `WhenWritingNullReference`: a null reference is left out; a nullable value type with no value is written as under `Never`, with `xsi:nil`. It is resolved once per member, when the type is bound: `WhenWritingNull` for a reference type, `Never` for a `Nullable<T>`.
 - `WhenWritingDefault`: a null member, and a value type holding its default value, is left out.
 - `WhenWriting`: the member is never written, and is still read.
 - `WhenReading`: the member is never read, and is still written. Its element or attribute is a known one (it is not an unmapped member) and is passed over without being read. A constructor parameter of the same name is still filled. On a required member it is `InvalidOperationException` when the type is bound: "The member 'X' on type 'T' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read."
@@ -46,8 +47,11 @@ Serializer `WhitespaceHandling` is **reader-only** ([K38](01-identity-and-decisi
 ## Root element
 
 1. `[XmlRoot("Name", Namespace = "...")]` if present.
-2. Else `ElementNamingPolicy.ConvertName(type.Name)` (or `PropertyNamingPolicy` if element policy is null). CLR name: `Int32` not `int` ([K25](01-identity-and-decisions.md#key-decisions)).
-3. Generic type names: strip `` `1 `` and join `Of{Arg}` (`ListOfPerson`).
+2. Else the policy applied to the **type name** (`ElementNamingPolicy`, or `PropertyNamingPolicy` if that is null). The type name (`XmlTypeNames`, and `XmlTypeNameSymbols` in the generator) is the one `System.Xml.Serialization.XmlSerializer` writes ([K25](01-identity-and-decisions.md#key-decisions), [decision 70](24-doc-findings-resolution.md)):
+   - a built-in type has its XML Schema name: `boolean`, `unsignedByte` (`byte`), `byte` (`sbyte`), `short`, `unsignedShort`, `int`, `unsignedInt`, `long`, `unsignedLong`, `float`, `double`, `decimal`, `char`, `string`, `dateTime`, `base64Binary` (`byte[]`), `anyType` (`object`); and, with no schema name, `dateTimeOffset`, `dateOnly`, `timeOnly`, `guid`. `Nullable<T>` has the name of `T`;
+   - a collection (anything the serializer writes as a sequence, whatever its type) is `ArrayOf` + the name of its items with a capital first letter and without the characters an identifier cannot hold: `ArrayOfInt`, `ArrayOfPerson`, `ArrayOfArrayOfInt`;
+   - anything else has its CLR name, and a generic type is the name + `Of` + the CLR-style names of its arguments: `BoxOfInt32`, `DictionaryOfStringInt32`, `BoxOfListOfInt32`, `BoxOfArrayOfByte`, `BoxOfNullableOfInt32`.
+3. `[XmlRoot("x")]` names the type wherever the type names an element, not only as a document: the items of a root collection and of a wrapped collection of the type are `x`, and the collection is `ArrayOfX`. (The BCL uses `[XmlType]` for this, which this library does not have.) The element that holds an asynchronous sequence has the same name as a `List<T>` of the values, so each reads what the other wrote.
 4. `XmlSerializerOptions.DefaultNamespace` applies when `[XmlRoot].Namespace` is null.
 
 ## Member selection
@@ -56,7 +60,7 @@ Serialize a member if:
 
 1. It is a public instance property with a getter, or a public instance field when `IncludeFields`, or a non-public member with `[XmlInclude]`.
 2. It is not `[XmlIgnore]` / `Condition` matches.
-3. If read-only (no setter, not `init`, not constructor-bound): skipped when `IgnoreReadOnlyProperties` / `IgnoreReadOnlyFields`.
+3. If read-only (no setter, not `init`, not constructor-bound): skipped when `IgnoreReadOnlyProperties` / `IgnoreReadOnlyFields`, unless it is a collection or a dictionary, which needs no setter (as System.Text.Json; [decision 71](24-doc-findings-resolution.md)).
 4. `init` and `required` members are included (match STJ).
 5. Records: compiler-generated parameters bind like STJ.
 6. Record structs and structs are supported. Parameterless constructor is not required if `[XmlConstructor]` or a unique parameterized constructor can bind all required members.
@@ -95,8 +99,6 @@ Namespace:
 
 ```
 ns = XmlAttribute.Namespace | XmlElement.Namespace | XmlArray.Namespace
-    ?? declaringType XmlType.Namespace
-    ?? declaringType XmlNamespace
     ?? XmlRoot.Namespace (root only)
     ?? options.DefaultNamespace
     ?? ""
@@ -131,7 +133,7 @@ A type may have many `[XmlAttribute]` members, many element members, and **at mo
 Child element order ([K9](01-identity-and-decisions.md#key-decisions), [K36](01-identity-and-decisions.md#key-decisions)):
 
 1. Members with explicit order (`[XmlPropertyOrder]`, else `[XmlElement.Order]` / `[XmlArray.Order]`) where order **`>= 0`**, sorted by that integer (stable).
-2. Members with **unset** order (`-1`, the default — **not** `0`) in **flattened declaration order**: most-base to most-derived; within a type, source declaration order (source-gen: `INamedTypeSymbol` declaration order; reflection: metadata token).
+2. Members with **unset** order (`-1`, the default — **not** `0`) in **flattened declaration order**: most-base to most-derived; within a type, source declaration order (source-gen: `INamedTypeSymbol` declaration order; reflection: metadata token). Within a type the properties come before the fields; `MemberOrder = FieldsFirst` puts the fields first, as `System.Xml.Serialization` does ([decision 71](24-doc-findings-resolution.md)).
 
 `[XmlPropertyOrder]` **may interleave** base and derived. Default walk without Order is base-then-derived (XSD-shaped). The break from BCL is that Order is **global** on the flattened type, not per-class.
 
@@ -160,6 +162,8 @@ public class Derived : Base
 BCL `XmlSerializer` cannot emit this (derived appends). This library can.
 
 ## Collections
+
+A collection member with no mapping attribute is unwrapped (repeated elements named for the member). `DefaultCollectionMapping = Wrapped` makes it wrapped, exactly as `[XmlArray]` with no arguments would: the wrapper is named for the member and the items for their type, and `[XmlArrayItem]` on the member names the items. `[XmlElement]`, typed or not, keeps a member unwrapped under either value ([decision 71](24-doc-findings-resolution.md)).
 
 Supported collection types, matching STJ:
 
@@ -192,13 +196,13 @@ The key `Key` itself is written in the pair form, because an element named `Key`
 
 `[XmlArrayItem]` / `[XmlElement]` on a dictionary member can rename the entry wrapper. Null dictionary: omit or `xsi:nil` per nil/ignore rules.
 
-**Not maps:** `[XmlExtensionData]` (`XmlExtensionData` or `Dictionary<string, XmlElementNode>` **only** with that attribute) and `[XmlNamespaceDeclarations]`. Generator must not treat those as dictionary maps.
+**Not a map:** the `[XmlExtensionData]` member, whose type is `XmlExtensionData`.
 
 **Default (unwrapped, STJ-like):** `List<string> Items` → repeated `<Items>`.
 
 **Wrapped:** `[XmlArray("Items")]` `[XmlArrayItem("Item")]` → wrapper + item names.
 
-`[XmlArrayItem]` without `[XmlArray]` **renames** the repeated element.
+`[XmlArrayItem]` names the items of a wrapped collection only. Without `[XmlArray]` it has no effect: the repeated elements have the member's name, which `[XmlElement("name")]` or `[XmlPropertyName]` changes.
 
 Empty vs null:
 
@@ -317,8 +321,8 @@ Per-member `[XmlElement<Book>("Book")]` duplicates this for one property ([K35](
 
 ## Enums
 
-- Default: write member **name** after `PropertyNamingPolicy` (or `EnumHandling.Name`).
-- `[XmlPropertyName("foo")]` on the enum field overrides the name.
+- Default: write the member's C# **name** (`EnumHandling.Name`). No naming policy is applied to enum values, as in System.Text.Json, where only `JsonStringEnumConverter`'s own policy renames them.
+- `[XmlPropertyName("foo")]` on the enum field overrides the name (`[JsonStringEnumMemberName]` in System.Text.Json). Matching on read is `JsonStringEnumConverter`'s: the exact name first; then a C# name without regard to case; a name given by the attribute replaces the C# name and is matched exactly; of two members with one name the first is read. `PropertyNameCaseInsensitive` has no part in it. A name that starts or ends with white space, or for `[Flags]` contains any, is `InvalidOperationException` when the type is first used.
 - `[Flags]`: space-separated names (BCL convention).
 - `EnumHandling.Integer`: XSD integer.
 - Unknown names on read: `XmlException`.
@@ -336,7 +340,7 @@ public sealed class XmlExtensionData
 }
 ```
 
-Also accept `Dictionary<string, XmlElementNode>` (local-name keys, default ns) **only** when `[XmlExtensionData]` is present. Unknown members go here when `UnmappedMemberHandling.Skip`. When `Disallow` and no extension bag, unknown elements/attributes throw. `xmlns*` attributes are never extension data.
+The member must be of type `XmlExtensionData`; any other type is `NotSupportedException` when the type is first used ("Member 'T.M' is marked [XmlExtensionDataAttribute] but is not XmlExtensionData."). A dictionary keyed by local name is not accepted: it could hold neither the unmapped attributes nor two unmapped elements of one name. Unknown members go here when `UnmappedMemberHandling.Skip`. When `Disallow` and no extension bag, unknown elements/attributes throw. `xmlns*` attributes are never extension data.
 
 ## Namespaces on write
 
@@ -384,7 +388,7 @@ The element that is read is the one that names the value: the member's element, 
 | `[XmlEnum("n")]` | `[XmlPropertyName("n")]` on the field |
 | `[XmlText]` | `[XmlText]` |
 | a collection with no setter is filled | not read under the default `Replace`; `[XmlObjectCreationHandling(Populate)]` or `PreferredObjectCreationHandling = Populate` fills it |
-| `[XmlType]` | `[XmlType]` |
+| `[XmlType]` | none: `[XmlRoot]` names the document element, and the argument of `[XmlDerivedType<T>]` a derived type |
 | public types only | internal OK with source-gen (consuming compilation) |
 | base-then-derived Order | default same; `[XmlPropertyOrder]` may interleave |
 | sgen sidecar | `[XmlSerializable]` context |

@@ -43,13 +43,14 @@ When you pass no options, the serializer uses `XmlSerializerOptions.Default`, wh
 
 ## Built-in instances
 
-Three ready-made, read-only instances cover common cases, so you often don't need to create your own.
+Four ready-made, read-only instances cover common cases, so you often don't need to create your own.
 
 | Instance | Equivalent constructor | Differences from a new instance |
 | --- | --- | --- |
 | `XmlSerializerOptions.Default` | `new XmlSerializerOptions()` | None. |
 | `XmlSerializerOptions.Web` | `new XmlSerializerOptions(XmlSerializerDefaults.Web)` | `PropertyNamingPolicy` is `XmlNamingPolicy.CamelCase` and `OmitXmlDeclaration` is `true`. |
 | `XmlSerializerOptions.Strict` | `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` | `AllowDuplicateProperties` is `false`, `RespectNullableAnnotations` is `true`, `ReadCommentHandling` is `Disallow`, and `UnmappedMemberHandling` is `Disallow`. |
+| `XmlSerializerOptions.Bcl` | `new XmlSerializerOptions(XmlSerializerDefaults.Bcl)` | The settings that write what `System.Xml.Serialization.XmlSerializer` writes. See [Keep the old defaults](/guides/migrate/from-xmlserializer#keep-the-old-defaults). |
 
 ```csharp Program.cs
 var line = new InvoiceLine { Sku = "KB-101", Quantity = 2 };
@@ -315,6 +316,7 @@ These options decide how members map to XML. They apply to writing and reading a
 | `AttributeNamingPolicy` | `null` | Overrides `PropertyNamingPolicy` for XML attributes. |
 | `DictionaryKeyPolicy` | `null` | Converts string dictionary keys when writing. Falls back to `PropertyNamingPolicy`. |
 | `DefaultPropertyMapping` | `XmlPropertyMapping.Element` | Whether a simple member with no mapping attribute is a child element or an XML attribute. |
+| `DefaultCollectionMapping` | `XmlCollectionMapping.Unwrapped` | Whether a collection member with no mapping attribute is repeated elements, or one wrapper element with an element for each item. See [Collections](/guides/collections). |
 | `DefaultNamespace` | `null` | The namespace of the document element when `[XmlRoot]` doesn't set one. See [Namespaces](/guides/namespaces). |
 | `EnumHandling` | `XmlEnumHandling.Name` | Whether an enumeration value is written as its name or its number. |
 
@@ -326,7 +328,8 @@ See [Ignore properties](/guides/ignore-properties) and [Handle null values](/gui
 | --- | --- | --- |
 | `DefaultIgnoreCondition` | `XmlIgnoreCondition.Never` | Leaves members out when writing, if they are `null` (`WhenWritingNull`) or have their default value (`WhenWritingDefault`). `WhenWriting` and `WhenReading` have no effect as the default, as in System.Text.Json; use them on `[XmlIgnore]`. `[XmlIgnore]` on a member takes precedence. |
 | `IncludeFields` | `false` | Serializes public fields as well as properties. |
-| `IgnoreReadOnlyProperties` | `false` | Leaves out properties that have no setter. |
+| `MemberOrder` | `XmlMemberOrder.PropertiesFirst` | Whether the fields of a class come after its properties or before them. Only matters when `IncludeFields` is `true`. |
+| `IgnoreReadOnlyProperties` | `false` | Leaves out properties that have no setter. A collection or a dictionary is not left out. |
 | `IgnoreReadOnlyFields` | `false` | Leaves out `readonly` fields. Only matters when `IncludeFields` is `true`. |
 | `RespectNullableAnnotations` | `false` | Refuses a `null` for a member or constructor parameter annotated non-nullable, when reading and when writing. See [Handle null values](/guides/null-and-nil#respect-nullable-annotations). |
 
@@ -350,6 +353,8 @@ These options take effect when reading. See [Deserialize](/guides/deserialize) a
 | Option | Default | What it does |
 | --- | --- | --- |
 | `NumberHandling` | `XmlNumberHandling.AllowNamedFloatingPointLiterals` | Whether `INF`, `-INF`, and `NaN` are written and read for `float` and `double`. With `Strict`, they throw an `XmlException`. |
+| `CharHandling` | `XmlCharHandling.Character` | Whether a `char` is written and read as the character or as the number of its UTF-16 code unit. |
+| `UtcOffsetHandling` | `XmlUtcOffsetHandling.WriteOffset` | Whether a `DateTimeOffset` with a zero offset ends with `+00:00` or with `Z`. Both are read under either value. |
 | `ReferenceHandler` | `null` | How an object that appears more than once, or a cycle, is handled. See [Preserve references](/guides/preserve-references). |
 | `Converters` | Empty | Your own converters, tried before the built-in ones. See [Custom converters](/guides/custom-converters). |
 | `InferClosedTypePolymorphism` | `false` | Takes the derived types of a closed type from the list the compiler makes, for a type that declares none. Needs C# 15 and .NET 11. See [Polymorphism](/guides/polymorphism#infer-the-derived-types-of-a-closed-type). |
@@ -363,7 +368,7 @@ The limits protect against oversized or hostile input. See [Security](/guides/se
 | `MaxDepth` | `0` | 64 nested elements. Applies to writing as well, which is what stops a cyclic object graph. |
 | `MaxAttributeCount` | `0` | 1,000 attributes on one element. |
 | `MaxNameByteCount` | `0` | 1,024 bytes in one name. |
-| `MaxTextByteCount` | `0` | 16,777,216 bytes in one text value. |
+| `MaxTextByteCount` | `0` | 16,777,216 bytes in one text node, CDATA section, attribute value, or processing instruction. |
 | `MaxCommentByteCount` | `0` | 1,048,576 bytes in one comment. |
 | `MaxDocumentByteCount` | `0` | No limit. Set it when you read from a stream you don't control. |
 

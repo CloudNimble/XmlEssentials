@@ -33,7 +33,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Attribute_OnAMember_WinsOverTheOption()
         {
-            const string xml = "<PopulateMarked><Items><Int32>9</Int32></Items><Other><Int32>9</Int32></Other><Replaced><Int32>9</Int32></Replaced></PopulateMarked>";
+            const string xml = "<PopulateMarked><Items><int>9</int></Items><Other><int>9</int></Other><Replaced><int>9</int></Replaced></PopulateMarked>";
             var replaced = XmlSerializer.Deserialize<PopulateMarked>(xml, Replace)!;
             replaced.Items.Should().Equal(1, 9);
             replaced.Other.Should().Equal(1);
@@ -48,7 +48,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Attribute_OnAMember_DoesNotReachTheMembersOfTheObjectItHolds()
         {
-            const string inner = "<Inner><Child><B>2</B></Child><List><Int32>9</Int32></List><Size>4</Size></Inner>";
+            const string inner = "<Inner><Child><B>2</B></Child><List><int>9</int></List><Size>4</Size></Inner>";
             var marked = XmlSerializer.Deserialize<PopulateNestedMarked>("<PopulateNestedMarked>" + inner + "</PopulateNestedMarked>", Replace)!;
             marked.Inner.Size.Should().Be(4, "the object the marked member holds is populated");
             marked.Inner.Child.B.Should().Be(0, "its own members follow the options, which replace");
@@ -87,7 +87,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Attribute_OnAType_AppliesToTheMembersThatCanBePopulated()
         {
             var read = XmlSerializer.Deserialize<PopulateMarkedType>(
-                "<PopulateMarkedType><Array><Int32>9</Int32></Array><Items><Int32>9</Int32></Items><Name>x</Name></PopulateMarkedType>", Replace)!;
+                "<PopulateMarkedType><Array><int>9</int></Array><Items><int>9</int></Items><Name>x</Name></PopulateMarkedType>", Replace)!;
             read.Array.Should().Equal(9);
             read.Items.Should().Equal(1, 9);
             read.Name.Should().Be("x");
@@ -96,7 +96,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void ConstructorWithParameters_MeansNoMemberIsPopulated()
         {
-            const string xml = "<PopulateWithConstructor><Name>n</Name><Items><Int32>9</Int32></Items></PopulateWithConstructor>";
+            const string xml = "<PopulateWithConstructor><Name>n</Name><Items><int>9</int></Items></PopulateWithConstructor>";
             XmlSerializer.Deserialize<PopulateWithConstructor>(xml, Populate)!.Items.Should().Equal(1);
             XmlSerializer.Deserialize<PopulateWithConstructor>(xml, Replace)!.Items.Should().Equal(1);
             Reading<PopulateBadConstructor>("<PopulateBadConstructor><Name>n</Name></PopulateBadConstructor>").Should().ThrowExactly<NotSupportedException>().Which.Message
@@ -125,7 +125,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void InterfaceCollections_ArePopulatedWhenTheyCanTakeItems()
         {
             var read = XmlSerializer.Deserialize<PopulateInterfaces>(
-                "<PopulateInterfaces><Collection><Int32>9</Int32></Collection><Entries><b>2</b></Entries><List><Int32>9</Int32></List><ReadOnly><Int32>9</Int32></ReadOnly><Sequence><Int32>9</Int32></Sequence></PopulateInterfaces>",
+                "<PopulateInterfaces><Collection><int>9</int></Collection><Entries><b>2</b></Entries><List><int>9</int></List><ReadOnly><int>9</int></ReadOnly><Sequence><int>9</int></Sequence></PopulateInterfaces>",
                 Populate)!;
             read.Collection.Should().Equal(1, 9);
             read.Entries.Should().Equal(new Dictionary<string, int> { ["a"] = 1, ["b"] = 2 });
@@ -133,10 +133,10 @@ namespace CloudNimble.XmlEssentials.Tests
             read.ReadOnly.Should().Equal([9], "a read-only view cannot be populated, so it is replaced");
             read.Sequence.Should().Equal([1], "a sequence cannot be populated and has no setter, so it is not read");
 
-            Reading<PopulateInterfaces>("<PopulateInterfaces><Fixed><Int32>9</Int32></Fixed></PopulateInterfaces>", Populate)
+            Reading<PopulateInterfaces>("<PopulateInterfaces><Fixed><int>9</int></Fixed></PopulateInterfaces>", Populate)
                 .Should().ThrowExactly<NotSupportedException>().Which.Message
                 .Should().Be("The collection of type 'System.Int32[]' held by the member 'Fixed' is read-only and cannot be populated.");
-            XmlSerializer.Deserialize<PopulateInterfaces>("<PopulateInterfaces><Fixed><Int32>9</Int32></Fixed></PopulateInterfaces>", Replace)!.Fixed.Should().Equal(9);
+            XmlSerializer.Deserialize<PopulateInterfaces>("<PopulateInterfaces><Fixed><int>9</int></Fixed></PopulateInterfaces>", Replace)!.Fixed.Should().Equal(9);
 
             Reading<PopulateInterfaces>("<PopulateInterfaces><FixedEntries><b>2</b></FixedEntries></PopulateInterfaces>", Populate)
                 .Should().ThrowExactly<NotSupportedException>().Which.Message
@@ -149,9 +149,9 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Populate_AddsToCollectionsAndDictionaries()
         {
             var read = XmlSerializer.Deserialize<PopulateTarget>(
-                "<PopulateTarget><GetOnly><Int32>9</Int32></GetOnly><GetOnlyMap><a>5</a><b>2</b></GetOnlyMap><Loose>8</Loose><Loose>9</Loose><Map><b>2</b></Map>" +
-                "<NullGetOnly><Int32>9</Int32></NullGetOnly><NullSettable><Int32>9</Int32></NullSettable><Queue><Int32>9</Int32></Queue><Set><Int32>9</Int32></Set>" +
-                "<Settable><Int32>9</Int32></Settable><Stack><Int32>9</Int32></Stack></PopulateTarget>", Populate)!;
+                "<PopulateTarget><GetOnly><int>9</int></GetOnly><GetOnlyMap><a>5</a><b>2</b></GetOnlyMap><Loose>8</Loose><Loose>9</Loose><Map><b>2</b></Map>" +
+                "<NullGetOnly><int>9</int></NullGetOnly><NullSettable><int>9</int></NullSettable><Queue><int>9</int></Queue><Set><int>9</int></Set>" +
+                "<Settable><int>9</int></Settable><Stack><int>9</int></Stack></PopulateTarget>", Populate)!;
             read.GetOnly.Should().Equal(1, 9);
             read.GetOnlyMap.Should().Equal(new Dictionary<string, int> { ["a"] = 5, ["b"] = 2 }, "an entry the document gives again takes the document's value");
             read.Loose.Should().Equal(1, 8, 9);
@@ -168,7 +168,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Populate_AMemberGivenTwice_IsPopulatedTwice()
         {
             var read = XmlSerializer.Deserialize<PopulateTarget>(
-                "<PopulateTarget><GetOnly><Int32>2</Int32></GetOnly><GetOnlyChild><B>2</B></GetOnlyChild><GetOnly><Int32>3</Int32></GetOnly><GetOnlyChild><A>4</A></GetOnlyChild></PopulateTarget>", Populate)!;
+                "<PopulateTarget><GetOnly><int>2</int></GetOnly><GetOnlyChild><B>2</B></GetOnlyChild><GetOnly><int>3</int></GetOnly><GetOnlyChild><A>4</A></GetOnlyChild></PopulateTarget>", Populate)!;
             read.GetOnly.Should().Equal(1, 2, 3);
             read.GetOnlyChild.A.Should().Be(4);
             read.GetOnlyChild.B.Should().Be(2);
@@ -178,7 +178,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Populate_DoesNotApplyToWhatCannotBePopulated()
         {
             var read = XmlSerializer.Deserialize<PopulateTarget>(
-                "<PopulateTarget><Array><Int32>9</Int32></Array><GetOnlyPoint><Y>2</Y></GetOnlyPoint><Immutable><Int32>9</Int32></Immutable>" +
+                "<PopulateTarget><Array><int>9</int></Array><GetOnlyPoint><Y>2</Y></GetOnlyPoint><Immutable><int>9</int></Immutable>" +
                 "<ImmutableMap><b>2</b></ImmutableMap><StructMap><b>2</b></StructMap></PopulateTarget>", Populate)!;
             read.Array.Should().Equal(9);
             read.Immutable.Should().Equal(9);
@@ -243,10 +243,10 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Replace_GivesSettableMembersNewValues_AndDoesNotReadMembersWithNoSetter()
         {
             var read = XmlSerializer.Deserialize<PopulateTarget>(
-                "<PopulateTarget><Array><Int32>9</Int32></Array><Child><B>2</B></Child><GetOnly><Int32>9</Int32></GetOnly><GetOnlyChild><B>2</B></GetOnlyChild>" +
-                "<GetOnlyMap><b>2</b></GetOnlyMap><GetOnlyPoint><Y>2</Y></GetOnlyPoint><Immutable><Int32>9</Int32></Immutable><Loose>9</Loose><Map><b>2</b></Map>" +
-                "<MaybePoint><Y>2</Y></MaybePoint><NullGetOnly><Int32>9</Int32></NullGetOnly><NullSettable><Int32>9</Int32></NullSettable><Point><Y>2</Y></Point>" +
-                "<Queue><Int32>9</Int32></Queue><Set><Int32>9</Int32></Set><Settable><Int32>9</Int32></Settable><Stack><Int32>9</Int32></Stack></PopulateTarget>", Replace)!;
+                "<PopulateTarget><Array><int>9</int></Array><Child><B>2</B></Child><GetOnly><int>9</int></GetOnly><GetOnlyChild><B>2</B></GetOnlyChild>" +
+                "<GetOnlyMap><b>2</b></GetOnlyMap><GetOnlyPoint><Y>2</Y></GetOnlyPoint><Immutable><int>9</int></Immutable><Loose>9</Loose><Map><b>2</b></Map>" +
+                "<MaybePoint><Y>2</Y></MaybePoint><NullGetOnly><int>9</int></NullGetOnly><NullSettable><int>9</int></NullSettable><Point><Y>2</Y></Point>" +
+                "<Queue><int>9</int></Queue><Set><int>9</int></Set><Settable><int>9</int></Settable><Stack><int>9</int></Stack></PopulateTarget>", Replace)!;
             read.Array.Should().Equal(9);
             read.Child.A.Should().Be(1, "a new object is created");
             read.Child.B.Should().Be(2);

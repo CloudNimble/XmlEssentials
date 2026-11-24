@@ -266,7 +266,7 @@ namespace CloudNimble.Text.Xml
                 IsEmptyElement = _isEmptyElement,
                 IsOnOpenStartTag = _isOnOpenStartTag,
                 LineNumber = _lineNumber,
-                LineStart = _lineStart,
+                LineStart = _lineStart - _pos,
                 PendingEmptyNsDepth = _pendingEmptyNsDepth,
                 NamespaceDepths = MaterializeNamespaceDepths(),
                 NamespacePrefixes = MaterializeNamespacePrefixes(),
@@ -1080,6 +1080,41 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Signals that a text node, a CDATA section or a comment is not all in the current block, unless what
+        /// has arrived of it is already more than its limit allows.
+        /// </summary>
+        /// <param name="contentStart">
+        /// The offset of the first byte of the content, moved on by as many bytes as the end of the block may
+        /// hold of the terminator.
+        /// </param>
+        /// <param name="limit">The limit, in bytes.</param>
+        /// <param name="limitName">The name of the option that sets the limit, for the message.</param>
+        /// <returns><see langword="false"/>, after rewinding to the start of the token.</returns>
+        /// <exception cref="XmlException">
+        /// The content that has arrived is longer than <paramref name="limit"/>.
+        /// -or-
+        /// The block is the last one.
+        /// </exception>
+        /// <remarks>
+        /// Every byte from <paramref name="contentStart"/> to the end of the block belongs to the token, so a
+        /// token that is already too long is refused now. Without this a caller that reads a stream would go
+        /// on buffering a token that never ends, and the limit would be checked only when the end arrived.
+        /// </remarks>
+        internal bool NeedMoreOf(int contentStart, int limit, string limitName)
+        {
+            // The reader goes back to the start of the token first, so the position in the message is that of
+            // the token, whatever the size of the block that showed it to be too long.
+            var tooLong = _span.Length - contentStart > limit;
+            var more = NeedMore();
+            if (tooLong)
+            {
+                throw Error($"{limitName} exceeded ({limit}).");
+            }
+
+            return more;
+        }
+
+        /// <summary>
         /// Marks the current token incomplete, optionally rewinding to the token start so the next buffer can reparse it.
         /// </summary>
         /// <param name="rewindToTokenStart">True when the current token is incomplete and must be reread from its first byte.</param>
@@ -1217,7 +1252,7 @@ namespace CloudNimble.Text.Xml
                 var n = rest.IndexOfAny(stops);
                 if (n < 0)
                 {
-                    return NeedMore();
+                    return NeedMoreOf(valueStart, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
                 }
 
                 if (n > 0)
@@ -1239,7 +1274,7 @@ namespace CloudNimble.Text.Xml
                 {
                     if (!DecodeEntity(entityScratch, out _))
                     {
-                        return NeedMore();
+                        return NeedMoreOf(valueStart, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
                     }
 
                     continue;
@@ -1250,10 +1285,16 @@ namespace CloudNimble.Text.Xml
 
             if (_pos >= _span.Length)
             {
-                return NeedMore();
+                return NeedMoreOf(valueStart, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
             }
 
+            // An attribute value is limited as a text node is, in the bytes of the document.
             var valueLength = _pos - valueStart;
+            if (valueLength > _maxTextBytes)
+            {
+                throw TextTooLong();
+            }
+
             _pos++;
             var decoded = false;
             var escaped = false;
@@ -1348,7 +1389,7 @@ namespace CloudNimble.Text.Xml
                 }
             }
 
-            return NeedMore();
+            return NeedMoreOf(start + 2, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
         }
 
         /// <summary>
@@ -1366,7 +1407,7 @@ namespace CloudNimble.Text.Xml
                 {
                     if (_pos + 2 >= _span.Length)
                     {
-                        return NeedMore();
+                        return NeedMoreOf(start + 2, _maxCommentBytes, nameof(XmlReaderOptions.MaxCommentByteCount));
                     }
 
                     if (_span[_pos + 2] is not (byte)'>')
@@ -1402,7 +1443,7 @@ namespace CloudNimble.Text.Xml
                 }
             }
 
-            return NeedMore();
+            return NeedMoreOf(start + 2, _maxCommentBytes, nameof(XmlReaderOptions.MaxCommentByteCount));
         }
 
         /// <summary>
@@ -1800,6 +1841,13 @@ namespace CloudNimble.Text.Xml
                         return true;
                     }
 
+                    // The data of a processing instruction is limited as a text node is. An XML declaration
+                    // is not: its length is set by what it may declare.
+                    if (_valueLength > _maxTextBytes)
+                    {
+                        throw TextTooLong();
+                    }
+
                     DecodeValueSpan(valueStart, _valueLength);
                     _xmlDeclarationAllowed = false;
                     _tokenType = XmlTokenType.ProcessingInstruction;
@@ -1812,7 +1860,10 @@ namespace CloudNimble.Text.Xml
                 AdvanceChar();
             }
 
-            return NeedMore();
+            // A '?' at the end of the block may be the start of the terminator. An XML declaration has no limit.
+            return Ascii.EqualsIgnoreCase(target, "xml"u8)
+                ? NeedMore()
+                : NeedMoreOf(valueStart + 1, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
         }
 
         /// <summary>
@@ -2006,7 +2057,7 @@ namespace CloudNimble.Text.Xml
                 {
                     if (!_isFinalBlock)
                     {
-                        return NeedMore();
+                        return NeedMoreOf(start, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
                     }
 
                     n = rest.Length;
@@ -2041,13 +2092,13 @@ namespace CloudNimble.Text.Xml
                     hasNonWs = true;
                     if (decodedWritten < 0 && !BeginTextDecode(start, ref decodedWritten))
                     {
-                        return NeedMore();
+                        return NeedMoreOf(start, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
                     }
 
                     var referenceStart = _pos;
                     if (!DecodeEntity(entityScratch, out var entityWritten))
                     {
-                        return NeedMore();
+                        return NeedMoreOf(start, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
                     }
 
                     AppendDecodedText(rawStart, referenceStart, entityScratch[..entityWritten], ref decodedWritten);
@@ -2061,7 +2112,7 @@ namespace CloudNimble.Text.Xml
                     // CR, CR LF and, in XML 1.1, CR NEL, NEL and LS all become one LF (section 2.11).
                     if (decodedWritten < 0 && !BeginTextDecode(start, ref decodedWritten))
                     {
-                        return NeedMore();
+                        return NeedMoreOf(start, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
                     }
 
                     AppendDecodedText(rawStart, _pos, "\n"u8, ref decodedWritten);
@@ -2097,7 +2148,7 @@ namespace CloudNimble.Text.Xml
 
             if (_pos >= _span.Length && !_isFinalBlock)
             {
-                return NeedMore();
+                return NeedMoreOf(start, _maxTextBytes, nameof(XmlReaderOptions.MaxTextByteCount));
             }
 
             _valueStart = start;
@@ -2135,7 +2186,10 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="documentBytesConsumed">The document offset after the current token.</param>
         /// <param name="lineNumber">The line number.</param>
-        /// <param name="lineStart">The line start.</param>
+        /// <param name="lineStart">
+        /// The offset of the start of the current line, counted from where the reader is: zero or less. The reader
+        /// that resumes starts at the reader's position, so this is the line start in its coordinates.
+        /// </param>
         /// <remarks>
         /// Pass them to <c>XmlReaderStateSnapshot.At</c> on a snapshot captured in the same scope to get the
         /// state to resume from here without capturing a new snapshot.
@@ -2144,7 +2198,7 @@ namespace CloudNimble.Text.Xml
         {
             documentBytesConsumed = _documentBytesConsumedBase + _pos;
             lineNumber = _lineNumber;
-            lineStart = _lineStart;
+            lineStart = _lineStart - _pos;
         }
 
         /// <summary>

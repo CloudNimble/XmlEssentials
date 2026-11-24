@@ -25,6 +25,11 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override char Parse(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
         {
+            if (options.CharHandling is XmlCharHandling.Number)
+            {
+                return XmlLexical.TryParseUInt16(utf8, out var number) ? (char)number : throw XmlException.Create("The value is not the number of a character.");
+            }
+
             // A value that is one character is that character, white space included: a blank or a tab is a
             // char like any other, and collapsing it away would leave nothing to read. White space is
             // collapsed only around a character that is not itself white space.
@@ -41,6 +46,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override void WriteValue(Utf8XmlWriter writer, char value, XmlSerializerOptions options)
         {
+            if (options.CharHandling is XmlCharHandling.Number)
+            {
+                writer.WriteNumberValue((ushort)value);
+                return;
+            }
+
             writer.WriteStringValue(new ReadOnlySpan<char>(in value));
         }
 

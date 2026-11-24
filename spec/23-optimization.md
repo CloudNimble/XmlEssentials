@@ -448,7 +448,7 @@ The object benchmarks were the first code to use several shapes, and the coverag
 - A child of a mixed-content element named like the mixed member was read as an object instead of kept as an element.
 - A type created through a constructor never registered its `id`, so a later `ref` to it failed.
 - An exception thrown by a constructor arrived wrapped in `TargetInvocationException`. It is thrown as it is.
-- Not changed, for a decision: an array root is named `Int32Array` while `SerializeAsyncEnumerable<int>` writes `ArrayOfInt32`, so one cannot read the other's document.
+- An array root was named `Int32Array` while `SerializeAsyncEnumerable<int>` wrote `ArrayOfInt32`, so one could not read the other's document. Both are `ArrayOfInt` since [decision 70](24-doc-findings-resolution.md).
 
 ## Shipped after PR 4 (reader drain)
 

@@ -19,7 +19,7 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Fields
 
         private const string Document =
-            "<UnknownHolder><Any><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items>" +
+            "<UnknownHolder><Any><b>1</b></Any><Items><anyType>2</anyType><anyType xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items>" +
             "<Map><k><c/></k></Map></UnknownHolder>";
 
         private static readonly XmlSerializerOptions AsElement = new();
@@ -44,7 +44,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var read = XmlSerializer.Deserialize<UnknownHolder>(Document, AsElement)!;
             read.Any.Should().BeOfType<XmlElement>().Which.GetRawXml().Should().Be("<Any><b>1</b></Any>");
             read.Items.Should().HaveCount(2);
-            read.Items[0].Should().BeOfType<XmlElement>().Which.GetRawXml().Should().Be("<Object>2</Object>");
+            read.Items[0].Should().BeOfType<XmlElement>().Which.GetRawXml().Should().Be("<anyType>2</anyType>");
             read.Items[1].Should().BeNull();
             read.Map.Should().ContainSingle().Which.Value.Should().BeOfType<XmlElement>().Which.GetRawXml().Should().Be("<k><c/></k>");
         }
@@ -55,7 +55,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var read = XmlSerializer.Deserialize<UnknownHolder>(Document, AsNode)!;
             read.Any.Should().BeOfType<XmlElementNode>().Which.ToString().Should().Be("<Any><b>1</b></Any>");
             read.Items.Should().HaveCount(2);
-            read.Items[0].Should().BeOfType<XmlElementNode>().Which.ToString().Should().Be("<Object>2</Object>");
+            read.Items[0].Should().BeOfType<XmlElementNode>().Which.ToString().Should().Be("<anyType>2</anyType>");
             read.Items[1].Should().BeNull("a nil element is null whatever the handling");
             read.Map.Should().ContainSingle().Which.Value.Should().BeOfType<XmlElementNode>().Which.ToString().Should().Be("<k><c/></k>");
         }
@@ -73,24 +73,24 @@ namespace CloudNimble.XmlEssentials.Tests
         public void ReadValues_AreWrittenBackAsTheyWereRead()
         {
             const string rich =
-                "<UnknownHolder><Any xmlns:p=\"urn:p\" id=\"7\" p:kind=\"x\"><p:b>1</p:b>tail</Any><Items><Object>2</Object><Object/><Object><d e=\"f\"/></Object></Items>" +
+                "<UnknownHolder><Any xmlns:p=\"urn:p\" id=\"7\" p:kind=\"x\"><p:b>1</p:b>tail</Any><Items><anyType>2</anyType><anyType/><anyType><d e=\"f\"/></anyType></Items>" +
                 "<Map><k>text</k><l xmlns=\"\"><m xmlns=\"urn:m\"/></l></Map></UnknownHolder>";
             foreach (var handling in new[] { XmlUnknownTypeHandling.XmlElement, XmlUnknownTypeHandling.XmlNode })
             {
                 var options = new XmlSerializerOptions { UnknownTypeHandling = handling, OmitXmlDeclaration = true };
                 XmlSerializer.Serialize(XmlSerializer.Deserialize<UnknownHolder>(Document, options), options).Should().Be(Document);
                 XmlSerializer.Serialize(XmlSerializer.Deserialize<UnknownHolder>(rich, options), options).Should().Be(
-                    "<UnknownHolder><Any xmlns:p=\"urn:p\" id=\"7\" p:kind=\"x\"><p:b>1</p:b>tail</Any><Items><Object>2</Object><Object/><Object><d e=\"f\"/></Object></Items>" +
+                    "<UnknownHolder><Any xmlns:p=\"urn:p\" id=\"7\" p:kind=\"x\"><p:b>1</p:b>tail</Any><Items><anyType>2</anyType><anyType/><anyType><d e=\"f\"/></anyType></Items>" +
                     "<Map><k>text</k><l><m xmlns=\"urn:m\"/></l></Map></UnknownHolder>");
                 XmlSerializer.Serialize(XmlSerializer.Deserialize<object>("<a><b>1</b></a>", options), options).Should().Be("<a><b>1</b></a>");
 
                 // An element that was read with an end tag and nothing in it is written with its end tag, and
                 // indentation puts nothing between the two tags.
-                const string empty = "<UnknownHolder><Any></Any><Items><Object></Object><Object a=\"1\"></Object><Object/></Items><Map><k></k></Map></UnknownHolder>";
+                const string empty = "<UnknownHolder><Any></Any><Items><anyType></anyType><anyType a=\"1\"></anyType><anyType/></Items><Map><k></k></Map></UnknownHolder>";
                 XmlSerializer.Serialize(XmlSerializer.Deserialize<UnknownHolder>(empty, options), options).Should().Be(empty);
                 var indented = new XmlSerializerOptions(options) { NewLine = "\n", WriteIndented = true };
                 XmlSerializer.Serialize(XmlSerializer.Deserialize<UnknownHolder>(empty, options), indented).Should().Be(
-                    "<UnknownHolder>\n  <Any></Any>\n  <Items>\n    <Object></Object>\n    <Object a=\"1\"></Object>\n    <Object/>\n  </Items>\n  <Map>\n    <k></k>\n  </Map>\n</UnknownHolder>");
+                    "<UnknownHolder>\n  <Any></Any>\n  <Items>\n    <anyType></anyType>\n    <anyType a=\"1\"></anyType>\n    <anyType/>\n  </Items>\n  <Map>\n    <k></k>\n  </Map>\n</UnknownHolder>");
             }
         }
 

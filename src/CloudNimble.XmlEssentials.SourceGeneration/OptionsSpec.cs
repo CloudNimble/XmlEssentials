@@ -107,6 +107,26 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal bool PropertyNameCaseInsensitive { get; }
 
         /// <summary>
+        /// Gets the member order value.
+        /// </summary>
+        internal int MemberOrder { get; }
+
+        /// <summary>
+        /// Gets the char handling value.
+        /// </summary>
+        internal int CharHandling { get; }
+
+        /// <summary>
+        /// Gets the UTC offset handling value.
+        /// </summary>
+        internal int UtcOffsetHandling { get; }
+
+        /// <summary>
+        /// Gets the default collection mapping value.
+        /// </summary>
+        internal int DefaultCollectionMapping { get; }
+
+        /// <summary>
         /// Gets the XML version value.
         /// </summary>
         internal int XmlVersion { get; }
@@ -151,7 +171,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             bool ignoreReadOnlyProperties = false,
             int maxDepth = 0,
             bool propertyNameCaseInsensitive = false,
-            int xmlVersion = 0)
+            int xmlVersion = 0,
+            int defaultCollectionMapping = 0,
+            int charHandling = 0,
+            int utcOffsetHandling = 0,
+            int memberOrder = 0)
         {
             HasSeed = hasSeed;
             WriteIndented = writeIndented;
@@ -173,6 +197,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             MaxDepth = maxDepth;
             PropertyNameCaseInsensitive = propertyNameCaseInsensitive;
             XmlVersion = xmlVersion;
+            DefaultCollectionMapping = defaultCollectionMapping;
+            CharHandling = charHandling;
+            UtcOffsetHandling = utcOffsetHandling;
+            MemberOrder = memberOrder;
         }
 
         #endregion
@@ -201,7 +229,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 && IgnoreReadOnlyProperties == other.IgnoreReadOnlyProperties
                 && MaxDepth == other.MaxDepth
                 && PropertyNameCaseInsensitive == other.PropertyNameCaseInsensitive
-                && XmlVersion == other.XmlVersion;
+                && XmlVersion == other.XmlVersion
+                && DefaultCollectionMapping == other.DefaultCollectionMapping
+                && CharHandling == other.CharHandling
+                && UtcOffsetHandling == other.UtcOffsetHandling
+                && MemberOrder == other.MemberOrder;
         }
 
         /// <inheritdoc />

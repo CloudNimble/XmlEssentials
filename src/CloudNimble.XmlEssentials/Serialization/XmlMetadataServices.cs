@@ -331,7 +331,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// enumeration, in the options or with <see cref="XmlConverterAttribute"/>, is used in place of the built-in one.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static XmlTypeInfo<T> CreateEnumInfo<T>(XmlSerializerOptions options)
+        public static XmlTypeInfo<T> CreateEnumInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] T>(XmlSerializerOptions options)
             where T : struct, Enum
         {
             ArgumentNullException.ThrowIfNull(options);
@@ -505,6 +505,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="elementNamingPolicy">The policy the element names were generated with, or <see langword="null"/> for none.</param>
         /// <param name="attributeNamingPolicy">The policy the attribute names were generated with, or <see langword="null"/> for none.</param>
         /// <param name="defaultPropertyMapping">The property mapping the members were generated with.</param>
+        /// <param name="defaultCollectionMapping">The collection mapping the members were generated with.</param>
         /// <param name="includeFields">Whether the fast path was generated with fields included.</param>
         /// <param name="directTypes">The types the fast path writes without a converter, the type itself first.</param>
         /// <returns>
@@ -517,7 +518,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <remarks>
         /// The fast path has its element and attribute names and its choice of members compiled in, from
         /// <see cref="XmlSourceGenerationOptionsAttribute"/>. It is not used when the options ask for another naming
-        /// policy, property mapping or choice of members, when they handle references, or when they supply a converter
+        /// policy, property mapping, collection mapping or choice of members, when they handle references, when they
+        /// write a <see langword="null"/>, a <see cref="char"/> or a zero offset another way, when they put fields first, or when they supply a converter
         /// for a type it writes directly. The serializer then writes from the metadata, which follows every option.
         /// This method is for source-generated contexts only.
         /// </remarks>
@@ -527,6 +529,7 @@ namespace CloudNimble.Text.Xml.Serialization
             XmlNamingPolicy? elementNamingPolicy,
             XmlNamingPolicy? attributeNamingPolicy,
             XmlPropertyMapping defaultPropertyMapping,
+            XmlCollectionMapping defaultCollectionMapping,
             bool includeFields,
             params ReadOnlySpan<Type> directTypes)
         {
@@ -535,6 +538,11 @@ namespace CloudNimble.Text.Xml.Serialization
                 || !ReferenceEquals(elementNamingPolicy, options.ElementNamingPolicy ?? options.PropertyNamingPolicy)
                 || !ReferenceEquals(attributeNamingPolicy, options.AttributeNamingPolicy ?? options.PropertyNamingPolicy)
                 || defaultPropertyMapping != options.DefaultPropertyMapping
+                || defaultCollectionMapping != options.DefaultCollectionMapping
+                || options.DefaultIgnoreCondition is XmlIgnoreCondition.WhenWritingNullReference
+                || options.CharHandling is not XmlCharHandling.Character
+                || options.MemberOrder is not XmlMemberOrder.PropertiesFirst
+                || options.UtcOffsetHandling is not XmlUtcOffsetHandling.WriteOffset
                 || includeFields != options.IncludeFields
                 || options.IgnoreReadOnlyProperties
                 || options.IgnoreReadOnlyFields)

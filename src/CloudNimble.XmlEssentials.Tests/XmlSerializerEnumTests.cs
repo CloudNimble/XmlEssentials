@@ -108,10 +108,70 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Name_IsReadInAnyCase_AndTheExactNameComesFirst()
+        {
+            XmlSerializer.Deserialize<DayOfWeek>("<DayOfWeek>monday</DayOfWeek>", Name).Should().Be(DayOfWeek.Monday);
+            XmlSerializer.Deserialize<DayOfWeek>("<DayOfWeek>MONDAY</DayOfWeek>", Name).Should().Be(DayOfWeek.Monday);
+            XmlSerializer.Deserialize<AttributeTargets>("<AttributeTargets>class METHOD</AttributeTargets>", Name)
+                .Should().Be(AttributeTargets.Class | AttributeTargets.Method);
+
+            // Two members that differ only in case: each is read from its own spelling, and any other
+            // spelling is the first of them.
+            XmlSerializer.Deserialize<CaseTwins>("<CaseTwins>Ab</CaseTwins>", Name).Should().Be(CaseTwins.Ab);
+            XmlSerializer.Deserialize<CaseTwins>("<CaseTwins>aB</CaseTwins>", Name).Should().Be(CaseTwins.aB);
+            XmlSerializer.Deserialize<CaseTwins>("<CaseTwins>ab</CaseTwins>", Name).Should().Be(CaseTwins.Ab);
+            XmlSerializer.Deserialize<CaseTwins>("<CaseTwins>AB</CaseTwins>", Name).Should().Be(CaseTwins.Ab);
+
+            // PropertyNameCaseInsensitive is about element and attribute names. It changes nothing here.
+            var sensitive = new XmlSerializerOptions { PropertyNameCaseInsensitive = false };
+            XmlSerializer.Deserialize<DayOfWeek>("<DayOfWeek>monday</DayOfWeek>", sensitive).Should().Be(DayOfWeek.Monday);
+        }
+
+        [TestMethod]
+        public void RenamedMember_IsWrittenAndReadUnderItsXmlName_Exactly()
+        {
+            XmlSerializer.Serialize(ParcelStatus.InTransit, Name).Should().Be("<ParcelStatus>in-transit</ParcelStatus>");
+            XmlSerializer.Serialize(ParcelStatus.InTransit, Integer).Should().Be("<ParcelStatus>1</ParcelStatus>");
+            XmlSerializer.Serialize(ParcelStatus.Delivered, Name).Should().Be("<ParcelStatus>Delivered</ParcelStatus>");
+            XmlSerializer.Deserialize<ParcelStatus>("<ParcelStatus>in-transit</ParcelStatus>", Name).Should().Be(ParcelStatus.InTransit);
+            XmlSerializer.Deserialize<ParcelStatus>("<ParcelStatus>1</ParcelStatus>", Name).Should().Be(ParcelStatus.InTransit);
+            XmlSerializer.Deserialize<ParcelStatus>("<ParcelStatus>delivered</ParcelStatus>", Name).Should().Be(ParcelStatus.Delivered);
+
+            // The XML name replaces the C# name, and is not matched in another case.
+            Rejects<ParcelStatus>("<ParcelStatus>InTransit</ParcelStatus>");
+            Rejects<ParcelStatus>("<ParcelStatus>In-Transit</ParcelStatus>");
+        }
+
+        [TestMethod]
+        public void RenamedMember_OfAFlagsEnum_TakesItsPlaceAmongTheNames()
+        {
+            XmlSerializer.Serialize(AccessRights.Read | AccessRights.Write, Name).Should().Be("<AccessRights>rd Write</AccessRights>");
+            XmlSerializer.Deserialize<AccessRights>("<AccessRights>rd write</AccessRights>", Name).Should().Be(AccessRights.Read | AccessRights.Write);
+            Rejects<AccessRights>("<AccessRights>Read Write</AccessRights>");
+        }
+
+        [TestMethod]
+        public void RenamedMembers_WithOneName_AreReadAsTheFirst()
+        {
+            XmlSerializer.Serialize(SameNames.B, Name).Should().Be("<SameNames>x</SameNames>");
+            XmlSerializer.Deserialize<SameNames>("<SameNames>x</SameNames>", Name).Should().Be(SameNames.A);
+        }
+
+        [TestMethod]
+        public void RenamedMember_WithANameThatCouldNotBeReadBack_IsRefusedWhenTheTypeIsFirstUsed()
+        {
+            FluentActions.Invoking(() => XmlSerializer.Serialize(PaddedName.A, Name))
+                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(
+                    "The name ' x' of 'CloudNimble.XmlEssentials.Tests.PaddedName.A' starts or ends with white space, which is not part of a value.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<SpacedFlag>("<SpacedFlag>a</SpacedFlag>", Name))
+                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(
+                    "The name 'a b' of 'CloudNimble.XmlEssentials.Tests.SpacedFlag.A' contains white space, which separates the names of a [Flags] value.");
+        }
+
+        [TestMethod]
         public void UnknownNames_UndeclaredNumbers_AndNumbersOutOfRange_AreRejected()
         {
             Rejects<DayOfWeek>("<DayOfWeek>Nope</DayOfWeek>");
-            Rejects<DayOfWeek>("<DayOfWeek>monday</DayOfWeek>");
             Rejects<DayOfWeek>("<DayOfWeek> </DayOfWeek>");
             Rejects<DayOfWeek>("<DayOfWeek/>");
             Rejects<DayOfWeek>("<DayOfWeek>Monday Tuesday</DayOfWeek>");

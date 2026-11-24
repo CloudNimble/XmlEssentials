@@ -80,9 +80,11 @@ Every reading API enforces the following limits. A limit property that is `0` us
 | `MaxDepth` | 64 | How deeply elements are nested. This protects the stack of code that walks the document recursively, including the serializer. |
 | `MaxAttributeCount` | 1,000 | Attributes on one element, including `xmlns` and `xmlns:prefix` declarations. |
 | `MaxNameByteCount` | 1,024 | The length of an element or attribute name, in UTF-8 bytes. |
-| `MaxTextByteCount` | 16,777,216 (16 MiB) | The length of one text node or CDATA section, in UTF-8 bytes as they appear in the document, before references are expanded. |
+| `MaxTextByteCount` | 16,777,216 (16 MiB) | The length of one text node, CDATA section, attribute value, or processing instruction's data, in UTF-8 bytes as they appear in the document, before references are expanded. Each is counted on its own. |
 | `MaxCommentByteCount` | 1,048,576 (1 MiB) | The length of one comment, in UTF-8 bytes. It applies when comments are skipped too. |
 | `MaxDocumentByteCount` | 0, which means **no limit** | The length of the whole document, in UTF-8 bytes. |
+
+When the input arrives in blocks, a text node, a CDATA section, an attribute value, a processing instruction or a comment doesn't have to end before its limit applies. `Utf8XmlReader` with `isFinalBlock` set to `false`, and `XmlSerializer.DeserializeAsyncEnumerable`, throw as soon as the part that has arrived is longer than the limit, so a sender can't keep a node open to make you buffer it. The methods that take a whole `Stream`, such as `XmlSerializer.Deserialize(Stream)` and `XmlDocument.Parse(Stream)`, read the stream to its end before they parse it. While they read, only `MaxDocumentByteCount` bounds them.
 
 The properties exist on each options type:
 
@@ -310,7 +312,6 @@ Never pass text from an untrusted source to `WriteRawValue`, and never use it as
 ## What the library doesn't protect against
 
 - **Total size, unless you set `MaxDocumentByteCount`.** The per-node limits don't bound the number of nodes. A document made of millions of small elements passes every other limit and produces a large `XmlDocument` or a large collection.
-- **Attribute values and processing instructions have no size limit of their own.** `MaxTextByteCount` covers text nodes and CDATA sections. An attribute value or a processing instruction is bounded only by `MaxDocumentByteCount`.
 - **Time.** There is no timeout. Reading is linear in the size of the document, so bounding the size bounds the time.
 - **Validity.** There is no DTD or XML Schema validation.
 - **Your converters, constructors, and setters.** They run with the document's values.

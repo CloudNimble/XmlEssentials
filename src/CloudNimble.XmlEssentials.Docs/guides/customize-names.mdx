@@ -347,7 +347,47 @@ The code produces the following output:
 Delivered, Delivered
 ```
 
-The first line shows that a naming policy renames elements but not enumeration values: the value is still `InTransit`. `[XmlPropertyName]` on an enumeration member isn't read either. To write enumeration values under other names, use a [custom converter](/guides/custom-converters).
+The first line shows that a naming policy renames elements but not enumeration values: the value is still `InTransit`.
+
+### Rename a value
+
+To write a member under another name, put `[XmlPropertyName]` on it. This is how you write a name that isn't a C# identifier.
+
+```csharp ShippingMethod.cs
+public enum ShippingMethod
+{
+    Standard,
+
+    [XmlPropertyName("next-day")]
+    NextDay,
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(ShippingMethod.NextDay, options));
+
+ShippingMethod renamed = XmlSerializer.Deserialize<ShippingMethod>("<ShippingMethod>next-day</ShippingMethod>");
+ShippingMethod anyCase = XmlSerializer.Deserialize<ShippingMethod>("<ShippingMethod>STANDARD</ShippingMethod>");
+output.WriteLine($"{renamed}, {anyCase}");
+```
+
+The code produces the following output:
+
+```text
+<ShippingMethod>next-day</ShippingMethod>
+NextDay, Standard
+```
+
+Names are matched the way `JsonStringEnumConverter` in System.Text.Json matches them:
+
+- The exact name is tried first. If nothing matches, a C# member name is matched without regard to case, so `STANDARD` is read as `Standard`. `PropertyNameCaseInsensitive` doesn't change this: it's about element and attribute names.
+- A name given with `[XmlPropertyName]` replaces the C# name and is matched exactly. `NextDay` and `Next-Day` are both rejected.
+- When two members have the same name, the first one is read.
+
+A name can't start or end with white space, and a name of a `[Flags]` member can't contain any, because white space separates the names of a flags value. Such a name is an `InvalidOperationException` when the type is first used.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
 
 ## How a name is chosen
 
@@ -357,7 +397,7 @@ For each member, the serializer takes the first of these that is set:
 2. The name in `[XmlAttribute]`, `[XmlElement]`, or `[XmlArray]`.
 3. The C# member name, converted by `AttributeNamingPolicy` or `ElementNamingPolicy`, or by `PropertyNamingPolicy` when the more specific policy is `null`.
 
-For the document element, it's the name in `[XmlRoot]`, or else the type name converted by the element policy. A generic type's name is spelled out, so a `List<InvoiceLine>` at the root is `ListOfInvoiceLine`.
+For the document element, it's the name in `[XmlRoot]`, or else the type name converted by the element policy. The type name of a built-in type is its XML Schema name (`int`, `string`, `dateTime`). A collection is `ArrayOf` followed by the name of its items, so a `List<InvoiceLine>` at the root is `ArrayOfInvoiceLine` and an `int[]` is `ArrayOfInt`. Any other generic type has its name spelled out with the .NET names of its arguments, such as `DictionaryOfStringInt32`.
 
 Two members of one type can't have the same element name or the same attribute name. The serializer throws an `InvalidOperationException` when it first uses such a type.
 

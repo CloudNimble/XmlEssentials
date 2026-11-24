@@ -123,6 +123,30 @@ namespace CloudNimble.Text.Xml
         } = 1;
 
         /// <summary>
+        /// Gets or sets a value that specifies how a <see cref="char"/> is written and read.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies whether a <see cref="char"/> is the character or its
+        /// number. The default is <see cref="XmlCharHandling.Character"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// The value applies to an element, an attribute and an item of a collection alike. Under
+        /// <see cref="XmlCharHandling.Number"/> a value that is not a number from 0 to 65535 is an error.
+        /// </remarks>
+        public XmlCharHandling CharHandling
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
         /// Gets the list of user-defined converters that were registered.
         /// </summary>
         /// <value>
@@ -133,6 +157,42 @@ namespace CloudNimble.Text.Xml
         /// built-in converters. The list cannot be changed after this instance has become read-only.
         /// </remarks>
         public IList<XmlConverter> Converters { get; }
+
+        /// <summary>
+        /// Gets a read-only, singleton instance of <see cref="XmlSerializerOptions"/> that writes what
+        /// <c>System.Xml.Serialization.XmlSerializer</c> writes.
+        /// </summary>
+        /// <value>
+        /// A read-only instance created with <see cref="XmlSerializerDefaults.Bcl"/>.
+        /// </value>
+        /// <example>
+        /// <code>
+        /// string xml = XmlSerializer.Serialize(order, XmlSerializerOptions.Bcl);
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// <para>
+        /// Use it when the documents have to stay the ones the old serializer wrote, for a consumer that already
+        /// reads them. It sets:
+        /// </para>
+        /// <list type="bullet">
+        /// <item><description><see cref="CharHandling"/> to <see cref="XmlCharHandling.Number"/>.</description></item>
+        /// <item><description><see cref="DefaultCollectionMapping"/> to <see cref="XmlCollectionMapping.Wrapped"/>.</description></item>
+        /// <item><description><see cref="DefaultIgnoreCondition"/> to <see cref="XmlIgnoreCondition.WhenWritingNullReference"/>.</description></item>
+        /// <item><description><see cref="EmptyElementStyle"/> to <see cref="XmlEmptyElementStyle.SelfClosingWithSpace"/>.</description></item>
+        /// <item><description><see cref="IgnoreReadOnlyProperties"/> and <see cref="IncludeFields"/> to <see langword="true"/>.</description></item>
+        /// <item><description><see cref="MemberOrder"/> to <see cref="XmlMemberOrder.FieldsFirst"/>.</description></item>
+        /// <item><description><see cref="Namespaces"/> to the <c>xsi</c> and <c>xsd</c> prefixes, in that order.</description></item>
+        /// <item><description><see cref="PreferredObjectCreationHandling"/> to <see cref="XmlObjectCreationHandling.Populate"/>.</description></item>
+        /// <item><description><see cref="UtcOffsetHandling"/> to <see cref="XmlUtcOffsetHandling.WriteZ"/>.</description></item>
+        /// <item><description><see cref="WriteIndented"/> to <see langword="true"/>.</description></item>
+        /// </list>
+        /// <para>
+        /// To change one of them, create an instance with <see cref="XmlSerializerOptions(XmlSerializerDefaults)"/>
+        /// and <see cref="XmlSerializerDefaults.Bcl"/>, which is not read-only.
+        /// </para>
+        /// </remarks>
+        public static XmlSerializerOptions Bcl { get; } = CreateReadOnly(XmlSerializerDefaults.Bcl);
 
         /// <summary>
         /// Gets a read-only, singleton instance of <see cref="XmlSerializerOptions"/> that uses the default configuration.
@@ -214,6 +274,42 @@ namespace CloudNimble.Text.Xml
         /// A namespace set on the type with <see cref="XmlRootAttribute"/> takes precedence over this value.
         /// </remarks>
         public string? DefaultNamespace
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value that specifies how collection members without a mapping attribute are mapped to
+        /// XML.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies whether the items of an unannotated collection member
+        /// are written as repeated elements or inside a wrapper element. The default is
+        /// <see cref="XmlCollectionMapping.Unwrapped"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// With <see cref="XmlCollectionMapping.Wrapped"/>, a collection member is written as <c>[XmlArray]</c>
+        /// writes it: one element named for the member, with an element for each item named for the item's type.
+        /// An empty collection is an empty wrapper element. This is what
+        /// <c>System.Xml.Serialization.XmlSerializer</c> does by default.
+        /// </para>
+        /// <para>
+        /// <c>[XmlElement]</c> on a member writes its items with no wrapper under either value, and
+        /// <c>[XmlArray]</c> writes a wrapper under either value. <c>[XmlArrayItem]</c> names the items of a
+        /// wrapped collection, including one this property wraps. Dictionaries and <c>byte[]</c> are not
+        /// collections for this purpose. The same value is used to read.
+        /// </para>
+        /// </remarks>
+        public XmlCollectionMapping DefaultCollectionMapping
         {
             get;
             set
@@ -365,7 +461,7 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         /// <remarks>
         /// A field is read-only if it is declared <see langword="readonly"/>. Fields are considered only when
-        /// <see cref="IncludeFields"/> is <see langword="true"/>.
+        /// <see cref="IncludeFields"/> is <see langword="true"/>. A collection or a dictionary is not ignored.
         /// </remarks>
         public bool IgnoreReadOnlyFields
         {
@@ -388,7 +484,9 @@ namespace CloudNimble.Text.Xml
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// A property is read-only if it has no <see langword="set"/> or <see langword="init"/> accessor.
+        /// A property is read-only if it has no <see langword="set"/> or <see langword="init"/> accessor. A
+        /// collection or a dictionary is not ignored: it is written from its getter, and filled through it when
+        /// <see cref="PreferredObjectCreationHandling"/> is <see cref="XmlObjectCreationHandling.Populate"/>.
         /// </remarks>
         public bool IgnoreReadOnlyProperties
         {
@@ -603,10 +701,11 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets the maximum size, in bytes, of one text node that is read.
+        /// Gets or sets the maximum size of a text node, a CDATA section, an attribute value, or the data of a processing instruction that is read.
         /// </summary>
         /// <value>
-        /// The maximum size of a text node, in bytes. The default is 0, which means 16,777,216.
+        /// The maximum size of each, in UTF-8 bytes as they appear in the document. The default is 0, which means
+        /// 16,777,216.
         /// </value>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
@@ -618,6 +717,31 @@ namespace CloudNimble.Text.Xml
             {
                 VerifyMutable();
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value that specifies where the fields of a type come among its members.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies whether the fields of a class come after its properties
+        /// or before them. The default is <see cref="XmlMemberOrder.PropertiesFirst"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// The value matters only for a type with both, and only when <see cref="IncludeFields"/> is
+        /// <see langword="true"/> or a field is marked to be included. An explicit order on a member takes
+        /// precedence.
+        /// </remarks>
+        public XmlMemberOrder MemberOrder
+        {
+            get;
+            set
+            {
+                VerifyMutable();
                 field = value;
             }
         }
@@ -1020,6 +1144,31 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets or sets a value that specifies how a <see cref="DateTimeOffset"/> whose offset is zero is written.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies whether a zero offset is written as <c>+00:00</c> or as
+        /// <c>Z</c>. The default is <see cref="XmlUtcOffsetHandling.WriteOffset"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// Only writing changes: <c>Z</c>, <c>+00:00</c> and <c>-00:00</c> are all read as a zero offset under
+        /// either value. A <see cref="DateTime"/> is not affected; its <see cref="DateTime.Kind"/> decides what
+        /// is written.
+        /// </remarks>
+        public XmlUtcOffsetHandling UtcOffsetHandling
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
         /// Gets a read-only, singleton instance of <see cref="XmlSerializerOptions"/> that uses the web configuration.
         /// </summary>
         /// <value>
@@ -1121,6 +1270,22 @@ namespace CloudNimble.Text.Xml
                 ReadCommentHandling = XmlCommentHandling.Disallow;
                 UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow;
             }
+            else if (defaults is XmlSerializerDefaults.Bcl)
+            {
+                CharHandling = XmlCharHandling.Number;
+                DefaultCollectionMapping = XmlCollectionMapping.Wrapped;
+                DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNullReference;
+                EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace;
+                IgnoreReadOnlyProperties = true;
+                IncludeFields = true;
+                MemberOrder = XmlMemberOrder.FieldsFirst;
+
+                // The order the old serializer declares them in.
+                Namespaces = new OrderedDictionary<string, string> { ["xsi"] = XmlNamespaces.Xsi, ["xsd"] = XmlNamespaces.Xsd };
+                PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate;
+                UtcOffsetHandling = XmlUtcOffsetHandling.WriteZ;
+                WriteIndented = true;
+            }
         }
 
         /// <summary>
@@ -1145,6 +1310,8 @@ namespace CloudNimble.Text.Xml
             Namespaces = options.Namespaces;
             AttributeStyle = options.AttributeStyle;
             AttributesPerLine = options.AttributesPerLine;
+            CharHandling = options.CharHandling;
+            DefaultCollectionMapping = options.DefaultCollectionMapping;
             DefaultPropertyMapping = options.DefaultPropertyMapping;
             DictionaryKeyPolicy = options.DictionaryKeyPolicy;
             ElementNamingPolicy = options.ElementNamingPolicy;
@@ -1160,6 +1327,7 @@ namespace CloudNimble.Text.Xml
             MaxAttributeCount = options.MaxAttributeCount;
             MaxCommentByteCount = options.MaxCommentByteCount;
             MaxDepth = options.MaxDepth;
+            MemberOrder = options.MemberOrder;
             MaxDocumentByteCount = options.MaxDocumentByteCount;
             MaxNameByteCount = options.MaxNameByteCount;
             MaxTextByteCount = options.MaxTextByteCount;
@@ -1175,6 +1343,7 @@ namespace CloudNimble.Text.Xml
             RespectRequiredConstructorParameters = options.RespectRequiredConstructorParameters;
             UnknownTypeHandling = options.UnknownTypeHandling;
             UnmappedMemberHandling = options.UnmappedMemberHandling;
+            UtcOffsetHandling = options.UtcOffsetHandling;
             WhitespaceHandling = options.WhitespaceHandling;
             WriteIndented = options.WriteIndented;
             XmlVersion = options.XmlVersion;

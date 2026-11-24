@@ -149,7 +149,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 SymbolHelpers.GetBool(attribute, "IgnoreReadOnlyProperties"),
                 SymbolHelpers.GetInt(attribute, "MaxDepth", 0),
                 SymbolHelpers.GetBool(attribute, "PropertyNameCaseInsensitive"),
-                SymbolHelpers.GetInt(attribute, "XmlVersion", 0));
+                SymbolHelpers.GetInt(attribute, "XmlVersion", 0),
+                SymbolHelpers.GetInt(attribute, "DefaultCollectionMapping", 0),
+                SymbolHelpers.GetInt(attribute, "CharHandling", 0),
+                SymbolHelpers.GetInt(attribute, "UtcOffsetHandling", 0),
+                SymbolHelpers.GetInt(attribute, "MemberOrder", 0));
         }
 
         #endregion

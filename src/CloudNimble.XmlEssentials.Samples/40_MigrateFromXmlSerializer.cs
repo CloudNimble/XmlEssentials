@@ -19,6 +19,28 @@ namespace CloudNimble.XmlEssentials.Samples
         #region Public Methods
 
         /// <summary>
+        /// Serializes a <see cref="Shipment"/> that has no mapping attributes with the options that write what
+        /// <c>System.Xml.Serialization.XmlSerializer</c> writes.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void BclDefaults(TextWriter output)
+        {
+            var shipment = new Shipment
+            {
+                Carrier = "Contoso Freight",
+                Insured = true,
+                Packages = ["PKG-1", "PKG-2"],
+                ShippedOn = new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc),
+                Status = ShipmentStatus.InTransit,
+                TrackingNumber = null,
+                Weight = 12.50m,
+            };
+
+            var options = new XmlSerializerOptions(XmlSerializerDefaults.Bcl) { NewLine = "\n" };
+            output.WriteLine(XmlSerializer.Serialize(shipment, options));
+        }
+
+        /// <summary>
         /// Serializes a <see cref="Shipment"/> that has no mapping attributes, to show what the defaults write.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>

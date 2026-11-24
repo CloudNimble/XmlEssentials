@@ -44,7 +44,7 @@ The code produces the following output:
 ```
 
 <Note>
-This default differs from `System.Xml.Serialization.XmlSerializer`, which wraps a collection in an element named after the member and names each item after its type. If you're matching XML produced by that serializer, add `[XmlArray]` as shown in the next section. See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer).
+This default differs from `System.Xml.Serialization.XmlSerializer`, which wraps a collection in an element named after the member and names each item after its type. If you're matching XML produced by that serializer, set `DefaultCollectionMapping` to `XmlCollectionMapping.Wrapped` to wrap every collection that has no mapping attribute, or add `[XmlArray]` to one member as shown in the next section. See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer).
 </Note>
 
 When reading, the repeated elements don't have to be next to each other. Every element with the member's name is added to the same collection, in document order.
@@ -84,7 +84,7 @@ The code produces the following output:
 ```
 
 <Warning>
-`[XmlArrayItem]` names the items of a wrapped collection only. On a collection that has no `[XmlArray]`, it has no effect, and the items keep the member's name.
+`[XmlArrayItem]` names the items of a wrapped collection only: one that has `[XmlArray]`, or one that `DefaultCollectionMapping` wraps. On a collection with no wrapper, it has no effect, and the items keep the member's name.
 </Warning>
 
 ## A wrapper element with named items
@@ -144,10 +144,10 @@ output.WriteLine(XmlSerializer.Serialize(board, options));
 The code produces the following output:
 
 ```xml
-<Scoreboard><Player>Ada</Player><Scores><Int32>90</Int32><Int32>85</Int32></Scores></Scoreboard>
+<Scoreboard><Player>Ada</Player><Scores><int>90</int><int>85</int></Scores></Scoreboard>
 ```
 
-The type name is the .NET name, `Int32`, not the C# keyword `int`. An element naming policy on the options applies to default wrapper and item names, and doesn't change names you set in the attributes.
+An item is named for its type: the XML Schema name for a built-in type, such as `int` or `string`, and the class name otherwise. These are the names `System.Xml.Serialization` writes. An element naming policy on the options applies to default wrapper and item names, and doesn't change names you set in the attributes.
 
 ## Empty and null collections
 
@@ -424,13 +424,13 @@ output.WriteLine(XmlSerializer.Serialize(new Dictionary<string, int> { ["Width"]
 The code produces the following output:
 
 ```text
-<ListOfInvoiceLine><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine><InvoiceLine><Sku>MS-220</Sku><Quantity>1</Quantity></InvoiceLine></ListOfInvoiceLine>
+<ArrayOfInvoiceLine><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine><InvoiceLine><Sku>MS-220</Sku><Quantity>1</Quantity></InvoiceLine></ArrayOfInvoiceLine>
 2 lines
-<Int32Array><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32></Int32Array>
+<ArrayOfInt><int>1</int><int>2</int><int>3</int></ArrayOfInt>
 <DictionaryOfStringInt32><Width>4</Width><Height>3</Height></DictionaryOfStringInt32>
 ```
 
-Names such as `ListOfInvoiceLine` are rarely what a document format calls for, and you can't put `[XmlRoot]` on `List<T>`. To choose the name, make the collection a member of a class of your own and name that class with [`[XmlRoot]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute).
+A collection at the root is named `ArrayOf` followed by the name of its items, whatever kind of collection it is. An array, a `List<T>` and a `HashSet<T>` of the same items write the same document, and each reads what the others wrote. A dictionary keeps its own kind of name. Names such as `ArrayOfInvoiceLine` are rarely what a document format calls for, and you can't put `[XmlRoot]` on `List<T>`. To choose the name, make the collection a member of a class of your own and name that class with [`[XmlRoot]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlRootAttribute).
 
 To write or read a large sequence one item at a time instead of holding it all in memory, see [Streaming](/guides/streaming). For collections whose items are of different derived types, see [Polymorphism](/guides/polymorphism).
 

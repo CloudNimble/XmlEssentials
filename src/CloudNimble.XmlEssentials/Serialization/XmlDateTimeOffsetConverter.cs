@@ -29,6 +29,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override void WriteValue(Utf8XmlWriter writer, DateTimeOffset value, XmlSerializerOptions options)
         {
+            if (options.UtcOffsetHandling is XmlUtcOffsetHandling.WriteZ && value.Offset == TimeSpan.Zero)
+            {
+                // The same instant as a UTC DateTime, which is written with Z.
+                writer.WriteStringValue(value.UtcDateTime);
+                return;
+            }
+
             writer.WriteStringValue(value);
         }
 

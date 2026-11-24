@@ -163,7 +163,7 @@ namespace CloudNimble.XmlEssentials.Performance
             _values = Enumerable.Range(0, Count).ToArray();
             _typeInfo = XmlSerializerOptions.Default.GetTypeInfo<int>();
             _declared = EssentialsXmlSerializer.SerializeToUtf8Bytes(12345);
-            _plain = "<Int32>12345</Int32>"u8.ToArray();
+            _plain = "<int>12345</int>"u8.ToArray();
             _bcl = new BclXmlSerializer(typeof(int[]));
             _bclReaderSettings = new XmlReaderSettings { CloseInput = false };
             _bclWriterSettings = new XmlWriterSettings { CloseOutput = false, Encoding = new UTF8Encoding(false) };

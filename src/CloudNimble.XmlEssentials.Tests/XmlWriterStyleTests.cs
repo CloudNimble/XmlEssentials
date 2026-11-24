@@ -331,7 +331,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "             Id=\"7\"\n" +
                 "             Region=\"r\">\n" +
                 "  <Lines>\n" +
-                "    <String>l</String>\n" +
+                "    <string>l</string>\n" +
                 "  </Lines>\n" +
                 "  <Note>n</Note>\n" +
                 "</StyledOrder>";
@@ -353,7 +353,7 @@ namespace CloudNimble.XmlEssentials.Tests
             // A document and a node keep the white space between elements that they read, so the writer is
             // not asked to indent: the layout of the attributes is the only thing that is set.
             var layout = new XmlWriterOptions { AttributeStyle = XmlAttributeStyle.PerLine, NewLine = "\n", OmitXmlDeclaration = true };
-            const string inline = "<StyledOrder Code=\"c\" Id=\"7\" Region=\"r\">\n  <Lines>\n    <String>l</String>\n  </Lines>\n  <Note>n</Note>\n</StyledOrder>";
+            const string inline = "<StyledOrder Code=\"c\" Id=\"7\" Region=\"r\">\n  <Lines>\n    <string>l</string>\n  </Lines>\n  <Note>n</Note>\n</StyledOrder>";
             using var document = XmlDocument.Parse(inline);
             XmlWriterHarness.ToXml(document.WriteTo, layout).Should().Be(expected);
             XmlWriterHarness.ToXml(XmlNode.Parse(inline).WriteTo, layout).Should().Be(expected);
@@ -416,7 +416,7 @@ namespace CloudNimble.XmlEssentials.Tests
             {
                 var options = new XmlSerializerOptions { NewLine = newLine, OmitXmlDeclaration = true };
                 var xml = XmlSerializer.Serialize(value, options);
-                xml.Should().Be("<StyledOrder Code=\"c\" Id=\"7\" Region=\"r\"><Lines><String>a" + newLine + "b</String></Lines><Note>one" + newLine + "two</Note></StyledOrder>");
+                xml.Should().Be("<StyledOrder Code=\"c\" Id=\"7\" Region=\"r\"><Lines><string>a" + newLine + "b</string></Lines><Note>one" + newLine + "two</Note></StyledOrder>");
                 var read = XmlSerializer.Deserialize<StyledOrder>(xml, options)!;
                 read.Note.Should().Be("one\ntwo");
                 read.Lines.Should().Equal("a\nb");

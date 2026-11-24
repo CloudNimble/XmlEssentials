@@ -24,7 +24,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
-        private const string Items = "<Int32>1</Int32><Int32>2</Int32><Int32>3</Int32>";
+        private const string Items = "<int>1</int><int>2</int><int>3</int>";
         private const string Nil = "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"";
         private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
         private static readonly int[] OneTwoThree = [1, 2, 3];
@@ -72,11 +72,11 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Collection_ThatCannotBeCreated_SaysSoWhenItIsRead()
         {
             var xml = XmlSerializer.Serialize(new FixedSizeBag([1, 2]), Bare);
-            xml.Should().Be("<FixedSizeBag><Int32>1</Int32><Int32>2</Int32></FixedSizeBag>");
+            xml.Should().Be("<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<FixedSizeBag>(xml))
                 .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                     "The collection type 'CloudNimble.XmlEssentials.Tests.POCOs.FixedSizeBag' cannot be created. It needs a public parameterless constructor and ICollection<T> or a public Add method, or a public constructor that takes IEnumerable<T> or IList<T>.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<AbstractBag>("<AbstractBag><Int32>1</Int32></AbstractBag>"))
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<AbstractBag>("<ArrayOfInt><int>1</int></ArrayOfInt>"))
                 .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                     "The collection type 'CloudNimble.XmlEssentials.Tests.POCOs.AbstractBag' cannot be created. It needs a public parameterless constructor and ICollection<T> or a public Add method, or a public constructor that takes IEnumerable<T> or IList<T>.");
         }
@@ -114,7 +114,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void Dictionary_NullValueOfANullableNumber_RoundTrips()
         {
             var xml = XmlSerializer.Serialize(new Dictionary<string, int?> { ["a"] = null, ["b"] = 2 }, Bare);
-            xml.Should().Be("<DictionaryOfStringInt32><a " + Nil + "/><b>2</b></DictionaryOfStringInt32>");
+            xml.Should().Be("<DictionaryOfStringNullableOfInt32><a " + Nil + "/><b>2</b></DictionaryOfStringNullableOfInt32>");
             var read = XmlSerializer.Deserialize<Dictionary<string, int?>>(xml)!;
             read["a"].Should().BeNull();
             read["b"].Should().Be(2);
@@ -172,42 +172,42 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void CollectionKinds_AsRoots_RoundTrip()
         {
-            RoundTrip(new Queue<int>(OneTwoThree), "QueueOfInt32", typeof(Queue<int>));
-            RoundTrip(new LinkedList<int>(OneTwoThree), "LinkedListOfInt32", typeof(LinkedList<int>));
-            RoundTrip(new HashSet<int>(OneTwoThree), "HashSetOfInt32", typeof(HashSet<int>));
-            RoundTrip(new SortedSet<int>(OneTwoThree), "SortedSetOfInt32", typeof(SortedSet<int>));
-            RoundTrip(new Collection<int>([.. OneTwoThree]), "CollectionOfInt32", typeof(Collection<int>));
-            RoundTrip(new ObservableCollection<int>(OneTwoThree), "ObservableCollectionOfInt32", typeof(ObservableCollection<int>));
-            RoundTrip(new ReadOnlyCollection<int>(OneTwoThree), "ReadOnlyCollectionOfInt32", typeof(ReadOnlyCollection<int>));
-            RoundTrip<ISet<int>>(new HashSet<int>(OneTwoThree), "ISetOfInt32", typeof(HashSet<int>));
-            RoundTrip<IReadOnlySet<int>>(new HashSet<int>(OneTwoThree), "IReadOnlySetOfInt32", typeof(HashSet<int>));
-            RoundTrip<IList<int>>(new List<int>(OneTwoThree), "IListOfInt32", typeof(List<int>));
-            RoundTrip<ICollection<int>>(new List<int>(OneTwoThree), "ICollectionOfInt32", typeof(List<int>));
-            RoundTrip<IReadOnlyList<int>>(new List<int>(OneTwoThree), "IReadOnlyListOfInt32", typeof(List<int>));
-            RoundTrip<IReadOnlyCollection<int>>(new List<int>(OneTwoThree), "IReadOnlyCollectionOfInt32", typeof(List<int>));
-            RoundTrip<IEnumerable<int>>(new List<int>(OneTwoThree), "IEnumerableOfInt32", typeof(List<int>));
-            RoundTrip(ImmutableArray.Create(1, 2, 3), "ImmutableArrayOfInt32", typeof(ImmutableArray<int>));
-            RoundTrip(ImmutableList.Create(1, 2, 3), "ImmutableListOfInt32", typeof(ImmutableList<int>));
-            RoundTrip(ImmutableSortedSet.Create(1, 2, 3), "ImmutableSortedSetOfInt32", typeof(ImmutableSortedSet<int>));
-            RoundTrip(ImmutableQueue.Create(1, 2, 3), "ImmutableQueueOfInt32", typeof(ImmutableQueue<int>));
-            RoundTrip(new ConcurrentQueue<int>(OneTwoThree), "ConcurrentQueueOfInt32", typeof(ConcurrentQueue<int>));
-            RoundTrip<IImmutableList<int>>(ImmutableList.Create(1, 2, 3), "IImmutableListOfInt32", typeof(ImmutableList<int>));
-            RoundTrip<IImmutableQueue<int>>(ImmutableQueue.Create(1, 2, 3), "IImmutableQueueOfInt32", typeof(ImmutableQueue<int>));
+            RoundTrip(new Queue<int>(OneTwoThree), "ArrayOfInt", typeof(Queue<int>));
+            RoundTrip(new LinkedList<int>(OneTwoThree), "ArrayOfInt", typeof(LinkedList<int>));
+            RoundTrip(new HashSet<int>(OneTwoThree), "ArrayOfInt", typeof(HashSet<int>));
+            RoundTrip(new SortedSet<int>(OneTwoThree), "ArrayOfInt", typeof(SortedSet<int>));
+            RoundTrip(new Collection<int>([.. OneTwoThree]), "ArrayOfInt", typeof(Collection<int>));
+            RoundTrip(new ObservableCollection<int>(OneTwoThree), "ArrayOfInt", typeof(ObservableCollection<int>));
+            RoundTrip(new ReadOnlyCollection<int>(OneTwoThree), "ArrayOfInt", typeof(ReadOnlyCollection<int>));
+            RoundTrip<ISet<int>>(new HashSet<int>(OneTwoThree), "ArrayOfInt", typeof(HashSet<int>));
+            RoundTrip<IReadOnlySet<int>>(new HashSet<int>(OneTwoThree), "ArrayOfInt", typeof(HashSet<int>));
+            RoundTrip<IList<int>>(new List<int>(OneTwoThree), "ArrayOfInt", typeof(List<int>));
+            RoundTrip<ICollection<int>>(new List<int>(OneTwoThree), "ArrayOfInt", typeof(List<int>));
+            RoundTrip<IReadOnlyList<int>>(new List<int>(OneTwoThree), "ArrayOfInt", typeof(List<int>));
+            RoundTrip<IReadOnlyCollection<int>>(new List<int>(OneTwoThree), "ArrayOfInt", typeof(List<int>));
+            RoundTrip<IEnumerable<int>>(new List<int>(OneTwoThree), "ArrayOfInt", typeof(List<int>));
+            RoundTrip(ImmutableArray.Create(1, 2, 3), "ArrayOfInt", typeof(ImmutableArray<int>));
+            RoundTrip(ImmutableList.Create(1, 2, 3), "ArrayOfInt", typeof(ImmutableList<int>));
+            RoundTrip(ImmutableSortedSet.Create(1, 2, 3), "ArrayOfInt", typeof(ImmutableSortedSet<int>));
+            RoundTrip(ImmutableQueue.Create(1, 2, 3), "ArrayOfInt", typeof(ImmutableQueue<int>));
+            RoundTrip(new ConcurrentQueue<int>(OneTwoThree), "ArrayOfInt", typeof(ConcurrentQueue<int>));
+            RoundTrip<IImmutableList<int>>(ImmutableList.Create(1, 2, 3), "ArrayOfInt", typeof(ImmutableList<int>));
+            RoundTrip<IImmutableQueue<int>>(ImmutableQueue.Create(1, 2, 3), "ArrayOfInt", typeof(ImmutableQueue<int>));
 
-            var hashSet = XmlSerializer.Deserialize<ImmutableHashSet<int>>("<ImmutableHashSetOfInt32>" + Items + "</ImmutableHashSetOfInt32>")!;
+            var hashSet = XmlSerializer.Deserialize<ImmutableHashSet<int>>("<ArrayOfInt>" + Items + "</ArrayOfInt>")!;
             hashSet.Order().Should().Equal(1, 2, 3);
-            XmlSerializer.Deserialize<IImmutableSet<int>>("<IImmutableSetOfInt32>" + Items + "</IImmutableSetOfInt32>")!.Order().Should().Equal(1, 2, 3);
-            var frozenSet = XmlSerializer.Deserialize<FrozenSet<int>>("<FrozenSetOfInt32>" + Items + "</FrozenSetOfInt32>")!;
+            XmlSerializer.Deserialize<IImmutableSet<int>>("<ArrayOfInt>" + Items + "</ArrayOfInt>")!.Order().Should().Equal(1, 2, 3);
+            var frozenSet = XmlSerializer.Deserialize<FrozenSet<int>>("<ArrayOfInt>" + Items + "</ArrayOfInt>")!;
             frozenSet.Order().Should().Equal(1, 2, 3);
 
             var bag = new AddOnlyBag { 1, 2, 3 };
-            XmlSerializer.Serialize(bag, Bare).Should().Be("<AddOnlyBag>" + Items + "</AddOnlyBag>");
-            XmlSerializer.Deserialize<AddOnlyBag>("<AddOnlyBag>" + Items + "</AddOnlyBag>").Should().Equal(1, 2, 3);
+            XmlSerializer.Serialize(bag, Bare).Should().Be("<ArrayOfInt>" + Items + "</ArrayOfInt>");
+            XmlSerializer.Deserialize<AddOnlyBag>("<ArrayOfInt>" + Items + "</ArrayOfInt>").Should().Equal(1, 2, 3);
 
             // A struct has a parameterless constructor that reflection does not list.
             var structBag = new StructBag { 1, 2, 3 };
-            XmlSerializer.Serialize(structBag, Bare).Should().Be("<StructBag>" + Items + "</StructBag>");
-            XmlSerializer.Deserialize<StructBag>("<StructBag>" + Items + "</StructBag>").Should().Equal(1, 2, 3);
+            XmlSerializer.Serialize(structBag, Bare).Should().Be("<ArrayOfInt>" + Items + "</ArrayOfInt>");
+            XmlSerializer.Deserialize<StructBag>("<ArrayOfInt>" + Items + "</ArrayOfInt>").Should().Equal(1, 2, 3);
 
             static void RoundTrip<TCollection>(TCollection value, string root, Type created)
                 where TCollection : IEnumerable<int>
@@ -230,7 +230,7 @@ namespace CloudNimble.XmlEssentials.Tests
             stack.Push(2);
             stack.Push(3);
             var xml = XmlSerializer.Serialize(stack, Bare);
-            xml.Should().Be("<StackOfInt32><Int32>3</Int32><Int32>2</Int32><Int32>1</Int32></StackOfInt32>");
+            xml.Should().Be("<ArrayOfInt><int>3</int><int>2</int><int>1</int></ArrayOfInt>");
             var read = XmlSerializer.Deserialize<Stack<int>>(xml)!;
             read.Should().Equal(3, 2, 1);
             read.Pop().Should().Be(3);
@@ -238,15 +238,15 @@ namespace CloudNimble.XmlEssentials.Tests
 
             var immutable = ImmutableStack.Create(1, 2, 3);
             var immutableXml = XmlSerializer.Serialize(immutable, Bare);
-            immutableXml.Should().Be("<ImmutableStackOfInt32><Int32>3</Int32><Int32>2</Int32><Int32>1</Int32></ImmutableStackOfInt32>");
+            immutableXml.Should().Be("<ArrayOfInt><int>3</int><int>2</int><int>1</int></ArrayOfInt>");
             var immutableRead = XmlSerializer.Deserialize<ImmutableStack<int>>(immutableXml)!;
             immutableRead.Should().Equal(3, 2, 1);
             immutableRead.Peek().Should().Be(3);
-            XmlSerializer.Deserialize<IImmutableStack<int>>("<IImmutableStackOfInt32><Int32>3</Int32><Int32>2</Int32></IImmutableStackOfInt32>")!.Peek().Should().Be(3);
+            XmlSerializer.Deserialize<IImmutableStack<int>>("<ArrayOfInt><int>3</int><int>2</int></ArrayOfInt>")!.Peek().Should().Be(3);
 
             var concurrent = new ConcurrentStack<int>(OneTwoThree);
             var concurrentXml = XmlSerializer.Serialize(concurrent, Bare);
-            concurrentXml.Should().Be("<ConcurrentStackOfInt32><Int32>3</Int32><Int32>2</Int32><Int32>1</Int32></ConcurrentStackOfInt32>");
+            concurrentXml.Should().Be("<ArrayOfInt><int>3</int><int>2</int><int>1</int></ArrayOfInt>");
             XmlSerializer.Deserialize<ConcurrentStack<int>>(concurrentXml).Should().Equal(3, 2, 1);
         }
 

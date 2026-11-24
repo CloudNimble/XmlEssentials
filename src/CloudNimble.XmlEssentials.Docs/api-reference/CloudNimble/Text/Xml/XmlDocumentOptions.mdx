@@ -349,7 +349,7 @@ The maximum size of an element or attribute name, in UTF-8 bytes. The default is
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MaxTextByteCount
 
-Gets or sets the maximum size allowed for one text node or CDATA section.
+Gets or sets the maximum size allowed for a text node, a CDATA section, an attribute value, or the data of a processing instruction.
 
 #### Syntax
 
@@ -360,7 +360,8 @@ public int MaxTextByteCount { get; set; }
 #### Property Value
 
 Type: `int`
-The maximum size of a text node or a CDATA section, in UTF-8 bytes. The default is 0, which means 16,777,216.
+The maximum size of each, in UTF-8 bytes as they appear in the document. The default is 0, which means
+16,777,216.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WhitespaceHandling
 

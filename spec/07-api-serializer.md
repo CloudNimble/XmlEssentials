@@ -40,6 +40,7 @@ public enum XmlIgnoreCondition
     WhenWritingNull = 3,
     WhenWriting = 4,
     WhenReading = 5,
+    WhenWritingNullReference = 6,
 }
 
 public enum XmlObjectCreationHandling
@@ -125,6 +126,7 @@ public sealed class XmlSerializerOptions
     public static XmlSerializerOptions Default { get; }
     public static XmlSerializerOptions Web { get; }
     public static XmlSerializerOptions Strict { get; }
+    public static XmlSerializerOptions Bcl { get; }
 
     public bool WriteIndented { get; set; }
     public char IndentCharacter { get; set; }
@@ -148,6 +150,10 @@ public sealed class XmlSerializerOptions
     public bool PropertyNameCaseInsensitive { get; set; }
     public XmlIgnoreCondition DefaultIgnoreCondition { get; set; }
     public XmlPropertyMapping DefaultPropertyMapping { get; set; }
+    public XmlCollectionMapping DefaultCollectionMapping { get; set; }
+    public XmlMemberOrder MemberOrder { get; set; }
+    public XmlCharHandling CharHandling { get; set; }
+    public XmlUtcOffsetHandling UtcOffsetHandling { get; set; }
     public XmlNumberHandling NumberHandling { get; set; }
     public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
     public XmlUnmappedMemberHandling UnmappedMemberHandling { get; set; }
@@ -189,7 +195,13 @@ public enum XmlSerializerDefaults
     General = 0,
     Web = 1,
     Strict = 2,
+    Bcl = 3,
 }
+
+public enum XmlCollectionMapping : byte { Unwrapped = 0, Wrapped = 1 }
+public enum XmlMemberOrder : byte { PropertiesFirst = 0, FieldsFirst = 1 }
+public enum XmlCharHandling : byte { Character = 0, Number = 1 }
+public enum XmlUtcOffsetHandling : byte { WriteOffset = 0, WriteZ = 1 }
 ```
 
 Defaults (when unset / `0` on max-* except `MaxDocumentByteCount`):
@@ -222,6 +234,11 @@ Defaults (when unset / `0` on max-* except `MaxDocumentByteCount`):
 | `General` / `Default` | identity names, write declaration, xsi:nil for null |
 | `Web` | CamelCase, `OmitXmlDeclaration = true` |
 | `Strict` | `UnmappedMemberHandling.Disallow`, `AllowDuplicateProperties = false`, `RespectNullableAnnotations = true` (as `JsonSerializerOptions.Strict`), comments `Disallow` |
+| `Bcl` | What `System.Xml.Serialization.XmlSerializer` writes ([decision 71](24-doc-findings-resolution.md)): `DefaultCollectionMapping = Wrapped`, `DefaultIgnoreCondition = WhenWritingNullReference`, `IncludeFields = true`, `MemberOrder = FieldsFirst`, `IgnoreReadOnlyProperties = true`, `PreferredObjectCreationHandling = Populate`, `CharHandling = Number`, `UtcOffsetHandling = WriteZ`, `WriteIndented = true`, `EmptyElementStyle = SelfClosingWithSpace`, `Namespaces` = `xsi` then `xsd` |
+| `DefaultCollectionMapping` | `Unwrapped`. `Wrapped` writes and reads a collection member that has no mapping attribute as `[XmlArray]` does. `[XmlElement]` (typed or not) keeps a member unwrapped; `[XmlArrayItem]` names the items of a member the option wraps. Dictionaries and `byte[]` are not collections here |
+| `MemberOrder` | `PropertiesFirst`. `FieldsFirst` puts the fields of each class before its properties; classes stay base first and an explicit order still wins |
+| `CharHandling` | `Character`. `Number` writes and reads a `char` as its UTF-16 code unit (`97`), in an element, an attribute and an item; anything but 0 to 65535 is an `XmlException` |
+| `UtcOffsetHandling` | `WriteOffset` (`+00:00`). `WriteZ` writes a zero-offset `DateTimeOffset` with `Z`. Reading accepts both under either value |
 
 Effective name policy: member kind chooses `AttributeNamingPolicy` or `ElementNamingPolicy`, each falling back to `PropertyNamingPolicy`, which falling back to identity.
 
@@ -434,11 +451,11 @@ All reading goes through `Utf8XmlReader` and all writing through `Utf8XmlWriter`
 | `XmlSerializerContext` | The constructor makes the context the `TypeInfoResolver` of its options (new options when `null`), as STJ. Read-only options are rejected. |
 | Root name | Must match on read: local name, and namespace when `DefaultNamespace` is set. |
 | Whole-document sources | String, chars, UTF-8, sequence, stream, pipe, DOM: after the root, the rest of the document is read, so trailing junk or a second root is an `XmlException`. The `ref Utf8XmlReader` overload reads one element and leaves the reader on its end. |
-| Character content | Text, CDATA, and character or entity references inside one element are joined; comments and processing instructions are ignored. `<Int32>4<!--c-->2</Int32>` is 42, as `XmlElement.GetInt32()` reads it. A child element is an `XmlException`. |
+| Character content | Text, CDATA, and character or entity references inside one element are joined; comments and processing instructions are ignored. `<int>4<!--c-->2</int>` is 42, as `XmlElement.GetInt32()` reads it. A child element is an `XmlException`. |
 | Empty element | The empty string. Valid for `string`, `Uri`, and `byte[]`; an `XmlException` for every other built-in type (XSD has no empty `xs:int`). |
 | `xsi:nil` | Handled once, by `XmlTypeInfo<T>`, before any converter (unless `HandleNull`). Nil on a non-nillable type is an `XmlException`. |
 | `NumberHandling.Strict` | Writing or reading any non-finite `float` / `double` is an `XmlException`. |
-| Enums | Written as the member name, or the number under `EnumHandling.Integer`; `[Flags]` as space-separated names; a value with no name as its number. Read from a name or a number in either mode. A number must fit the underlying type and, without `[Flags]`, be a declared member. |
+| Enums | Written as the member name (or the name `[XmlPropertyName]` gives the member; names are read in any case, a given name exactly: [object mapping](09-object-mapping.md)), or the number under `EnumHandling.Integer`; `[Flags]` as space-separated names; a value with no name as its number. Read from a name or a number in either mode. A number must fit the underlying type and, without `[Flags]`, be a declared member. |
 | Stream and pipe sources | Read to the end into a pooled buffer; `MaxDocumentByteCount` stops the read as soon as it is exceeded. `DeserializeAsync` does not block on the stream. A pipe is consumed as it is read, so a bounded pipe cannot stall. |
 | Failure while writing | What the writer still holds is dropped. A document that fits the writer buffer (16 KB by default) never reaches the destination half written; a longer one may have been passed on in part. |
 | DOM sources | The element or node is written to a pooled buffer as XML 1.1, with the namespace declarations it inherits, and read back. Content from a 1.0 or 1.1 document is unchanged. |
@@ -579,6 +596,10 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
     public XmlKnownNamingPolicy AttributeNamingPolicy { get; set; }
     public XmlIgnoreCondition DefaultIgnoreCondition { get; set; }
     public XmlPropertyMapping DefaultPropertyMapping { get; set; }
+    public XmlCollectionMapping DefaultCollectionMapping { get; set; }
+    public XmlMemberOrder MemberOrder { get; set; }
+    public XmlCharHandling CharHandling { get; set; }
+    public XmlUtcOffsetHandling UtcOffsetHandling { get; set; }
     public XmlSourceGenerationMode GenerationMode { get; set; }
     public bool PropertyNameCaseInsensitive { get; set; }
     public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }

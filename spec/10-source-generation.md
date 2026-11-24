@@ -72,7 +72,7 @@ Primary library csproj:
 4. For every object type, emit its metadata (`XmlObjectInfoValues<T>` handed to `XmlMetadataServices.CreateObjectInfo`). In **Default** and **Serialization** mode, also emit the write fast path for each type that can have one, as the `SerializeHandler` of that metadata. No generated code reads XML.
 5. Diagnostics (not warnings-as-silent-skip):
    - XMLXE001: type not partial / not inheriting context
-   - XMLXE002: truly unsupported types (open generics that cannot close, `IntPtr`, pointers). **Do not fire** on `Dictionary<,>` maps, `[XmlMixed]`, `[XmlExtensionData]` bags, `[XmlNamespaceDeclarations]`, or `IAsyncEnumerable` at the `SerializeAsyncEnumerable` entry point.
+   - XMLXE002: truly unsupported types (open generics that cannot close, `IntPtr`, pointers). **Do not fire** on `Dictionary<,>` maps, `[XmlMixed]`, `[XmlExtensionData]` bags, or `IAsyncEnumerable` at the `SerializeAsyncEnumerable` entry point.
    - XMLXE003: attribute mapping on complex type
    - XMLXE004: multiple `[XmlText]`
    - XMLXE005: ambiguous constructors (two marked `[XmlConstructor]`, or, with none marked, two public constructors that bind the same number of members)
@@ -89,7 +89,7 @@ Primary library csproj:
 
 **The write fast path is used only when it would write what the engine writes.** `XmlMetadataServices.CanUseSerializeHandler` decides when the type info is created:
 
-- The options' element and attribute naming policies, `DefaultPropertyMapping` and `IncludeFields` equal what the context was compiled with. `IgnoreReadOnlyProperties` and `IgnoreReadOnlyFields` are off. There is no `ReferenceHandler`. The options hold no converter for the type or for a scalar type the fast path writes directly.
+- The options' element and attribute naming policies, `DefaultPropertyMapping`, `DefaultCollectionMapping` and `IncludeFields` equal what the context was compiled with. `IgnoreReadOnlyProperties` and `IgnoreReadOnlyFields` are off. `DefaultIgnoreCondition` is not `WhenWritingNullReference`, and `CharHandling`, `UtcOffsetHandling` and `MemberOrder` have their default values. There is no `ReferenceHandler`. The options hold no converter for the type or for a scalar type the fast path writes directly.
 - A type gets no fast path, and is written from the metadata, when it or one of its members declares derived types (or a member's type or item type does), a member has `[XmlConverter]`, it has mixed content or extension data, a member is not accessible from the context, or two members in its hierarchy have the same C# name. `TypeGraphWalker.FastPathBlocked` records this. There is no diagnostic: the type works.
 - In `Serialization` mode such a type has neither a fast path nor metadata, so it can be neither written nor read, as in System.Text.Json (probed). The message says what a serialization-only type info can do.
 - The fast path reads `DefaultIgnoreCondition` (and `[XmlIgnore(Condition = …)]`), `NumberHandling` and `RespectNullableAnnotations` from the options as it runs.

@@ -24,7 +24,7 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Fields
 
         private static readonly XmlSerializerOptions Options = new() { OmitXmlDeclaration = true };
-        private static readonly byte[] Xml = "<Int32>12345</Int32>"u8.ToArray();
+        private static readonly byte[] Xml = "<int>12345</int>"u8.ToArray();
 
         #endregion
 
@@ -87,7 +87,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Deserialize_DateTime_FromUtf8_DoesNotAllocate()
         {
-            var xml = "<DateTime>2020-01-02T03:04:05Z</DateTime>"u8.ToArray();
+            var xml = "<dateTime>2020-01-02T03:04:05Z</dateTime>"u8.ToArray();
             var expected = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
             Read<DateTime>(xml).Should().Be(expected);
             Read<DateTime>(xml).Should().Be(expected);
@@ -168,7 +168,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "<ProductCatalog><Book><Title>b</Title><Author>a</Author></Book><Items><Title>p</Title></Items></ProductCatalog>");
             WritesWithoutAllocating(new Scorecard { Scores = new() { ["alice"] = 10 } }, "<Scorecard><Scores><alice>10</alice></Scores></Scorecard>");
             WritesWithoutAllocating(new Dictionary<int, int> { [1] = 2 }, "<DictionaryOfInt32Int32><Key>1</Key><Value>2</Value></DictionaryOfInt32Int32>");
-            WritesWithoutAllocating(new List<Person> { new() { Name = "Ada", Age = 36 } }, "<ListOfPerson><Person><Name>Ada</Name><Age>36</Age></Person></ListOfPerson>");
+            WritesWithoutAllocating(new List<Person> { new() { Name = "Ada", Age = 36 } }, "<ArrayOfPerson><Person><Name>Ada</Name><Age>36</Age></Person></ArrayOfPerson>");
             WritesWithoutAllocating(new PersonRecord("Ada", 36), "<PersonRecord><Name>Ada</Name><Age>36</Age></PersonRecord>");
         }
 
@@ -252,9 +252,9 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow("<String>Fish &amp; chips at the corner shop</String>", "Fish & chips at the corner shop", DisplayName = "a reference")]
-        [DataRow("<String>one\r\ntwo\rthree</String>", "one\ntwo\nthree", DisplayName = "line ends")]
-        [DataRow("<String>&lt;a href=&quot;x&quot;&gt;a link that is rather longer than the others, to be decoded into a larger buffer&lt;/a&gt;</String>", "<a href=\"x\">a link that is rather longer than the others, to be decoded into a larger buffer</a>", DisplayName = "many references")]
+        [DataRow("<string>Fish &amp; chips at the corner shop</string>", "Fish & chips at the corner shop", DisplayName = "a reference")]
+        [DataRow("<string>one\r\ntwo\rthree</string>", "one\ntwo\nthree", DisplayName = "line ends")]
+        [DataRow("<string>&lt;a href=&quot;x&quot;&gt;a link that is rather longer than the others, to be decoded into a larger buffer&lt;/a&gt;</string>", "<a href=\"x\">a link that is rather longer than the others, to be decoded into a larger buffer</a>", DisplayName = "many references")]
         public void Deserialize_StringThatNeedsDecoding_AllocatesOnlyTheString(string document, string expected)
         {
             var xml = Encoding.UTF8.GetBytes(document);

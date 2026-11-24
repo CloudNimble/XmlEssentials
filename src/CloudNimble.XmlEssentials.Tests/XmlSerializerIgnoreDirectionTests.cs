@@ -21,7 +21,7 @@ namespace CloudNimble.XmlEssentials.Tests
         private const string Nil = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>";
         private const string Read =
             "<IgnoreDirections ReadIgnoredAttribute=\"x\" WriteIgnoredAttribute=\"x\"><Count>not a number</Count><Item>9</Item><Normal>x</Normal>" +
-            "<ReadIgnored>x</ReadIgnored><Tags><Int32>9</Int32></Tags><WriteIgnored>x</WriteIgnored></IgnoreDirections>";
+            "<ReadIgnored>x</ReadIgnored><Tags><int>9</int></Tags><WriteIgnored>x</WriteIgnored></IgnoreDirections>";
 
         private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
 
@@ -50,7 +50,7 @@ namespace CloudNimble.XmlEssentials.Tests
             read.Maybe.Should().Be("m");
             read.Name.Should().Be("x");
             XmlSerializer.Serialize(new IgnoreDirections(), options).Should().Be(
-                "<IgnoreDirections ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags></IgnoreDirections>",
+                "<IgnoreDirections ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><int>1</int></Tags></IgnoreDirections>",
                 "the condition on a member still applies");
         }
 
@@ -66,7 +66,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void WhenReading_IsWrittenAndNotRead()
         {
             XmlSerializer.Serialize(new IgnoreDirections(), Bare).Should().Be(
-                "<IgnoreDirections ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags></IgnoreDirections>");
+                "<IgnoreDirections ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><int>1</int></Tags></IgnoreDirections>");
 
             foreach (var handling in new[] { XmlObjectCreationHandling.Replace, XmlObjectCreationHandling.Populate })
             {
@@ -100,7 +100,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, RespectNullableAnnotations = true };
             XmlSerializer.Serialize(new IgnoreDirections { WriteIgnored = null!, WriteIgnoredAttribute = null! }, options).Should().Be(
-                "<IgnoreDirections ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags></IgnoreDirections>",
+                "<IgnoreDirections ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><int>1</int></Tags></IgnoreDirections>",
                 "a member that is not written is not refused for holding null");
             XmlSerializer.Deserialize<IgnoreDirections>("<IgnoreDirections><ReadIgnored" + Nil + "<Tags" + Nil + "</IgnoreDirections>", options)!.ReadIgnored
                 .Should().Be("r", "a member that is not read is not refused for being nil");
@@ -109,7 +109,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void WithNoSetter_AMemberIsPassedOverWithoutBeingRead()
         {
-            XmlSerializer.Deserialize<PopulateTarget>("<PopulateTarget><GetOnlyPoint><Y>not a number</Y></GetOnlyPoint><GetOnly><Int32>not a number</Int32></GetOnly><Loose>not a number</Loose></PopulateTarget>")!
+            XmlSerializer.Deserialize<PopulateTarget>("<PopulateTarget><GetOnlyPoint><Y>not a number</Y></GetOnlyPoint><GetOnly><int>not a number</int></GetOnly><Loose>not a number</Loose></PopulateTarget>")!
                 .GetOnly.Should().Equal(1);
         }
 

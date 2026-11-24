@@ -37,7 +37,7 @@ Defaults: C# namespace = root namespace + `.Generated`; context name = `{FileNam
 For each schema (and its includes/imports):
 
 1. One `partial` class per global `xs:element` / `xs:complexType` (element-first like `xsd.exe`; complex types used only as named types become classes too).
-2. Our mapping attributes: `[XmlRoot]`, `[XmlElement]`, `[XmlAttribute]`, `[XmlArray]` / `[XmlArrayItem]`, `[XmlText]`, `[XmlNamespaceDeclarations]`, nillable → nillable members.
+2. Our mapping attributes: `[XmlRoot]`, `[XmlElement]`, `[XmlAttribute]`, `[XmlArray]` / `[XmlArrayItem]`, `[XmlText]`, nillable → nillable members.
 3. `xs:choice` / substitution groups → `[XmlDerivedType]` + `[XmlPolymorphic]` (not BCL `[XmlInclude]`).
 4. `xs:simpleType` restrictions → CLR type + converter where needed (enumerations → enum; patterns are **not** validated at runtime unless a converter is generated that enforces them — default: map to `string` and do not emit a regex validator; AOT must not pull `Regex` unless the consumer asked).
 5. A `partial` `XmlSerializerContext` with `[XmlSerializable<T>]` for every generated root and reachable type.
@@ -76,7 +76,7 @@ Hand-written contexts that reference generated types still go through Serializer
 | `maxOccurs="unbounded"` | `List<T>` unwrapped unless `xs:sequence` wrapper name differs — then `[XmlArray]` |
 | `xs:attribute` | `[XmlAttribute]` |
 | `xs:anyAttribute` | `[XmlExtensionData]` attribute bag |
-| `xs:any` | `[XmlExtensionData]` element bag / `List<XmlElementNode>` |
+| `xs:any` | an `[XmlExtensionData]` member of type `XmlExtensionData` |
 | substitution group | `[XmlDerivedType]` on the head |
 | `xs:extension` of complex type | CLR inheritance; **default** member order is base then derived. `[XmlPropertyOrder]` is **not** auto-emitted (schema sequence is per type, which matches default walk). |
 | anonymous complex type | nested class named `{Parent}_{Element}` |

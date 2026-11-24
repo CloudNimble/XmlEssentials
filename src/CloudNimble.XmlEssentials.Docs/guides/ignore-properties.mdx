@@ -54,6 +54,7 @@ Set the `Condition` property of `[XmlIgnore]` to one of the [`XmlIgnoreCondition
 | `Always` | Never written and never read. This is the default for `[XmlIgnore]`. |
 | `Never` | Always written and read, whatever `DefaultIgnoreCondition` says. |
 | `WhenWritingNull` | Left out when its value is `null`. |
+| `WhenWritingNullReference` | Left out when its value is a `null` reference. A nullable value type with no value, such as an `int?`, is still written, with `xsi:nil="true"`. |
 | `WhenWritingDefault` | Left out when its value is `null` or the default value of its type, such as `0` or `false`. |
 | `WhenWriting` | Never written. Still read. |
 | `WhenReading` | Never read. Still written. The XML may have the element or attribute; what it holds is skipped. |
@@ -208,7 +209,7 @@ When reading, a read-only property can't be set, so the `Area` element in the la
 Keep these details in mind:
 
 - A property with an `init` setter or a non-public setter isn't read-only. The serializer writes it and sets it, including through a `private` setter. This differs from System.Text.Json, which ignores non-public setters unless you opt in.
-- A read-only collection property, such as `public List<string> Tags { get; } = [];`, is written, and it is filled when reading: the items are added to the list it holds. Setting `IgnoreReadOnlyProperties` leaves it out in both directions.
+- A read-only collection property, such as `public List<string> Tags { get; } = [];`, is written, and it is filled when reading: the items are added to the list it holds. `IgnoreReadOnlyProperties` doesn't leave it out, because a collection or a dictionary needs no setter. System.Text.Json makes the same exception.
 - `IgnoreReadOnlyProperties` also removes a read-only property that a constructor parameter sets. Don't combine the option with types that are created through a [constructor with parameters](/guides/immutable-types), unless their properties have `init` accessors, as record properties do.
 
 ## Include fields

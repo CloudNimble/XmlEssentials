@@ -32,10 +32,10 @@ namespace CloudNimble.XmlEssentials.Tests
                     "Reflection-based XML serialization is disabled. Set TypeInfoResolver, or use an overload that takes an XmlTypeInfo or XmlSerializerContext.");
 
                 var explicitDefault = new XmlSerializerOptions { OmitXmlDeclaration = true, TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
-                XmlSerializer.Serialize(42, explicitDefault).Should().Be("<Int32>42</Int32>");
+                XmlSerializer.Serialize(42, explicitDefault).Should().Be("<int>42</int>");
                 var custom = new XmlSerializerOptions { OmitXmlDeclaration = true, TypeInfoResolver = new PassThroughResolver() };
-                XmlSerializer.Serialize(42, custom).Should().Be("<Int32>42</Int32>");
-                XmlSerializer.Serialize(42, new PrimitiveXmlContext(new XmlSerializerOptions { OmitXmlDeclaration = true })).Should().Be("<Int32>42</Int32>");
+                XmlSerializer.Serialize(42, custom).Should().Be("<int>42</int>");
+                XmlSerializer.Serialize(42, new PrimitiveXmlContext(new XmlSerializerOptions { OmitXmlDeclaration = true })).Should().Be("<int>42</int>");
             }
             finally
             {

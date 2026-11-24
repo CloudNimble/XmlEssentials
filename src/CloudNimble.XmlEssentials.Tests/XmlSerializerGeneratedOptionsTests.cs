@@ -15,6 +15,20 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
+        private const string BclNil = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>";
+
+        private const string All =
+            "<Parcel><BaseField>1</BaseField><BaseProp>2</BaseProp><Field>3</Field><Count" + BclNil + "<n>4</n><Letter>97</Letter>"
+            + "<Named><v>5</v></Named><Plain><int>6</int></Plain><Sent>2026-03-14T09:30:00Z</Sent><Marked" + BclNil + "<t>7</t></Parcel>";
+
+        private const string Note = "<Note" + BclNil;
+
+        private const string Offset = "<Sent>2026-03-14T09:30:00+00:00</Sent><Marked" + BclNil + "<t>7</t></Parcel>";
+
+        private const string Plain = "<Parcel><BaseProp>2</BaseProp><Count" + BclNil + "<n>4</n><Letter>a</Letter>";
+
+        private const string Shown = "3,4,a,5,6,00:00:00,True";
+
         private const string Usings = """
             using System;
             using System.Collections.Generic;
@@ -90,6 +104,114 @@ namespace CloudNimble.XmlEssentials.Tests
         #endregion
 
         #region Public Methods
+
+        [TestMethod]
+        public void SettingsOfTheBclDefaults_AreFollowedByAGeneratedContext_AsTheReflectionResolverFollowsThem()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public class ParcelBase
+                {
+                    public int BaseField = 1;
+
+                    public int BaseProp { get; set; } = 2;
+                }
+
+                public sealed class Parcel : ParcelBase
+                {
+                    public int Field = 3;
+
+                    public int? Count { get; set; }
+
+                    [XmlElement("n")]
+                    public List<int> Flat { get; set; } = new() { 4 };
+
+                    public char Letter { get; set; } = 'a';
+
+                    [XmlArrayItem("v")]
+                    public List<int> Named { get; set; } = new() { 5 };
+
+                    public string? Note { get; set; }
+
+                    public List<int> Plain { get; set; } = new() { 6 };
+
+                    public DateTimeOffset Sent { get; set; } = new DateTimeOffset(2026, 3, 14, 9, 30, 0, TimeSpan.Zero);
+
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNullReference)]
+                    public int? Marked { get; set; }
+
+                    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNullReference)]
+                    public string? MarkedText { get; set; }
+
+                    [XmlElement<int>("t")]
+                    public List<int> Typed { get; set; } = new() { 7 };
+                }
+
+                [XmlSerializable<Parcel>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                // This seed leaves the write fast path in use, so the fast path is what writes the wrappers.
+                [XmlSourceGenerationOptions(DefaultCollectionMapping = XmlCollectionMapping.Wrapped, OmitXmlDeclaration = true)]
+                [XmlSerializable<Parcel>]
+                internal partial class WrappedXmlContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(
+                    CharHandling = XmlCharHandling.Number,
+                    DefaultCollectionMapping = XmlCollectionMapping.Wrapped,
+                    DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNullReference,
+                    IncludeFields = true,
+                    MemberOrder = XmlMemberOrder.FieldsFirst,
+                    OmitXmlDeclaration = true,
+                    UtcOffsetHandling = XmlUtcOffsetHandling.WriteZ)]
+                [XmlSerializable<Parcel>]
+                internal partial class SeededXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Show(Parcel parcel) => parcel.Field + "," + parcel.Flat[0] + "," + parcel.Letter + "," + parcel.Named[0] + "," + parcel.Plain[0] + "," + parcel.Sent.Offset + "," + (parcel.Count is null);
+
+                    private static void All(XmlSerializerOptions options)
+                    {
+                        options.CharHandling = XmlCharHandling.Number;
+                        options.DefaultCollectionMapping = XmlCollectionMapping.Wrapped;
+                        options.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNullReference;
+                        options.IncludeFields = true;
+                        options.MemberOrder = XmlMemberOrder.FieldsFirst;
+                        options.UtcOffsetHandling = XmlUtcOffsetHandling.WriteZ;
+                    }
+
+                    public static string Run()
+                    {
+                        var seeded = SeededXmlContext.Default.Options;
+                        var same = new XmlSerializerOptions { OmitXmlDeclaration = true };
+                        All(same);
+                        var fromSeed = XmlSerializer.Serialize(new Parcel(), SeededXmlContext.Default.Parcel);
+                        var fromReflection = XmlSerializer.Serialize(new Parcel(), same);
+                        var fast = XmlSerializer.Serialize(new Parcel(), WrappedXmlContext.Default.Parcel);
+                        var slow = XmlSerializer.Serialize(new Parcel(), new XmlSerializerOptions { DefaultCollectionMapping = XmlCollectionMapping.Wrapped, OmitXmlDeclaration = true });
+
+                        return string.Join("\n",
+                            Both.Write(new Parcel(), o => new AppXmlContext(o).Parcel, Show),
+                            Both.Write(new Parcel(), o => new AppXmlContext(o).Parcel, Show, o => o.DefaultCollectionMapping = XmlCollectionMapping.Wrapped),
+                            Both.Write(new Parcel(), o => new AppXmlContext(o).Parcel, Show, All),
+                            seeded.CharHandling + "," + seeded.DefaultCollectionMapping + "," + seeded.DefaultIgnoreCondition + "," + seeded.MemberOrder + "," + seeded.UtcOffsetHandling,
+                            fromSeed == fromReflection ? fromSeed : fromSeed + " <> reflection: " + fromReflection,
+                            fast == slow ? fast : fast + " <> reflection: " + slow);
+                    }
+                }
+                """ + Compare).Should().Be(
+                Plain + "<Named>5</Named>" + Note + "<Plain>6</Plain>" + Offset + "\nsame\n" + Shown + "\n" + Shown + "\n"
+                + Plain + "<Named><v>5</v></Named>" + Note + "<Plain><int>6</int></Plain>" + Offset + "\nsame\n" + Shown + "\n" + Shown + "\n"
+                + All + "\nsame\n" + Shown + "\n" + Shown + "\n"
+                + "Number,Wrapped,WhenWritingNullReference,FieldsFirst,WriteZ\n"
+                + All + "\n"
+                + Plain + "<Named><v>5</v></Named>" + Note + "<Plain><int>6</int></Plain>" + Offset);
+        }
 
         [TestMethod]
         public void Options_TheFastPathWasNotCompiledFor_AreAppliedFromTheMetadata()
@@ -348,8 +470,8 @@ namespace CloudNimble.XmlEssentials.Tests
                     {
                         const string directions =
                             "<Directions ReadIgnoredAttribute=\"x\" WriteIgnoredAttribute=\"x\"><Count>not a number</Count><Item>not a number</Item><Normal>x</Normal>" +
-                            "<ReadIgnored>x</ReadIgnored><Tags><Int32>not a number</Int32></Tags><WriteIgnored>x</WriteIgnored><GetOnly><Int32>not a number</Int32></GetOnly></Directions>";
-                        const string plain = "<Plain Code=\"x\"><Maybe>m</Maybe><Name>x</Name><Tags><Int32>9</Int32></Tags></Plain>";
+                            "<ReadIgnored>x</ReadIgnored><Tags><int>not a number</int></Tags><WriteIgnored>x</WriteIgnored><GetOnly><int>not a number</int></GetOnly></Directions>";
+                        const string plain = "<Plain Code=\"x\"><Maybe>m</Maybe><Name>x</Name><Tags><int>9</int></Tags></Plain>";
                         Action<XmlSerializerOptions> whenReading = o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenReading;
                         Action<XmlSerializerOptions> whenWriting = o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWriting;
                         return string.Join("\n",
@@ -381,17 +503,17 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """).Should().Be(string.Join("\n",
-                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags><GetOnly><Int32>1</Int32></GetOnly></Directions>",
+                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><int>1</int></Tags><GetOnly><int>1</int></GetOnly></Directions>",
                 "1,1,x,r,ra,1,x,x,1",
                 "1,1,x,r,ra,1,x,x,1",
-                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags><GetOnly><Int32>1</Int32></GetOnly></Directions>",
+                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><int>1</int></Tags><GetOnly><int>1</int></GetOnly></Directions>",
                 "1,1,n,r,ra,1,w,wa,1",
                 // As the default for every member, WhenWriting and WhenReading have no effect, as in System.Text.Json.
-                "<Plain Code=\"c\"><Maybe " + Nil + "/><Name>n</Name><Tags><Int32>1</Int32></Tags></Plain>",
+                "<Plain Code=\"c\"><Maybe " + Nil + "/><Name>n</Name><Tags><int>1</int></Tags></Plain>",
                 "x,m,x,9",
-                "<Plain Code=\"c\"><Maybe " + Nil + "/><Name>n</Name><Tags><Int32>1</Int32></Tags></Plain>",
+                "<Plain Code=\"c\"><Maybe " + Nil + "/><Name>n</Name><Tags><int>1</int></Tags></Plain>",
                 "x,m,x,9",
-                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><Int32>1</Int32></Tags><GetOnly><Int32>1</Int32></GetOnly></Directions>",
+                "<Directions ReadIgnoredAttribute=\"ra\"><Count>1</Count><Item>1</Item><Normal>n</Normal><ReadIgnored>r</ReadIgnored><Tags><int>1</int></Tags><GetOnly><int>1</int></GetOnly></Directions>",
                 "<Body>1</Body>1",
                 "Pair { Name = x, Other = y }",
                 "Pair { Name = x, Other = y }",
@@ -439,7 +561,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
                     private static string Read(XmlUnknownTypeHandling handling)
                     {
-                        const string xml = "<Holder><Any><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>";
+                        const string xml = "<Holder><Any><b>1</b></Any><Items><anyType>2</anyType><anyType xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>";
                         var generated = Show(XmlSerializer.Deserialize(xml, new AppXmlContext(new XmlSerializerOptions { UnknownTypeHandling = handling }).Holder)!);
                         var reflected = Show((Holder)XmlSerializer.Deserialize(xml, typeof(Holder), new XmlSerializerOptions { UnknownTypeHandling = handling })!);
                         return generated == reflected ? generated : generated + " <> reflection: " + reflected;
@@ -452,15 +574,15 @@ namespace CloudNimble.XmlEssentials.Tests
 
                     private static string Write(XmlUnknownTypeHandling handling)
                     {
-                        const string xml = "<Holder><Any id=\"7\"><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>";
+                        const string xml = "<Holder><Any id=\"7\"><b>1</b></Any><Items><anyType>2</anyType><anyType xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>";
                         var info = new AppXmlContext(new XmlSerializerOptions { UnknownTypeHandling = handling, OmitXmlDeclaration = true }).Holder;
                         return XmlSerializer.Serialize(XmlSerializer.Deserialize(xml, info)!, info);
                     }
                 }
                 """).Should().Be(
                     "XmlElement,XmlElement;null\nXmlElementNode,XmlElementNode;null\n" +
-                    "<Holder><Any id=\"7\"><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>\n" +
-                    "<Holder><Any id=\"7\"><b>1</b></Any><Items><Object>2</Object><Object xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>");
+                    "<Holder><Any id=\"7\"><b>1</b></Any><Items><anyType>2</anyType><anyType xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>\n" +
+                    "<Holder><Any id=\"7\"><b>1</b></Any><Items><anyType>2</anyType><anyType xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></Items></Holder>");
         }
 
         [TestMethod]

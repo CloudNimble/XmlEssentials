@@ -41,6 +41,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         WhenReading = 5,
 
+        /// <summary>
+        /// A member that is not written when its value is a <see langword="null"/> reference. A nullable value
+        /// type with no value, such as an <see cref="int"/>? that is <see langword="null"/>, is still written,
+        /// as an element marked <c>xsi:nil</c>. This is what <c>System.Xml.Serialization.XmlSerializer</c> does.
+        /// </summary>
+        WhenWritingNullReference = 6,
+
     }
 
 }

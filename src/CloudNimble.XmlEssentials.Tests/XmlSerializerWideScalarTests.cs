@@ -41,11 +41,11 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow(' ', "<Char> </Char>", DisplayName = "a blank")]
-        [DataRow('\t', "<Char>\t</Char>", DisplayName = "a tab")]
-        [DataRow('\n', "<Char>\n</Char>", DisplayName = "a line feed")]
-        [DataRow('\r', "<Char>&#xD;</Char>", DisplayName = "a carriage return, written as a reference so it is not normalized")]
-        [DataRow('x', "<Char>x</Char>", DisplayName = "a letter")]
+        [DataRow(' ', "<char> </char>", DisplayName = "a blank")]
+        [DataRow('\t', "<char>\t</char>", DisplayName = "a tab")]
+        [DataRow('\n', "<char>\n</char>", DisplayName = "a line feed")]
+        [DataRow('\r', "<char>&#xD;</char>", DisplayName = "a carriage return, written as a reference so it is not normalized")]
+        [DataRow('x', "<char>x</char>", DisplayName = "a letter")]
         public void Char_ThatIsWhiteSpace_RoundTrips(char value, string expected)
         {
             var xml = XmlSerializer.Serialize(value, Bare);
@@ -69,12 +69,12 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void Char_WithWhiteSpaceAroundIt_IsTheCharacter()
         {
-            XmlSerializer.Deserialize<char>("<Char> x </Char>").Should().Be('x');
-            XmlSerializer.Deserialize<char>("<Char>\n  x\n</Char>").Should().Be('x');
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<char>("<Char>  </Char>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character. Path: /Char | LineNumber: 1 | BytePositionInLine: 16.");
-            FluentActions.Invoking(() => XmlSerializer.Deserialize<char>("<Char>xy</Char>"))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character. Path: /Char | LineNumber: 1 | BytePositionInLine: 16.");
+            XmlSerializer.Deserialize<char>("<char> x </char>").Should().Be('x');
+            XmlSerializer.Deserialize<char>("<char>\n  x\n</char>").Should().Be('x');
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<char>("<char>  </char>"))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character. Path: /char | LineNumber: 1 | BytePositionInLine: 16.");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<char>("<char>xy</char>"))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The value is not a single character. Path: /char | LineNumber: 1 | BytePositionInLine: 16.");
         }
 
         [TestMethod]

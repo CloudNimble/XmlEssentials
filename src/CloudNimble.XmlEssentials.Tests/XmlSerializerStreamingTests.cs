@@ -40,7 +40,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public async Task Stream_ThatReturnsFewBytesPerRead_IsReadToItsEnd(int chunk)
         {
             var text = new string('x', 40_000) + "é";
-            var utf8 = Encoding.UTF8.GetBytes("<String>" + text + "</String>");
+            var utf8 = Encoding.UTF8.GetBytes("<string>" + text + "</string>");
             XmlSerializer.Deserialize<string>(new TrickleStream(utf8, chunk)).Should().Be(text);
             (await XmlSerializer.DeserializeAsync<string>(new TrickleStream(utf8, chunk))).Should().Be(text);
         }
@@ -48,7 +48,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public async Task MaxDocumentByteCount_StopsAStreamThatIsTooLong_AndAllowsOneExactlyAtTheLimit()
         {
-            var utf8 = "<Int32>42</Int32>"u8.ToArray();
+            var utf8 = "<int>42</int>"u8.ToArray();
             var exact = new XmlSerializerOptions { MaxDocumentByteCount = utf8.Length };
             XmlSerializer.Deserialize<int>(new MemoryStream(utf8), exact).Should().Be(42);
             (await XmlSerializer.DeserializeAsync<int>(new MemoryStream(utf8), exact)).Should().Be(42);
@@ -59,7 +59,7 @@ namespace CloudNimble.XmlEssentials.Tests
             (await FluentActions.Awaiting(() => XmlSerializer.DeserializeAsync<int>(new MemoryStream(utf8), small).AsTask())
                 .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("MaxDocumentByteCount exceeded (4).");
 
-            var large = Encoding.UTF8.GetBytes("<String>" + new string('x', 70_000) + "</String>");
+            var large = Encoding.UTF8.GetBytes("<string>" + new string('x', 70_000) + "</string>");
             var atLimit = new XmlSerializerOptions { MaxDocumentByteCount = large.Length };
             XmlSerializer.Deserialize<string>(new TrickleStream(large, 5_000), atLimit)!.Length.Should().Be(70_000);
             (await XmlSerializer.DeserializeAsync<string>(new TrickleStream(large, 5_000), atLimit))!.Length.Should().Be(70_000);
@@ -70,10 +70,10 @@ namespace CloudNimble.XmlEssentials.Tests
                 .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be($"MaxDocumentByteCount exceeded ({large.Length - 1}).");
 
             var pooledSize = new XmlSerializerOptions { MaxDocumentByteCount = 16_384 };
-            var fills = Encoding.UTF8.GetBytes("<String>" + new string('x', 16_384 - 17) + "</String>");
+            var fills = Encoding.UTF8.GetBytes("<string>" + new string('x', 16_384 - 17) + "</string>");
             XmlSerializer.Deserialize<string>(new MemoryStream(fills), pooledSize)!.Length.Should().Be(16_384 - 17);
             (await XmlSerializer.DeserializeAsync<string>(new MemoryStream(fills), pooledSize))!.Length.Should().Be(16_384 - 17);
-            var overflows = Encoding.UTF8.GetBytes("<String>" + new string('x', 16_384 - 16) + "</String>");
+            var overflows = Encoding.UTF8.GetBytes("<string>" + new string('x', 16_384 - 16) + "</string>");
             FluentActions.Invoking(() => XmlSerializer.Deserialize<string>(new MemoryStream(overflows), pooledSize))
                 .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (16384).");
             (await FluentActions.Awaiting(() => XmlSerializer.DeserializeAsync<string>(new MemoryStream(overflows), pooledSize).AsTask())
@@ -86,10 +86,10 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var pipe = new Pipe();
             var reading = XmlSerializer.DeserializeAsync<int>(pipe.Reader, Bare).AsTask();
-            await pipe.Writer.WriteAsync("<Int"u8.ToArray());
-            await pipe.Writer.WriteAsync("32>4"u8.ToArray());
+            await pipe.Writer.WriteAsync("<in"u8.ToArray());
+            await pipe.Writer.WriteAsync("t>4"u8.ToArray());
             reading.IsCompleted.Should().BeFalse();
-            await pipe.Writer.WriteAsync("2</Int32>"u8.ToArray());
+            await pipe.Writer.WriteAsync("2</int>"u8.ToArray());
             await pipe.Writer.CompleteAsync();
             (await reading).Should().Be(42);
             (await pipe.Reader.ReadAsync()).Buffer.Length.Should().Be(0);
@@ -97,14 +97,14 @@ namespace CloudNimble.XmlEssentials.Tests
             var text = new string('x', 100_000);
             var bounded = new Pipe(new PipeOptions(pauseWriterThreshold: 64, resumeWriterThreshold: 32));
             var large = XmlSerializer.DeserializeAsync<string>(bounded.Reader, Bare).AsTask();
-            await bounded.Writer.WriteAsync(Encoding.UTF8.GetBytes("<String>" + text + "</String>"));
+            await bounded.Writer.WriteAsync(Encoding.UTF8.GetBytes("<string>" + text + "</string>"));
             await bounded.Writer.CompleteAsync();
             (await large).Should().Be(text);
 
             var limited = new Pipe();
             var small = new XmlSerializerOptions { MaxDocumentByteCount = 4 };
             var failing = XmlSerializer.DeserializeAsync<int>(limited.Reader, small).AsTask();
-            await limited.Writer.WriteAsync("<Int32>42"u8.ToArray());
+            await limited.Writer.WriteAsync("<int>42"u8.ToArray());
             (await FluentActions.Awaiting(() => failing).Should().ThrowExactlyAsync<XmlException>())
                 .Which.Message.Should().Be("MaxDocumentByteCount exceeded (4).");
         }
@@ -114,7 +114,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             using var stream = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(stream, Values(1, 2, 3), Bare);
-            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32></ArrayOfInt32>");
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<ArrayOfInt><int>1</int><int>2</int><int>3</int></ArrayOfInt>");
             stream.Position = 0;
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(stream, Bare))).Should().Equal(1, 2, 3);
             stream.Position = 0;
@@ -122,12 +122,12 @@ namespace CloudNimble.XmlEssentials.Tests
 
             using var empty = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(empty, Values<int>(), Bare.GetTypeInfo<int>());
-            Encoding.UTF8.GetString(empty.ToArray()).Should().Be("<ArrayOfInt32/>");
+            Encoding.UTF8.GetString(empty.ToArray()).Should().Be("<ArrayOfInt/>");
             empty.Position = 0;
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(empty, Bare))).Should().BeEmpty();
 
             using var nulls = new MemoryStream(Encoding.UTF8.GetBytes(
-                "<ArrayOfInt32><!--c--><Int32>1</Int32> <Int32 xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></ArrayOfInt32>"));
+                "<ArrayOfInt><!--c--><int>1</int> <int xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></ArrayOfInt>"));
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int?>(nulls, Bare))).Should().Equal(1, null);
         }
 
@@ -148,18 +148,46 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow(7, 126)]
+        [DataRow(64, 128)]
+        [DataRow(4_096, 4_096)]
+        public async Task AsyncEnumerable_ATextNodeThatDoesNotEnd_IsRefusedAtItsLimit_AndTheStreamIsNotReadOn(int chunk, int bytesRead)
+        {
+            // A megabyte of text with no end in sight, and a limit of a hundred bytes for a text node. The
+            // start tags are 23 bytes, so the 124th byte is the first to show that the node is too long, and
+            // no read is made after the one that delivers it. The position is that of the text node in the
+            // stream, however the stream was cut up.
+            var options = new XmlSerializerOptions { MaxTextByteCount = 100 };
+            var stream = new TrickleStream(Encoding.UTF8.GetBytes("<ArrayOfString><string>" + new string('a', 1_000_000)), chunk);
+            string? message = null;
+            try
+            {
+                await foreach (var _ in XmlSerializer.DeserializeAsyncEnumerable<string>(stream, options))
+                {
+                }
+            }
+            catch (XmlException ex)
+            {
+                message = ex.Message;
+            }
+
+            message.Should().Be("MaxTextByteCount exceeded (100). Path: /string | LineNumber: 1 | BytePositionInLine: 24.");
+            stream.BytesRead.Should().Be(bytesRead);
+        }
+
+        [TestMethod]
         public async Task AsyncEnumerable_WithoutOptions_UsesTheDefaults()
         {
             const string declaration = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
             using var wrapped = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(wrapped, Values(1, 2));
-            Encoding.UTF8.GetString(wrapped.ToArray()).Should().Be(declaration + "<ArrayOfInt32><Int32>1</Int32><Int32>2</Int32></ArrayOfInt32>");
+            Encoding.UTF8.GetString(wrapped.ToArray()).Should().Be(declaration + "<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>");
             wrapped.Position = 0;
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(wrapped))).Should().Equal(1, 2);
 
             using var topLevel = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(topLevel, Values(1, 2), topLevelValues: true);
-            Encoding.UTF8.GetString(topLevel.ToArray()).Should().Be(declaration + "<Int32>1</Int32>" + declaration + "<Int32>2</Int32>");
+            Encoding.UTF8.GetString(topLevel.ToArray()).Should().Be(declaration + "<int>1</int>" + declaration + "<int>2</int>");
             topLevel.Position = 0;
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(topLevel, topLevelValues: true))).Should().Equal(1, 2);
         }
@@ -167,13 +195,13 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public async Task AsyncEnumerable_ReturnsEachValue_AsSoonAsTheStreamHasDeliveredIt()
         {
-            var xml = new StringBuilder("<ArrayOfInt32>");
+            var xml = new StringBuilder("<ArrayOfInt>");
             for (var i = 0; i < 1_000; i++)
             {
-                xml.Append("<Int32>").Append(i).Append("</Int32>");
+                xml.Append("<int>").Append(i).Append("</int>");
             }
 
-            xml.Append("</ArrayOfInt32>");
+            xml.Append("</ArrayOfInt>");
             var stream = new TrickleStream(Encoding.UTF8.GetBytes(xml.ToString()), 64);
             var bytesReadAtEachValue = new List<int>();
             var read = new List<int>();
@@ -187,7 +215,8 @@ namespace CloudNimble.XmlEssentials.Tests
             bytesReadAtEachValue[0].Should().Be(64);
             bytesReadAtEachValue[1].Should().Be(64);
             bytesReadAtEachValue[2].Should().Be(64);
-            bytesReadAtEachValue[3].Should().Be(128);
+            bytesReadAtEachValue[3].Should().Be(64);
+            bytesReadAtEachValue[4].Should().Be(128);
             bytesReadAtEachValue[999].Should().Be(stream.BytesRead);
         }
 
@@ -196,8 +225,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow(true)]
         public async Task AsyncEnumerable_GivesTheSameValues_HoweverTheStreamIsCutUp(bool topLevelValues)
         {
-            const string nil = "<String xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>";
-            const string items = "<String>a&amp;b</String>\r\n<!--c--><String/>" + nil + "<String><![CDATA[é☃]]>𝄞</String> <String>" + "0123456789012345678901234567890123456789" + "</String>";
+            const string nil = "<string xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>";
+            const string items = "<string>a&amp;b</string>\r\n<!--c--><string/>" + nil + "<string><![CDATA[é☃]]>𝄞</string> <string>" + "0123456789012345678901234567890123456789" + "</string>";
             var xml = topLevelValues
                 ? "<?xml version=\"1.0\"?>" + items.Replace("\r\n", "\r\n<?xml version=\"1.0\" encoding=\"utf-8\"?>") + "\n<!--end-->\n"
                 : "<?xml version=\"1.0\"?>\n<ArrayOfString>" + items + "</ArrayOfString><!--end-->\n";
@@ -215,8 +244,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("1.1", "a\nb\nc", DisplayName = "XML 1.1 reads NEL and LS as line ends")]
         public async Task AsyncEnumerable_ScalarElements_GiveTheSameValues_HoweverTheStreamIsCutUp(string version, string lineEnds)
         {
-            var xml = $"<?xml version=\"{version}\"?><ArrayOfString><String>plain</String><String> padded </String><String>longer than the short scan</String>"
-                + "<String>a\u0085b\u2028c</String><String>x\r\ny\rz</String><String>a&amp;b</String><String>&#x9F;</String><String>tab\there</String ><String>caf\u00E9</String></ArrayOfString>";
+            var xml = $"<?xml version=\"{version}\"?><ArrayOfString><string>plain</string><string> padded </string><string>longer than the short scan</string>"
+                + "<string>a\u0085b\u2028c</string><string>x\r\ny\rz</string><string>a&amp;b</string><string>&#x9F;</string><string>tab\there</string ><string>caf\u00E9</string></ArrayOfString>";
             var utf8 = Encoding.UTF8.GetBytes(xml);
             var small = new XmlSerializerOptions { DefaultBufferSize = 16 };
             for (var chunk = 1; chunk <= utf8.Length; chunk++)
@@ -248,17 +277,17 @@ namespace CloudNimble.XmlEssentials.Tests
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultNamespace = "urn:x" };
             using var stream = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(stream, Values(1, 2), options);
-            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<ArrayOfInt32 xmlns=\"urn:x\"><Int32>1</Int32><Int32>2</Int32></ArrayOfInt32>");
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<ArrayOfInt xmlns=\"urn:x\"><int>1</int><int>2</int></ArrayOfInt>");
             stream.Position = 0;
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(stream, options))).Should().Equal(1, 2);
 
             using var empty = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(empty, Values<int>(), options);
-            Encoding.UTF8.GetString(empty.ToArray()).Should().Be("<ArrayOfInt32 xmlns=\"urn:x\"/>");
+            Encoding.UTF8.GetString(empty.ToArray()).Should().Be("<ArrayOfInt xmlns=\"urn:x\"/>");
 
             using var documents = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(documents, Values(1, 2), topLevelValues: true, options);
-            Encoding.UTF8.GetString(documents.ToArray()).Should().Be("<Int32 xmlns=\"urn:x\">1</Int32><Int32 xmlns=\"urn:x\">2</Int32>");
+            Encoding.UTF8.GetString(documents.ToArray()).Should().Be("<int xmlns=\"urn:x\">1</int><int xmlns=\"urn:x\">2</int>");
         }
 
         [TestMethod]
@@ -345,8 +374,8 @@ namespace CloudNimble.XmlEssentials.Tests
         public async Task AsyncEnumerable_InANamespace_KeepsItsScopeAcrossReads()
         {
             const string xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<a:ArrayOfString xmlns:a=\"urn:x\" xmlns=\"urn:x\">\n"
-                + "  <String>one</String>\n  <a:String>two</a:String>\n  <b:String xmlns:b=\"urn:x\">three</b:String>\n"
-                + "  <String xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>\n  <a:String>five</a:String>\n</a:ArrayOfString>";
+                + "  <string>one</string>\n  <a:string>two</a:string>\n  <b:string xmlns:b=\"urn:x\">three</b:string>\n"
+                + "  <string xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>\n  <a:string>five</a:string>\n</a:ArrayOfString>";
             var utf8 = Encoding.UTF8.GetBytes(xml);
             var options = new XmlSerializerOptions { DefaultBufferSize = 16, DefaultNamespace = "urn:x" };
             for (var chunk = 1; chunk <= utf8.Length; chunk++)
@@ -359,7 +388,8 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public async Task AsyncEnumerable_ReturnsTheValuesBeforeAMalformedPart_ThenThrows()
         {
-            var stream = new TrickleStream("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int32><Int32>x</Int32><Int32>4</Int32></ArrayOfInt32>"u8.ToArray(), 16);
+            // The third value ends at byte 48 of the stream, and the stream arrives 16 bytes at a time.
+            var stream = new TrickleStream("<ArrayOfInt><int>1</int><int>2</int><int>x</int><int>4</int></ArrayOfInt>"u8.ToArray(), 16);
             var read = new List<int>();
             (await FluentActions.Awaiting(async () =>
             {
@@ -367,10 +397,10 @@ namespace CloudNimble.XmlEssentials.Tests
                 {
                     read.Add(value);
                 }
-            }).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The value is not a valid integer. Path: /Int32 | LineNumber: 1 | BytePositionInLine: 17.");
+            }).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The value is not a valid integer. Path: /int | LineNumber: 1 | BytePositionInLine: 49.");
             read.Should().Equal(1, 2);
 
-            var truncated = new TrickleStream("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int"u8.ToArray(), 16);
+            var truncated = new TrickleStream("<ArrayOfInt><int>1</int><int>2</Int"u8.ToArray(), 16);
             read.Clear();
             await FluentActions.Awaiting(async () =>
             {
@@ -382,7 +412,7 @@ namespace CloudNimble.XmlEssentials.Tests
             read.Should().Equal(1);
 
             var limited = new XmlSerializerOptions { MaxDocumentByteCount = 40 };
-            var tooLong = new TrickleStream("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32></ArrayOfInt32>"u8.ToArray(), 16);
+            var tooLong = new TrickleStream("<ArrayOfInt><int>1</int><int>2</int><int>3</int></ArrayOfInt>"u8.ToArray(), 16);
             read.Clear();
             await FluentActions.Awaiting(async () =>
             {
@@ -397,7 +427,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public async Task AsyncEnumerable_ConsumerMayStopEarly()
         {
-            using var stream = new MemoryStream("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32></ArrayOfInt32>"u8.ToArray());
+            using var stream = new MemoryStream("<ArrayOfInt><int>1</int><int>2</int><int>3</int></ArrayOfInt>"u8.ToArray());
             var read = new List<int>();
             await foreach (var value in XmlSerializer.DeserializeAsyncEnumerable<int>(stream, Bare))
             {
@@ -416,29 +446,29 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             using var stream = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(stream, Values(1, 2), topLevelValues: true, Bare);
-            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<Int32>1</Int32><Int32>2</Int32>");
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<int>1</int><int>2</int>");
             stream.Position = 0;
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(stream, topLevelValues: true, Bare))).Should().Equal(1, 2);
 
             using var declared = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(declared, Values("a", ""), XmlSerializerOptions.Default.GetTypeInfo<string>(), topLevelValues: true);
             const string declaration = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
-            Encoding.UTF8.GetString(declared.ToArray()).Should().Be(declaration + "<String>a</String>" + declaration + "<String></String>");
+            Encoding.UTF8.GetString(declared.ToArray()).Should().Be(declaration + "<string>a</string>" + declaration + "<string></string>");
 
-            using var emptyElements = new MemoryStream("<String/><String>a</String><String/>"u8.ToArray());
+            using var emptyElements = new MemoryStream("<string/><string>a</string><string/>"u8.ToArray());
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable(emptyElements, Bare.GetTypeInfo<string>(), topLevelValues: true)))
                 .Should().Equal("", "a", "");
 
             using var separated = new MemoryStream(Encoding.UTF8.GetBytes(
-                declaration + "<String>a</String>\r\n" + declaration + "<!--before--><String>b</String><!--after-->\n"));
+                declaration + "<string>a</string>\r\n" + declaration + "<!--before--><string>b</string><!--after-->\n"));
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<string>(separated, topLevelValues: true))).Should().Equal("a", "b");
 
             using var nothing = new MemoryStream();
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<string>(nothing, topLevelValues: true))).Should().BeEmpty();
 
-            using var wrongName = new MemoryStream("<Int32>1</Int32><Int64>2</Int64>"u8.ToArray());
+            using var wrongName = new MemoryStream("<int>1</int><long>2</long>"u8.ToArray());
             (await FluentActions.Awaiting(() => ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(wrongName, topLevelValues: true, Bare)))
-                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The root element does not match 'Int32'.");
+                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("The root element does not match 'int'.");
         }
 
         [TestMethod]
@@ -450,7 +480,7 @@ namespace CloudNimble.XmlEssentials.Tests
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<int>(wrapped.Reader, topLevelValues: false, Bare))).Should().Equal(1, 2);
 
             var typed = new Pipe();
-            await typed.Writer.WriteAsync("<ArrayOfInt32><Int32>3</Int32></ArrayOfInt32>"u8.ToArray());
+            await typed.Writer.WriteAsync("<ArrayOfInt><int>3</int></ArrayOfInt>"u8.ToArray());
             await typed.Writer.CompleteAsync();
             (await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable(typed.Reader, Bare.GetTypeInfo<int>()))).Should().Equal(3);
         }
@@ -459,13 +489,13 @@ namespace CloudNimble.XmlEssentials.Tests
         public async Task AsyncEnumerable_LongerThanTheWriterBuffer_IsWrittenCompletely()
         {
             var numbers = Enumerable.Range(0, 6_000).ToArray();
-            var expected = new StringBuilder("<ArrayOfInt32>");
+            var expected = new StringBuilder("<ArrayOfInt>");
             foreach (var number in numbers)
             {
-                expected.Append("<Int32>").Append(number).Append("</Int32>");
+                expected.Append("<int>").Append(number).Append("</int>");
             }
 
-            expected.Append("</ArrayOfInt32>");
+            expected.Append("</ArrayOfInt>");
             using var stream = new MemoryStream();
             await XmlSerializer.SerializeAsyncEnumerable(stream, Values(numbers), Bare);
             Encoding.UTF8.GetString(stream.ToArray()).Should().Be(expected.ToString());
@@ -483,7 +513,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 .Should().ThrowAsync<OperationCanceledException>();
             stream.Length.Should().Be(0);
 
-            using var source = new MemoryStream("<ArrayOfInt32><Int32>1</Int32><Int32>2</Int32></ArrayOfInt32>"u8.ToArray());
+            using var source = new MemoryStream("<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>"u8.ToArray());
             using var afterFirst = new CancellationTokenSource();
             var read = new List<int>();
             await FluentActions.Awaiting(async () =>
@@ -538,24 +568,24 @@ namespace CloudNimble.XmlEssentials.Tests
             const string message = "Named floating-point literals are not allowed when NumberHandling is Strict.";
             var buffer = new ArrayBufferWriter<byte>();
             FluentActions.Invoking(() => XmlSerializer.Serialize(buffer, double.NaN, StrictNumbers))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Double.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /double.");
             buffer.WrittenCount.Should().Be(0);
 
             using var stream = new MemoryStream();
             FluentActions.Invoking(() => XmlSerializer.Serialize(stream, double.NaN, StrictNumbers))
-                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Double.");
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /double.");
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsync(stream, double.NaN, StrictNumbers))
-                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /Double.");
+                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /double.");
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsyncEnumerable(stream, Values(1.5, double.NaN), StrictNumbers))
                 .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /ArrayOfDouble.");
             stream.Length.Should().Be(0);
 
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsyncEnumerable(stream, Values(1.5, double.NaN), topLevelValues: true, StrictNumbers))
-                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /Double.");
-            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<Double>1.5</Double>");
+                .Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be(message + " Path: /double.");
+            Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<double>1.5</double>");
 
             XmlSerializer.Serialize(buffer, 2.5, StrictNumbers);
-            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<Double>2.5</Double>");
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<double>2.5</double>");
         }
 
         [TestMethod]
@@ -566,28 +596,28 @@ namespace CloudNimble.XmlEssentials.Tests
             var text = new string('y', 5_000);
             for (var i = 0; i < 3; i++)
             {
-                XmlSerializer.Serialize(1, indented).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\"?>\n<Int32>1</Int32>");
-                XmlSerializer.Serialize(2, Bare).Should().Be("<Int32>2</Int32>");
-                XmlSerializer.Serialize(text, small).Should().Be("<String>" + text + "</String>");
+                XmlSerializer.Serialize(1, indented).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\"?>\n<int>1</int>");
+                XmlSerializer.Serialize(2, Bare).Should().Be("<int>2</int>");
+                XmlSerializer.Serialize(text, small).Should().Be("<string>" + text + "</string>");
                 using var stream = new MemoryStream();
                 XmlSerializer.Serialize(stream, 3, indented);
-                Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\"?>\n<Int32>3</Int32>");
+                Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<?xml version=\"1.1\" encoding=\"utf-8\"?>\n<int>3</int>");
                 var buffer = new ArrayBufferWriter<byte>();
                 XmlSerializer.Serialize(buffer, 4, Bare);
-                Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<Int32>4</Int32>");
+                Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<int>4</int>");
             }
         }
 
         [TestMethod]
         public void Converter_ThatCallsTheSerializerAgain_GetsItsOwnWriter()
         {
-            const string inner = "&lt;Int32>5&lt;/Int32>";
+            const string inner = "&lt;int>5&lt;/int>";
             var expected = "<Envelope>" + inner + "|" + inner + "</Envelope>";
             for (var i = 0; i < 2; i++)
             {
                 XmlSerializer.Serialize(new Envelope { Content = 5 }, Bare).Should().Be(expected);
                 XmlSerializer.Deserialize<Envelope>(expected, Bare).Content.Should().Be(5);
-                XmlSerializer.Serialize(6, Bare).Should().Be("<Int32>6</Int32>");
+                XmlSerializer.Serialize(6, Bare).Should().Be("<int>6</int>");
             }
         }
 

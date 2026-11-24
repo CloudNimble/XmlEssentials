@@ -69,6 +69,25 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
             Expect(XmlSerializer.Serialize(new FeatureFeed { Title = "t" }, prefixed.FeatureFeed), feedXml, "feature namespace declarations document");
             Expect(XmlSerializer.Deserialize(feedXml, prefixed.FeatureFeed)!.Title!, "t", "feature namespace declarations value");
             Expect(string.Join(",", XmlDocument.DiscoverNamespaces(feedXml).Keys), "edmx,a", "feature discovered namespaces");
+
+            // The defaults of System.Xml.Serialization: a field first, a wrapped collection, a dictionary with no
+            // setter, a char as its number, Z for a zero offset, and nil for a nullable value only.
+            var bcl = new FeatureXmlContext(new XmlSerializerOptions(XmlSerializerDefaults.Bcl) { Namespaces = null, OmitXmlDeclaration = true, WriteIndented = false });
+            var ledger = new FeatureLedger { Entries = { 2 }, Mark = 'a', Sent = new DateTimeOffset(2026, 3, 14, 9, 30, 0, TimeSpan.Zero) };
+            ledger.Counts["a"] = 1;
+            const string ledgerXml =
+                "<FeatureLedger><Revision>1</Revision><Count xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\" /><Counts><a>1</a></Counts>" +
+                "<Entries><int>2</int></Entries><Mark>97</Mark><Sent>2026-03-14T09:30:00Z</Sent></FeatureLedger>";
+            Expect(XmlSerializer.Serialize(ledger, bcl.FeatureLedger), ledgerXml, "feature bcl defaults document");
+            var readLedger = XmlSerializer.Deserialize(ledgerXml, bcl.FeatureLedger)!;
+            Expect(
+                readLedger.Revision + "|" + readLedger.Counts["a"] + "|" + readLedger.Entries[0] + "|" + readLedger.Mark + "|" + readLedger.Sent.Offset + "|" + (readLedger.Count is null),
+                "1|1|2|a|00:00:00|True",
+                "feature bcl defaults values");
+
+            // The XML name of an enum member is read from the member's attribute.
+            Expect(XmlSerializer.Serialize(FeatureMode.NextDay, context.FeatureMode), "<FeatureMode>next-day</FeatureMode>", "feature enum name document");
+            Expect(XmlSerializer.Deserialize("<FeatureMode>next-day</FeatureMode>", context.FeatureMode) + "," + XmlSerializer.Deserialize("<FeatureMode>PLAIN</FeatureMode>", context.FeatureMode), "NextDay,Plain", "feature enum name values");
         }
 
         #endregion
@@ -252,6 +271,25 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
     }
 
     /// <summary>
+    /// An enumeration with a member that has an XML name of its own.
+    /// </summary>
+    public enum FeatureMode
+    {
+
+        /// <summary>
+        /// The usual mode.
+        /// </summary>
+        Plain,
+
+        /// <summary>
+        /// Written as <c>next-day</c>.
+        /// </summary>
+        [XmlPropertyName("next-day")]
+        NextDay,
+
+    }
+
+    /// <summary>
     /// A document type that declares the prefix of its namespace.
     /// </summary>
     [XmlRoot("feed")]
@@ -268,6 +306,55 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
     }
 
     /// <summary>
+    /// A type as one written for <c>System.Xml.Serialization.XmlSerializer</c> usually is: a public field, members
+    /// with no setter, and no mapping attributes.
+    /// </summary>
+    public sealed class FeatureLedger
+    {
+
+        /// <summary>
+        /// A public field.
+        /// </summary>
+        public int Revision = 1;
+
+        /// <summary>
+        /// Gets a value that is worked out, which is not written when read-only properties are ignored.
+        /// </summary>
+        public string Computed => "c";
+
+        /// <summary>
+        /// Gets or sets a nullable number.
+        /// </summary>
+        public int? Count { get; set; }
+
+        /// <summary>
+        /// Gets a dictionary with no setter.
+        /// </summary>
+        public Dictionary<string, int> Counts { get; } = [];
+
+        /// <summary>
+        /// Gets or sets a collection with no mapping attribute.
+        /// </summary>
+        public List<int> Entries { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets a character.
+        /// </summary>
+        public char Mark { get; set; }
+
+        /// <summary>
+        /// Gets or sets text that may be <see langword="null"/>.
+        /// </summary>
+        public string? Note { get; set; }
+
+        /// <summary>
+        /// Gets or sets a point in time with an offset.
+        /// </summary>
+        public DateTimeOffset Sent { get; set; }
+
+    }
+
+    /// <summary>
     /// The context for the types <see cref="EngineFeatures"/> checks. It has no options of its own, so each check
     /// supplies them.
     /// </summary>
@@ -275,6 +362,8 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
     [XmlSerializable<FeatureShape>]
     [XmlSerializable<FeatureNode>]
     [XmlSerializable<FeatureFeed>]
+    [XmlSerializable<FeatureLedger>]
+    [XmlSerializable<FeatureMode>]
     internal partial class FeatureXmlContext : XmlSerializerContext
     {
     }

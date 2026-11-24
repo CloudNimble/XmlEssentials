@@ -564,6 +564,33 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow("<e a=\"abcd\"/>", null, DisplayName = "an attribute value at the limit")]
+        [DataRow("<e a=\"abcde\"/>", "MaxTextByteCount exceeded (4).", DisplayName = "an attribute value over the limit")]
+        [DataRow("<e a='abcde'/>", "MaxTextByteCount exceeded (4).", DisplayName = "an attribute value in apostrophes")]
+        [DataRow("<e a=\"&lt;\"/>", null, DisplayName = "a reference of four bytes")]
+        [DataRow("<e a=\"&amp;\"/>", "MaxTextByteCount exceeded (4).", DisplayName = "a reference of five bytes, one character")]
+        [DataRow("<e a=\"abcd\" b=\"abcd\" xmlns:p=\"u:ab\"/>", null, DisplayName = "each attribute counted on its own")]
+        [DataRow("<e xmlns:p=\"urn:p\"/>", "MaxTextByteCount exceeded (4).", DisplayName = "a namespace declaration")]
+        [DataRow("<e><?p abcd?></e>", null, DisplayName = "processing instruction data at the limit")]
+        [DataRow("<e><?p abcde?></e>", "MaxTextByteCount exceeded (4).", DisplayName = "processing instruction data over the limit")]
+        [DataRow("<?xml version=\"1.0\" encoding=\"UTF-8\"?><e/>", null, DisplayName = "an XML declaration, which has no limit")]
+        public void Read_MaxTextByteCount_AlsoLimitsAnAttributeValueAndTheDataOfAProcessingInstruction(string xml, string? message)
+        {
+            // The limit is counted in the bytes of the document, as it is for a text node.
+            string? actual = null;
+            try
+            {
+                Drain(xml, new XmlReaderOptions { MaxTextByteCount = 4 });
+            }
+            catch (XmlException ex)
+            {
+                actual = ex.Message;
+            }
+
+            actual.Should().Be(message);
+        }
+
+        [TestMethod]
         public void Read_MaxTextByteCountExceeded()
         {
             var act = () => Drain("<e>abcd</e>", new XmlReaderOptions { MaxTextByteCount = 2 });

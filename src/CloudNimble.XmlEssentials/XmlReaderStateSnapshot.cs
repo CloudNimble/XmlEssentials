@@ -90,7 +90,9 @@ namespace CloudNimble.Text.Xml
         public required string[] NamespaceUris { get; init; }
 
         /// <summary>
-        /// Gets the byte offset of the current line start.
+        /// Gets the byte offset of the start of the current line, counted from the point the snapshot was
+        /// taken at. It is zero or less: the line began at or before that point, and the reader that resumes
+        /// starts there.
         /// </summary>
         public required long LineStart { get; init; }
 

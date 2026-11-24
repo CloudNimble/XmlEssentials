@@ -10,6 +10,12 @@ namespace CloudNimble.Text.Xml.Serialization
     /// The name overrides any naming policy, and takes precedence over the name set by <see cref="XmlElementAttribute"/>,
     /// <see cref="XmlAttributeAttribute"/>, or <see cref="XmlArrayAttribute"/> on the same member. This attribute is
     /// analogous to <c>JsonPropertyNameAttribute</c> in <c>System.Text.Json</c>.
+    /// <para>
+    /// On a member of an enumeration, the name is the text the member is written as and read from, as
+    /// <c>JsonStringEnumMemberNameAttribute</c> is in <c>System.Text.Json</c>. It replaces the C# name and is
+    /// matched exactly, while a C# name is matched without regard to case. A name cannot start or end with
+    /// white space, and the name of a <see cref="FlagsAttribute"/> member cannot contain any.
+    /// </para>
     /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
     public sealed class XmlPropertyNameAttribute : Attribute

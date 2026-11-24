@@ -65,7 +65,7 @@ public sealed class XmlPropertyNameAttribute : Attribute
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
 public sealed class XmlIgnoreAttribute : Attribute
 {
-    public XmlIgnoreCondition Condition { get; set; } // default Always
+    public XmlIgnoreCondition Condition { get; set; } // default Always; WhenWritingNullReference = 6 leaves out a null reference and still writes xsi:nil for a nullable value type
 }
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
@@ -121,13 +121,6 @@ public sealed class XmlPolymorphicAttribute : Attribute
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
 public sealed class XmlMixedAttribute : Attribute { }
-
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
-public sealed class XmlNamingPolicyAttribute : Attribute
-{
-    public XmlNamingPolicyAttribute(XmlKnownNamingPolicy policy);
-    public XmlKnownNamingPolicy Policy { get; }
-}
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true)]
 public abstract class XmlDerivedTypeAttribute : Attribute
@@ -238,22 +231,6 @@ public sealed class XmlTextAttribute : Attribute { }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
 public sealed class XmlCDataAttribute : Attribute { }
-
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum, AllowMultiple = false)]
-public sealed class XmlTypeAttribute : Attribute
-{
-    public XmlTypeAttribute();
-    public XmlTypeAttribute(string typeName);
-    public string? TypeName { get; set; }
-    public string? Namespace { get; set; }
-}
-
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = false)]
-public sealed class XmlNamespaceAttribute : Attribute
-{
-    public XmlNamespaceAttribute(string namespaceUri);
-    public string NamespaceUri { get; }
-}
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = true)]
 public sealed class XmlNamespaceDeclarationAttribute : Attribute

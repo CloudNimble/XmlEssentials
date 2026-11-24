@@ -25,6 +25,16 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         Strict = 2,
 
+        /// <summary>
+        /// Option values that write what <c>System.Xml.Serialization.XmlSerializer</c> writes for the same
+        /// type, as far as the options reach: collections in a wrapper element, <see langword="null"/>
+        /// references left out, public fields included and written first, read-only properties left out, collections with no
+        /// setter filled, a <see cref="char"/> as its number, <c>Z</c> for a zero offset, two-space
+        /// indentation, <c>&lt;e /&gt;</c> for an empty element, and the <c>xsi</c> and <c>xsd</c> namespaces
+        /// declared on the document element.
+        /// </summary>
+        Bcl = 3,
+
     }
 
 }

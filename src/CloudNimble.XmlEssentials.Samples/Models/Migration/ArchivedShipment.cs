@@ -23,7 +23,6 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Migration
         /// Gets or sets the package labels, read from <c>string</c> elements inside a <c>Packages</c> element.
         /// </summary>
         [XmlArray]
-        [XmlArrayItem("string")]
         public List<string> Packages { get; set; } = [];
 
         /// <summary>

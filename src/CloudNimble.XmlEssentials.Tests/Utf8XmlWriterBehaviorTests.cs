@@ -824,7 +824,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }, new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n", IndentSize = 3, IndentCharacter = character })
                     .Should().Be("<a>\n" + indent + "<b/>\n</a>");
                 XmlSerializer.Serialize(new int[] { 1 }, new XmlSerializerOptions { OmitXmlDeclaration = true, WriteIndented = true, NewLine = "\n", IndentSize = 3, IndentCharacter = character })
-                    .Should().Be("<Int32Array>\n" + indent + "<Int32>1</Int32>\n</Int32Array>");
+                    .Should().Be("<ArrayOfInt>\n" + indent + "<int>1</int>\n</ArrayOfInt>");
             }
         }
 
@@ -893,7 +893,7 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteCData(text); }).Should().Be(message);
             XmlWriterHarness.ThrownMessage(w => w.WriteProcessingInstruction("p", text)).Should().Be(message);
             XmlWriterHarness.ThrownMessage(w => { w.WriteStartElement("e"); w.WriteRawValue(text, skipInputValidation: true); }).Should().Be(message);
-            FluentActions.Invoking(() => XmlSerializer.Serialize(text)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /String.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(text)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /string.");
             FluentActions.Invoking(() => XmlSerializer.Serialize(new POCOs.Person { Name = text })).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message + " Path: /Person.");
         }
 

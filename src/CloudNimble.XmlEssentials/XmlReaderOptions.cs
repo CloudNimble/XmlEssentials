@@ -141,11 +141,11 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets the maximum length of a text or CDATA node.
+        /// Gets or sets the maximum length of a text node, a CDATA section, an attribute value, or the data of a processing instruction.
         /// </summary>
         /// <value>
-        /// The maximum length of a text or CDATA node, in UTF-8 bytes. The default is 0, which means a
-        /// maximum of 16,777,216.
+        /// The maximum length of each, in UTF-8 bytes as they appear in the document. The default is 0, which
+        /// means a maximum of 16,777,216.
         /// </value>
         public int MaxTextByteCount
         {

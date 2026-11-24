@@ -18,6 +18,24 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
+        [DataRow("<r><a>one</a><b x=\"1\">two</b><c></d></r>", "End tag does not match start tag. @36 line 1 column 37", DisplayName = "an error on the first line")]
+        [DataRow("<r>\n  <a>one</a>\n  <b x=\"1\">two</b><c></d>\n</r>", "End tag does not match start tag. @42 line 3 column 26", DisplayName = "an error on the third line")]
+        [DataRow("<r>\r\n  <a>one</a>\r\n  <b x=\"1\">t\r\nwo</b>\r\n<c></d>\r\n</r>", "End tag does not match start tag. @48 line 5 column 8", DisplayName = "an error after a line end inside text")]
+        public void Resume_AtEverySplitOffset_ReportsAnErrorAtTheSamePlace(string xml, string single)
+        {
+            // The end tag does not match. The reader that meets it was resumed from a state, at some point
+            // earlier in the document, and must give the line and the column a single pass gives.
+            var utf8 = Encoding.UTF8.GetBytes(xml);
+            var expected = PositionOfTheError(utf8, utf8.Length);
+            expected.Should().Be(single);
+
+            for (var split = 1; split < xml.IndexOf("</d>", StringComparison.Ordinal); split++)
+            {
+                PositionOfTheError(utf8, split).Should().Be(expected, "the first block ends at byte {0}", split);
+            }
+        }
+
+        [TestMethod]
         public void Resume_BetweenTokensKeepsDepth()
         {
             var first = "<a><b/>"u8.ToArray();
@@ -117,6 +135,74 @@ namespace CloudNimble.XmlEssentials.Tests
                 "<t/></r>",
                 "StartElement :e{} open @p:a{urn:a&b}=[<1] @xmlns:p{http://www.w3.org/2000/xmlns/}=[urn:a&b]"
                 + " @xml:space{http://www.w3.org/XML/1998/namespace}=[preserve] @:b{}=[2] @:c{}=[3] @:d{}=[4] @:e{}=[5] @:f{}=[6] @:g{}=[7]");
+        }
+
+        [TestMethod]
+        [DataRow("<r>aaaaa", "MaxTextByteCount exceeded (4).", DisplayName = "plain text")]
+        [DataRow("<r>&amp;aaaa", "MaxTextByteCount exceeded (4).", DisplayName = "text that starts with a reference")]
+        [DataRow("<r>a\raaa", "MaxTextByteCount exceeded (4).", DisplayName = "text with a line end to normalize")]
+        [DataRow("<r><![CDATA[aaaaaaa", "MaxTextByteCount exceeded (4).", DisplayName = "CDATA")]
+        [DataRow("<r><!--aaaaaaa", "MaxCommentByteCount exceeded (4).", DisplayName = "comment")]
+        [DataRow("<r><!--aaaaa--", "MaxCommentByteCount exceeded (4).", DisplayName = "comment that may be ending")]
+        [DataRow("<r><e a=\"aaaaa", "MaxTextByteCount exceeded (4).", DisplayName = "attribute value")]
+        [DataRow("<r><e a=\"aa&am", "MaxTextByteCount exceeded (4).", DisplayName = "attribute value that ends inside a reference")]
+        [DataRow("<r><?p aaaaaa", "MaxTextByteCount exceeded (4).", DisplayName = "processing instruction")]
+        public void PartialBlock_WithMoreOfATokenThanItsLimitAllows_IsRefusedBeforeTheTokenEnds(string block, string message)
+        {
+            // The token has no end yet. What has arrived of it is already over the limit, so waiting for the
+            // rest could only let a stream that never ends it go on being buffered.
+            var options = new XmlReaderOptions { MaxCommentByteCount = 4, MaxTextByteCount = 4 };
+            string? actual = null;
+            try
+            {
+                var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(block), false, new XmlReaderState(options));
+                reader.Read().Should().BeTrue();
+                reader.Read();
+            }
+            catch (XmlException ex)
+            {
+                actual = ex.Message;
+            }
+
+            actual.Should().Be(message);
+        }
+
+        [TestMethod]
+        [DataRow("<r>aaaa", "</r>", "Text :{} [aaaa]", DisplayName = "plain text")]
+        [DataRow("<r><![CDATA[aaaa]]", "></r>", "CData :{} [aaaa]", DisplayName = "CDATA, cut inside its terminator")]
+        [DataRow("<r><![CDATA[aaaaaa", "]]></r>", null, DisplayName = "CDATA whose last two bytes might be the terminator")]
+        [DataRow("<r><!--aaaa--", "></r>", "Comment :{} [aaaa]", DisplayName = "comment, cut inside its terminator")]
+        public void PartialBlock_WithNoMoreOfATokenThanItsLimitAllows_AsksForMore(string block, string rest, string? token)
+        {
+            var options = new XmlReaderOptions { MaxCommentByteCount = 4, MaxTextByteCount = 4 };
+            var first = Encoding.UTF8.GetBytes(block);
+            var reader = new Utf8XmlReader(first, false, new XmlReaderState(options));
+            reader.Read().Should().BeTrue();
+            reader.Read().Should().BeFalse();
+            reader.BytesConsumed.Should().Be(3);
+
+            var tokens = new System.Collections.Generic.List<string>();
+            string? failure = null;
+            try
+            {
+                var resumed = new Utf8XmlReader(ConcatRemainder(reader, first, Encoding.UTF8.GetBytes(rest)), true, reader.CurrentState);
+                XmlReaderHarness.AppendTokens(ref resumed, tokens);
+            }
+            catch (XmlException ex)
+            {
+                failure = ex.Message;
+            }
+
+            // The limit is not passed until the end shows how long the token is.
+            if (token is null)
+            {
+                failure.Should().Be("MaxTextByteCount exceeded (4).");
+            }
+            else
+            {
+                failure.Should().BeNull();
+                tokens.Should().Equal(token, "EndElement :r{}");
+            }
         }
 
         [TestMethod]
@@ -491,6 +577,35 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var consumed = (int)reader.BytesConsumed;
             return first[consumed..].Concat(second).ToArray();
+        }
+
+        /// <summary>
+        /// Reads a document that is not well formed as two blocks, and describes the exception: its message,
+        /// byte position, line and column.
+        /// </summary>
+        /// <param name="utf8">The document.</param>
+        /// <param name="split">The length of the first block. The whole length reads it in one pass.</param>
+        /// <returns>The description, or null when no exception was thrown.</returns>
+        private static string? PositionOfTheError(byte[] utf8, int split)
+        {
+            try
+            {
+                var first = new Utf8XmlReader(utf8.AsSpan(0, split), split == utf8.Length, default);
+                while (first.Read())
+                {
+                }
+
+                var second = new Utf8XmlReader(utf8.AsSpan((int)first.BytesConsumed), true, first.CurrentState);
+                while (second.Read())
+                {
+                }
+
+                return null;
+            }
+            catch (XmlException ex)
+            {
+                return ex.Message + " @" + ex.BytePosition + " line " + ex.LineNumber + " column " + ex.LinePosition;
+            }
         }
 
         /// <summary>

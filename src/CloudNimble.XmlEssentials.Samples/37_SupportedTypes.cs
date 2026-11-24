@@ -62,18 +62,18 @@ namespace CloudNimble.XmlEssentials.Samples
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void ReadLexicalForms(TextWriter output)
         {
-            output.WriteLine(XmlSerializer.Deserialize<bool>("<Boolean>1</Boolean>"));
-            output.WriteLine(XmlSerializer.Deserialize<int>("<Int32> +042 </Int32>"));
-            output.WriteLine(double.IsPositiveInfinity(XmlSerializer.Deserialize<double>("<Double>inf</Double>")));
-            output.WriteLine(XmlSerializer.Deserialize<Guid>("<Guid>{0F8FAD5B-D9CB-469F-A165-70867728950E}</Guid>"));
-            output.WriteLine(XmlSerializer.Deserialize<DateTime>("<DateTime>2026-11-23T14:30:00Z</DateTime>").Kind);
+            output.WriteLine(XmlSerializer.Deserialize<bool>("<boolean>1</boolean>"));
+            output.WriteLine(XmlSerializer.Deserialize<int>("<int> +042 </int>"));
+            output.WriteLine(double.IsPositiveInfinity(XmlSerializer.Deserialize<double>("<double>inf</double>")));
+            output.WriteLine(XmlSerializer.Deserialize<Guid>("<guid>{0F8FAD5B-D9CB-469F-A165-70867728950E}</guid>"));
+            output.WriteLine(XmlSerializer.Deserialize<DateTime>("<dateTime>2026-11-23T14:30:00Z</dateTime>").Kind);
             output.WriteLine(XmlSerializer.Deserialize<TimeSpan>("<TimeSpan>PT90M</TimeSpan>"));
-            output.WriteLine(Convert.ToHexString(XmlSerializer.Deserialize<byte[]>("<ByteArray>AQID BAU=</ByteArray>")!));
+            output.WriteLine(Convert.ToHexString(XmlSerializer.Deserialize<byte[]>("<base64Binary>AQID BAU=</base64Binary>")!));
             output.WriteLine(XmlSerializer.Deserialize<OrderStatus>("<OrderStatus>2</OrderStatus>"));
 
             try
             {
-                XmlSerializer.Deserialize<decimal>("<Decimal>1E+2</Decimal>");
+                XmlSerializer.Deserialize<decimal>("<decimal>1E+2</decimal>");
             }
             catch (XmlException ex)
             {

@@ -1149,7 +1149,7 @@ namespace CloudNimble.Text.Xml
                 if (!topLevelValues)
                 {
                     // The array element is in the namespace of its items, so they do not each declare it again.
-                    xmlTypeInfo.WriteStartRoot(writer, Encoding.UTF8.GetBytes(string.Concat("ArrayOf", xmlTypeInfo.RootName.LocalName)));
+                    xmlTypeInfo.WriteStartRoot(writer, Encoding.UTF8.GetBytes(XmlTypeNames.SequenceElementName(typeof(TValue), xmlTypeInfo.Options)));
                 }
 
                 await foreach (var value in values.WithCancellation(cancellationToken).ConfigureAwait(false))

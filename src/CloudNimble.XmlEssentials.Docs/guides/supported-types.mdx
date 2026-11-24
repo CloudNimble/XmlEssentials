@@ -61,42 +61,42 @@ private static void Print<T>(TextWriter output, string type, T value, XmlSeriali
 The code produces the following output:
 
 ```text
-bool           <Boolean>true</Boolean>
-byte           <Byte>255</Byte>
-sbyte          <SByte>-128</SByte>
-short          <Int16>-32768</Int16>
-ushort         <UInt16>65535</UInt16>
-int            <Int32>-42</Int32>
-uint           <UInt32>4294967295</UInt32>
-long           <Int64>-9223372036854775808</Int64>
-ulong          <UInt64>18446744073709551615</UInt64>
-float          <Single>3.14</Single>
-double         <Double>1E-07</Double>
-double         <Double>NaN</Double>
-double         <Double>INF</Double>
-double         <Double>-INF</Double>
-decimal        <Decimal>19.990</Decimal>
-string         <String>Fish &amp; chips</String>
-char           <Char>A</Char>
-Guid           <Guid>0f8fad5b-d9cb-469f-a165-70867728950e</Guid>
-DateTime       <DateTime>2026-11-23T14:30:00</DateTime>
-DateTime       <DateTime>2026-11-23T14:30:00Z</DateTime>
-DateTimeOffset <DateTimeOffset>2026-11-23T14:30:00+02:00</DateTimeOffset>
-DateOnly       <DateOnly>2026-11-23</DateOnly>
-TimeOnly       <TimeOnly>14:30:00.25</TimeOnly>
+bool           <boolean>true</boolean>
+byte           <unsignedByte>255</unsignedByte>
+sbyte          <byte>-128</byte>
+short          <short>-32768</short>
+ushort         <unsignedShort>65535</unsignedShort>
+int            <int>-42</int>
+uint           <unsignedInt>4294967295</unsignedInt>
+long           <long>-9223372036854775808</long>
+ulong          <unsignedLong>18446744073709551615</unsignedLong>
+float          <float>3.14</float>
+double         <double>1E-07</double>
+double         <double>NaN</double>
+double         <double>INF</double>
+double         <double>-INF</double>
+decimal        <decimal>19.990</decimal>
+string         <string>Fish &amp; chips</string>
+char           <char>A</char>
+Guid           <guid>0f8fad5b-d9cb-469f-a165-70867728950e</guid>
+DateTime       <dateTime>2026-11-23T14:30:00</dateTime>
+DateTime       <dateTime>2026-11-23T14:30:00Z</dateTime>
+DateTimeOffset <dateTimeOffset>2026-11-23T14:30:00+02:00</dateTimeOffset>
+DateOnly       <dateOnly>2026-11-23</dateOnly>
+TimeOnly       <timeOnly>14:30:00.25</timeOnly>
 TimeSpan       <TimeSpan>P1DT2H3M4S</TimeSpan>
-byte[]         <ByteArray>AQIDBAU=</ByteArray>
+byte[]         <base64Binary>AQIDBAU=</base64Binary>
 Uri            <Uri>https://example.com/orders?id=1042&amp;view=full</Uri>
 Version        <Version>1.2.3</Version>
 enum           <OrderStatus>Shipped</OrderStatus>
 [Flags] enum   <DeliveryOptions>Gift Insured</DeliveryOptions>
-int?           <Int32>5</Int32>
-int?           <Int32 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+int?           <int>5</int>
+int?           <int xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
 
-The element name of a value that is the document element is the .NET type name, `ByteArray` for `byte[]`, and the name of the underlying type for a nullable value type. A property uses its own name instead. The text inside the element is the same in both cases, and it is the same when the property is written as an XML attribute.
+The element name of a value that is the document element is the XML Schema name of its type: `int`, `boolean`, `string`, `dateTime`, `base64Binary` for `byte[]`, and so on. These are the names `System.Xml.Serialization` writes. A type XML Schema has no name for is named the same way (`guid`, `dateOnly`, `dateTimeOffset`) or by its .NET name (`TimeSpan`, an enumeration). A nullable value type has the name of the underlying type. A property uses its own name instead. The text inside the element is the same in both cases, and it is the same when the property is written as an XML attribute.
 
 ## Numbers and Boolean values
 
@@ -153,7 +153,7 @@ Rules that hold for all date and time types:
 
 | .NET type | Written as | Accepted on read |
 | --- | --- | --- |
-| `string` | The text, with `&`, `<`, and other characters escaped as [XML requires](/guides/xml-conformance#what-the-writer-escapes). An empty string is written as an element with no content. | The text of the element, with its whitespace kept. `<String> a </String>` is `" a "`. An empty element is an empty string, not `null`. |
+| `string` | The text, with `&`, `<`, and other characters escaped as [XML requires](/guides/xml-conformance#what-the-writer-escapes). An empty string is written as an element with no content. | The text of the element, with its whitespace kept. `<string> a </string>` is `" a "`. An empty element is an empty string, not `null`. |
 | `char` | The character. A tab, line feed, or carriage return in an attribute is written as a character reference, so that it isn't normalized to a space. | Exactly one UTF-16 code unit. Whitespace around a character that isn't whitespace is removed; a value that is one whitespace character is that character. A character outside the Basic Multilingual Plane is rejected, because it doesn't fit in one `char`. |
 | `Guid` | The .NET `D` format: 32 lowercase hexadecimal digits in five groups | The `D`, `N`, `B`, and `P` formats, in either letter case |
 | `byte[]`, `Memory<byte>`, `ReadOnlyMemory<byte>` | Base64 (`base64Binary`). An empty value is written as an element with no content. | Base64. Whitespace inside the value is allowed. An empty element is an empty value. |
@@ -167,18 +167,18 @@ For every type except `string`, leading and trailing spaces, tabs, and line ends
 The following sample deserializes values that are legal but aren't written the way the serializer writes them. The last value is rejected.
 
 ```csharp
-output.WriteLine(XmlSerializer.Deserialize<bool>("<Boolean>1</Boolean>"));
-output.WriteLine(XmlSerializer.Deserialize<int>("<Int32> +042 </Int32>"));
-output.WriteLine(double.IsPositiveInfinity(XmlSerializer.Deserialize<double>("<Double>inf</Double>")));
-output.WriteLine(XmlSerializer.Deserialize<Guid>("<Guid>{0F8FAD5B-D9CB-469F-A165-70867728950E}</Guid>"));
-output.WriteLine(XmlSerializer.Deserialize<DateTime>("<DateTime>2026-11-23T14:30:00Z</DateTime>").Kind);
+output.WriteLine(XmlSerializer.Deserialize<bool>("<boolean>1</boolean>"));
+output.WriteLine(XmlSerializer.Deserialize<int>("<int> +042 </int>"));
+output.WriteLine(double.IsPositiveInfinity(XmlSerializer.Deserialize<double>("<double>inf</double>")));
+output.WriteLine(XmlSerializer.Deserialize<Guid>("<guid>{0F8FAD5B-D9CB-469F-A165-70867728950E}</guid>"));
+output.WriteLine(XmlSerializer.Deserialize<DateTime>("<dateTime>2026-11-23T14:30:00Z</dateTime>").Kind);
 output.WriteLine(XmlSerializer.Deserialize<TimeSpan>("<TimeSpan>PT90M</TimeSpan>"));
-output.WriteLine(Convert.ToHexString(XmlSerializer.Deserialize<byte[]>("<ByteArray>AQID BAU=</ByteArray>")!));
+output.WriteLine(Convert.ToHexString(XmlSerializer.Deserialize<byte[]>("<base64Binary>AQID BAU=</base64Binary>")!));
 output.WriteLine(XmlSerializer.Deserialize<OrderStatus>("<OrderStatus>2</OrderStatus>"));
 
 try
 {
-    XmlSerializer.Deserialize<decimal>("<Decimal>1E+2</Decimal>");
+    XmlSerializer.Deserialize<decimal>("<decimal>1E+2</decimal>");
 }
 catch (XmlException ex)
 {
@@ -222,7 +222,7 @@ A value that can't be read throws an [`XmlException`](/api-reference/CloudNimble
 | `Version` | `The value is not a valid version.` |
 | Every enum | `The value is not a valid enum member.` |
 
-An empty element is not a number, a Boolean value, or a date. `<Int32/>` is rejected for both `int` and `int?`.
+An empty element is not a number, a Boolean value, or a date. `<int/>` is rejected for both `int` and `int?`.
 
 ## Enums
 
@@ -274,7 +274,7 @@ True
 
 | | Written as | Accepted on read |
 | --- | --- | --- |
-| Enum | The member name. A value that has no member is written as its number. | A member name, or the number of a declared member. Reading accepts both whatever `EnumHandling` is. |
+| Enum | The member name, or the name `[XmlPropertyName]` gives the member. A value that has no member is written as its number. | A member name in any case, or the number of a declared member. Reading accepts both whatever `EnumHandling` is. A name given with `[XmlPropertyName]` is matched exactly. See [Enumeration values](/guides/customize-names#enumeration-values). |
 | `[Flags]` enum | Member names separated by one space. A value with a bit that belongs to no member is written as its number. | Member names separated by whitespace, or any number that fits the underlying type. |
 
 Names are case-sensitive: `shipped` is rejected. A comma isn't a separator: `Gift, Insured`, the form `Enum.ToString` produces, is rejected. For an enum without `[Flags]`, a number that isn't a declared member, such as `7` for `OrderStatus`, is rejected.
@@ -303,8 +303,8 @@ output.WriteLine(XmlSerializer.Serialize(new Dictionary<int, string> { [1042] = 
 The code produces the following output:
 
 ```xml
-<ListOfInt32><Int32>1</Int32><Int32>2</Int32></ListOfInt32>
-<StringArray><String>red</String><String>green</String></StringArray>
+<ArrayOfInt><int>1</int><int>2</int></ArrayOfInt>
+<ArrayOfString><string>red</string><string>green</string></ArrayOfString>
 <DictionaryOfStringInt32><apples>3</apples><Key>ripe pears</Key><Value>5</Value></DictionaryOfStringInt32>
 <DictionaryOfInt32String><Key>1042</Key><Value>Keyboard</Value></DictionaryOfInt32String>
 ```
@@ -358,7 +358,7 @@ A value that is XML already is written as the XML it is. `XmlElement`, `XmlDocum
 - An `XmlDocument` is written as its document element. Its XML declaration and any comment outside the document element aren't written.
 - An element, document, or node that the serializer reads holds no pooled memory, so you don't have to dispose it.
 
-A value declared as `object` is written as the type it has. `XmlSerializer.Serialize<object>(42)` writes `<Int32>42</Int32>`, and a member declared as `object` writes the value inside the member's element. A document doesn't record which type wrote an element, so a value declared as `object` is read as an `XmlElement`. Read it as the type you expect with `XmlSerializer.Deserialize<T>(element)`. To read an `XmlNode` that can be changed instead, set `XmlSerializerOptions.UnknownTypeHandling` to `XmlUnknownTypeHandling.XmlNode`.
+A value declared as `object` is written as the type it has. `XmlSerializer.Serialize<object>(42)` writes `<int>42</int>`, and a member declared as `object` writes the value inside the member's element. A document doesn't record which type wrote an element, so a value declared as `object` is read as an `XmlElement`. Read it as the type you expect with `XmlSerializer.Deserialize<T>(element)`. To read an `XmlNode` that can be changed instead, set `XmlSerializerOptions.UnknownTypeHandling` to `XmlUnknownTypeHandling.XmlNode`.
 
 The element you get is the member's own element: `<Any><b>1</b></Any>` is read as an element named `Any`. When that value is written again, its attributes and children go inside the member's element, so the document comes back as it was read. The same holds for a list item and a dictionary value. The member names the element, so an `XmlElement` you built under another name is written under the member's name.
 

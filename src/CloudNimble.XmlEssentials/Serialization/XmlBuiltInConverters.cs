@@ -165,7 +165,17 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (type.IsEnum)
             {
-                return (XmlConverter)Activator.CreateInstance(typeof(XmlEnumConverter<>).MakeGenericType(type))!;
+                try
+                {
+                    return (XmlConverter)Activator.CreateInstance(typeof(XmlEnumConverter<>).MakeGenericType(type))!;
+                }
+                catch (System.Reflection.TargetInvocationException ex) when (ex.InnerException is InvalidOperationException reason)
+                {
+                    // The converter refuses a member name it could not read back. The caller gets the same
+                    // kind of exception and message a generated context gives, and not the wrapper that
+                    // reflection puts around it.
+                    throw new InvalidOperationException(reason.Message, ex);
+                }
             }
 
             if (s_contentConverters.TryGetValue(type, out var content))
@@ -181,64 +191,6 @@ namespace CloudNimble.Text.Xml.Serialization
             return XmlObjectBinder.IsObjectType(type, options)
                 ? XmlObjectConverterFactory.Instance.CreateConverter(type, options)
                 : null;
-        }
-
-        /// <summary>
-        /// Returns the default element name for <paramref name="type"/>: the type name, the underlying type name
-        /// for <see cref="Nullable{T}"/>, and <c>ByteArray</c> for <c>byte[]</c>.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <returns>The name before the naming policy is applied.</returns>
-        internal static string GetXmlTypeName(Type type)
-        {
-            var root = Nullable.GetUnderlyingType(type) ?? type;
-            if (root.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false) && root.Name.Contains("AnonymousType", StringComparison.Ordinal))
-            {
-                // The compiler names an anonymous type with characters no XML name may hold, and the name
-                // changes from one build to the next. Every anonymous type shares this one.
-                return "AnonymousType";
-            }
-
-            if (root.IsArray)
-            {
-                return root == typeof(byte[])
-                    ? "ByteArray"
-                    : GetXmlTypeName(root.GetElementType()!) + "Array";
-            }
-
-            if (!root.IsGenericType)
-            {
-                return root.Name;
-            }
-
-            var name = root.Name;
-            var tick = name.IndexOf('`');
-            if (tick >= 0)
-            {
-                name = name[..tick];
-            }
-
-            var args = root.GetGenericArguments();
-            var length = name.Length + 2;
-            foreach (var arg in args)
-            {
-                length += GetXmlTypeName(arg).Length;
-            }
-
-            return string.Create(length, (name, args), static (span, state) =>
-            {
-                var written = 0;
-                state.name.AsSpan().CopyTo(span);
-                written += state.name.Length;
-                "Of".AsSpan().CopyTo(span[written..]);
-                written += 2;
-                foreach (var arg in state.args)
-                {
-                    var argName = GetXmlTypeName(arg);
-                    argName.AsSpan().CopyTo(span[written..]);
-                    written += argName.Length;
-                }
-            });
         }
 
         #endregion

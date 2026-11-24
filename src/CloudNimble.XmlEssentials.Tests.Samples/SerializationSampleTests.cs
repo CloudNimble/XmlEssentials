@@ -264,6 +264,14 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample08_CustomizeNames_RenameEnumValues()
+        {
+            SampleOutput.Capture(CustomizeNames.RenameEnumValues).Should().Be(
+                "<ShippingMethod>next-day</ShippingMethod>\n" +
+                "NextDay, Standard");
+        }
+
+        [TestMethod]
         public void Sample09_IgnoreProperties()
         {
             SampleOutput.Capture(IgnoreProperties.Run).Should().Be(
@@ -434,7 +442,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         [TestMethod]
         public void Sample12_SerializeCollections_DefaultItemName()
         {
-            SampleOutput.Capture(SerializeCollections.DefaultItemName).Should().Be("<Scoreboard><Player>Ada</Player><Scores><Int32>90</Int32><Int32>85</Int32></Scores></Scoreboard>");
+            SampleOutput.Capture(SerializeCollections.DefaultItemName).Should().Be("<Scoreboard><Player>Ada</Player><Scores><int>90</int><int>85</int></Scores></Scoreboard>");
         }
 
         [TestMethod]
@@ -488,9 +496,9 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample12_SerializeCollections_RootCollections()
         {
             SampleOutput.Capture(SerializeCollections.RootCollections).Should().Be(
-                "<ListOfInvoiceLine><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine><InvoiceLine><Sku>MS-220</Sku><Quantity>1</Quantity></InvoiceLine></ListOfInvoiceLine>\n" +
+                "<ArrayOfInvoiceLine><InvoiceLine><Sku>KB-101</Sku><Quantity>2</Quantity></InvoiceLine><InvoiceLine><Sku>MS-220</Sku><Quantity>1</Quantity></InvoiceLine></ArrayOfInvoiceLine>\n" +
                 "2 lines\n" +
-                "<Int32Array><Int32>1</Int32><Int32>2</Int32><Int32>3</Int32></Int32Array>\n" +
+                "<ArrayOfInt><int>1</int><int>2</int><int>3</int></ArrayOfInt>\n" +
                 "<DictionaryOfStringInt32><Width>4</Width><Height>3</Height></DictionaryOfStringInt32>");
         }
 

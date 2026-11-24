@@ -215,6 +215,26 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     builder.Append(indent).AppendLine("        seeded.PropertyNameCaseInsensitive = true;");
                 }
 
+                if (context.Options.MemberOrder != 0)
+                {
+                    builder.Append(indent).Append("        seeded.MemberOrder = (XmlMemberOrder)").Append(context.Options.MemberOrder).AppendLine(";");
+                }
+
+                if (context.Options.CharHandling != 0)
+                {
+                    builder.Append(indent).Append("        seeded.CharHandling = (XmlCharHandling)").Append(context.Options.CharHandling).AppendLine(";");
+                }
+
+                if (context.Options.UtcOffsetHandling != 0)
+                {
+                    builder.Append(indent).Append("        seeded.UtcOffsetHandling = (XmlUtcOffsetHandling)").Append(context.Options.UtcOffsetHandling).AppendLine(";");
+                }
+
+                if (context.Options.DefaultCollectionMapping != 0)
+                {
+                    builder.Append(indent).Append("        seeded.DefaultCollectionMapping = (XmlCollectionMapping)").Append(context.Options.DefaultCollectionMapping).AppendLine(";");
+                }
+
                 if (context.Options.XmlVersion != 0)
                 {
                     builder.Append(indent).Append("        seeded.XmlVersion = (XmlVersion)").Append(context.Options.XmlVersion).AppendLine(";");
@@ -393,6 +413,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 .Append(NamingPolicy(TypeGraphWalker.ElementPolicy(context.Options)) ?? "null").Append(", ")
                 .Append(NamingPolicy(TypeGraphWalker.AttributePolicy(context.Options)) ?? "null").Append(", ")
                 .Append("(XmlPropertyMapping)").Append(context.Options.DefaultPropertyMapping).Append(", ")
+                .Append("(XmlCollectionMapping)").Append(context.Options.DefaultCollectionMapping).Append(", ")
                 .Append(context.Options.IncludeFields ? "true" : "false")
                 .Append(", typeof(T)");
             foreach (var name in direct)

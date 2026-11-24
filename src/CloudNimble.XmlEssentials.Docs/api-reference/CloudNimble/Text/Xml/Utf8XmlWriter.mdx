@@ -1401,6 +1401,34 @@ The document already has a root element.
 The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
 | `ObjectDisposedException` | This instance has been disposed. |
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBase64String
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and binary data, encoded as base64 text, as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementBase64String(CloudNimble.Text.Xml.XmlEncodedText localName, System.ReadOnlySpan<byte> bytes)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `bytes` | `System.ReadOnlySpan<byte>` | The binary data to write as base64 encoded text. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBoolean
 
 Writes an element with the local name specified as a string and a [Boolean](https://learn.microsoft.com/dotnet/api/system.boolean) value as its content.
@@ -1482,6 +1510,34 @@ public void WriteElementBoolean(System.ReadOnlySpan<byte> utf8LocalName, bool va
 | Exception | Description |
 |-----------|-------------|
 | `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementBoolean
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [Boolean](https://learn.microsoft.com/dotnet/api/system.boolean) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementBoolean(CloudNimble.Text.Xml.XmlEncodedText localName, bool value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `bool` | [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to write `true` as the content of the element; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to write `false`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
 -or-
 The document already has a root element.
 -or-
@@ -1692,6 +1748,618 @@ public void WriteElementNumber(string localName, ulong value)
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *localName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and an [Int32](https://learn.microsoft.com/dotnet/api/system.int32) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, int value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `int` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and a [Int64](https://learn.microsoft.com/dotnet/api/system.int64) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, long value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `long` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and a [Double](https://learn.microsoft.com/dotnet/api/system.double) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, double value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `double` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+Not-a-number is written as `NaN`, positive infinity as `INF`, and negative infinity as `-INF`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and a [Single](https://learn.microsoft.com/dotnet/api/system.single) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, float value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `float` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+Not-a-number is written as `NaN`, positive infinity as `INF`, and negative infinity as `-INF`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and a [Decimal](https://learn.microsoft.com/dotnet/api/system.decimal) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, decimal value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `decimal` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, uint value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `uint` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of characters and a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<char> localName, ulong value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `ulong` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and an [Int32](https://learn.microsoft.com/dotnet/api/system.int32) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, int value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `int` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [Int64](https://learn.microsoft.com/dotnet/api/system.int64) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, long value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `long` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [Double](https://learn.microsoft.com/dotnet/api/system.double) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, double value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `double` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+Not-a-number is written as `NaN`, positive infinity as `INF`, and negative infinity as `-INF`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [Single](https://learn.microsoft.com/dotnet/api/system.single) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, float value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `float` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+Not-a-number is written as `NaN`, positive infinity as `INF`, and negative infinity as `-INF`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [Decimal](https://learn.microsoft.com/dotnet/api/system.decimal) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, decimal value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `decimal` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, uint value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `uint` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(System.ReadOnlySpan<byte> utf8LocalName, ulong value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `ulong` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and an [Int32](https://learn.microsoft.com/dotnet/api/system.int32) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, int value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `int` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [Int64](https://learn.microsoft.com/dotnet/api/system.int64) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, long value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `long` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [Double](https://learn.microsoft.com/dotnet/api/system.double) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, double value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `double` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+Not-a-number is written as `NaN`, positive infinity as `INF`, and negative infinity as `-INF`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [Single](https://learn.microsoft.com/dotnet/api/system.single) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, float value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `float` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+Not-a-number is written as `NaN`, positive infinity as `INF`, and negative infinity as `-INF`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [Decimal](https://learn.microsoft.com/dotnet/api/system.decimal) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, decimal value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `decimal` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, uint value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `uint` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementNumber
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementNumber(CloudNimble.Text.Xml.XmlEncodedText localName, ulong value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `ulong` | The number to write as the content of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
 | `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
 -or-
 The document already has a root element.
@@ -1911,6 +2579,542 @@ public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, System.R
 | `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
 -or-
 *utf8Value* is not valid UTF-8, or contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a string and text specified as a read-only span of characters as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(string localName, System.ReadOnlySpan<char> value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `string` | The local name of the element. |
+| `value` | `System.ReadOnlySpan<char>` | The text to write as the content of the element, escaped as needed. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *localName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*value* contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a string and text specified as a read-only span of UTF-8 bytes as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(string localName, System.ReadOnlySpan<byte> utf8Value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `string` | The local name of the element. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded text to write as the content of the element, escaped as needed. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *localName* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*utf8Value* is not valid UTF-8, or contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of characters and a string value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<char> localName, string value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `string?` | The text to write as the content of the element, escaped as needed, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to write an empty element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*value* contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of characters and text specified as a read-only span of UTF-8 bytes as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<char> localName, System.ReadOnlySpan<byte> utf8Value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded text to write as the content of the element, escaped as needed. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*utf8Value* is not valid UTF-8, or contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of characters and a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<char> localName, System.DateTime value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `System.DateTime` | The value to write as an XML Schema `dateTime`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+The value is formatted as it is by [Utf8XmlWriter.WriteStringValue](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#writestringvalue).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of characters and a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<char> localName, System.DateTimeOffset value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `System.DateTimeOffset` | The value to write as an XML Schema `dateTime` with its offset. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of characters and a [Guid](https://learn.microsoft.com/dotnet/api/system.guid) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<char> localName, System.Guid value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the element. |
+| `value` | `System.Guid` | The value to write in the form `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a string value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, string value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `string?` | The text to write as the content of the element, escaped as needed, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to write an empty element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*value* contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and text specified as a read-only span of characters as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, System.ReadOnlySpan<char> value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `System.ReadOnlySpan<char>` | The text to write as the content of the element, escaped as needed. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*value* contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, System.DateTime value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `System.DateTime` | The value to write as an XML Schema `dateTime`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+The value is formatted as it is by [Utf8XmlWriter.WriteStringValue](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#writestringvalue).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, System.DateTimeOffset value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `System.DateTimeOffset` | The value to write as an XML Schema `dateTime` with its offset. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a read-only span of UTF-8 bytes and a [Guid](https://learn.microsoft.com/dotnet/api/system.guid) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(System.ReadOnlySpan<byte> utf8LocalName, System.Guid value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the element. |
+| `value` | `System.Guid` | The value to write in the form `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a string value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(CloudNimble.Text.Xml.XmlEncodedText localName, string value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `string?` | The text to write as the content of the element, escaped as needed, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to write an empty element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*value* contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and text specified as a read-only span of characters as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(CloudNimble.Text.Xml.XmlEncodedText localName, System.ReadOnlySpan<char> value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `System.ReadOnlySpan<char>` | The text to write as the content of the element, escaped as needed. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*value* contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and text specified as a read-only span of UTF-8 bytes as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(CloudNimble.Text.Xml.XmlEncodedText localName, System.ReadOnlySpan<byte> utf8Value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `utf8Value` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded text to write as the content of the element, escaped as needed. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+*utf8Value* is not valid UTF-8, or contains a character that XML does not allow.
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(CloudNimble.Text.Xml.XmlEncodedText localName, System.DateTime value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `System.DateTime` | The value to write as an XML Schema `dateTime`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+The value is formatted as it is by [Utf8XmlWriter.WriteStringValue](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#writestringvalue).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(CloudNimble.Text.Xml.XmlEncodedText localName, System.DateTimeOffset value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `System.DateTimeOffset` | The value to write as an XML Schema `dateTime` with its offset. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteElementString
+
+Writes an element with the local name specified as a pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText) and a [Guid](https://learn.microsoft.com/dotnet/api/system.guid) value as its content.
+
+#### Syntax
+
+```csharp
+public void WriteElementString(CloudNimble.Text.Xml.XmlEncodedText localName, System.Guid value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+| `value` | `System.Guid` | The value to write in the form `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
 -or-
 The document already has a root element.
 -or-
@@ -2452,6 +3656,39 @@ public void WriteNilElement(System.ReadOnlySpan<byte> utf8LocalName)
 | Exception | Description |
 |-----------|-------------|
 | `XmlException` | *utf8LocalName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
+-or-
+The document already has a root element.
+-or-
+The element is nested deeper than [XmlWriterOptions.MaxDepth](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxdepth). |
+| `ObjectDisposedException` | This instance has been disposed. |
+
+#### Remarks
+
+If the XML Schema instance namespace ([XmlNamespaces.Xsi](/api-reference/CloudNimble/Text/Xml/XmlNamespaces#xsi)) is not in scope, the writer
+declares it on the element with the prefix `xsi`.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteNilElement
+
+Writes an empty element that has the attribute `xsi:nil="true"`, with the local name specified as a
+pre-encoded [XmlEncodedText](/api-reference/CloudNimble/Text/Xml/XmlEncodedText).
+
+#### Syntax
+
+```csharp
+public void WriteNilElement(CloudNimble.Text.Xml.XmlEncodedText localName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `CloudNimble.Text.Xml.XmlEncodedText` | The UTF-8 encoded local name of the element. |
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *localName* is not a valid XML name without a colon, or is longer than [XmlWriterOptions.MaxNameByteCount](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions#maxnamebytecount).
 -or-
 The document already has a root element.
 -or-

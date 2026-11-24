@@ -33,6 +33,24 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample40_MigrateFromXmlSerializer_BclDefaults()
+        {
+            SampleOutput.Capture(MigrateFromXmlSerializer.BclDefaults).Should().Be(
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<Shipment xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n" +
+                "  <Carrier>Contoso Freight</Carrier>\n" +
+                "  <Insured>true</Insured>\n" +
+                "  <Packages>\n" +
+                "    <string>PKG-1</string>\n" +
+                "    <string>PKG-2</string>\n" +
+                "  </Packages>\n" +
+                "  <ShippedOn>2026-03-14T09:30:00Z</ShippedOn>\n" +
+                "  <Status>InTransit</Status>\n" +
+                "  <Weight>12.50</Weight>\n" +
+                "</Shipment>");
+        }
+
+        [TestMethod]
         public void Sample40_MigrateFromXmlSerializer_Defaults()
         {
             SampleOutput.Capture(MigrateFromXmlSerializer.Defaults).Should().Be(

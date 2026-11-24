@@ -262,23 +262,65 @@ The first block is what `System.Xml.Serialization.XmlSerializer` writes to a `St
 
 | Behavior | `System.Xml.Serialization` | XmlEssentials | To get the old behavior |
 | --- | --- | --- | --- |
-| Namespace declarations on the root | `xmlns:xsi` and `xmlns:xsd`, always | None | Not available. A reader that follows the Namespaces in XML recommendation doesn't need them. |
+| Namespace declarations on the root | `xmlns:xsi` and `xmlns:xsd`, always | None | Set `Namespaces` to the two declarations. A reader that follows the Namespaces in XML recommendation doesn't need them. |
 | XML declaration | Written. The encoding is the encoding of the target | Written, always `encoding="utf-8"` | Set `OmitXmlDeclaration` to leave it out. See [Encoding](#encoding). |
 | Indentation | Two spaces | One line | Set `WriteIndented = true`. |
 | Element with no content | `<e />` | `<e/>` | Set `EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace`. |
 | Element order | Declaration order, base class first | Declaration order, base class first | No change. `[XmlPropertyOrder]` or `Order` sets an explicit order. |
-| `null` reference | Element left out | `xsi:nil="true"` | Set `DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull`. See [Null values](#null-values). |
-| Collection | `<Packages>` wrapper, items named for their type (`<string>`) | Repeated `<Packages>`, no wrapper | Add `[XmlArray]` and `[XmlArrayItem("string")]`. See [Collections](#collections). |
-| Empty collection | Empty wrapper element | Nothing without `[XmlArray]`. An empty wrapper with it | Add `[XmlArray]`. |
-| Enum | Member name | Member name | No change. `[XmlEnum]` has no counterpart: see [What isn't supported](#what-isnt-supported). |
+| Public field | Written, before the properties of its class | Not written | Set `IncludeFields = true` and `MemberOrder = XmlMemberOrder.FieldsFirst`. |
+| Property with no setter | Not written, unless it is a collection | Written | Set `IgnoreReadOnlyProperties = true`. |
+| Collection with no setter, on read | Filled | Left as it is | Set `PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate`. |
+| `null` reference | Element left out | `xsi:nil="true"` | Set `DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNullReference`. See [Null values](#null-values). |
+| Nullable value type with no value, such as `int?` | `xsi:nil="true"` | `xsi:nil="true"` | No change. `WhenWritingNullReference` keeps it; `WhenWritingNull` leaves it out. |
+| Collection | `<Packages>` wrapper, items named for their type (`<string>`) | Repeated `<Packages>`, no wrapper | Set `DefaultCollectionMapping = XmlCollectionMapping.Wrapped`, or add `[XmlArray]` to one member. The items are then named for their type, as before. See [Collections](#collections). |
+| A value or a collection as the whole document | `<int>`, `<string>`, `<ArrayOfInt>`, `<ArrayOfShipment>` | The same names | No change. |
+| Empty collection | Empty wrapper element | Nothing without a wrapper. An empty wrapper with one | Set `DefaultCollectionMapping = XmlCollectionMapping.Wrapped`, or add `[XmlArray]`. |
+| Enum | Member name | Member name | No change. Replace `[XmlEnum("name")]` with `[XmlPropertyName("name")]`. |
 | `DateTime` | `xs:dateTime`, for example `2026-03-14T09:30:00Z` | The same form | No change. |
+| `DateTimeOffset` with a zero offset | Ends with `Z` | Ends with `+00:00` | Set `UtcOffsetHandling = XmlUtcOffsetHandling.WriteZ`. Both libraries read both forms. |
+| `char` | The number of the character, `97` for `a` | The character | Set `CharHandling = XmlCharHandling.Number`. |
 | `bool`, numbers | XSD lexical form (`true`, `12.50`) | The same form | No change. |
 | Unknown element on read | Skipped | Skipped | No change. Set `UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow` to reject it. |
 | Root element name on read | Must match | Must match | No change. |
 
+### Keep the old defaults
+
+`XmlSerializerOptions.Bcl` sets every option the table names for a difference: `Namespaces`, `WriteIndented`, `EmptyElementStyle`, `IncludeFields`, `MemberOrder`, `IgnoreReadOnlyProperties`, `PreferredObjectCreationHandling`, `DefaultIgnoreCondition`, `DefaultCollectionMapping`, `UtcOffsetHandling` and `CharHandling`. Pass it when the documents have to stay the ones the old serializer wrote, for a consumer that already reads them:
+
+```csharp Program.cs
+var options = new XmlSerializerOptions(XmlSerializerDefaults.Bcl) { NewLine = "\n" };
+output.WriteLine(XmlSerializer.Serialize(shipment, options));
+```
+
+The output is the first block above, with `encoding="utf-8"`:
+
+```xml Output
+<?xml version="1.0" encoding="utf-8"?>
+<Shipment xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Carrier>Contoso Freight</Carrier>
+  <Insured>true</Insured>
+  <Packages>
+    <string>PKG-1</string>
+    <string>PKG-2</string>
+  </Packages>
+  <ShippedOn>2026-03-14T09:30:00Z</ShippedOn>
+  <Status>InTransit</Status>
+  <Weight>12.50</Weight>
+</Shipment>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/40_MigrateFromXmlSerializer.cs)
+
+`XmlSerializerOptions.Bcl` is read-only. The constructor in the sample gives an instance you can change, here to pin the line ending. The same options read the documents the old serializer wrote.
+
+Some things stay different under these options. Among them:
+
+- The declared encoding is always `utf-8`. See [Encoding](#encoding).
+- A derived type needs `[XmlPolymorphic]` and `[XmlDerivedType]` to be written with `xsi:type`. See [Derived types](#derived-types).
+
 ### Null values
 
-The old serializer leaves a `null` reference out unless the member has `IsNullable = true`. XmlEssentials writes every `null` reference as an element with `xsi:nil="true"`, and declares the `xsi` prefix on that element. To leave `null` members out, set `DefaultIgnoreCondition` to `XmlIgnoreCondition.WhenWritingNull` on the options, or put `[XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]` on a member.
+The old serializer leaves a `null` reference out unless the member has `IsNullable = true`, and writes a nullable value type with no value as `xsi:nil="true"`. XmlEssentials writes every `null` as an element with `xsi:nil="true"`, and declares the `xsi` prefix on that element. To do as the old serializer does, set `DefaultIgnoreCondition` to `XmlIgnoreCondition.WhenWritingNullReference`. To leave every `null` member out, set it to `XmlIgnoreCondition.WhenWritingNull`. Either condition can go on one member with `[XmlIgnore(Condition = ...)]`.
 
 Reading is the same in both: a missing element leaves the property at its default, and an element with `xsi:nil="true"` sets it to `null`. For the full rules, see [Null and nil](/guides/null-and-nil).
 
@@ -286,11 +328,10 @@ Reading is the same in both: a missing element leaves the property at its defaul
 
 This is the difference most likely to break a document that another system reads. The old serializer wraps every collection in an element named for the member and names each item for its type. XmlEssentials writes one element per item, named for the member, with no wrapper, because that is the closest XML shape to a JSON array and the most common shape in hand-written XML.
 
-To keep the wrapped shape, annotate the member. Unlike the old serializer, `[XmlArray]` isn't implied:
+To keep the wrapped shape for every collection, set `DefaultCollectionMapping` to `XmlCollectionMapping.Wrapped`. To keep it for one, annotate the member. The items need no attribute: they are named for their type, with the names the old serializer uses.
 
 ```csharp
 [XmlArray]
-[XmlArrayItem("string")]
 public List<string> Packages { get; set; } = [];
 ```
 
@@ -335,7 +376,7 @@ If you save such text as UTF-8 bytes, remove the declaration or rewrite it to sa
 
 ## Read documents the old serializer wrote
 
-You don't have to change your stored documents to move. Map the type so that it describes the old shape: add `[XmlArray]` and `[XmlArrayItem]` where the old serializer wrapped a collection, and leave the rest alone. The `xmlns:xsi` and `xmlns:xsd` declarations on the root are read and ignored.
+You don't have to change your stored documents to move. Either read them with [`XmlSerializerOptions.Bcl`](#keep-the-old-defaults), or map the type so that it describes the old shape: add `[XmlArray]` and `[XmlArrayItem]` where the old serializer wrapped a collection, and leave the rest alone. The `xmlns:xsi` and `xmlns:xsd` declarations on the root are read and ignored.
 
 ```csharp ArchivedShipment.cs
 [XmlRoot("Shipment")]
@@ -344,7 +385,6 @@ public sealed class ArchivedShipment
     public string? Carrier { get; set; }
 
     [XmlArray]
-    [XmlArrayItem("string")]
     public List<string> Packages { get; set; } = [];
 
     public DateTime ShippedOn { get; set; }
@@ -584,7 +624,6 @@ These features of `System.Xml.Serialization` have no counterpart in XmlEssential
 | `System.Xml.Serialization` attributes on your types | Ignored | Change the `using` directive to `CloudNimble.Text.Xml.Serialization`. |
 | `IXmlSerializable` | Not called | Write an [`XmlConverter<T>`](/guides/custom-converters). |
 | `[XmlAnyElement]`, `[XmlAnyAttribute]` | No attribute of that name | Use `[XmlExtensionData]`, which collects unmapped elements and attributes in one `XmlExtensionData` member. |
-| `[XmlEnum("name")]` | Not supported | An enum is written with its C# member name, or as a number with `EnumHandling = XmlEnumHandling.Integer`. To write other names, use a custom converter. |
 | `[XmlType]` | Not supported | Name the root with `[XmlRoot]`, and a derived type with the argument of `[XmlDerivedType<T>]`. |
 | `[XmlChoiceIdentifier]` | Not supported | Use several `[XmlElement<T>]` attributes on one member, or [polymorphism](/guides/polymorphism). |
 | `XmlSerializerNamespaces` | [`XmlSerializerOptions.Namespaces`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), or `[XmlNamespaceDeclaration]` on the type | The prefixes are set once on the options or on the type, not passed to each `Serialize` call. See [Choose the prefixes](/guides/namespaces#choose-the-prefixes). |
