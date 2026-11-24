@@ -54,7 +54,7 @@ Returns whether the write fast path a context generated can be used with the giv
 #### Syntax
 
 ```csharp
-public static bool CanUseSerializeHandler(CloudNimble.Text.Xml.XmlSerializerOptions options, CloudNimble.Text.Xml.XmlNamingPolicy elementNamingPolicy, CloudNimble.Text.Xml.XmlNamingPolicy attributeNamingPolicy, CloudNimble.Text.Xml.XmlPropertyMapping defaultPropertyMapping, CloudNimble.Text.Xml.XmlCollectionMapping defaultCollectionMapping, bool includeFields, params System.ReadOnlySpan<System.Type> directTypes)
+public static bool CanUseSerializeHandler(CloudNimble.Text.Xml.XmlSerializerOptions options, CloudNimble.Text.Xml.XmlNamingPolicy elementNamingPolicy, CloudNimble.Text.Xml.XmlNamingPolicy attributeNamingPolicy, CloudNimble.Text.Xml.XmlPropertyMapping defaultPropertyMapping, bool includeFields, params System.ReadOnlySpan<System.Type> directTypes)
 ```
 
 #### Parameters
@@ -65,7 +65,6 @@ public static bool CanUseSerializeHandler(CloudNimble.Text.Xml.XmlSerializerOpti
 | `elementNamingPolicy` | `CloudNimble.Text.Xml.XmlNamingPolicy?` | The policy the element names were generated with, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for none. |
 | `attributeNamingPolicy` | `CloudNimble.Text.Xml.XmlNamingPolicy?` | The policy the attribute names were generated with, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for none. |
 | `defaultPropertyMapping` | `CloudNimble.Text.Xml.XmlPropertyMapping` | The property mapping the members were generated with. |
-| `defaultCollectionMapping` | `CloudNimble.Text.Xml.XmlCollectionMapping` | The collection mapping the members were generated with. |
 | `includeFields` | `bool` | Whether the fast path was generated with fields included. |
 | `directTypes` | `System.ReadOnlySpan<System.Type>` | The types the fast path writes without a converter, the type itself first. |
 
@@ -85,8 +84,7 @@ these options; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/la
 
 The fast path has its element and attribute names and its choice of members compiled in, from
 [XmlSourceGenerationOptionsAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSourceGenerationOptionsAttribute). It is not used when the options ask for another naming
-policy, property mapping, collection mapping or choice of members, when they handle references, when they
-write a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null), a [Char](https://learn.microsoft.com/dotnet/api/system.char) or a zero offset another way, when they put fields first, or when they supply a converter
+policy, property mapping or choice of members, when they handle references, or when they supply a converter
 for a type it writes directly. The serializer then writes from the metadata, which follows every option.
 This method is for source-generated contexts only.
 

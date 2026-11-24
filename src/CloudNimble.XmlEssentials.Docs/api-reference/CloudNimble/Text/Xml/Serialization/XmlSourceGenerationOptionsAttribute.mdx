@@ -126,38 +126,6 @@ public CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy AttributeNamingPo
 Type: `CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy`
 One of the enumeration values that specifies the naming policy for attributes. The default is [XmlKnownNamingPolicy.Unspecified](/api-reference/CloudNimble/Text/Xml/Serialization/XmlKnownNamingPolicy).
 
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CharHandling
-
-Gets or sets how a [Char](https://learn.microsoft.com/dotnet/api/system.char) is written and read: the character, or its number.
-
-#### Syntax
-
-```csharp
-public CloudNimble.Text.Xml.XmlCharHandling CharHandling { get; set; }
-```
-
-#### Property Value
-
-Type: `CloudNimble.Text.Xml.XmlCharHandling`
-One of the enumeration values. The default is [XmlCharHandling.Character](/api-reference/CloudNimble/Text/Xml/XmlCharHandling).
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultCollectionMapping
-
-Gets or sets the default mapping of a collection member that has no mapping attribute: repeated
-elements, or a wrapper element.
-
-#### Syntax
-
-```csharp
-public CloudNimble.Text.Xml.XmlCollectionMapping DefaultCollectionMapping { get; set; }
-```
-
-#### Property Value
-
-Type: `CloudNimble.Text.Xml.XmlCollectionMapping`
-One of the enumeration values that specifies the default mapping of collection members. The default is
-[XmlCollectionMapping.Unwrapped](/api-reference/CloudNimble/Text/Xml/XmlCollectionMapping).
-
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultIgnoreCondition
 
 Gets or sets the default condition that determines when members are ignored.
@@ -328,21 +296,6 @@ public int MaxDepth { get; set; }
 Type: `int`
 The maximum element depth. A value of 0 selects the default limit. The default is 0.
 
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberOrder
-
-Gets or sets where the fields of a type come among its members: after its properties, or before them.
-
-#### Syntax
-
-```csharp
-public CloudNimble.Text.Xml.XmlMemberOrder MemberOrder { get; set; }
-```
-
-#### Property Value
-
-Type: `CloudNimble.Text.Xml.XmlMemberOrder`
-One of the enumeration values. The default is [XmlMemberOrder.PropertiesFirst](/api-reference/CloudNimble/Text/Xml/XmlMemberOrder).
-
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OmitXmlDeclaration
 
 Gets or sets a value that indicates whether the XML declaration is omitted.
@@ -447,21 +400,6 @@ public CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling UnknownTypeHand
 
 Type: `CloudNimble.Text.Xml.Serialization.XmlUnknownTypeHandling`
 One of the enumeration values. The default is [XmlUnknownTypeHandling.XmlElement](/api-reference/CloudNimble/Text/Xml/Serialization/XmlUnknownTypeHandling).
-
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> UtcOffsetHandling
-
-Gets or sets how a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset) whose offset is zero is written: `+00:00` or `Z`.
-
-#### Syntax
-
-```csharp
-public CloudNimble.Text.Xml.XmlUtcOffsetHandling UtcOffsetHandling { get; set; }
-```
-
-#### Property Value
-
-Type: `CloudNimble.Text.Xml.XmlUtcOffsetHandling`
-One of the enumeration values. The default is [XmlUtcOffsetHandling.WriteOffset](/api-reference/CloudNimble/Text/Xml/XmlUtcOffsetHandling).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteIndented
 

@@ -106,12 +106,6 @@ Strict: Unknown element 'Colour'.
 [XmlSerializerOptions.OmitXmlDeclaration](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#omitxmldeclaration) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). |
 | `Strict` | 2 | Option values for strict deserialization: an unmapped member, a duplicate property, a comment, or a
 [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for a member annotated non-nullable is an error. |
-| `Bcl` | 3 | Option values that write what `System.Xml.Serialization.XmlSerializer` writes for the same
-type, as far as the options reach: collections in a wrapper element, [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null)
-references left out, public fields included and written first, read-only properties left out, collections with no
-setter filled, a [Char](https://learn.microsoft.com/dotnet/api/system.char) as its number, `Z` for a zero offset, two-space
-indentation, `<e />` for an empty element, and the `xsi` and `xsd` namespaces
-declared on the document element. |
 
 ## Related APIs
 

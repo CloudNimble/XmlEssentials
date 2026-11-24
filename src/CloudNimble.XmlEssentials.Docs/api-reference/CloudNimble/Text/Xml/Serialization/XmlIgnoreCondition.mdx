@@ -95,9 +95,6 @@ The values and their meaning are those of `System.Text.Json.Serialization.JsonIg
 | `WhenWriting` | 4 | A member that is never written and is still read. |
 | `WhenReading` | 5 | A member that is never read and is still written. A document that gives it is accepted, and what it gives is
 skipped. A constructor parameter of the same name is still filled. |
-| `WhenWritingNullReference` | 6 | A member that is not written when its value is a [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) reference. A nullable value
-type with no value, such as an [Int32](https://learn.microsoft.com/dotnet/api/system.int32)? that is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null), is still written,
-as an element marked `xsi:nil`. This is what `System.Xml.Serialization.XmlSerializer` does. |
 
 ## Related APIs
 
