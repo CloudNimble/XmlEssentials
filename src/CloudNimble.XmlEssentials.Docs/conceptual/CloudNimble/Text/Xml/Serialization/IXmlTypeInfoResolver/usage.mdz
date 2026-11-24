@@ -1,7 +1,7 @@
 A resolver answers one question for the serializer: what is the contract for this type? `XmlSerializerOptions.TypeInfoResolver` holds the resolver an options instance uses. The library has two implementations, and most applications use only these:
 
 - `DefaultXmlTypeInfoResolver`, which builds contracts with reflection at run time.
-- Every source-generated `XmlSerializerContext`, which returns the type info the generator wrote.
+- Every source-generated `XmlSerializerContext`, which builds type info from the metadata the generator wrote.
 
 When you don't set a resolver, the options use `DefaultXmlTypeInfoResolver.Instance`. The following example prints the resolver that built the contract for a type no context lists:
 

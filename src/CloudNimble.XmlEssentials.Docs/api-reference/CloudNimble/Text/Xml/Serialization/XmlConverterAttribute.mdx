@@ -71,8 +71,8 @@ The converter type must derive from `XmlConverter<T>` or `XmlConverterFactory` a
 On a type, the converter reads and writes every value of the type, unless [XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters)
 holds a converter for it. On a property or field, the converter reads and writes that member only, and comes before
 both. It handles the whole value of the member: a collection is not taken apart into items, the member may be an
-attribute or text, and a converter for `T` serves a member of type `T?`. A source-generated context reads the
-attribute on a type, and reports it on a member as the error XMLXE009. The converter is a type argument, so the
+attribute or text, and a converter for `T` serves a member of type `T?`. A source-generated context applies
+the attribute on a type and on a member, as the reflection resolver does. The converter is a type argument, so the
 compiler checks that it is a converter and can be created, and no reflection is needed to create it.
 
 ## Type Parameters
@@ -92,7 +92,7 @@ public readonly record struct Money(decimal Amount, string Currency);
 - **A converter in the options wins over the attribute on a type.** `XmlSerializerOptions.Converters` is searched before the attribute on the type, so a caller can override the converter a type names. It doesn't override an attribute on a member.
 - **One instance for each options instance.** The serializer creates the converter the first time the options need it and keeps it.
 - **The converter is a type argument.** `[XmlConverter<MoneyConverter>]` names the converter, and the compiler checks that it derives from `XmlConverter` and has a public parameterless constructor. A converter that can't convert the annotated type still fails at run time: the serializer throws `InvalidOperationException` when it first needs it.
-- **Source generation reads the attribute on a type, not on a member.** A generated context reads and writes a type that carries `[XmlConverter]` with that converter, and writes no converter of its own for it. On a property or field the attribute is the compile-time error `XMLXE009`, because the generated code wouldn't call the converter.
+- **Source generation reads the attribute on a type and on a member.** A generated context reads and writes a type that carries `[XmlConverter]` with that converter, in place of generated metadata for the type. On a property or field, the attribute is carried in the generated metadata, and the converter reads and writes that member.
 - **The converter is created without reflection.** The converter type is a type argument with a `new()` constraint, so the attribute creates it directly and trimming and Native AOT need nothing extra.
 
 ## Constructors

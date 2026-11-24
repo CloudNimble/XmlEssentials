@@ -356,9 +356,6 @@ namespace CloudNimble.XmlEssentials.Tests
             var xml = XmlSerializer.Serialize(7, info);
             xml.Should().Be("<Int32>7</Int32>");
             XmlSerializer.Deserialize(xml, info).Should().Be(7);
-            var reader = new Utf8XmlReader("<Int32>8</Int32>"u8);
-            reader.Read();
-            XmlMetadataServices.Read(ref reader, info).Should().Be(8);
             var buffer = new ArrayBufferWriter<byte>();
             var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
             writer.WriteStartElement("n");
@@ -373,10 +370,6 @@ namespace CloudNimble.XmlEssentials.Tests
             attrWriter.WriteEndElement();
             attrWriter.Dispose();
             System.Text.Encoding.UTF8.GetString(attrBuffer.WrittenSpan).Should().Be("<e n=\"3\"/>");
-            var attrReader = new Utf8XmlReader("<e n=\"4\"/>"u8);
-            attrReader.Read();
-            attrReader.MoveToNextAttribute();
-            XmlMetadataServices.ReadAttribute(ref attrReader, info).Should().Be(4);
         }
 
         [TestMethod]
@@ -564,7 +557,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void GeneratedContext_ConstructorParameters_FillMembersWhateverTheirCase()
         {
-            // The same shapes as XmlSerializerConstructorCaseTests, through generated converters.
+            // The same shapes as XmlSerializerConstructorCaseTests, through a generated context.
             RunGenerated("""
                 using CloudNimble.Text.Xml;
                 using CloudNimble.Text.Xml.Serialization;
@@ -774,7 +767,6 @@ namespace CloudNimble.XmlEssentials.Tests
 
         [TestMethod]
         [DataRow("public sealed class Odd { public Odd(string Name, int extra) { this.Name = Name; } public string Name { get; } }", "XMLXE002", DisplayName = "no constructor can be called: one parameter is not a member and has no default")]
-        [DataRow("public sealed class Odd { [XmlConstructor] private Odd(string Name) { this.Name = Name; } public string Name { get; } }", "XMLXE002", DisplayName = "the marked constructor is private")]
         [DataRow("public sealed class Odd { [XmlConstructor] public Odd(string Name) { this.Name = Name; } [XmlConstructor] public Odd(string Name, int Age) { this.Name = Name; this.Age = Age; } public string Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two marked constructors")]
         [DataRow("public sealed class Odd { public Odd(string Name) { this.Name = Name; } public Odd(int Age) { this.Age = Age; } public string? Name { get; } public int Age { get; } }", "XMLXE005", DisplayName = "two constructors that bind as many members")]
         public void GeneratedContext_ConstructorThatCannotBeChosenOrCalled_IsReported(string type, string expectedId)
@@ -846,58 +838,6 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """").Should().Be("null,null,null,4,null,[a;null;]|null,null,null,9,null,[]|,3,1,4,null,[]|The element is nil but type 'System.Int32' is not nillable.|The required member 'Name' cannot be nil.");
-        }
-
-        [TestMethod]
-        public void GeneratedContext_WithAReferenceHandler_RefusesRatherThanWritingOrReadingWithoutReferences()
-        {
-            RunGenerated("""
-                using System;
-                using CloudNimble.Text.Xml;
-                using CloudNimble.Text.Xml.Serialization;
-
-                public sealed class Pet
-                {
-                    public string? Kind { get; set; }
-                }
-
-                [XmlSerializable<Pet>]
-                internal partial class AppXmlContext : XmlSerializerContext
-                {
-                }
-
-                public static class Use
-                {
-                    private static string Try(Func<string> call)
-                    {
-                        try
-                        {
-                            return call();
-                        }
-                        catch (NotSupportedException ex)
-                        {
-                            return ex.Message;
-                        }
-                    }
-
-                    public static string Run()
-                    {
-                        var preserve = new AppXmlContext(new XmlSerializerOptions { ReferenceHandler = XmlReferenceHandler.Preserve });
-                        return Try(() => XmlSerializer.Serialize(new Pet { Kind = "cat" }, preserve.Pet))
-                            + "|" + Try(() => XmlSerializer.Deserialize("<Pet><Kind>cat</Kind></Pet>", preserve.Pet)!.Kind!);
-                    }
-                }
-                """).Should().Be("The generated converter for 'global::Pet' does not support ReferenceHandler. Read and write this type through the reflection resolver.|The generated converter for 'global::Pet' does not support ReferenceHandler. Read and write this type through the reflection resolver.");
-        }
-
-        [TestMethod]
-        [DataRow("[XmlDerivedType<Circle>(\"circle\")] public class Shape { public int Id { get; set; } } public class Circle : Shape { public int Radius { get; set; } }", "Shape", "'Shape' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it", DisplayName = "on the type")]
-        [DataRow("public class Shape { public int Id { get; set; } } public class Circle : Shape { public int Radius { get; set; } } public class Drawing { [XmlDerivedType<Circle>(\"circle\")] public Shape? Main { get; set; } }", "Drawing", "'Drawing.Main' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it", DisplayName = "on a member")]
-        public void GeneratedContext_DerivedTypes_AreReportedRatherThanDropped(string types, string root, string expectedMessage)
-        {
-            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable<" + root + ">]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
-            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id is "XMLXE008").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal(expectedMessage);
         }
 
         [TestMethod]

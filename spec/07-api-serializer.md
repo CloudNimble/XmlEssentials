@@ -574,7 +574,6 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
     public XmlSourceGenerationMode GenerationMode { get; set; }
     public bool PropertyNameCaseInsensitive { get; set; }
     public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
-    public XmlObjectCreationHandling PreferredObjectCreationHandling { get; set; }
     public bool RespectNullableAnnotations { get; set; }
     public XmlUnknownTypeHandling UnknownTypeHandling { get; set; }
     public bool UseStringEnumConverter { get; set; }

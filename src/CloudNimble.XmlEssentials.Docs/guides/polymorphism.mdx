@@ -10,7 +10,7 @@ In this article, you learn how to serialize a member whose runtime type is a cla
 The model follows System.Text.Json: you opt in on the base type, and you list every derived type that is allowed. `[XmlPolymorphic]` and `[XmlDerivedType<T>]` play the roles of `[JsonPolymorphic]` and `[JsonDerivedType]`. The difference is where the type name goes. JSON needs a `$type` property. XML already has a place for it: the name of the element.
 
 <Note>
-The examples on this page use the reflection-based serializer. Generated converters don't read or write derived types, and the source generator reports error XMLXE008 for a type that declares them. See [Source generation](/guides/source-generation).
+The examples on this page use the reflection-based serializer. A source-generated context reads and writes derived types in the same way. List the base type on the context, and the generator includes the derived types that `[XmlDerivedType<T>]` names. See [Source generation](/guides/source-generation).
 </Note>
 
 ## Serialize the declared type only

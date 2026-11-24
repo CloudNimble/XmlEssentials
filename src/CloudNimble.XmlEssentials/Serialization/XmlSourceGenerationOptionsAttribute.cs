@@ -104,6 +104,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// A bitwise combination of the enumeration values that specifies what the source generator generates. The default is
         /// <see cref="XmlSourceGenerationMode.Default"/>, which generates both type metadata and serialization logic.
         /// </value>
+        /// <remarks>
+        /// <see cref="XmlSerializableAttribute{T}.GenerationMode"/> overrides this value for the type it lists.
+        /// </remarks>
         public XmlSourceGenerationMode GenerationMode { get; set; }
 
         /// <summary>

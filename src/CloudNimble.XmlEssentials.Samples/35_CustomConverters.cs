@@ -80,7 +80,7 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
-        /// Uses a converter with a context generated in metadata mode.
+        /// Uses a converter with a source-generated context.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void UseWithSourceGeneration(TextWriter output)

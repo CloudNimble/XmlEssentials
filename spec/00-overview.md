@@ -57,7 +57,7 @@ XmlEssentials does not share code, attributes, namespace, or package id with tha
 
 ### Goals
 
-- Ship the STJ-parallel product: `Utf8XmlReader`, `Utf8XmlWriter`, DOM, `XmlSerializer`, converters, source generator (Serialization **and** Metadata modes), options (including `Default` / `Web` / `Strict`), naming policies, dictionaries, `IAsyncEnumerable` / `DeserializeAsyncEnumerable` / `SerializeAsyncEnumerable`, `PipeReader`/`PipeWriter`, `ReferenceHandler`, interceptors.
+- Ship the STJ-parallel product: `Utf8XmlReader`, `Utf8XmlWriter`, DOM, `XmlSerializer`, converters, source generator (generated metadata read by the one runtime engine, with a write fast path; `Default`, `Metadata` and `Serialization` modes as System.Text.Json has them), options (including `Default` / `Web` / `Strict`), naming policies, dictionaries, `IAsyncEnumerable` / `DeserializeAsyncEnumerable` / `SerializeAsyncEnumerable`, `PipeReader`/`PipeWriter`, `ReferenceHandler`, interceptors.
 - Direct public-surface parallel of STJ: same type roles, same method shapes, same options/context/converter/source-gen pattern, `Xml*` names. Authoritative overload list: [07](07-api-serializer.md).
 - Zero dependency on `System.Xml`, `System.Xml.Linq`, `System.Xml.Serialization`, `System.Xml.XDocument`, `System.Private.Xml`. Not even internally.
 - UTF-8, spans, `ReadOnlySequence<byte>`, `IBufferWriter<byte>`, `ref struct` reader.

@@ -1,5 +1,6 @@
 using System;
 using CloudNimble.Text.Xml;
+using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Tests.POCOs;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -15,6 +16,34 @@ namespace CloudNimble.XmlEssentials.Tests
     {
 
         #region Public Methods
+
+        [TestMethod]
+        public void TryCreateModel_ForAMemberThatIsIgnored_CreatesNone()
+        {
+            // CreateModels sets ignored members aside before it asks for a model, because an ignored member still
+            // hides the one it overrides. The rule for one member stands on its own all the same.
+            var ignored = new XmlMemberFacts(typeof(CamelMarkedCtor).GetProperty(nameof(CamelMarkedCtor.CreatedBy))!);
+            XmlObjectBinder.IsIgnored(ignored).Should().BeTrue();
+            XmlObjectBinder.TryCreateModel(ignored, new XmlSerializerOptions(), 0, out var model).Should().BeFalse();
+            model.Member.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void ConstructorFacts_FromAConstructorWithAnUnnamedParameter_KeepTheNameNull()
+        {
+            // An array constructor is the one the runtime gives parameters with no names. A parameter with no
+            // name fills no member, so nothing is asked about it.
+            var constructor = typeof(int[]).GetConstructor([typeof(int)])!;
+            constructor.GetParameters()[0].Name.Should().BeNull();
+            var facts = XmlConstructorFacts.FromReflection(constructor, static name => throw new InvalidOperationException("Asked about '" + name + "'."));
+            facts.Parameters.Should().ContainSingle();
+            facts.Parameters[0].Name.Should().BeNull();
+            facts.Parameters[0].ParameterType.Should().Be(typeof(int));
+            facts.Parameters[0].IsIgnoredMember.Should().BeFalse();
+            facts.Parameters[0].HasDefaultValue.Should().BeFalse();
+            facts.Invoke([3, "ignored"]).Should().BeOfType<int[]>().Which.Should().HaveCount(3);
+            XmlObjectBinder.MapConstructor(facts, []).Should().Equal(-1);
+        }
 
         [TestMethod]
         public void Populate_OnAConverterThatCannotPopulate_IsRejected()

@@ -40,8 +40,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <see cref="XmlSourceGenerationMode.Default"/>.
         /// </value>
         /// <remarks>
-        /// The source generator does not use this property. The <see cref="XmlSourceGenerationOptionsAttribute.GenerationMode"/>
-        /// of the context applies to every type.
+        /// A value other than <see cref="XmlSourceGenerationMode.Default"/> overrides the
+        /// <see cref="XmlSourceGenerationOptionsAttribute.GenerationMode"/> of the context for this type. The types reached
+        /// from it take the mode of the context.
         /// </remarks>
         public XmlSourceGenerationMode GenerationMode { get; set; }
 

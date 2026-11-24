@@ -78,28 +78,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE008: a type or member declares derived types, which generated converters do not read or write.
-        /// </summary>
-        internal static readonly DiagnosticDescriptor DerivedTypesNotGenerated = new(
-            id: "XMLXE008",
-            title: "Derived types are not generated",
-            messageFormat: "'{0}' declares derived types with [XmlDerivedType]; a generated converter would read and write only the declared type, so use the reflection resolver for it",
-            category: "XmlEssentials",
-            defaultSeverity: DiagnosticSeverity.Error,
-            isEnabledByDefault: true);
-
-        /// <summary>
-        /// XMLXE009: a member names its own converter, which generated converters do not call.
-        /// </summary>
-        internal static readonly DiagnosticDescriptor MemberConverterNotGenerated = new(
-            id: "XMLXE009",
-            title: "A converter on a member is not generated",
-            messageFormat: "'{0}' names a converter with [XmlConverter]; a generated converter would not call it, so put the attribute on the member's type or use the reflection resolver for the declaring type",
-            category: "XmlEssentials",
-            defaultSeverity: DiagnosticSeverity.Error,
-            isEnabledByDefault: true);
-
-        /// <summary>
         /// XMLXE007: BCL XmlInclude or our XmlInclude on a type.
         /// </summary>
         internal static readonly DiagnosticDescriptor UseXmlDerivedType = new(
@@ -155,34 +133,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             isEnabledByDefault: true);
 
         /// <summary>
-        /// XMLXE014: a member holds mixed content, which generated converters do not read or write.
-        /// </summary>
-        internal static readonly DiagnosticDescriptor MixedContentNotGenerated = new(
-            id: "XMLXE014",
-            title: "Mixed content is not generated",
-            messageFormat: "'{0}' is marked [XmlMixed]; a generated converter would not read or write mixed content, so use the reflection resolver for the declaring type",
-            category: "XmlEssentials",
-            defaultSeverity: DiagnosticSeverity.Error,
-            isEnabledByDefault: true);
-
-        /// <summary>
         /// XMLXE015: a complex type is mapped as the text of an element.
         /// </summary>
         internal static readonly DiagnosticDescriptor ComplexTypeAsText = new(
             id: "XMLXE015",
             title: "Complex types cannot be text",
             messageFormat: "Member '{0}.{1}' is mapped as XML text, and its type is not a single value",
-            category: "XmlEssentials",
-            defaultSeverity: DiagnosticSeverity.Error,
-            isEnabledByDefault: true);
-
-        /// <summary>
-        /// XMLXE016: a member is marked to be populated and a generated converter cannot populate it.
-        /// </summary>
-        internal static readonly DiagnosticDescriptor PopulateNotGenerated = new(
-            id: "XMLXE016",
-            title: "Member cannot be populated",
-            messageFormat: "'{0}' is marked with XmlObjectCreationHandling.Populate, {1}",
             category: "XmlEssentials",
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);

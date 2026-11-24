@@ -11,6 +11,27 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
     internal static class TypeGraphWalker
     {
 
+        #region Fields
+
+        /// <summary>
+        /// The assembly of the context that is being walked, whose internal members generated code can reach.
+        /// </summary>
+        /// <remarks>
+        /// It is held per thread for the length of one walk, so that it does not have to be passed through every visit.
+        /// </remarks>
+        [System.ThreadStatic]
+        private static IAssemblySymbol? Home;
+
+        /// <summary>
+        /// Whether the type whose members are being bound has something the write fast path cannot write: a member
+        /// with its own converter, a member with derived types, mixed content, or extension data. Such a type is
+        /// read and written from its metadata only.
+        /// </summary>
+        [System.ThreadStatic]
+        private static bool FastPathBlocked;
+
+        #endregion
+
         #region Public Methods
 
         /// <summary>
@@ -18,15 +39,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         /// <param name="roots">The [XmlSerializable] types and their property names.</param>
         /// <param name="options">The source-generation options.</param>
-        /// <param name="emitSerialization">Whether converters should be emitted.</param>
+        /// <param name="emitSerialization">Whether the write fast path is emitted.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
+        /// <param name="home">The assembly the context is in, or null when no metadata is to be built.</param>
         /// <returns>The type specs.</returns>
         internal static EquatableArray<TypeSpec> Walk(
             List<(ITypeSymbol Type, string PropertyName)> roots,
             OptionsSpec options,
             bool emitSerialization,
-            List<Diagnostic> diagnostics)
+            List<Diagnostic> diagnostics,
+            IAssemblySymbol? home = null)
         {
+            Home = home;
             var seen = new HashSet<string>();
             var specs = new List<TypeSpec>();
             foreach (var root in roots)
@@ -59,7 +83,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="roots">The types listed on the context, with their property names.</param>
         /// <param name="specs">The specs, renamed in place.</param>
         /// <remarks>
-        /// The name is the property on the context and the name of the generated converter. A type reached
+        /// The name is the property on the context and part of the names of the generated members. A type reached
         /// before it is visited as a root has the name it was reached under, and two types in different
         /// namespaces, or two closed forms of one generic type, may want the same name. Root names are
         /// settled first; every other type that would repeat a name gets a number.
@@ -103,7 +127,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// parameter, a type the compiler could not resolve, or a type built from one of those.
         /// </summary>
         /// <param name="type">The type.</param>
-        /// <returns><see langword="true"/> when no converter can be generated for the type.</returns>
+        /// <returns><see langword="true"/> when nothing can be generated for the type.</returns>
         internal static bool IsOpen(ITypeSymbol type)
         {
             if (type.TypeKind is TypeKind.TypeParameter or TypeKind.Error)
@@ -170,7 +194,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="type">The type.</param>
         /// <param name="propertyName">The type-info property name.</param>
         /// <param name="options">The options.</param>
-        /// <param name="emitSerialization">Whether converters should be emitted.</param>
+        /// <param name="emitSerialization">Whether the write fast path is emitted.</param>
         /// <param name="seen">Visited CLR type names.</param>
         /// <param name="specs">The specs.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
@@ -205,10 +229,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return;
             }
 
-            if (DeclaresDerivedTypes(type))
-            {
-                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.DerivedTypesNotGenerated, location, type.ToDisplayString()));
-            }
+            // A type with derived types is read and written from its metadata, never by the write fast path.
+            var declaresDerived = DeclaresDerivedTypes(type);
 
             if (SymbolHelpers.GetAttribute(type, SymbolHelpers.BclXmlInclude) is not null
                 || (SymbolHelpers.GetAttribute(type, SymbolHelpers.IncludeAttribute) is not null && type.TypeKind is TypeKind.Class or TypeKind.Interface or TypeKind.Struct))
@@ -217,28 +239,32 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             var kind = KindOf(type);
-            var rootName = RootName(type, options);
-            var rootAttr = SymbolHelpers.GetAttribute(type, SymbolHelpers.RootAttribute);
-            var rootNs = rootAttr is null ? options.DefaultNamespace ?? "" : SymbolHelpers.GetString(rootAttr, "Namespace") ?? options.DefaultNamespace ?? "";
-            var constructorTail = "";
-            var populateRefusal = "";
+            IMethodSymbol? constructor = null;
+            FastPathBlocked = false;
             var members = kind == 0 && type is INamedTypeSymbol objectType
-                ? BindMembers(objectType, options, diagnostics, out constructorTail, out populateRefusal)
+                ? BindMembers(objectType, options, diagnostics, out constructor)
                 : new EquatableArray<MemberSpec>([]);
+
+            var blocked = FastPathBlocked || declaresDerived;
+
+            // The metadata describes the type as it is declared. The runtime library applies the options to it.
+            var accessors = new System.Text.StringBuilder();
+            var metadata = kind == 0 && type is INamedTypeSymbol described && Home is not null
+                ? MetadataBuilder.Build(described, constructor, Home, accessors)
+                : "";
 
             specs.Add(new TypeSpec(
                 clrName,
                 propertyName,
-                Naming.Convert(rootName, ElementPolicy(options)),
-                rootNs,
                 kind,
                 type.IsValueType,
                 !type.IsValueType || type.OriginalDefinition.SpecialType is SpecialType.System_Nullable_T,
-                emitSerialization && kind == 0,
+                emitSerialization && kind == 0 && !blocked,
                 members,
-                constructorTail,
                 RuntimeFactory(type.WithNullableAnnotation(NullableAnnotation.NotAnnotated)) ?? "",
-                populateRefusal));
+                metadata,
+                accessors.ToString(),
+                kind == 0 && !blocked));
 
             if (kind == 2)
             {
@@ -246,6 +272,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 // asks the context for the types it holds. They are listed too, so that it has an answer.
                 VisitReachable(type, options, emitSerialization, seen, specs, diagnostics);
             }
+
+            // A derived type named on the type is read and written through the context too, so it is listed.
+            VisitNamedTypes(type, options, emitSerialization, seen, specs, diagnostics);
 
             if (kind == 0 && type is INamedTypeSymbol declaring)
             {
@@ -266,7 +295,45 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                         }
 
                         VisitReachable(nested, options, emitSerialization, seen, specs, diagnostics);
+                        VisitNamedTypes(member, options, emitSerialization, seen, specs, diagnostics);
+
+                        // The runtime library reads the text of mixed content as XmlMixedText, which lives beside the
+                        // attribute, and asks the context for its type info.
+                        if (SymbolHelpers.GetAttribute(member, SymbolHelpers.MixedAttribute)?.AttributeClass is { } mixedAttribute)
+                        {
+                            foreach (var mixedText in mixedAttribute.ContainingNamespace.GetTypeMembers("XmlMixedText"))
+                            {
+                                VisitReachable(mixedText, options, emitSerialization, seen, specs, diagnostics);
+                            }
+                        }
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Visits the types that the attributes on a type or a member name: a derived type, a typed element choice,
+        /// and a typed array item.
+        /// </summary>
+        /// <param name="symbol">A type, a property, or a field.</param>
+        /// <param name="options">The options.</param>
+        /// <param name="emitSerialization">Whether the write fast path is emitted.</param>
+        /// <param name="seen">Visited CLR type names.</param>
+        /// <param name="specs">The specs.</param>
+        /// <param name="diagnostics">Diagnostics to report.</param>
+        /// <remarks>
+        /// The runtime library asks the context for the type info of each of these when it binds the type, so a
+        /// context that left one out would have no answer.
+        /// </remarks>
+        internal static void VisitNamedTypes(ISymbol symbol, OptionsSpec options, bool emitSerialization, HashSet<string> seen, List<TypeSpec> specs, List<Diagnostic> diagnostics)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass is { IsGenericType: true, TypeArguments.Length: 1 } attributeClass
+                    && attributeClass.Name is "XmlDerivedTypeAttribute" or "XmlElementAttribute" or "XmlArrayItemAttribute"
+                    && attributeClass.ContainingNamespace.ToDisplayString() is "CloudNimble.Text.Xml.Serialization")
+                {
+                    VisitReachable(attributeClass.TypeArguments[0], options, emitSerialization, seen, specs, diagnostics);
                 }
             }
         }
@@ -277,7 +344,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         /// <param name="type">The member type.</param>
         /// <param name="options">The options.</param>
-        /// <param name="emitSerialization">Whether converters should be emitted.</param>
+        /// <param name="emitSerialization">Whether the write fast path is emitted.</param>
         /// <param name="seen">Visited CLR type names.</param>
         /// <param name="specs">The specs.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
@@ -341,8 +408,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="seen">Visited CLR type names.</param>
         /// <param name="specs">The specs.</param>
         /// <remarks>
-        /// Such a type gets no property on the context. It is found through <c>GetTypeInfo</c>, which is how a
-        /// generated converter and the runtime library ask for the type of a member, an item, or a value.
+        /// Such a type gets no property on the context. It is found through <c>GetTypeInfo</c>, which is how the
+        /// write fast path and the runtime library ask for the type of a member, an item, or a value.
         /// </remarks>
         internal static void AddRuntimeType(ITypeSymbol type, string factory, HashSet<string> seen, List<TypeSpec> specs)
         {
@@ -352,7 +419,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return;
             }
 
-            specs.Add(new TypeSpec(clrName, RuntimeName(clrName), "", "", 5, type.IsValueType, true, false, new EquatableArray<MemberSpec>([]), "", factory));
+            specs.Add(new TypeSpec(clrName, RuntimeName(clrName), 5, type.IsValueType, true, false, new EquatableArray<MemberSpec>([]), factory));
         }
 
         /// <summary>
@@ -406,7 +473,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// context lists: <see cref="object"/>, the types that hold XML, and a type with its own converter.
         /// </summary>
         /// <param name="type">The type, with <c>Nullable&lt;T&gt;</c> removed.</param>
-        /// <returns><see langword="true"/> when no converter is generated for the type and none of its members are walked.</returns>
+        /// <returns><see langword="true"/> when nothing is generated for the type and none of its members are walked.</returns>
         internal static bool IsRuntimeType(ITypeSymbol type)
         {
             return type.SpecialType is SpecialType.System_Object
@@ -539,41 +606,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
-        /// Returns the document element local name before the naming policy.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="options">The options.</param>
-        /// <returns>The name.</returns>
-        internal static string RootName(ITypeSymbol type, OptionsSpec options)
-        {
-            var root = SymbolHelpers.GetAttribute(type, SymbolHelpers.RootAttribute);
-            var named = root is null ? null : SymbolHelpers.GetString(root, "ElementName") ?? SymbolHelpers.GetConstructorString(root, 0);
-            if (!string.IsNullOrEmpty(named))
-            {
-                return named!;
-            }
-
-            var symbol = SymbolHelpers.UnwrapNullable(type);
-            if (symbol is IArrayTypeSymbol array)
-            {
-                return Naming.XmlTypeName(symbol.Name, true, array.ElementType.Name, []);
-            }
-
-            if (symbol is INamedTypeSymbol generic && generic.IsGenericType)
-            {
-                var args = new string[generic.TypeArguments.Length];
-                for (var i = 0; i < args.Length; i++)
-                {
-                    args[i] = generic.TypeArguments[i].Name;
-                }
-
-                return Naming.XmlTypeName(generic.Name, false, null, args);
-            }
-
-            return symbol.Name;
-        }
-
-        /// <summary>
         /// The element naming policy, falling back to the property policy.
         /// </summary>
         /// <param name="options">The options.</param>
@@ -599,10 +631,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="type">The CLR type.</param>
         /// <param name="options">The options.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
-        /// <param name="constructorTail">The named arguments for constructor parameters whose members are ignored, each with a leading comma, or empty.</param>
-        /// <param name="populateRefusal">The name of a member the reflection resolver would populate and a generated converter cannot, or empty.</param>
+        /// <param name="constructor">The constructor the object is created through when it has parameters; otherwise null.</param>
         /// <returns>The members in write order.</returns>
-        internal static EquatableArray<MemberSpec> BindMembers(INamedTypeSymbol type, OptionsSpec options, List<Diagnostic> diagnostics, out string constructorTail, out string populateRefusal)
+        internal static EquatableArray<MemberSpec> BindMembers(INamedTypeSymbol type, OptionsSpec options, List<Diagnostic> diagnostics, out IMethodSymbol? constructor)
         {
             var members = new List<MemberSpec>();
             var stack = new Stack<INamedTypeSymbol>();
@@ -611,12 +642,20 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 stack.Push(current);
             }
 
+            // Which of two members with one name is serialized is decided by the runtime library, from the metadata.
+            // The write fast path has its members compiled in, so a type with such members goes without one.
+            var declared = new HashSet<string>(System.StringComparer.Ordinal);
             var index = 0;
             while (stack.Count > 0)
             {
                 var current = stack.Pop();
                 foreach (var member in current.GetMembers())
                 {
+                    if (member is IPropertySymbol or IFieldSymbol && !member.IsStatic && !member.IsImplicitlyDeclared && !declared.Add(member.Name))
+                    {
+                        FastPathBlocked = true;
+                    }
+
                     if (TryBindMember(member, options, index, diagnostics, out var spec))
                     {
                         members.Add(spec);
@@ -656,85 +695,37 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
             }
 
-            constructorTail = BindConstructor(type, members, diagnostics, out var hasParameters);
+            BindConstructor(type, members, diagnostics, out constructor);
 
-            // Whether each member populates the value it holds, by the rules of the reflection resolver: the
-            // attribute on the member, then the one on the type, then the options. A generated converter adds to a
-            // collection and to a dictionary. It cannot set members on an object that exists, or populate a member it
-            // sets as the object is created, so it reports the attribute and refuses the option for those.
-            populateRefusal = "";
-            var typeMark = SymbolHelpers.CreationHandlingOf(type);
-            for (var i = 0; i < members.Count; i++)
+            foreach (var member in members)
             {
-                var member = members[i];
-                if (member.IsExtensionData)
+                // A member that is never read takes nothing from the document, so it cannot be required. A
+                // constructor parameter of the same name is still filled.
+                if (!member.IsExtensionData && member.IsRequired && member.IgnoreCondition == 5 && member.ConstructorParameter is null)
                 {
-                    continue;
+                    diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.RequiredMemberNeverRead, type.Locations[0], type.ToDisplayString() + "." + member.ClrName));
                 }
-
-                var owner = type.ToDisplayString() + "." + member.ClrName;
-                // A member that is never read takes nothing from the document: it cannot be required, and it is not
-                // populated. A constructor parameter of the same name is still filled.
-                var neverRead = member.IgnoreCondition == 5 && member.ConstructorParameter is null;
-                if (neverRead && member.IsRequired)
-                {
-                    diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.RequiredMemberNeverRead, type.Locations[0], owner));
-                }
-
-                var mark = member.PopulateMark >= 0 ? member.PopulateMark : typeMark;
-                var kind = neverRead ? 0 : member.PopulateKind;
-                var populate = 0;
-                if (hasParameters)
-                {
-                    if (mark == 1)
-                    {
-                        diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.PopulateNotGenerated, type.Locations[0], owner, "which is not supported in a type created through a constructor with parameters"));
-                    }
-                }
-                else if (mark != 0 && kind == 0)
-                {
-                    if (member.PopulateMark == 1)
-                    {
-                        diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.PopulateNotGenerated, type.Locations[0], owner, "but its type cannot be populated"));
-                    }
-                }
-                else if (mark != 0 && kind is 1 or 2 && !member.IsInitOnly && !(member.IsRequired && member.CanSet))
-                {
-                    populate = mark == 1 ? 1 : -1;
-                }
-                else if (mark == 1)
-                {
-                    diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.PopulateNotGenerated, type.Locations[0], owner, "which a generated converter cannot do for this member; read the type through the reflection resolver"));
-                }
-                else if (mark != 0 && populateRefusal.Length == 0)
-                {
-                    populateRefusal = member.ClrName;
-                }
-
-                members[i] = new MemberSpec(member, populate, member.PopulateKind, member.PopulateMark, member.PopulateEntryTypes);
             }
 
             return new EquatableArray<MemberSpec>(members.ToArray());
         }
 
         /// <summary>
-        /// Chooses the constructor the generated converter calls, by the rules the reflection resolver uses,
+        /// Chooses the constructor the generated metadata calls, by the rules the reflection resolver uses,
         /// and records on each member the parameter it fills.
         /// </summary>
         /// <param name="type">The type.</param>
         /// <param name="members">The members. A member that fills a parameter is replaced by a copy that says so.</param>
-        /// <param name="hasParameters">Whether the chosen constructor has parameters.</param>
         /// <param name="diagnostics">Diagnostics to report.</param>
-        /// <returns>The named arguments for constructor parameters whose members are ignored, each with a leading comma, or empty.</returns>
         /// <remarks>
         /// A constructor marked <c>[XmlConstructor]</c> is used. Otherwise the public constructor with the most
         /// parameters is used, among those whose every parameter is named like a member. A parameter no
         /// member fills must have a default value. XMLXE005 is reported when the choice is ambiguous, and
-        /// XMLXE002 when the chosen constructor cannot be called from generated code.
+        /// XMLXE002 when no constructor can be used. A constructor that is not accessible is called through an accessor.
         /// </remarks>
-        internal static string BindConstructor(INamedTypeSymbol type, List<MemberSpec> members, List<Diagnostic> diagnostics, out bool hasParameters)
+        internal static void BindConstructor(INamedTypeSymbol type, List<MemberSpec> members, List<Diagnostic> diagnostics, out IMethodSymbol? chosenConstructor)
         {
-            hasParameters = false;
+            chosenConstructor = null;
             // A parameter fills the member with the same C# name or XML name, without regard to case, as the
             // reflection resolver has it: a parameter is conventionally "name" where its property is "Name".
             var names = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
@@ -745,7 +736,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             var ignored = IgnoredMembers(type);
-            var tail = new System.Text.StringBuilder();
             IMethodSymbol? marked = null;
             var markedCount = 0;
             IMethodSymbol? best = null;
@@ -795,7 +785,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             if (markedCount > 1 || (marked is null && bestTies > 1))
             {
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.AmbiguousConstructors, type.Locations[0], type.ToDisplayString()));
-                return "";
+                return;
             }
 
             var chosen = marked ?? best;
@@ -809,21 +799,16 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             if (chosen is null && !hasParameterless && type is { IsAbstract: false, TypeKind: TypeKind.Class })
             {
                 // Every public constructor has a parameter that is not a member, and there is no parameterless
-                // one the generated code may call, so there is nothing the converter can use.
+                // one the generated code may call, so there is nothing the metadata can create the object with.
                 diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
-                return "";
+                return;
             }
 
-            hasParameters = chosen is { Parameters.Length: > 0 };
+
+            chosenConstructor = chosen is { Parameters.Length: > 0 } ? chosen : null;
             if (chosen is null || chosen.Parameters.Length == 0)
             {
-                return "";
-            }
-
-            if (chosen.DeclaredAccessibility is Accessibility.Private or Accessibility.Protected or Accessibility.ProtectedAndInternal)
-            {
-                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
-                return "";
+                return;
             }
 
             foreach (var parameter in chosen.Parameters)
@@ -842,7 +827,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 {
                     // The parameter belongs to a member that is never serialized, so the document cannot
                     // supply it. It takes the default of its type, as the reflection resolver passes it.
-                    tail.Append(", @").Append(parameter.Name).Append(": default(").Append(SymbolHelpers.FullName(parameter.Type)).Append(parameter.Type.IsValueType ? ")" : ")!");
                     continue;
                 }
 
@@ -853,24 +837,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     if (!parameter.HasExplicitDefaultValue)
                     {
                         diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.UnsupportedType, type.Locations[0], type.ToDisplayString()));
-                        return "";
+                        return;
                     }
 
                     continue;
                 }
 
-                members[index] = new MemberSpec(
-                    members[index],
-                    parameter.Name,
-                    parameter.Ordinal,
-                    parameter.HasExplicitDefaultValue ? DefaultExpression(parameter) : null,
-                    members[index].IsInitOnly,
-                    members[index].NullGetOwner,
-                    members[index].NullSetOwner,
-                    SymbolHelpers.RefusesNull(parameter, parameter.Type, parameter.OriginalDefinition.Type, forRead: false));
+                members[index] = new MemberSpec(members[index], parameter.Name, members[index].NullGetOwner);
             }
-
-            return tail.ToString();
         }
 
         /// <summary>
@@ -910,6 +884,37 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 // The attribute has a generic form, XmlDerivedTypeAttribute<T>, whose definition has the same name.
                 if (attribute.AttributeClass?.OriginalDefinition is { Name: "XmlDerivedTypeAttribute" } definition
                     && definition.ContainingNamespace.ToDisplayString() is "CloudNimble.Text.Xml.Serialization")
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns whether a member of type <paramref name="type"/> holds values that are written as derived types.
+        /// </summary>
+        /// <param name="type">The type of a member.</param>
+        /// <returns>
+        /// <see langword="true"/> when the type, the type of its items, or a base type of either declares derived
+        /// types.
+        /// </returns>
+        /// <remarks>
+        /// The runtime library chooses the derived type for each value. The write fast path writes the declared
+        /// type, so a type with such a member goes without one.
+        /// </remarks>
+        internal static bool HoldsDerivedTypes(ITypeSymbol type)
+        {
+            type = SymbolHelpers.UnwrapNullable(type);
+            if (TryCollectionElement(type, out var element))
+            {
+                type = SymbolHelpers.UnwrapNullable(element);
+            }
+
+            for (var current = type; current is not null; current = current.BaseType)
+            {
+                if (DeclaresDerivedTypes(current))
                 {
                     return true;
                 }
@@ -999,15 +1004,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return false;
             }
 
-            if (DeclaresDerivedTypes(member))
-            {
-                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.DerivedTypesNotGenerated, member.Locations[0], member.ContainingType.ToDisplayString() + "." + member.Name));
-            }
+            // A member with derived types, or with a converter of its own, is read and written from the metadata.
+            // The write fast path does not write either, so the type goes without one.
+            FastPathBlocked |= DeclaresDerivedTypes(member) || SymbolHelpers.GetAttribute(member, SymbolHelpers.ConverterAttribute) is not null;
+            FastPathBlocked |= memberType is not null && HoldsDerivedTypes(memberType);
 
-            if (SymbolHelpers.GetAttribute(member, SymbolHelpers.ConverterAttribute) is not null)
-            {
-                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.MemberConverterNotGenerated, member.Locations[0], member.ContainingType.ToDisplayString() + "." + member.Name));
-            }
 
             if (SymbolHelpers.GetAttribute(member, SymbolHelpers.BclXmlInclude) is not null)
             {
@@ -1027,9 +1028,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return false;
             }
 
+            // The write fast path reads the member directly, which it cannot do for one that is not accessible from
+            // the context. Such a member is read and written through the accessor in the metadata.
+            var readable = member is IPropertySymbol { GetMethod: { } getMethod } ? getMethod : member;
+            FastPathBlocked |= Home is not null && !(MetadataBuilder.IsAccessible(member, Home) && MetadataBuilder.IsAccessible(readable, Home));
+
             var ignore = SymbolHelpers.GetAttribute(member, SymbolHelpers.IgnoreAttribute);
             // A member with no attribute follows DefaultIgnoreCondition, which is read from the options when the
-            // converter runs. That is recorded as -1.
+            // write fast path runs. That is recorded as -1.
             var ignoreCondition = ignore is null ? -1 : SymbolHelpers.GetInt(ignore, "Condition", 1);
             if (ignoreCondition == 1)
             {
@@ -1038,6 +1044,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             if (SymbolHelpers.GetAttribute(member, SymbolHelpers.ExtensionDataAttribute) is not null)
             {
+                // Extension data is kept by the runtime library; the write fast path does not write it.
+                FastPathBlocked = true;
                 spec = new MemberSpec(member.Name, SymbolHelpers.FullName(memberType!), member.Name, "", false, false, false, false, false, "", "", true, false, canSet, 0, -1, true, false);
                 return true;
             }
@@ -1055,7 +1063,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             if (mixed)
             {
-                diagnostics.Add(Diagnostic.Create(XmlDiagnosticDescriptors.MixedContentNotGenerated, member.Locations[0], (member.ContainingType?.ToDisplayString() ?? "") + "." + member.Name));
+                // Mixed content is read and written from the metadata only.
+                FastPathBlocked = true;
                 return false;
             }
 
@@ -1167,46 +1176,13 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 order,
                 false,
                 mixed);
-            // What the annotations say is recorded whatever the options are: the generated converter reads
+            // What the annotation says is recorded whatever the options are: the write fast path reads
             // RespectNullableAnnotations when it runs.
             var originalType = member.OriginalDefinition is IPropertySymbol originalProperty ? originalProperty.Type : ((IFieldSymbol)member.OriginalDefinition).Type;
-            var declaringType = SymbolHelpers.FullName(member.ContainingType!);
             spec = new MemberSpec(
                 spec,
                 null,
-                -1,
-                null,
-                member is IPropertySymbol { SetMethod: { IsInitOnly: true, DeclaredAccessibility: Accessibility.Public } },
-                SymbolHelpers.RefusesNull(member, memberType, originalType, forRead: true) ? declaringType : null,
-                member is IPropertySymbol { SetMethod: null } ? null : SymbolHelpers.RefusesNull(member, memberType, originalType, forRead: false) ? declaringType : null,
-                false);
-
-            // What the reflection resolver could populate for this member. Whether it is populated is decided once
-            // the constructor is known, in BindMembers.
-            var populateKind = 0;
-            string? entryTypes = null;
-            if (isCollection)
-            {
-                populateKind = !mixed && TryCollectionElement(memberType, out var itemType) && SymbolHelpers.CanPopulateCollection(memberType, itemType) ? 1 : 0;
-            }
-            else if (!isAttribute && !isText)
-            {
-                var valueType = SymbolHelpers.UnwrapNullable(memberType);
-                if (TryDictionaryTypes(memberType, out var keyType, out var entryValueType))
-                {
-                    if (SymbolHelpers.CanPopulateDictionary(memberType, keyType))
-                    {
-                        populateKind = 2;
-                        entryTypes = SymbolHelpers.FullName(keyType) + ", " + SymbolHelpers.FullName(entryValueType);
-                    }
-                }
-                else if (KindOf(valueType) == 0 && !valueType.IsAbstract && (!valueType.IsValueType || canSet))
-                {
-                    populateKind = 3;
-                }
-            }
-
-            spec = new MemberSpec(spec, 0, populateKind, SymbolHelpers.CreationHandlingOf(member), entryTypes);
+                SymbolHelpers.RefusesNull(member, memberType, originalType, forRead: true) ? SymbolHelpers.FullName(member.ContainingType!) : null);
             return true;
         }
 

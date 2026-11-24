@@ -394,7 +394,7 @@ Two more limits apply:
 A member declared as `IList<T>` or `ICollection<T>` is populated through the interface. If it holds an array or another read-only collection at run time, the serializer throws a `NotSupportedException`.
 
 <Note>
-A source-generated context adds to collections and dictionaries in the same way. It can't set members on an object that already exists. It reports `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` on such a member as the error `XMLXE016`, and when the options ask for `Populate` it throws a `NotSupportedException` for a type that has such a member. Mark the member `[XmlObjectCreationHandling(XmlObjectCreationHandling.Replace)]` to keep the type in a generated context.
+A source-generated context populates in the same way: it adds to collections and dictionaries, and it sets the members of an object that already exists.
 </Note>
 
 ## A collection as the document element

@@ -37,7 +37,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// The constructor with parameters used to create an instance, or null when <see cref="CreateObject"/> is used.
         /// </summary>
-        internal readonly ConstructorInvoker? Constructor;
+        internal readonly Func<object?[], object>? Constructor;
 
         /// <summary>
         /// For each constructor parameter, the index into <see cref="Properties"/> that supplies it, or <c>-1</c>.
@@ -68,6 +68,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The member that holds mixed text and child elements, or null.
         /// </summary>
         internal readonly XmlBoundProperty? Mixed;
+
+        /// <summary>
+        /// Whether the type was given no metadata: a source generator emitted only a write fast path for it. Such a
+        /// type cannot be read, and can be written only through the fast path.
+        /// </summary>
+        internal bool NoMetadata;
 
         /// <summary>
         /// For each constructor parameter, its default value, or null when it has none.
@@ -126,7 +132,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="polymorphism">The derived types this type may be written as when it is the document root.</param>
         internal XmlObjectBinding(
             XmlBoundProperty[] properties,
-            ConstructorInfo? constructor,
+            XmlConstructorFacts? constructor,
             int[] constructorMap,
             Func<object>? createObject,
             int slotCount,
@@ -139,8 +145,8 @@ namespace CloudNimble.Text.Xml.Serialization
             ExtensionData = extensionData;
             SlotCount = slotCount;
             Polymorphism = polymorphism;
-            var parameters = constructor?.GetParameters() ?? [];
-            Constructor = constructor is null ? null : ConstructorInvoker.Create(constructor);
+            var parameters = constructor?.Parameters ?? [];
+            Constructor = constructor?.Invoke;
             ParameterDefaults = new object?[parameters.Length];
             ParameterHasDefault = new bool[parameters.Length];
             for (var i = 0; i < parameters.Length; i++)
@@ -227,6 +233,20 @@ namespace CloudNimble.Text.Xml.Serialization
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Refuses to read or write from a binding that has no metadata.
+        /// </summary>
+        /// <param name="type">The type that was to be read or written.</param>
+        /// <exception cref="InvalidOperationException">The type was generated in <see cref="XmlSourceGenerationMode.Serialization"/> only.</exception>
+        internal void ThrowIfNoMetadata(Type type)
+        {
+            if (NoMetadata)
+            {
+                throw new InvalidOperationException(
+                    $"The type info for '{type}' was generated in XmlSourceGenerationMode.Serialization, which provides no property metadata. It can only write a type that has a write fast path, with the options it was compiled for. Use XmlSourceGenerationMode.Default or XmlSourceGenerationMode.Metadata.");
+            }
+        }
 
         /// <summary>
         /// Returns the array that holds an object's values until its constructor is called.

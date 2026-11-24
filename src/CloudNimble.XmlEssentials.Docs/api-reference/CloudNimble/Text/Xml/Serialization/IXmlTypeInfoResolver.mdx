@@ -26,7 +26,7 @@ Defines a resolver of the XML serialization contract for requested types.
 A resolver answers one question for the serializer: what is the contract for this type? `XmlSerializerOptions.TypeInfoResolver` holds the resolver an options instance uses. The library has two implementations, and most applications use only these:
 
 - `DefaultXmlTypeInfoResolver`, which builds contracts with reflection at run time.
-- Every source-generated `XmlSerializerContext`, which returns the type info the generator wrote.
+- Every source-generated `XmlSerializerContext`, which builds type info from the metadata the generator wrote.
 
 When you don't set a resolver, the options use `DefaultXmlTypeInfoResolver.Instance`. The following example prints the resolver that built the contract for a type no context lists:
 
@@ -60,8 +60,8 @@ The interface is the counterpart of `IJsonTypeInfoResolver` in System.Text.Json.
 
 - **A resolver is asked once for each type.** The options cache the answer, and the first request makes the options read-only. Changing what a resolver returns later has no effect on options that already asked.
 - **The type info must be for the requested type.** If a resolver returns type info for another type, the options throw `InvalidOperationException`.
-- **`XmlTypeInfo` has no public constructor.** A resolver you write returns type info it gets from another resolver or from a context. That makes a custom resolver a way to choose between existing contracts, not a way to build new ones. Unlike System.Text.Json, there's no modifier API for changing a contract.
-- **Generated contexts ignore the `options` argument.** A context returns type info bound to its own `Options`. It also answers for types it doesn't list, by using the reflection resolver, so in a `TypeInfoResolverChain` the first generated context answers every request.
+- **`XmlTypeInfo` has no public constructor.** A resolver you write returns type info it gets from another resolver or from a context, or creates it with `XmlMetadataServices.CreateObjectInfo` from metadata it supplies, as a generated context does. Unlike System.Text.Json, there's no modifier API for changing a contract.
+- **A generated context answers for the options that ask.** Its `XmlTypeInfo<T>` properties are bound to its own `Options`. When other options ask it, as they do in a `TypeInfoResolverChain`, it creates type info for those options. It returns `null` for a type it neither lists nor reaches, unless the type is a built-in value, an XML value, `object`, or a type with a custom converter, so the next resolver in the chain is asked.
 - **With the reflection switch off, there's no default.** When `XmlSerializer.IsReflectionEnabledByDefault` is `false`, `TypeInfoResolver` is `null` until you set it, and a serializer call that needs it throws `InvalidOperationException`.
 
 ## Methods

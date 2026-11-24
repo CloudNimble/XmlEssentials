@@ -209,7 +209,7 @@ namespace CloudNimble.XmlEssentials.Tests
                         options.TypeInfoResolverChain.Add(new FirstContext());
                         options.TypeInfoResolverChain.Add(new SecondContext());
                         var chained = XmlSerializer.Serialize(new Second { B = 2 }, options) + XmlSerializer.Serialize(new First { A = 1 }, options)
-                            + ":" + options.GetTypeInfo<Second>().Converter.GetType().Name + ":" + XmlSerializer.Deserialize<Second>("<Second><B>5</B></Second>", options)!.B
+                            + ":" + options.GetTypeInfo<Second>().Properties.Count + ":" + XmlSerializer.Deserialize<Second>("<Second><B>5</B></Second>", options)!.B
                             + ":" + XmlSerializer.Serialize(new[] { new Second { B = 7 } }, options)
                             + ":" + ReferenceEquals(options.GetTypeInfo<Second>().Options, options) + ":" + ReferenceEquals(options.GetTypeInfo<First>().Options, options);
 
@@ -238,7 +238,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 }
                 """).Should().Be(
                 "yes,no,yes,yes,yes,no,no,no,yes,yes\n" +
-                "<Second><B>2</B></Second><First><A>1</A></First>:SecondXmlConverter:5:<SecondArray><Second><B>7</B></Second></SecondArray>:True:True\n" +
+                "<Second><B>2</B></Second><First><A>1</A></First>:1:5:<SecondArray><Second><B>7</B></Second></SecondArray>:True:True\n" +
                 "The type 'Third' is not supported.\n" +
                 "The type 'Second' is not supported by 'FirstContext'.");
         }
@@ -391,11 +391,12 @@ namespace CloudNimble.XmlEssentials.Tests
                 "<Box><Inner><Name>a</Name></Inner><Parts><Count>2</Count></Parts></Box>\n" +
                 "a,2\n" +
                 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Part>\n  <Name>a</Name>\n  <Count xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>\n</Part>\n" +
-                "The generated converters were compiled with ElementNamingPolicy = none, and the options have XmlCamelCaseNamingPolicy. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.");
+                // A naming policy the context was not compiled with is applied from the metadata, not refused.
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?><box><inner><name>a</name><count xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></inner><parts><name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><count>2</count></parts></box>");
         }
 
         [TestMethod]
-        public void GenericTypesAndSameNamedTypes_EachGetTheirOwnConverter()
+        public void GenericTypesAndSameNamedTypes_EachGetTheirOwnTypeInfo()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + """
                 namespace Shop
@@ -452,13 +453,13 @@ namespace CloudNimble.XmlEssentials.Tests
                         return Both.Write(order, o => new AppXmlContext(o).Order, o => o.Numbers!.Second + "," + o.Names!.Second + "," + o.Sold!.Sku + "," + o.Stored!.Bin)
                             + "\n" + Both.Write(new Pair<string> { First = "x" }, o => new AppXmlContext(o).Words, p => p.First!, o => o.DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull)
                             + "\n" + string.Join(",", new[] { typeof(Pair<int>), typeof(Pair<string>), typeof(Shop.Item), typeof(Depot.Item) }
-                                .Select(type => AppXmlContext.Default.GetTypeInfo(type)!.Converter.GetType().Name));
+                                .Select(type => AppXmlContext.Default.GetTypeInfo(type)!.Type.ToString()));
                     }
                 }
                 """ + Compare).Should().Be(
                 "<Order><Numbers><First>1</First><Second>2</Second></Numbers><Names><First>a</First><Second>b</Second></Names><Sold><Sku>s</Sku></Sold><Stored><Bin>4</Bin></Stored></Order>\nsame\n2,b,s,4\n2,b,s,4\n" +
                 "<PairOfString><First>x</First></PairOfString>\nsame\nx\nx\n" +
-                "PairInt32XmlConverter,WordsXmlConverter,ItemXmlConverter,Item2XmlConverter");
+                "Pair`1[System.Int32],Pair`1[System.String],Shop.Item,Depot.Item");
         }
 
         [TestMethod]
@@ -530,10 +531,9 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        [DataRow("public sealed class Note { [XmlMixed] public List<XmlMixedContentItem> Body { get; set; } = new(); }", "XMLXE014", "'Note.Body' is marked [XmlMixed]; a generated converter would not read or write mixed content, so use the reflection resolver for the declaring type", DisplayName = "mixed content")]
         [DataRow("public sealed class Inner { public int A { get; set; } } public sealed class Note { [XmlText] public Inner? Body { get; set; } }", "XMLXE015", "Member 'Note.Body' is mapped as XML text, and its type is not a single value", DisplayName = "text that is an object")]
         [DataRow("public sealed class Note { [XmlText] public List<string> Body { get; set; } = new(); }", "XMLXE015", "Member 'Note.Body' is mapped as XML text, and its type is not a single value", DisplayName = "text that is a collection")]
-        public void MembersAGeneratedConverterCannotHandle_AreReportedRatherThanDropped(string types, string id, string expectedMessage)
+        public void TextMembersThatAreNotASingleValue_AreReportedRatherThanDropped(string types, string id, string expectedMessage)
         {
             var source = Usings + types + "\n[XmlSerializable<Note>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
             var (_, diagnostics, _) = GeneratorTestHost.Run(source);
@@ -735,6 +735,482 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void GenerationMode_DecidesWhatAContextCanDo()
+        {
+            // Default and Metadata | Serialization give both the metadata and the write fast path. Metadata gives the
+            // metadata alone. Serialization gives the fast path alone: it writes with the options it was compiled
+            // for and does nothing else, as System.Text.Json has it. The mode on [XmlSerializable] wins for its type.
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public sealed class Part
+                {
+                    public string? Name { get; set; }
+                }
+
+                public sealed class Crate
+                {
+                    public Part? Inner { get; set; }
+
+                    public List<Part> Many { get; set; } = new();
+                }
+
+                [XmlDerivedType<Bolt>("bolt")]
+                public class Fastener
+                {
+                    public int Size { get; set; }
+                }
+
+                public sealed class Bolt : Fastener
+                {
+                }
+
+                public sealed class Tool
+                {
+                    public string? Name { get; set; }
+                }
+
+                [XmlSerializable<Part>]
+                internal partial class DefaultContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
+                [XmlSerializable<Part>]
+                internal partial class MetadataContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Serialization)]
+                [XmlSerializable<Part>]
+                [XmlSerializable<Crate>]
+                [XmlSerializable<Fastener>]
+                internal partial class SerializationContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata | XmlSourceGenerationMode.Serialization)]
+                [XmlSerializable<Part>]
+                internal partial class BothContext : XmlSerializerContext
+                {
+                }
+
+                [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
+                [XmlSerializable<Part>(GenerationMode = XmlSourceGenerationMode.Serialization)]
+                [XmlSerializable<Tool>]
+                internal partial class MixedContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Try(Func<string> work)
+                    {
+                        try
+                        {
+                            return work();
+                        }
+                        catch (Exception ex)
+                        {
+                            return ex.GetType().Name;
+                        }
+                    }
+
+                    private static string Show(Func<XmlSerializerOptions, XmlTypeInfo<Part>> info)
+                    {
+                        var plain = info(new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        var camel = info(new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNamingPolicy = XmlNamingPolicy.CamelCase });
+                        return plain.Properties.Count
+                            + " " + Try(() => XmlSerializer.Serialize(new Part { Name = "a" }, plain))
+                            + " " + Try(() => XmlSerializer.Deserialize("<Part><Name>b</Name></Part>", plain)!.Name!)
+                            + " " + Try(() => XmlSerializer.Serialize(new Part { Name = "a" }, camel))
+                            + " " + Try(() => XmlSerializer.Deserialize("<part><name>b</name></part>", camel)!.Name!);
+                    }
+
+                    public static string Run()
+                    {
+                        var mixed = new MixedContext(new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        var serialization = new SerializationContext(new XmlSerializerOptions { OmitXmlDeclaration = true });
+                        return string.Join("\n",
+                            Show(o => new DefaultContext(o).Part),
+                            Show(o => new MetadataContext(o).Part),
+                            Show(o => new SerializationContext(o).Part),
+                            Show(o => new BothContext(o).Part),
+                            Show(o => new MixedContext(o).Part),
+                            mixed.Tool.Properties.Count + " " + XmlSerializer.Serialize(new Tool { Name = "t" }, mixed.Tool) + " " + XmlSerializer.Deserialize("<Tool><Name>u</Name></Tool>", mixed.Tool)!.Name,
+                            Try(() => XmlSerializer.Serialize(new Crate { Inner = new Part { Name = "i" }, Many = { new Part { Name = "m" } } }, serialization.Crate)),
+                            Try(() => XmlSerializer.Serialize(new Fastener { Size = 1 }, serialization.Fastener)));
+                    }
+                }
+                """).Should().Be(string.Join("\n",
+                "1 <Part><Name>a</Name></Part> b <part><name>a</name></part> b",
+                "1 <Part><Name>a</Name></Part> b <part><name>a</name></part> b",
+                "0 <Part><Name>a</Name></Part> InvalidOperationException InvalidOperationException InvalidOperationException",
+                "1 <Part><Name>a</Name></Part> b <part><name>a</name></part> b",
+                "0 <Part><Name>a</Name></Part> InvalidOperationException InvalidOperationException InvalidOperationException",
+                "1 <Tool><Name>t</Name></Tool> u",
+                // A serialization-only context writes a graph of types that each have a fast path. A type with derived
+                // types has none, and with no metadata either it cannot be written, as in System.Text.Json.
+                "<Crate><Inner><Name>i</Name></Inner><Many><Name>m</Name></Many></Crate>",
+                "InvalidOperationException"));
+        }
+
+        [TestMethod]
+        public void MembersOfTheSameName_FollowTheRulesOfSystemTextJson()
+        {
+            // Each expected line is what System.Text.Json gives for the same types with [JsonIgnore] and
+            // [JsonPropertyName]: an override or a member declared with new takes the place of the base member, an
+            // ignored override hides the property it overrides, an ignored new member does not hide the one it
+            // hides, attributes are not inherited by an override, and unrelated members with one name are an error.
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public class A1 { public virtual int X { get; set; } }
+                public class A2 : A1 { public override int X { get; set; } }
+                public class B1 { public int X { get; set; } = 9; }
+                public class B2 : B1 { public new int X { get; set; } }
+                public class C1 { public virtual int X { get; set; } }
+                public class C2 : C1 { [XmlIgnore] public override int X { get; set; } }
+                public class D1 { [XmlIgnore] public virtual int X { get; set; } }
+                public class D2 : D1 { public override int X { get; set; } }
+                public class E1 { public int X { get; set; } [XmlElement("X")] public int Y { get; set; } }
+                public class F1 { public int X { get; set; } = 9; }
+                public class F2 : F1 { public new string? X { get; set; } }
+                public class G1 { [XmlElement("x")] public int A { get; set; } }
+                public class G2 : G1 { [XmlElement("x")] public int B { get; set; } }
+                public class H1 { public int X { get; set; } = 9; }
+                public class H2 : H1 { [XmlIgnore] public new int X { get; set; } }
+                public class I1 { [XmlElement("X")] public int A { get; set; } }
+                public class I2 : I1 { public int X { get; set; } }
+                public class J1 { [XmlElement("n", Order = 5)] public virtual int X { get; set; } public int Y { get; set; } }
+                public class J2 : J1 { public override int X { get; set; } }
+                public class K1 { public int X { get; set; } = 9; }
+                public class K2 : K1 { [XmlIgnore] public new int X { get; set; } [XmlElement("X")] public int Y { get; set; } }
+                public class L1 { public virtual int X { get; set; } = 9; }
+                public class L2 : L1 { [XmlIgnore] public new virtual string? X { get; set; } }
+                public class M1 { public virtual int X { get; set; } = 9; }
+                public class M2 : M1 { [XmlIgnore] public new int X { get; set; } }
+                public class N1 { public virtual int X { get; set; } }
+                public class N2 : N1 { public override int X { get; set; } }
+                public class N3 : N2 { [XmlIgnore] public override int X { get; set; } }
+                public interface IX { int X { get; set; } }
+                public class O1 : IX { public int X { get; set; } = 9; }
+                public class O2 : O1, IX { [XmlIgnore] public new int X { get; set; } }
+                public class P1 { public int X; }
+                public class P2 : P1 { public new int X; }
+
+                [XmlSerializable<A2>]
+                [XmlSerializable<B2>]
+                [XmlSerializable<C2>]
+                [XmlSerializable<D2>]
+                [XmlSerializable<E1>]
+                [XmlSerializable<F2>]
+                [XmlSerializable<G2>]
+                [XmlSerializable<H2>]
+                [XmlSerializable<I2>]
+                [XmlSerializable<J2>]
+                [XmlSerializable<K2>]
+                [XmlSerializable<L2>]
+                [XmlSerializable<M2>]
+                [XmlSerializable<N3>]
+                [XmlSerializable<O2>]
+                [XmlSerializable<P2>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    // Writes the value through a generated context and through the reflection resolver, and reports
+                    // one result when they agree.
+                    private static string Same<T>(T value, Func<AppXmlContext, XmlTypeInfo<T>> info, bool fields = false)
+                    {
+                        string Run(bool generated)
+                        {
+                            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, IncludeFields = fields };
+                            try
+                            {
+                                return generated ? XmlSerializer.Serialize(value, info(new AppXmlContext(options))) : XmlSerializer.Serialize(value, typeof(T), options);
+                            }
+                            catch (Exception ex)
+                            {
+                                return ex.GetType().Name + ": " + ex.Message;
+                            }
+                        }
+
+                        var fromContext = Run(true);
+                        var fromReflection = Run(false);
+                        return fromContext == fromReflection ? fromContext : fromContext + " <> reflection: " + fromReflection;
+                    }
+
+                    public static string Run()
+                    {
+                        var read = XmlSerializer.Deserialize("<A2><X>5</X></A2>", new AppXmlContext(new XmlSerializerOptions()).A2)!;
+                        return string.Join("\n",
+                            Same(new A2 { X = 1 }, c => c.A2),
+                            read.X.ToString(),
+                            Same(new B2 { X = 1 }, c => c.B2),
+                            Same(new C2 { X = 1 }, c => c.C2),
+                            Same(new D2 { X = 1 }, c => c.D2),
+                            Same(new E1 { X = 1, Y = 2 }, c => c.E1),
+                            Same(new F2 { X = "s" }, c => c.F2),
+                            Same(new G2 { A = 1, B = 2 }, c => c.G2),
+                            Same(new H2 { X = 1 }, c => c.H2),
+                            Same(new I2 { A = 1, X = 2 }, c => c.I2),
+                            Same(new J2 { X = 1, Y = 2 }, c => c.J2),
+                            Same(new K2 { X = 1, Y = 2 }, c => c.K2),
+                            Same(new L2 { X = "s" }, c => c.L2),
+                            Same(new M2 { X = 1 }, c => c.M2),
+                            Same(new N3 { X = 1 }, c => c.N3),
+                            Same(new O2 { X = 1 }, c => c.O2),
+                            Same(new P2 { X = 1 }, c => c.P2, fields: true),
+                            Same(new P2 { X = 1 }, c => c.P2));
+                    }
+                }
+                """).Should().Be(string.Join("\n",
+                "<A2><X>1</X></A2>",
+                "5",
+                "<B2><X>1</X></B2>",
+                "<C2/>",
+                "<D2><X>1</X></D2>",
+                "InvalidOperationException: The type maps more than one member to the element name 'X'.",
+                "<F2><X>s</X></F2>",
+                "InvalidOperationException: The type maps more than one member to the element name 'x'.",
+                "<H2><X>9</X></H2>",
+                "InvalidOperationException: The type maps more than one member to the element name 'X'.",
+                // The override does not take the name or the order of the property it overrides, so both are written.
+                "<J2><n>1</n><Y>2</Y><X>1</X></J2>",
+                "<K2><X>2</X></K2>",
+                "<L2><X>9</X></L2>",
+                "<M2><X>9</X></M2>",
+                "<N3/>",
+                "<O2/>",
+                "<P2><X>1</X></P2>",
+                "<P2/>"));
+        }
+
+        [TestMethod]
+        public void EveryFeatureOfTheEngine_WorksThroughAGeneratedContext()
+        {
+            // A generated context hands the runtime library metadata, so it has what the reflection resolver has:
+            // derived types, member converters, mixed content, extension data, references, populated objects,
+            // init-only and required members, and members and constructors that are not public.
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                [XmlPolymorphic(TypeDiscriminatorPropertyName = "kind", DiscriminatorPlacement = XmlDiscriminatorPlacement.Attribute)]
+                [XmlDerivedType<Circle>("circle")]
+                public class Shape
+                {
+                    public int Id { get; set; }
+                }
+
+                public sealed class Circle : Shape
+                {
+                    public int Radius { get; set; }
+                }
+
+                public sealed class Ring
+                {
+                    public List<Circle> Items { get; set; } = new();
+                }
+
+                public sealed class Drawing
+                {
+                    public Shape? Main { get; set; }
+
+                    public List<Shape> All { get; set; } = new();
+                }
+
+                public sealed class Hex : XmlConverter<int>
+                {
+                    public override int Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        var value = 0;
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                            value = Convert.ToInt32(reader.GetString(), 16);
+                        }
+
+                        return value;
+                    }
+
+                    public override void Write(Utf8XmlWriter writer, int value, XmlSerializerOptions options) => writer.WriteStringValue(value.ToString("x"));
+                }
+
+                public sealed class Tagged
+                {
+                    [XmlConverter<Hex>]
+                    public int Flags { get; set; }
+
+                    [XmlConverter<Hex>]
+                    public int? Maybe { get; set; }
+                }
+
+                public sealed class Note
+                {
+                    [XmlMixed]
+                    public List<XmlMixedContentItem> Body { get; set; } = new();
+                }
+
+                public sealed class Bag
+                {
+                    [XmlExtensionData]
+                    public XmlExtensionData Extra { get; set; } = new();
+
+                    public string? Name { get; set; }
+                }
+
+                public sealed class Node
+                {
+                    public Node? Next { get; set; }
+
+                    public string? Name { get; set; }
+                }
+
+                public sealed class Child
+                {
+                    public int A { get; set; } = 7;
+
+                    public int B { get; set; }
+                }
+
+                public sealed class Holder
+                {
+                    public Child Child { get; } = new();
+
+                    public string? Label { get; init; }
+
+                    public List<int> Items { get; } = new() { 1 };
+                }
+
+                public sealed class Hidden
+                {
+                    [XmlInclude]
+                    internal int Secret { get; set; } = 5;
+
+                    [XmlInclude]
+                    private int Hush { get; set; } = 6;
+
+                    public int Seen { get; private set; } = 1;
+
+                    public int Peek() => Hush;
+                }
+
+                public sealed class Odd
+                {
+                    [XmlConstructor]
+                    private Odd(string name)
+                    {
+                        Name = name + "!";
+                    }
+
+                    public string Name { get; }
+                }
+
+                public sealed class Needs
+                {
+                    public required string Name { get; set; }
+
+                    public required int Count { get; init; }
+                }
+
+                [XmlSerializable<Shape>]
+                [XmlSerializable<Drawing>]
+                [XmlSerializable<Ring>]
+                [XmlSerializable<Tagged>]
+                [XmlSerializable<Note>]
+                [XmlSerializable<Bag>]
+                [XmlSerializable<Node>]
+                [XmlSerializable<Holder>]
+                [XmlSerializable<Hidden>]
+                [XmlSerializable<Needs>]
+                [XmlSerializable<Odd>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    // Runs the same work through a generated context and through the reflection resolver, each with
+                    // its own options, and reports one result when they agree.
+                    private static string Same(Func<XmlSerializerOptions, AppXmlContext?, string> work, Action<XmlSerializerOptions>? configure = null)
+                    {
+                        string Run(bool generated)
+                        {
+                            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+                            configure?.Invoke(options);
+                            try
+                            {
+                                return work(options, generated ? new AppXmlContext(options) : null);
+                            }
+                            catch (Exception ex)
+                            {
+                                return ex.GetType().Name + ": " + ex.Message;
+                            }
+                        }
+
+                        var fromContext = Run(true);
+                        var fromReflection = Run(false);
+                        return fromContext == fromReflection ? fromContext : fromContext + " <> reflection: " + fromReflection;
+                    }
+
+                    private static string Write<T>(T value, XmlSerializerOptions options, XmlTypeInfo<T>? info) => info is null ? XmlSerializer.Serialize(value, typeof(T), options) : XmlSerializer.Serialize(value, info);
+
+                    private static T Read<T>(string xml, XmlSerializerOptions options, XmlTypeInfo<T>? info) => info is null ? (T)XmlSerializer.Deserialize(xml, typeof(T), options)! : XmlSerializer.Deserialize(xml, info)!;
+
+                    public static string Run()
+                    {
+                        const string shape = "<Shape kind=\"circle\"><Id>1</Id><Radius>2</Radius></Shape>";
+                        const string tagged = "<Tagged><Flags>ff</Flags><Maybe>10</Maybe></Tagged>";
+                        const string note = "<Note>a<b>1</b>c</Note>";
+                        const string bag = "<Bag other=\"1\"><Name>n</Name><More>m</More></Bag>";
+                        const string holder = "<Holder><Child><B>2</B></Child><Label>l</Label><Items>9</Items></Holder>";
+                        var node = new Node { Name = "root" };
+                        node.Next = node;
+                        var drawing = new Drawing { Main = new Circle { Id = 1, Radius = 2 }, All = { new Shape { Id = 3 }, new Circle { Id = 4, Radius = 5 } } };
+                        string ShowHolder(Holder h) => h.Child.A + "," + h.Child.B + "|" + h.Label + "|" + string.Join(",", h.Items);
+                        return string.Join("\n",
+                            Same((o, c) => Write<Shape>(new Circle { Id = 1, Radius = 2 }, o, c?.Shape)),
+                            Same((o, c) => Read(shape, o, c?.Shape).GetType().Name),
+                            Same((o, c) => Write(drawing, o, c?.Drawing)),
+                            Same((o, c) => Write(new Circle { Id = 1, Radius = 2 }, o, c?.Circle)),
+                            Same((o, c) => Write(new Ring { Items = { new Circle { Id = 1, Radius = 2 } } }, o, c?.Ring)),
+                            Same((o, c) => { var d = Read(Write(drawing, o, c?.Drawing), o, c?.Drawing); return d.Main!.GetType().Name + "," + d.All[0].GetType().Name + "," + d.All[1].GetType().Name; }),
+                            Same((o, c) => Write(new Tagged { Flags = 255, Maybe = 16 }, o, c?.Tagged)),
+                            Same((o, c) => { var t = Read(tagged, o, c?.Tagged); return t.Flags + "," + t.Maybe; }),
+                            Same((o, c) => Write(new Tagged { Flags = 255 }, o, c?.Tagged), o => o.PropertyNamingPolicy = XmlNamingPolicy.CamelCase),
+                            Same((o, c) => Write(Read(note, o, c?.Note), o, c?.Note) + " " + Read(note, o, c?.Note).Body.Count),
+                            Same((o, c) => Write(Read(bag, o, c?.Bag), o, c?.Bag)),
+                            Same((o, c) => Write(node, o, c?.Node), o => o.ReferenceHandler = XmlReferenceHandler.Preserve),
+                            Same((o, c) => { var n = Read("<Node xmlns:r=\"urn:CloudNimble.Text.Xml:refs\" r:id=\"1\"><Next r:ref=\"1\"/><Name>root</Name></Node>", o, c?.Node); return n.Name + "," + ReferenceEquals(n, n.Next); }, o => o.ReferenceHandler = XmlReferenceHandler.Preserve),
+                            Same((o, c) => ShowHolder(Read(holder, o, c?.Holder))),
+                            Same((o, c) => ShowHolder(Read(holder, o, c?.Holder)), o => o.PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate),
+                            Same((o, c) => Write(new Hidden(), o, c?.Hidden)),
+                            Same((o, c) => { var h = Read("<Hidden><Secret>8</Secret><Hush>9</Hush><Seen>2</Seen></Hidden>", o, c?.Hidden); return h.Secret + "," + h.Peek() + "," + h.Seen; }),
+                            Same((o, c) => { var n = Read("<Needs><Name>n</Name><Count>3</Count></Needs>", o, c?.Needs); return n.Name + "," + n.Count; }),
+                            Same((o, c) => Read("<Needs><Name>n</Name></Needs>", o, c?.Needs).Name),
+                            Same((o, c) => Read("<Odd><Name>n</Name></Odd>", o, c?.Odd).Name));
+                    }
+                }
+                """).Should().Be(string.Join("\n",
+                "<Shape kind=\"circle\"><Id>1</Id><Radius>2</Radius></Shape>",
+                "Circle",
+                "<Drawing><Main kind=\"circle\"><Id>1</Id><Radius>2</Radius></Main><All><Id>3</Id></All><All kind=\"circle\"><Id>4</Id><Radius>5</Radius></All></Drawing>",
+                "<Circle kind=\"circle\"><Id>1</Id><Radius>2</Radius></Circle>",
+                "<Ring><Items kind=\"circle\"><Id>1</Id><Radius>2</Radius></Items></Ring>",
+                "Circle,Shape,Circle",
+                "<Tagged><Flags>ff</Flags><Maybe>10</Maybe></Tagged>",
+                "255,16",
+                "<tagged><flags>ff</flags><maybe xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></tagged>",
+                "<Note>a<b>1</b>c</Note> 3",
+                "<Bag other=\"1\"><Name>n</Name><More>m</More></Bag>",
+                "<Node xmlns:ns1=\"urn:CloudNimble.Text.Xml:refs\" ns1:id=\"1\"><Next ns1:ref=\"1\"/><Name>root</Name></Node>",
+                "root,True",
+                "7,0|l|1",
+                "7,2|l|1,9",
+                "<Hidden><Secret>5</Secret><Hush>6</Hush><Seen>1</Seen></Hidden>",
+                "8,9,2",
+                "n,3",
+                "XmlException: The required member 'Count' is missing.",
+                "n!"));
+        }
+
+        [TestMethod]
         public void ObjectCreationHandling_IsFollowedAsTheReflectionResolverFollowsIt()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + """
@@ -932,24 +1408,9 @@ namespace CloudNimble.XmlEssentials.Tests
                 "[9][1,9]x",
                 "[1]",
                 "7,0",
-                // The reflection resolver sets the members of the object the member holds. A generated converter
-                // cannot, and says so instead of creating a new object.
-                "NotSupportedException: The generated converter for 'global::Holder' cannot populate the member 'Child'. Mark the member [XmlObjectCreationHandling(XmlObjectCreationHandling.Replace)], or read this type through the reflection resolver. <> reflection: 7,2",
+                // The object the member holds is populated, as the reflection resolver populates it.
+                "7,2",
                 "1,2"));
-        }
-
-        [TestMethod]
-        [DataRow("public sealed class Bad { [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)] public int[] Items { get; set; } = { 1 }; }", "'Bad.Items' is marked with XmlObjectCreationHandling.Populate, but its type cannot be populated", DisplayName = "an array")]
-        [DataRow("public sealed class Bad { [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)] public string Name { get; set; } = \"n\"; }", "'Bad.Name' is marked with XmlObjectCreationHandling.Populate, but its type cannot be populated", DisplayName = "a string")]
-        [DataRow("public sealed class Child { public int A { get; set; } } public sealed class Bad { [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)] public Child Child { get; } = new(); }", "'Bad.Child' is marked with XmlObjectCreationHandling.Populate, which a generated converter cannot do for this member; read the type through the reflection resolver", DisplayName = "an object")]
-        [DataRow("public sealed class Child { public int A { get; set; } } [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)] public sealed class Bad { public Child Child { get; } = new(); }", "'Bad.Child' is marked with XmlObjectCreationHandling.Populate, which a generated converter cannot do for this member; read the type through the reflection resolver", DisplayName = "an object, marked on the type")]
-        [DataRow("public sealed class Bad { [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)] public System.Collections.Generic.List<int> Items { get; init; } = new(); }", "'Bad.Items' is marked with XmlObjectCreationHandling.Populate, which a generated converter cannot do for this member; read the type through the reflection resolver", DisplayName = "a member with an init accessor")]
-        [DataRow("public sealed record Bad(string Name) { [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)] public System.Collections.Generic.List<int> Items { get; } = new(); }", "'Bad.Items' is marked with XmlObjectCreationHandling.Populate, which is not supported in a type created through a constructor with parameters", DisplayName = "a constructor with parameters")]
-        public void ObjectCreationHandling_ThatAGeneratedConverterCannotFollow_IsReported(string types, string expectedMessage)
-        {
-            var source = "using CloudNimble.Text.Xml;\nusing CloudNimble.Text.Xml.Serialization;\n" + types + "\n[XmlSerializable<Bad>]\ninternal partial class AppXmlContext : XmlSerializerContext\n{\n}\n";
-            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id is "XMLXE016").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal(expectedMessage);
         }
 
         [TestMethod]

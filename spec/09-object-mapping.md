@@ -67,6 +67,20 @@ Deserialize needs: setter, or `init`, or constructor parameter (name match again
 
 Multiple parameterized constructors: `[XmlConstructor]` wins; else the public constructor whose parameters are a subset of serializable members, preferring most parameters. Ambiguity is `NotSupportedException` at type-info build.
 
+### Members of the same name
+
+A type and its base types may declare a member of the same name. The rules are System.Text.Json's, taken from a probe of .NET and pinned by `MembersOfTheSameName_FollowTheRulesOfSystemTextJson`, which runs each case through a generated context and through the reflection resolver.
+
+- **A member is governed by the attributes written on it.** An override does not take the attributes of the property it overrides: not `[XmlIgnore]`, not a name, not an order.
+- A member that overrides a base property, or hides a base member with `new` (of the same type or another), is serialized in its place.
+- An override marked `[XmlIgnore]` hides the property it overrides, so neither is serialized. This holds down the whole chain of overrides, and for a property that implements an interface member, whose accessors are virtual too.
+- A `new` member marked `[XmlIgnore]` does not hide the member it hides: the base member is serialized.
+- Attributes are not inherited, so a base property named with `[XmlElement("n")]` and its override with no attribute have different XML names, and both are written.
+- Two members that are not related in one of these ways and map to one XML name are `InvalidOperationException`: "The type maps more than one member to the element name 'X'." The exception is a base member whose C# name an ignored member of a more derived type has: it gives way without an error.
+- Among members that survive, the order is unchanged: base types first.
+
+The rule is applied once, in `XmlObjectBinder.CreateModels`, to the member facts of either resolver. Generated metadata says whether a property is virtual (`XmlPropertyInfoValues<TValue>.IsVirtual`, the name System.Text.Json uses).
+
 ## Name resolution
 
 ```
@@ -210,7 +224,7 @@ Unwrapped empty and unwrapped null both omit. Prefer wrapped collections or non-
 - **Nil.** An element marked `xsi:nil="true"` sets a populated member that has a setter to null. For one with no setter it is `InvalidOperationException`: "Unable to assign 'null' to the property or field of type 'T'."
 - **A declared interface that holds a read-only instance** (an `IList<T>` holding an array) is `NotSupportedException` when it is populated: "The collection of type 'T' held by the member 'X' is read-only and cannot be populated." The dictionary message is "The dictionary of type 'T' is read-only and cannot be populated."
 - **Where System.Text.Json differs.** It throws `InvalidCastException` when the option populates a polymorphic member that holds another derived type; here the option leaves a polymorphic member under `Replace`.
-- **Generated converters** follow the same rules for collections and dictionaries. They cannot set members on an object that exists, or populate a member they set as the object is created (`init`, `required`). The attribute on such a member is XMLXE016, and under the option the converter of a type that has such a member throws `NotSupportedException` when it reads, naming the member; `[XmlObjectCreationHandling(Replace)]` on the member lifts it.
+- **A generated context** follows the same rules, because the same engine reads from its metadata. It populates an object a member holds, an `init` member and a `required` member exactly as the reflection resolver does.
 
 ## Mixed content
 

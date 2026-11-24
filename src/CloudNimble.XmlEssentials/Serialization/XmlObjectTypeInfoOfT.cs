@@ -10,7 +10,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// Type info for a CLR type mapped as an object with child elements.
     /// </summary>
     /// <typeparam name="T">The CLR type.</typeparam>
-    internal sealed class XmlObjectTypeInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields | DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T> : XmlTypeInfo<T>
+    internal sealed class XmlObjectTypeInfo<T> : XmlTypeInfo<T>
     {
 
         #region Fields
@@ -42,13 +42,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         /// <param name="converter">The object converter.</param>
         /// <param name="options">The serializer options.</param>
-        internal XmlObjectTypeInfo(XmlConverter<T> converter, XmlSerializerOptions options)
+        /// <param name="bind">Builds the binding of the type.</param>
+        internal XmlObjectTypeInfo(XmlConverter<T> converter, XmlSerializerOptions options, Func<XmlSerializerOptions, XmlObjectBinding> bind)
             : base(converter, options, CreateRootName(options))
         {
             options.CacheTypeInfo(this);
             try
             {
-                _binding = XmlObjectBinder.Bind<T>(options);
+                _binding = bind(options);
             }
             catch
             {

@@ -17,11 +17,12 @@ namespace CloudNimble.Text.Xml.Serialization
     /// Members are expected in the order they are written, so the member after the last one matched is tried
     /// before the rest are searched.
     /// </remarks>
-    internal sealed class XmlObjectConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields | DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T> : XmlConverter<T>
+    internal sealed class XmlObjectConverter<T> : XmlConverter<T>
     {
 
         #region Fields
 
+        private readonly Action<Utf8XmlWriter, T, XmlSerializerOptions>? _serializeHandler;
         private readonly XmlObjectTypeInfo<T> _typeInfo;
 
         #endregion
@@ -29,12 +30,25 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Constructors
 
         /// <summary>
-        /// Creates the converter and binds members of <typeparamref name="T"/>.
+        /// Creates the converter and binds the members of <typeparamref name="T"/> by reflection.
         /// </summary>
         /// <param name="options">The serializer options.</param>
+        [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "The reflection resolver is not used in a trimmed application; a source-generated context supplies the binding instead.")]
         public XmlObjectConverter(XmlSerializerOptions options)
+            : this(options, XmlObjectBinder.Bind<T>)
         {
-            _typeInfo = new XmlObjectTypeInfo<T>(this, options);
+        }
+
+        /// <summary>
+        /// Creates the converter with the binding of <typeparamref name="T"/> that <paramref name="bind"/> builds.
+        /// </summary>
+        /// <param name="options">The serializer options.</param>
+        /// <param name="bind">Builds the binding: from reflection, or from metadata a source generator emitted.</param>
+        /// <param name="serializeHandler">Writes the members of a value directly, or null to write them from the binding.</param>
+        internal XmlObjectConverter(XmlSerializerOptions options, Func<XmlSerializerOptions, XmlObjectBinding> bind, Action<Utf8XmlWriter, T, XmlSerializerOptions>? serializeHandler = null)
+        {
+            _serializeHandler = serializeHandler;
+            _typeInfo = new XmlObjectTypeInfo<T>(this, options, bind);
         }
 
         #endregion
@@ -126,6 +140,7 @@ namespace CloudNimble.Text.Xml.Serialization
         internal object ReadInto(ref Utf8XmlReader reader, object? existing, XmlSerializerOptions options)
         {
             var binding = _typeInfo.Binding;
+            binding.ThrowIfNoMetadata(typeof(T));
             Span<bool> seen = stackalloc bool[binding.SlotCount];
             XmlObjectReadState state = default;
             state.Instance = existing ?? binding.CreateObject?.Invoke();
@@ -243,6 +258,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="options">The serializer options.</param>
         internal void WriteMembers(Utf8XmlWriter writer, T value, XmlSerializerOptions options)
         {
+            if (_serializeHandler is not null)
+            {
+                // A source generator wrote this for exactly these options, so it writes what the binding would.
+                _serializeHandler(writer, value, options);
+                return;
+            }
+
+            _typeInfo.Binding.ThrowIfNoMetadata(typeof(T));
             var instance = (object)value!;
             var binding = _typeInfo.Binding;
             var extra = binding.ExtensionData?.GetValue(instance);
@@ -382,7 +405,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
-            var instance = binding.Constructor!.Invoke(values.AsSpan(0, map.Length));
+            var instance = binding.Constructor!(values);
             foreach (var property in properties)
             {
                 if (seen[property.Index] && property.ConstructorIndex < 0 && property.CanSet)

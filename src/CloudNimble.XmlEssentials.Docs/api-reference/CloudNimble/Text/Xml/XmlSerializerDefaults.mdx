@@ -104,7 +104,8 @@ Strict: Unknown element 'Colour'.
 [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) value is written with `xsi:nil`. |
 | `Web` | 1 | Option values for web-based scenarios: names are camel-cased and
 [XmlSerializerOptions.OmitXmlDeclaration](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#omitxmldeclaration) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). |
-| `Strict` | 2 | Option values for strict deserialization: an unmapped member, a duplicate property, or a comment is an error. |
+| `Strict` | 2 | Option values for strict deserialization: an unmapped member, a duplicate property, a comment, or a
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for a member annotated non-nullable is an error. |
 
 ## Related APIs
 

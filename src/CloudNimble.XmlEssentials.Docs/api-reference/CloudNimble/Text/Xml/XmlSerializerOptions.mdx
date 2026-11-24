@@ -389,9 +389,9 @@ One of the enumeration values that specifies when a member is ignored. The defau
 #### Remarks
 
 An [XmlIgnoreAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute) on a member overrides this value for that member. Every value but
-[XmlIgnoreCondition.Always](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition) is accepted, as in System.Text.Json:
-[XmlIgnoreCondition.WhenWriting](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition) writes no member, and [XmlIgnoreCondition.WhenReading](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition)
-reads none, though constructor parameters are still filled.
+[XmlIgnoreCondition.Always](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition) is accepted. [XmlIgnoreCondition.WhenWriting](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition) and
+[XmlIgnoreCondition.WhenReading](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreCondition) have no effect as the default for every member, as in
+System.Text.Json: they apply only where an [XmlIgnoreAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute) gives them.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DefaultNamespace
 

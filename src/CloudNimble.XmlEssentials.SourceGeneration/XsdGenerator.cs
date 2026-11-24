@@ -7,11 +7,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 {
 
     /// <summary>
-    /// Incremental source generator that turns AdditionalFiles <c>*.xsd</c> into POCOs, a context, and AOT converters.
+    /// Incremental source generator that turns AdditionalFiles <c>*.xsd</c> into POCOs and a context with their
+    /// metadata and write fast paths.
     /// </summary>
     /// <remarks>
     /// Runs in the same analyzer DLL as <see cref="SerializerGenerator"/>. It calls the shared emit APIs so a single
-    /// <c>dotnet build</c> produces serialize/deserialize implementations without seeing another generator's output.
+    /// <c>dotnet build</c> produces the context without seeing another generator's output.
     /// </remarks>
     [Generator(LanguageNames.CSharp)]
     public sealed class XsdGenerator : IIncrementalGenerator

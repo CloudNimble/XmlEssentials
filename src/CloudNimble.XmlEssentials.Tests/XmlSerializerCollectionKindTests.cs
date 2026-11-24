@@ -209,12 +209,6 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Serialize(structBag, Bare).Should().Be("<StructBag>" + Items + "</StructBag>");
             XmlSerializer.Deserialize<StructBag>("<StructBag>" + Items + "</StructBag>").Should().Equal(1, 2, 3);
 
-            // The entry point generated code uses makes what the reflection resolver makes.
-            var list = new List<int> { 1, 2, 3 };
-            XmlMetadataServices.CreateCollection<int[], int>(list).Should().Equal(1, 2, 3);
-            XmlMetadataServices.CreateCollection<IEnumerable<int>, int>(list).Should().BeSameAs(list);
-            XmlMetadataServices.CreateCollection<Queue<int>, int>(list).Should().BeOfType<Queue<int>>().Which.Should().Equal(1, 2, 3);
-
             static void RoundTrip<TCollection>(TCollection value, string root, Type created)
                 where TCollection : IEnumerable<int>
             {

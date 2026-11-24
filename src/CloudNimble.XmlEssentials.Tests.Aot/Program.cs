@@ -36,6 +36,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
                 personXml = CheckPersonRoundTrip();
                 orderXml = CheckOrderFromXsd();
                 inventoryXml = CheckInventoryRoundTrip();
+                EngineFeatures.Check();
                 CheckReader();
             }
             catch (Exception ex)
@@ -72,7 +73,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
         }
 
         /// <summary>
-        /// Serializes a type whose members the generated converter hands to the runtime library, and reads it back.
+        /// Serializes a type whose members the runtime library reads and writes from generated metadata, and reads it back.
         /// </summary>
         /// <returns>The serialized document.</returns>
         /// <remarks>

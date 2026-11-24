@@ -17,20 +17,35 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal string ClrTypeName { get; }
 
         /// <summary>
-        /// Gets whether serialization converters should be emitted.
+        /// Gets whether the write fast path is emitted for the type.
         /// </summary>
-        /// <summary>
-        /// The named arguments passed for constructor parameters whose members are ignored, each with a leading comma, or empty.
-        /// </summary>
-        internal string ConstructorTail { get; }
-
-        /// <summary>
-        /// Gets the name of a member the reflection resolver would populate and the generated converter cannot, or
-        /// empty. The converter refuses <c>PreferredObjectCreationHandling.Populate</c> when it is not empty.
-        /// </summary>
-        internal string PopulateRefusal { get; }
-
         internal bool EmitSerialization { get; }
+
+        /// <summary>
+        /// Gets the statements that create the type info of an object type from metadata, or empty for any other type.
+        /// </summary>
+        internal string Metadata { get; }
+
+        /// <summary>
+        /// Gets the declarations of the accessors <see cref="Metadata"/> calls, or empty.
+        /// </summary>
+        internal string Accessors { get; }
+
+        /// <summary>
+        /// Gets whether the write fast path can write the type: it is an object type with nothing the fast path
+        /// leaves to the runtime library.
+        /// </summary>
+        internal bool FastPath { get; }
+
+        /// <summary>
+        /// Gets the generation mode of the type: 0 default, 1 metadata, 2 serialization, 3 both.
+        /// </summary>
+        internal int Mode { get; }
+
+        /// <summary>
+        /// Gets whether the type info is created from metadata, which every mode but serialization-only does.
+        /// </summary>
+        internal bool EmitMetadata => Metadata.Length > 0 && Mode != 2;
 
         /// <summary>
         /// The expression that creates the type info without reflection, for a collection, a dictionary, an
@@ -63,16 +78,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         internal string PropertyName { get; }
 
-        /// <summary>
-        /// Gets the document element local name.
-        /// </summary>
-        internal string RootName { get; }
-
-        /// <summary>
-        /// Gets the document element namespace URI, or empty.
-        /// </summary>
-        internal string RootNamespace { get; }
-
         #endregion
 
         #region Constructors
@@ -82,42 +87,42 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         /// <param name="clrTypeName">The fully qualified CLR type name.</param>
         /// <param name="propertyName">The type-info property name.</param>
-        /// <param name="rootName">The document element name.</param>
-        /// <param name="rootNamespace">The document element namespace.</param>
         /// <param name="kind">The object kind.</param>
         /// <param name="isValueType">Whether the type is a value type.</param>
         /// <param name="isNillable">Whether null is nillable.</param>
-        /// <param name="emitSerialization">Whether a converter should be emitted.</param>
+        /// <param name="emitSerialization">Whether the write fast path is emitted.</param>
         /// <param name="members">The members.</param>
-        /// <param name="constructorTail">The named arguments for constructor parameters whose members are ignored, or empty.</param>
         /// <param name="factory">The expression that creates the type info without reflection, or empty.</param>
-        /// <param name="populateRefusal">The name of a member the generated converter cannot populate, or empty.</param>
+        /// <param name="metadata">The statements that create the type info from metadata, or empty.</param>
+        /// <param name="accessors">The declarations of the accessors the metadata calls, or empty.</param>
+        /// <param name="fastPath">Whether the write fast path can write the type.</param>
+        /// <param name="mode">The generation mode of the type.</param>
         internal TypeSpec(
             string clrTypeName,
             string propertyName,
-            string rootName,
-            string rootNamespace,
             int kind,
             bool isValueType,
             bool isNillable,
             bool emitSerialization,
             EquatableArray<MemberSpec> members,
-            string constructorTail,
             string factory = "",
-            string populateRefusal = "")
+            string metadata = "",
+            string accessors = "",
+            bool fastPath = false,
+            int mode = 0)
         {
             ClrTypeName = clrTypeName;
             PropertyName = propertyName;
-            RootName = rootName;
-            RootNamespace = rootNamespace;
             Kind = kind;
             IsValueType = isValueType;
             IsNillable = isNillable;
             EmitSerialization = emitSerialization;
             Members = members;
-            ConstructorTail = constructorTail;
             Factory = factory;
-            PopulateRefusal = populateRefusal;
+            Metadata = metadata;
+            Accessors = accessors;
+            FastPath = fastPath;
+            Mode = mode;
         }
 
         #endregion
@@ -129,16 +134,16 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         {
             return ClrTypeName == other.ClrTypeName
                 && PropertyName == other.PropertyName
-                && RootName == other.RootName
-                && RootNamespace == other.RootNamespace
                 && Kind == other.Kind
                 && IsValueType == other.IsValueType
                 && IsNillable == other.IsNillable
                 && EmitSerialization == other.EmitSerialization
                 && Members.Equals(other.Members)
-                && ConstructorTail == other.ConstructorTail
                 && Factory == other.Factory
-                && PopulateRefusal == other.PopulateRefusal;
+                && Metadata == other.Metadata
+                && Accessors == other.Accessors
+                && FastPath == other.FastPath
+                && Mode == other.Mode;
         }
 
         /// <inheritdoc />
@@ -150,11 +155,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <summary>
         /// Returns the same type spec under another type-info property name.
         /// </summary>
-        /// <param name="propertyName">The property name, which also names the generated converter.</param>
+        /// <param name="propertyName">The property name.</param>
         /// <returns>The renamed spec.</returns>
         internal TypeSpec WithPropertyName(string propertyName)
         {
-            return new TypeSpec(ClrTypeName, propertyName, RootName, RootNamespace, Kind, IsValueType, IsNillable, EmitSerialization, Members, ConstructorTail, Factory, PopulateRefusal);
+            return new TypeSpec(ClrTypeName, propertyName, Kind, IsValueType, IsNillable, EmitSerialization, Members, Factory, Metadata, Accessors, FastPath, Mode);
+        }
+
+        /// <summary>
+        /// Returns the same type spec under another generation mode.
+        /// </summary>
+        /// <param name="mode">The mode: 0 default, 1 metadata, 2 serialization, 3 both.</param>
+        /// <returns>The spec, with the write fast path on or off as the mode says.</returns>
+        internal TypeSpec WithMode(int mode)
+        {
+            return new TypeSpec(ClrTypeName, PropertyName, Kind, IsValueType, IsNillable, FastPath && mode != 1, Members, Factory, Metadata, Accessors, FastPath, mode);
         }
 
         /// <inheritdoc />

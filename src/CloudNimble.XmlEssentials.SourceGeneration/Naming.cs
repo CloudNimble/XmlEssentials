@@ -33,39 +33,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
-        /// Returns the XML type name for a CLR type symbol display name.
-        /// </summary>
-        /// <param name="typeName">The metadata type name (no namespace).</param>
-        /// <param name="isArray">Whether the type is an array.</param>
-        /// <param name="elementName">The element type name when <paramref name="isArray"/> is true.</param>
-        /// <param name="genericArguments">Generic argument XML names, or empty.</param>
-        /// <returns>The XML local name.</returns>
-        internal static string XmlTypeName(string typeName, bool isArray, string? elementName, string[] genericArguments)
-        {
-            if (isArray)
-            {
-                return elementName == "Byte" ? "ByteArray" : elementName + "Array";
-            }
-
-            var tick = typeName.IndexOf('`');
-            var name = tick >= 0 ? typeName.Substring(0, tick) : typeName;
-            if (genericArguments.Length == 0)
-            {
-                return name;
-            }
-
-            var builder = new StringBuilder(name.Length + 2);
-            builder.Append(name);
-            builder.Append("Of");
-            foreach (var argument in genericArguments)
-            {
-                builder.Append(argument);
-            }
-
-            return builder.ToString();
-        }
-
-        /// <summary>
         /// Returns whether <paramref name="name"/> is a valid unprefixed XML Name.
         /// </summary>
         /// <param name="name">The local name.</param>

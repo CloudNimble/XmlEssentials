@@ -183,8 +183,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     builder.Append(indent).Append("        seeded.UnknownTypeHandling = (XmlUnknownTypeHandling)").Append(context.Options.UnknownTypeHandling).AppendLine(";");
                 }
 
-                // The generated converters read the ignore condition from the options when they run, and the mapping
-                // is checked against them, so the seed sets both.
+                // The write fast path reads the ignore condition from the options when it runs, and it is used only
+                // when the mapping of the options is the one it was compiled for, so the seed sets both.
                 if (context.Options.DefaultIgnoreCondition != 0)
                 {
                     builder.Append(indent).Append("        seeded.DefaultIgnoreCondition = (XmlIgnoreCondition)").Append(context.Options.DefaultIgnoreCondition).AppendLine(";");
@@ -199,7 +199,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.Append(indent).AppendLine("        return seeded;");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
-            EmitVerified(builder, indent, context);
+            EmitFastPathTest(builder, indent, context);
 
             // A number that is not finite is refused when NumberHandling is Strict, as the built-in converters refuse it.
             foreach (var number in new[] { "float", "double" })
@@ -231,6 +231,31 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.Append(indent).AppendLine("        }");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
+            var usesPropertyHelper = false;
+            foreach (var type in context.Types)
+            {
+                usesPropertyHelper |= type.Metadata.Contains("__Property(");
+            }
+
+            if (usesPropertyHelper)
+            {
+                // The classes a schema generates have public properties with a getter and a setter. Their metadata
+                // is written before the classes exist as symbols, so the property type is inferred here.
+                builder.Append(indent).AppendLine("    private static XmlPropertyInfoValues<TValue> __Property<TDeclaring, TValue>(string name, Func<TDeclaring, TValue> get, Action<TDeclaring, TValue> set, params Attribute[] attributes)");
+                builder.Append(indent).AppendLine("        where TDeclaring : class");
+                builder.Append(indent).AppendLine("    {");
+                builder.Append(indent).AppendLine("        return new XmlPropertyInfoValues<TValue>");
+                builder.Append(indent).AppendLine("        {");
+                builder.Append(indent).AppendLine("            PropertyName = name,");
+                builder.Append(indent).AppendLine("            DeclaringType = typeof(TDeclaring),");
+                builder.Append(indent).AppendLine("            Getter = obj => get((TDeclaring)obj),");
+                builder.Append(indent).AppendLine("            Setter = (obj, value) => set((TDeclaring)obj, value),");
+                builder.Append(indent).AppendLine("            Attributes = attributes,");
+                builder.Append(indent).AppendLine("        };");
+                builder.Append(indent).AppendLine("    }");
+                builder.AppendLine();
+            }
+
             builder.Append(indent).AppendLine("    private static XmlTypeInfo<T> __GetInfo<T>(XmlSerializerOptions options)");
             builder.Append(indent).AppendLine("    {");
             builder.Append(indent).AppendLine("        var held = __Held<T>.Last;");
@@ -243,49 +268,19 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             builder.Append(indent).AppendLine("        return held.Info;");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
-            // An element marked xsi:nil is null for a type that can be null and an error for one that cannot,
-            // as the reflection resolver has it. Either form of the element, empty or with an end tag, is consumed.
-            builder.Append(indent).AppendLine("    private static T? __ReadNil<T>(ref Utf8XmlReader reader)");
-            builder.Append(indent).AppendLine("    {");
-            builder.Append(indent).AppendLine("        if (default(T) is not null)");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            throw new XmlException($\"The element is nil but type '{typeof(T)}' is not nillable.\");");
-            builder.Append(indent).AppendLine("        }");
-            builder.AppendLine();
-            builder.Append(indent).AppendLine("        if (!reader.IsEmptyElement)");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            reader.Skip();");
-            builder.Append(indent).AppendLine("        }");
-            builder.AppendLine();
-            builder.Append(indent).AppendLine("        return default;");
-            builder.Append(indent).AppendLine("    }");
-            builder.AppendLine();
-            builder.Append(indent).AppendLine("    private static string? ReadStringElement(ref Utf8XmlReader reader)");
-            builder.Append(indent).AppendLine("    {");
-            builder.Append(indent).AppendLine("        if (reader.IsEmptyElement)");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            return \"\";");
-            builder.Append(indent).AppendLine("        }");
-            builder.Append(indent).AppendLine("        string? value = \"\";");
-            builder.Append(indent).AppendLine("        while (reader.Read())");
-            builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.EndElement)");
-            builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                break;");
-            builder.Append(indent).AppendLine("            }");
-            builder.Append(indent).AppendLine("            if (reader.TokenType is XmlTokenType.Text or XmlTokenType.CData)");
-            builder.Append(indent).AppendLine("            {");
-            builder.Append(indent).AppendLine("                value += reader.GetString();");
-            builder.Append(indent).AppendLine("            }");
-            builder.Append(indent).AppendLine("        }");
-            builder.Append(indent).AppendLine("        return value;");
-            builder.Append(indent).AppendLine("    }");
-            builder.AppendLine();
             foreach (var type in context.Types)
             {
                 if (type.EmitSerialization)
                 {
                     ConverterEmitter.Emit(builder, indent, type);
+                }
+            }
+
+            foreach (var type in context.Types)
+            {
+                if (type.Metadata.Length > 0)
+                {
+                    EmitMetadata(builder, indent, type);
                 }
             }
 
@@ -322,18 +317,17 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
-        /// Emits the method that creates type info for a generated converter, after checking that the options
-        /// of the context agree with the settings the converters were compiled with.
+        /// Emits the method that says whether the write fast path may be used with the options a type info is for.
         /// </summary>
         /// <param name="builder">The source.</param>
         /// <param name="indent">The type indent.</param>
         /// <param name="context">The context.</param>
         /// <remarks>
-        /// The names and the choice of members are compiled in, and the scalar types named here are read and
-        /// written without a converter. Options that ask for something else are reported when the type info
-        /// is first created, instead of producing a document the reflection resolver would not.
+        /// The fast path has the names and the choice of members compiled in, and writes the scalar types named
+        /// here without a converter. With options that ask for something else it is not used, and the runtime
+        /// library writes from the metadata, which follows every option.
         /// </remarks>
-        internal static void EmitVerified(StringBuilder builder, string indent, ContextSpec context)
+        internal static void EmitFastPathTest(StringBuilder builder, string indent, ContextSpec context)
         {
             var direct = new System.Collections.Generic.List<string>();
             foreach (var type in context.Types)
@@ -354,9 +348,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
             }
 
-            builder.Append(indent).AppendLine("    private static XmlTypeInfo<T> __Verified<T>(XmlSerializerOptions options, XmlConverter<T> converter)");
+            // The fast path has the names and the choice of members compiled in. It is used only with options that
+            // agree with them; with any others the runtime library writes from the metadata.
+            builder.Append(indent).AppendLine("    private static bool __CanUseFastPath<T>(XmlSerializerOptions options)");
             builder.Append(indent).AppendLine("    {");
-            builder.Append(indent).Append("        XmlMetadataServices.VerifyGeneratedOptions(options, ")
+            builder.Append(indent).Append("        return XmlMetadataServices.CanUseSerializeHandler(options, ")
                 .Append(NamingPolicy(TypeGraphWalker.ElementPolicy(context.Options)) ?? "null").Append(", ")
                 .Append(NamingPolicy(TypeGraphWalker.AttributePolicy(context.Options)) ?? "null").Append(", ")
                 .Append("(XmlPropertyMapping)").Append(context.Options.DefaultPropertyMapping).Append(", ")
@@ -368,9 +364,64 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             builder.AppendLine(");");
-            builder.Append(indent).AppendLine("        return XmlMetadataServices.CreateValueInfo<T>(options, converter);");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
+        }
+
+        /// <summary>
+        /// Emits the method that creates the type info of an object type from its metadata, and the accessors it calls.
+        /// </summary>
+        /// <param name="builder">The source.</param>
+        /// <param name="indent">The indent of the context class.</param>
+        /// <param name="type">An object type with metadata.</param>
+        internal static void EmitMetadata(StringBuilder builder, string indent, TypeSpec type)
+        {
+            builder.AppendLine();
+            foreach (var line in type.Accessors.Split('\n'))
+            {
+                var text = line.TrimEnd('\r');
+                if (text.Length > 0)
+                {
+                    builder.Append(indent).Append("    ").AppendLine(text);
+                }
+            }
+
+            builder.Append(indent).Append("    private static XmlTypeInfo<").Append(type.ClrTypeName).Append("> __Create_").Append(type.PropertyName).AppendLine("(XmlSerializerOptions options)");
+            builder.Append(indent).AppendLine("    {");
+
+            // The fast path is handed over only when the options are the ones it was compiled for.
+            var handler = type.EmitSerialization
+                ? "SerializeHandler = __CanUseFastPath<" + type.ClrTypeName + ">(options) ? __Serialize_" + type.PropertyName + " : null,"
+                : null;
+            if (!type.EmitMetadata)
+            {
+                // Serialization mode: the type has a write fast path and no metadata, so it cannot be read, and it
+                // can be written only with the options the fast path was compiled for.
+                builder.Append(indent).Append("        return XmlMetadataServices.CreateObjectInfo(options, new XmlObjectInfoValues<").Append(type.ClrTypeName).Append("> { ").Append(handler).AppendLine(" });");
+                builder.Append(indent).AppendLine("    }");
+                return;
+            }
+
+            foreach (var line in type.Metadata.Split('\n'))
+            {
+                var text = line.TrimEnd('\r');
+                if (text == MetadataBuilder.HandlerLine)
+                {
+                    if (handler is not null)
+                    {
+                        builder.Append(indent).Append("            ").AppendLine(handler);
+                    }
+
+                    continue;
+                }
+
+                if (text.Length > 0)
+                {
+                    builder.Append(indent).Append("        ").AppendLine(text);
+                }
+            }
+
+            builder.Append(indent).AppendLine("    }");
         }
 
         /// <summary>
@@ -381,9 +432,10 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <returns>The expression, typed as the type info of the type.</returns>
         internal static string CreateExpression(TypeSpec type, string options)
         {
-            if (type.EmitSerialization)
+            if (type.Metadata.Length > 0)
             {
-                return "__Verified(" + options + ", new " + type.PropertyName + "XmlConverter())";
+                // The runtime library reads and writes the type from the metadata, with no reflection over its members.
+                return "__Create_" + type.PropertyName + "(" + options + ")";
             }
 
             if (type.Factory.Length > 0)

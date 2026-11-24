@@ -67,7 +67,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets the list of <see cref="XmlPropertyInfo"/> metadata corresponding to the current type.
         /// </summary>
         /// <value>
-        /// The serialized members of an object type, in the order they are written. The list is empty for a type that is not mapped as an object.
+        /// The serialized members of an object type, in the order they are written. The list is empty for a type that is not mapped as an object,
+        /// and for a type that a context generated in <see cref="XmlSourceGenerationMode.Serialization"/> mode.
         /// </value>
         public virtual IList<XmlPropertyInfo> Properties => EmptyProperties;
 

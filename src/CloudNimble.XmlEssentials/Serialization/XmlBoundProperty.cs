@@ -87,6 +87,18 @@ namespace CloudNimble.Text.Xml.Serialization
         internal string? NullReadError;
 
         /// <summary>
+        /// Creates the reusable box that holds the member's value for a constructor, for a member whose facts were
+        /// generated; or null. It returns an <c>XmlHeldBox&lt;TValue&gt;</c>.
+        /// </summary>
+        internal Func<object>? HeldBoxFactory;
+
+        /// <summary>
+        /// Whether the reusable box may be closed over the member's type at run time, which only the reflection
+        /// resolver may do: Native AOT cannot close a generic type over a value type that way.
+        /// </summary>
+        internal bool ReflectsHeldBox;
+
+        /// <summary>
         /// The message of the exception thrown when the member holds null as it is written, or null when the member
         /// may hold null. Set once, while the type is bound, when
         /// <see cref="XmlSerializerOptions.RespectNullableAnnotations"/> is on and the member is annotated as never

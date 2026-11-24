@@ -1,6 +1,6 @@
 ### Read the contract of a type
 
-The following example lists the members of `Order` as the serializer maps them. The type info comes from a context in metadata mode, which builds it with the run-time resolver.
+The following example lists the members of `Order` as the serializer maps them. The type info comes from a source-generated context, which builds it from generated metadata. A context in the default mode gives the same list.
 
 ```csharp
 XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;

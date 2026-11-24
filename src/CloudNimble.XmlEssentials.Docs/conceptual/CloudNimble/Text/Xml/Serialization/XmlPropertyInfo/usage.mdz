@@ -22,6 +22,6 @@ Line: element, List`1
 
 `Name` is the XML name, after attributes and naming policies: the `Lines` property appears as `Line` because of `[XmlElement("Line")]`. `Order` is the explicit order of the member among its siblings, or `-1` when it has none.
 
-The list is filled only for type info that the run-time resolver builds: the reflection path, and contexts in metadata mode. The class is read-only. Unlike `JsonPropertyInfo` in System.Text.Json, it can't be used to change a contract.
+The list is filled for a type that the serializer maps member by member, whether the type info comes from the reflection resolver or from a source-generated context in the default mode or in `Metadata` mode. It's empty for type info from a context in `Serialization` mode. The class is read-only. Unlike `JsonPropertyInfo` in System.Text.Json, it can't be used to change a contract.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)

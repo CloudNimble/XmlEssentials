@@ -22,7 +22,7 @@ Only `XmlSerializer` needs care, because its default way of learning about a typ
 
 <Steps>
   <Step title="Declare a context for the types you serialize">
-    In your project, add a partial class that derives from `XmlSerializerContext`, with one `[XmlSerializable]` attribute for each root type. Keep the default generation mode.
+    In your project, add a partial class that derives from `XmlSerializerContext`, with one `[XmlSerializable]` attribute for each root type. Every [generation mode](/guides/source-generation-modes) is safe for trimming and Native AOT.
 
     ```csharp OrderXmlContext.cs
     [XmlSerializable<Order>]
@@ -173,9 +173,9 @@ The package doesn't set `PublishAot`, `PublishTrimmed`, or the reflection switch
 
 ## Limits to know about
 
-- **Use the default generation mode.** A context in [metadata mode](/guides/source-generation-modes) gets its type info from the reflection resolver.
-- **Collections as root types use the run-time resolver.** For `[XmlSerializable<List<Order>>]`, the generator writes no converter for the list itself. Put the collection in a property of a class and list the class.
-- **Generated converters don't cover everything reflection does.** They don't handle `[XmlDerivedType]`, `ReferenceHandler`, or custom converters on class and struct members. See [Which options generated converters apply](/guides/source-generation#which-options-generated-converters-apply).
+A generated context applies every option and supports derived types, reference handling, and custom converters, as the reflection resolver does. See [How a context applies your options](/guides/source-generation#how-a-context-applies-your-options). These limits apply:
+
+- **A context in the `Serialization` mode only writes.** A read through it throws `InvalidOperationException`. Use the `Default` or `Metadata` mode for a context that reads. See [Source-generation modes](/guides/source-generation-modes).
 - **Custom converter factories often need reflection themselves.** A factory that calls `MakeGenericType` isn't safe. See [Custom converters](/guides/custom-converters#write-a-converter-factory).
 - **Schemas stay at build time.** Types generated from an `.xsd` file come with their own context, and the schema isn't read at run time. See [Generate types from an XSD](/guides/xsd-source-generation).
 

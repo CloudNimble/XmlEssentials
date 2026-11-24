@@ -64,7 +64,7 @@ The resolver builds type info from the converters of an [XmlSerializerOptions](/
 - **It isn't safe for trimming or Native AOT.** The resolver reads members with reflection and creates generic converter types at run time. In such an application, use a source-generated context, and set the `IsReflectionEnabledByDefault` switch to `false` so that options stop falling back to this resolver. See [Publish with Native AOT](/guides/native-aot).
 - **The first request for a type is the expensive one.** On the repository's graph benchmark, a first read through a new options instance takes 594,483 ns and allocates 78,608 B, against 3,358 ns and 3,168 B for later reads. Create one `XmlSerializerOptions` instance and reuse it, because the options cache what the resolver returns.
 - **There are no modifiers.** `DefaultJsonTypeInfoResolver` in System.Text.Json lets you add modifiers that edit a contract. This class has none. Change a mapping with attributes, options, or a custom converter.
-- **Generated contexts use it too.** A context in metadata mode gets all its type info here, and a context in any mode uses it for a type the context doesn't list.
+- **Generated contexts use it only for converters that exist already.** A source-generated context asks this resolver for a built-in value, an XML value, `object`, and a type you supplied a converter for. It builds the type info of every other type from generated code, with no reflection over the type's members.
 - **It's stateless and shared.** `Instance` is safe to use from any thread. The caching is done by the options, not by the resolver.
 
 ## Constructors

@@ -19,17 +19,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal const string ConstructorAttribute = "CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute";
         internal const string ConverterAttribute = "CloudNimble.Text.Xml.Serialization.XmlConverterAttribute";
         internal const string ContextType = "CloudNimble.Text.Xml.Serialization.XmlSerializerContext";
-        internal const string DerivedTypeAttribute = "CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute";
         internal const string ElementAttribute = "CloudNimble.Text.Xml.Serialization.XmlElementAttribute";
         internal const string ExtensionDataAttribute = "CloudNimble.Text.Xml.Serialization.XmlExtensionDataAttribute";
         internal const string IgnoreAttribute = "CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute";
         internal const string IncludeAttribute = "CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute";
         internal const string MixedAttribute = "CloudNimble.Text.Xml.Serialization.XmlMixedAttribute";
-        internal const string ObjectCreationHandlingAttribute = "CloudNimble.Text.Xml.Serialization.XmlObjectCreationHandlingAttribute";
         internal const string PropertyNameAttribute = "CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute";
         internal const string PropertyOrderAttribute = "CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute";
         internal const string RequiredAttribute = "CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute";
-        internal const string RootAttribute = "CloudNimble.Text.Xml.Serialization.XmlRootAttribute";
         internal const string SerializableAttribute = "CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute<T>";
         internal const string SerializableAttributeMetadataName = "CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute`1";
         internal const string SourceGenerationOptionsAttribute = "CloudNimble.Text.Xml.Serialization.XmlSourceGenerationOptionsAttribute";
@@ -210,113 +207,6 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     or "global::System.Memory<byte>"
                     or "global::System.ReadOnlyMemory<byte>"
                 || root is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte };
-        }
-
-        /// <summary>
-        /// Returns whether a member declared as <paramref name="type"/> can have items added to the collection it holds.
-        /// </summary>
-        /// <param name="type">The declared collection type.</param>
-        /// <param name="elementType">The item type.</param>
-        /// <returns>
-        /// <see langword="true"/> for <c>ICollection&lt;T&gt;</c> and the interfaces that extend it, for a class that
-        /// implements it and has a public parameterless constructor, and for <c>Stack&lt;T&gt;</c> and <c>Queue&lt;T&gt;</c>.
-        /// </returns>
-        /// <remarks>
-        /// The same test the reflection resolver makes on the declared type, so both populate the same members.
-        /// </remarks>
-        internal static bool CanPopulateCollection(ITypeSymbol type, ITypeSymbol elementType)
-        {
-            if (type.IsValueType || type is not INamedTypeSymbol named)
-            {
-                return false;
-            }
-
-            if (named.OriginalDefinition.ToDisplayString() is "System.Collections.Generic.Stack<T>" or "System.Collections.Generic.Queue<T>")
-            {
-                return true;
-            }
-
-            return IsOrImplements(named, "System.Collections.Generic.ICollection<T>", elementType)
-                && (named.TypeKind is TypeKind.Interface || HasPublicParameterlessConstructor(named));
-        }
-
-        /// <summary>
-        /// Returns whether a member declared as <paramref name="type"/> can have entries added to the dictionary it holds.
-        /// </summary>
-        /// <param name="type">The declared dictionary type.</param>
-        /// <param name="keyType">The key type.</param>
-        /// <returns>
-        /// <see langword="true"/> for <c>IDictionary&lt;TKey, TValue&gt;</c> and for a class that implements it and has a
-        /// public parameterless constructor.
-        /// </returns>
-        internal static bool CanPopulateDictionary(ITypeSymbol type, ITypeSymbol keyType)
-        {
-            return !type.IsValueType
-                && type is INamedTypeSymbol named
-                && IsOrImplements(named, "System.Collections.Generic.IDictionary<TKey, TValue>", keyType)
-                && (named.TypeKind is TypeKind.Interface || HasPublicParameterlessConstructor(named));
-        }
-
-        /// <summary>
-        /// Returns what <c>[XmlObjectCreationHandling]</c> on <paramref name="symbol"/> says.
-        /// </summary>
-        /// <param name="symbol">A member or a type.</param>
-        /// <returns>1 for populate, 0 for replace, and -1 when the attribute is absent.</returns>
-        internal static int CreationHandlingOf(ISymbol symbol)
-        {
-            return GetAttribute(symbol, ObjectCreationHandlingAttribute) is { ConstructorArguments: { Length: > 0 } arguments } && arguments[0].Value is { } value
-                ? System.Convert.ToInt32(value)
-                : -1;
-        }
-
-        /// <summary>
-        /// Returns whether <paramref name="type"/> has a public constructor with no parameters.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <returns><see langword="true"/> when it has one.</returns>
-        internal static bool HasPublicParameterlessConstructor(INamedTypeSymbol type)
-        {
-            foreach (var constructor in type.InstanceConstructors)
-            {
-                if (constructor.Parameters.Length == 0 && constructor.DeclaredAccessibility is Accessibility.Public)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Returns whether <paramref name="type"/> is, or implements, the generic interface
-        /// <paramref name="definition"/> closed over <paramref name="firstArgument"/>.
-        /// </summary>
-        /// <param name="type">The type.</param>
-        /// <param name="definition">The display name of the interface definition.</param>
-        /// <param name="firstArgument">The first type argument the interface must have.</param>
-        /// <returns><see langword="true"/> when it does.</returns>
-        internal static bool IsOrImplements(INamedTypeSymbol type, string definition, ITypeSymbol firstArgument)
-        {
-            if (Matches(type))
-            {
-                return true;
-            }
-
-            foreach (var implemented in type.AllInterfaces)
-            {
-                if (Matches(implemented))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-
-            bool Matches(INamedTypeSymbol candidate)
-            {
-                return candidate.OriginalDefinition.ToDisplayString() == definition
-                    && SymbolEqualityComparer.Default.Equals(candidate.TypeArguments[0], firstArgument);
-            }
         }
 
         /// <summary>

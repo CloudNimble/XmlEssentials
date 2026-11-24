@@ -80,7 +80,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Gets the member.
         /// </summary>
-        internal MemberInfo Member { get; }
+        internal XmlMemberFacts Member { get; }
 
         /// <summary>
         /// Gets the namespace URI, or empty when the member inherits the parent's namespace.
@@ -121,7 +121,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="isWrapped">Whether a collection is wrapped.</param>
         /// <param name="itemLocalName">The item element name for a collection.</param>
         /// <param name="converterType">The converter CLR type, or null to use <paramref name="type"/>.</param>
-        internal XmlMemberModel(MemberInfo member, Type type, string localName, string namespaceUri, int order, int declarationIndex, bool isRequired, bool isNillable, XmlIgnoreCondition ignore, bool canSet, bool isAttribute, bool isText, bool isCData, bool isCollection = false, bool isWrapped = false, string itemLocalName = "", Type? converterType = null)
+        internal XmlMemberModel(XmlMemberFacts member, Type type, string localName, string namespaceUri, int order, int declarationIndex, bool isRequired, bool isNillable, XmlIgnoreCondition ignore, bool canSet, bool isAttribute, bool isText, bool isCData, bool isCollection = false, bool isWrapped = false, string itemLocalName = "", Type? converterType = null)
         {
             Member = member;
             Type = type;

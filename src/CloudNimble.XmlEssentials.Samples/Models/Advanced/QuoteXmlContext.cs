@@ -4,10 +4,8 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Advanced
 {
 
     /// <summary>
-    /// A context for <see cref="Quote"/> in <see cref="XmlSourceGenerationMode.Metadata"/> mode, the mode
-    /// that applies custom converters to the members of a type.
+    /// A context for <see cref="Quote"/>. A converter in the options is applied to the members of the type.
     /// </summary>
-    [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
     [XmlSerializable<Quote>]
     public partial class QuoteXmlContext : XmlSerializerContext
     {

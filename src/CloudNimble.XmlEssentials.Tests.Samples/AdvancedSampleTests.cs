@@ -106,10 +106,13 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample33_SourceGenerationModes()
         {
             SampleOutput.Capture(SourceGenerationModes.Run).Should().Be(
-                "Default:  OrderXmlConverter, 0 properties\n" +
-                "Metadata: XmlObjectConverter`1, 3 properties\n" +
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?><Order Id=\"7\"><Customer>Grace</Customer></Order>\n" +
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?><Order Id=\"7\"><Customer>Grace</Customer></Order>");
+                "Default:       <?xml version=\"1.0\" encoding=\"utf-8\"?><Order Id=\"7\"><Customer>Grace</Customer></Order>\n" +
+                "Metadata:      <?xml version=\"1.0\" encoding=\"utf-8\"?><Order Id=\"7\"><Customer>Grace</Customer></Order>\n" +
+                "Serialization: <?xml version=\"1.0\" encoding=\"utf-8\"?><Order Id=\"7\"><Customer>Grace</Customer></Order>\n" +
+                "Default:       3 properties, reads Grace\n" +
+                "Metadata:      3 properties, reads Grace\n" +
+                "Serialization: 0 properties, The type info for 'CloudNimble.XmlEssentials.Samples.Models.Advanced.Order' was generated in XmlSourceGenerationMode.Serialization, " +
+                "which provides no property metadata. It can only write a type that has a write fast path, with the options it was compiled for. Use XmlSourceGenerationMode.Default or XmlSourceGenerationMode.Metadata.");
         }
 
         [TestMethod]

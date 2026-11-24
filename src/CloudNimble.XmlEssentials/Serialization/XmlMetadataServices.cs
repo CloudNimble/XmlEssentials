@@ -11,112 +11,12 @@ namespace CloudNimble.Text.Xml.Serialization
     /// Provides helpers to create and use metadata for XML-serializable types. This class cannot be inherited.
     /// </summary>
     /// <remarks>
-    /// Source-generated converters and contexts call these methods. This class is analogous to <c>JsonMetadataServices</c> in <c>System.Text.Json</c>.
+    /// Source-generated contexts call these methods. This class is analogous to <c>JsonMetadataServices</c> in <c>System.Text.Json</c>.
     /// </remarks>
     public static class XmlMetadataServices
     {
 
         #region Public Methods
-
-        /// <summary>
-        /// Adds the entries read for a dictionary member to the dictionary the member already holds.
-        /// </summary>
-        /// <typeparam name="TKey">
-        /// The type of the keys.
-        /// </typeparam>
-        /// <typeparam name="TValue">
-        /// The type of the values.
-        /// </typeparam>
-        /// <param name="target">The dictionary the member holds.</param>
-        /// <param name="entries">The entries that were read, in document order.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="target"/> or <paramref name="entries"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="NotSupportedException">
-        /// The dictionary is read-only.
-        /// </exception>
-        /// <remarks>
-        /// An entry whose key the dictionary already holds is given the value that was read. This method is for
-        /// source-generated converters only, which call it for a member that is populated
-        /// (<see cref="XmlObjectCreationHandling.Populate"/>).
-        /// </remarks>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void AddEntries<TKey, TValue>(object target, IEnumerable<KeyValuePair<TKey, TValue>> entries)
-        {
-            ArgumentNullException.ThrowIfNull(target);
-            ArgumentNullException.ThrowIfNull(entries);
-            if (target is not IDictionary<TKey, TValue> { IsReadOnly: false } map)
-            {
-                throw new NotSupportedException($"The dictionary of type '{target.GetType()}' is read-only and cannot be populated.");
-            }
-
-            foreach (var entry in entries)
-            {
-                map[entry.Key] = entry.Value;
-            }
-        }
-
-        /// <summary>
-        /// Adds the items read for a collection member to the collection the member already holds.
-        /// </summary>
-        /// <typeparam name="TElement">
-        /// The type of the items.
-        /// </typeparam>
-        /// <param name="target">The collection the member holds.</param>
-        /// <param name="items">The items that were read, in document order.</param>
-        /// <param name="memberName">The name of the member, for the message of the exception.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="target"/> or <paramref name="items"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="NotSupportedException">
-        /// The collection cannot take items, as with an array or a read-only collection.
-        /// </exception>
-        /// <remarks>
-        /// This method is for source-generated converters only, which call it for a member that is populated
-        /// (<see cref="XmlObjectCreationHandling.Populate"/>).
-        /// </remarks>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void AddItems<TElement>(object target, List<TElement> items, string memberName)
-        {
-            ArgumentNullException.ThrowIfNull(target);
-            ArgumentNullException.ThrowIfNull(items);
-            if (!XmlCollectionShape.AddItems(items, target))
-            {
-                throw new NotSupportedException($"The collection of type '{target.GetType()}' held by the member '{memberName}' is read-only and cannot be populated.");
-            }
-        }
-
-
-        /// <summary>
-        /// Creates a collection of the declared type from the items that were read.
-        /// </summary>
-        /// <typeparam name="TCollection">
-        /// The declared collection type.
-        /// </typeparam>
-        /// <typeparam name="TElement">
-        /// The type of the items.
-        /// </typeparam>
-        /// <param name="items">The items that were read, in document order.</param>
-        /// <returns>
-        /// The collection: <paramref name="items"/> itself when the declared type accepts a list, an array, or a new
-        /// collection of the declared type.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="items"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="NotSupportedException">
-        /// <typeparamref name="TCollection"/> has no constructor and no <c>Add</c> method that the serializer can use.
-        /// </exception>
-        /// <remarks>
-        /// This method is for source-generated converters only. It creates what the reflection resolver creates for
-        /// the same declared type.
-        /// </remarks>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static TCollection CreateCollection<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.Interfaces)] TCollection, TElement>(List<TElement> items)
-        {
-            ArgumentNullException.ThrowIfNull(items);
-            return (TCollection)XmlCollectionFactory<TCollection, TElement>.Create(items);
-        }
 
         /// <summary>
         /// Creates metadata for an array type whose item type is named at compile time.
@@ -207,6 +107,180 @@ namespace CloudNimble.Text.Xml.Serialization
             ArgumentNullException.ThrowIfNull(options);
             return CreateCustomInfo<TDictionary>(options)
                 ?? CreateValueInfo(options, new XmlDictionaryConverter<TDictionary, TKey, TValue>(options));
+        }
+
+        /// <summary>
+        /// Marks the metadata of an array member with the type of its items.
+        /// </summary>
+        /// <typeparam name="TElement">
+        /// The type of the items.
+        /// </typeparam>
+        /// <param name="propertyInfo">The metadata of the member.</param>
+        /// <returns>
+        /// <paramref name="propertyInfo"/>, which now reads and writes the member as an array of
+        /// <typeparamref name="TElement"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="propertyInfo"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// An array has its own method because <see cref="CreateCollectionPropertyInfo{TCollection, TElement}"/> keeps
+        /// the constructors and methods of the collection type for the trimmer, and those of <see cref="Array"/> cannot
+        /// be kept under Native AOT. An array needs none of them: it is made from the items that were read. This
+        /// method is for source-generated contexts only.
+        /// </remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static XmlPropertyInfoValues<TElement[]> CreateArrayPropertyInfo<TElement>(XmlPropertyInfoValues<TElement[]> propertyInfo)
+        {
+            ArgumentNullException.ThrowIfNull(propertyInfo);
+            propertyInfo.ElementType = typeof(TElement);
+            propertyInfo.CreateCollectionBinding = static (collectionType, wrapped, utf8ItemName, itemTypeInfo, mixed) =>
+                new XmlCollectionBinding<TElement>(collectionType, wrapped, utf8ItemName, itemTypeInfo, mixed);
+            return propertyInfo;
+        }
+
+        /// <summary>
+        /// Marks the metadata of a collection member with the type of its items.
+        /// </summary>
+        /// <typeparam name="TCollection">
+        /// The declared type of the member.
+        /// </typeparam>
+        /// <typeparam name="TElement">
+        /// The type of the items.
+        /// </typeparam>
+        /// <param name="propertyInfo">The metadata of the member.</param>
+        /// <returns>
+        /// <paramref name="propertyInfo"/>, which now reads and writes the member as a collection of
+        /// <typeparamref name="TElement"/>.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="propertyInfo"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// The serializer maps a collection through a type that is generic over the item type. This method closes
+        /// it where both types are type arguments, so nothing is closed at run time, which Native AOT cannot do for
+        /// a value-type item. This method is for source-generated contexts only.
+        /// </remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static XmlPropertyInfoValues<TCollection> CreateCollectionPropertyInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.Interfaces)] TCollection, TElement>(XmlPropertyInfoValues<TCollection> propertyInfo)
+        {
+            ArgumentNullException.ThrowIfNull(propertyInfo);
+            propertyInfo.ElementType = typeof(TElement);
+            propertyInfo.CreateCollectionBinding = static (collectionType, wrapped, utf8ItemName, itemTypeInfo, mixed) =>
+                new XmlCollectionBinding<TElement>(collectionType, wrapped, utf8ItemName, itemTypeInfo, mixed);
+            return propertyInfo;
+        }
+
+        /// <summary>
+        /// Marks the metadata of a member whose type is a nullable value type and that names its own converter.
+        /// </summary>
+        /// <typeparam name="T">
+        /// The underlying value type, which the converter converts.
+        /// </typeparam>
+        /// <param name="propertyInfo">The metadata of the member.</param>
+        /// <returns>
+        /// <paramref name="propertyInfo"/>, which now wraps the member's converter so that it serves the nullable type.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="propertyInfo"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// A converter for <c>T</c> named by <see cref="XmlConverterAttribute"/> on a member of type <c>T?</c> converts
+        /// the value, and <see langword="null"/> is handled around it. This method closes that wrapper where
+        /// <typeparamref name="T"/> is a type argument. This method is for source-generated contexts only.
+        /// </remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static XmlPropertyInfoValues<T?> CreateNullablePropertyInfo<T>(XmlPropertyInfoValues<T?> propertyInfo)
+            where T : struct
+        {
+            ArgumentNullException.ThrowIfNull(propertyInfo);
+            propertyInfo.WrapNullable = static converter => new XmlNullableConverter<T>((XmlConverter<T>)converter);
+            return propertyInfo;
+        }
+
+        /// <summary>
+        /// Creates metadata for an object type from the metadata of its constructor and members.
+        /// </summary>
+        /// <typeparam name="T">
+        /// The object type.
+        /// </typeparam>
+        /// <param name="options">
+        /// The options the metadata is for.
+        /// </param>
+        /// <param name="objectInfo">
+        /// The metadata of the constructor and the members of the type.
+        /// </param>
+        /// <returns>
+        /// Type info that reads and writes <typeparamref name="T"/> with the rules the serializer applies to a type
+        /// it maps through reflection.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="options"/> or <paramref name="objectInfo"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="objectInfo"/> has a creator that takes constructor arguments and no metadata for the parameters.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// The names, the member order, the ignore conditions, the constructor mapping, polymorphism, reference
+        /// handling and every other option are applied here, by the code that applies them for the reflection
+        /// resolver. A converter the caller supplied for <typeparamref name="T"/> is used in place of the metadata.
+        /// The members of <typeparamref name="T"/> are never reflected over, so the result is usable in a
+        /// trimmed application and under Native AOT.
+        /// </para>
+        /// <para>
+        /// This method is for source-generated contexts only. It is analogous to
+        /// <c>JsonMetadataServices.CreateObjectInfo&lt;T&gt;</c> in <c>System.Text.Json</c>.
+        /// </para>
+        /// </remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static XmlTypeInfo<T> CreateObjectInfo<T>(XmlSerializerOptions options, XmlObjectInfoValues<T> objectInfo)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            ArgumentNullException.ThrowIfNull(objectInfo);
+            if (objectInfo.ObjectWithParameterizedConstructorCreator is not null && objectInfo.ConstructorParameterMetadataInitializer is null)
+            {
+                throw new ArgumentException($"{nameof(XmlObjectInfoValues<T>.ObjectWithParameterizedConstructorCreator)} needs {nameof(XmlObjectInfoValues<T>.ConstructorParameterMetadataInitializer)}: the serializer has to know the parameters it fills.", nameof(objectInfo));
+            }
+
+            // A converter the caller supplied for the type, in the options or with an attribute on the type, reads
+            // and writes it. The metadata is for a type nobody claimed.
+            if (CreateCustomInfo<T>(options) is { } custom)
+            {
+                return custom;
+            }
+
+            var converter = new XmlObjectConverter<T>(options, bindingOptions => XmlObjectBinder.Bind(objectInfo, bindingOptions), objectInfo.SerializeHandler);
+            return (XmlTypeInfo<T>)converter.CreateTypeInfo(typeof(T), options)!;
+        }
+
+        /// <summary>
+        /// Marks the metadata of a member whose type is a value type.
+        /// </summary>
+        /// <typeparam name="TValue">
+        /// The type of the member.
+        /// </typeparam>
+        /// <param name="propertyInfo">The metadata of the member.</param>
+        /// <returns>
+        /// <paramref name="propertyInfo"/>, which can now hold a value for a constructor without boxing it again
+        /// for each object.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="propertyInfo"/> is <see langword="null"/>.
+        /// </exception>
+        /// <remarks>
+        /// When a type is created through a constructor, the serializer holds each value until the element ends. A
+        /// value type is held in one box that is written again for the next object. That box is generic over the
+        /// member's type, and this method closes it where the type is a type argument. This method is for
+        /// source-generated contexts only.
+        /// </remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static XmlPropertyInfoValues<TValue> CreateValuePropertyInfo<TValue>(XmlPropertyInfoValues<TValue> propertyInfo)
+            where TValue : struct
+        {
+            ArgumentNullException.ThrowIfNull(propertyInfo);
+            propertyInfo.CreateHeldBox = static () => new XmlStructHeldBox<TValue>();
+            return propertyInfo;
         }
 
         /// <summary>
@@ -337,57 +411,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// A converter for type <typeparamref name="T"/>.
         /// </returns>
         /// <remarks>
-        /// Generated contexts call this method instead of making a generic converter through reflection, which Native AOT cannot do.
+        /// The method makes the converter without closing a generic type through reflection, which Native AOT cannot do.
         /// </remarks>
         public static XmlConverter<T> CreateEnumConverter<T>()
             where T : struct, Enum
         {
             return new XmlEnumConverter<T>();
-        }
-
-        /// <summary>
-        /// Reads the element that the reader is positioned on, by using the specified metadata.
-        /// </summary>
-        /// <typeparam name="T">
-        /// The type of the value to read.
-        /// </typeparam>
-        /// <param name="reader">The reader, positioned on the start tag of the element.</param>
-        /// <param name="typeInfo">The metadata for type <typeparamref name="T"/>.</param>
-        /// <returns>
-        /// The value that the element represents. For an element marked <c>xsi:nil="true"</c>, the default value of
-        /// <typeparamref name="T"/> is returned unless the converter handles <see langword="null"/>.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="typeInfo"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// The element is marked <c>xsi:nil="true"</c>, type <typeparamref name="T"/> cannot be <see langword="null"/>, and the
-        /// converter does not handle <see langword="null"/>.
-        /// </exception>
-        public static T? Read<T>(ref Utf8XmlReader reader, XmlTypeInfo<T> typeInfo)
-        {
-            ArgumentNullException.ThrowIfNull(typeInfo);
-            return typeInfo.ReadElement(ref reader);
-        }
-
-        /// <summary>
-        /// Reads the attribute that the reader is positioned on, by using the specified metadata.
-        /// </summary>
-        /// <typeparam name="T">
-        /// The type of the value to read.
-        /// </typeparam>
-        /// <param name="reader">The reader, positioned on an attribute.</param>
-        /// <param name="typeInfo">The metadata for type <typeparamref name="T"/>.</param>
-        /// <returns>
-        /// The value that the attribute represents.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="typeInfo"/> is <see langword="null"/>.
-        /// </exception>
-        public static T? ReadAttribute<T>(ref Utf8XmlReader reader, XmlTypeInfo<T> typeInfo)
-        {
-            ArgumentNullException.ThrowIfNull(typeInfo);
-            return typeInfo.Converter.ReadAsAttribute(ref reader, typeof(T), typeInfo.Options);
         }
 
         /// <summary>
@@ -448,7 +477,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// No element is open.
         /// </exception>
         /// <remarks>
-        /// This method is for source-generated converters only.
+        /// This method is for the write fast path of a source-generated context only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static void WriteLeafStart(Utf8XmlWriter writer, ReadOnlySpan<byte> openTag)
@@ -458,87 +487,30 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Rejects an attribute that no member is mapped to, when the options do not allow unmapped members.
+        /// Returns whether the write fast path a context generated can be used with the given options.
         /// </summary>
-        /// <param name="reader">The reader, on the attribute.</param>
-        /// <param name="options">The serialization options.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="options"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <see cref="XmlSerializerOptions.UnmappedMemberHandling"/> is <see cref="XmlUnmappedMemberHandling.Disallow"/> and
-        /// the attribute is not one the serializer itself reads.
-        /// </exception>
-        /// <remarks>
-        /// Namespace declarations, <c>xsi:nil</c>, <c>xsi:type</c>, and the reference attributes are never unmapped. This
-        /// method is for source-generated converters only, and applies the rule the reflection resolver applies.
-        /// </remarks>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void RejectUnmappedAttribute(ref Utf8XmlReader reader, XmlSerializerOptions options)
-        {
-            ArgumentNullException.ThrowIfNull(options);
-            if (options.UnmappedMemberHandling is not XmlUnmappedMemberHandling.Disallow
-                || reader.PrefixSpan.SequenceEqual("xmlns"u8)
-                || (reader.PrefixSpan.IsEmpty && reader.LocalNameEquals("xmlns"u8))
-                || reader.NamespaceUriEquals(XmlNamespaces.Refs)
-                || ((reader.LocalNameEquals(XmlAttributes.Nil) || reader.LocalNameEquals(XmlAttributes.Type)) && reader.NamespaceUriEquals(XmlNamespaces.Xsi)))
-            {
-                return;
-            }
-
-            throw new XmlException($"Unknown attribute '{System.Text.Encoding.UTF8.GetString(reader.LocalNameSpan)}'.");
-        }
-
-        /// <summary>
-        /// Rejects an element that no member is mapped to, when the options do not allow unmapped members.
-        /// </summary>
-        /// <param name="reader">The reader, on the start tag of the element.</param>
-        /// <param name="options">The serialization options.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="options"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <see cref="XmlSerializerOptions.UnmappedMemberHandling"/> is <see cref="XmlUnmappedMemberHandling.Disallow"/>.
-        /// </exception>
-        /// <remarks>
-        /// This method is for source-generated converters only, and applies the rule the reflection resolver applies.
-        /// </remarks>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void RejectUnmappedElement(ref Utf8XmlReader reader, XmlSerializerOptions options)
-        {
-            ArgumentNullException.ThrowIfNull(options);
-            if (options.UnmappedMemberHandling is XmlUnmappedMemberHandling.Disallow)
-            {
-                throw new XmlException($"Unknown element '{System.Text.Encoding.UTF8.GetString(reader.LocalNameSpan)}'.");
-            }
-        }
-
-        /// <summary>
-        /// Checks that the options a generated context was given agree with the settings its converters were compiled with.
-        /// </summary>
-        /// <param name="options">The options of the context.</param>
+        /// <param name="options">The options the type info is for.</param>
         /// <param name="elementNamingPolicy">The policy the element names were generated with, or <see langword="null"/> for none.</param>
         /// <param name="attributeNamingPolicy">The policy the attribute names were generated with, or <see langword="null"/> for none.</param>
         /// <param name="defaultPropertyMapping">The property mapping the members were generated with.</param>
-        /// <param name="includeFields">Whether the converters were generated with fields included.</param>
-        /// <param name="directTypes">The types that the generated converters read and write without a converter.</param>
+        /// <param name="includeFields">Whether the fast path was generated with fields included.</param>
+        /// <param name="directTypes">The types the fast path writes without a converter, the type itself first.</param>
+        /// <returns>
+        /// <see langword="true"/> when the fast path writes what the serializer would write from the metadata with
+        /// these options; otherwise, <see langword="false"/>.
+        /// </returns>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="options"/> is <see langword="null"/>.
         /// </exception>
-        /// <exception cref="NotSupportedException">
-        /// The options ask for a naming policy, a property mapping, or a choice of members that differs from the one the
-        /// converters were compiled with.
-        /// -or-
-        /// The options supply a converter for one of <paramref name="directTypes"/>.
-        /// </exception>
         /// <remarks>
-        /// A generated converter has its element and attribute names, and its choice of members, compiled in. With other
-        /// options it would write a different document than the reflection resolver writes, so the mismatch is reported
-        /// instead. The settings are compiled from <see cref="XmlSourceGenerationOptionsAttribute"/>. The options become
-        /// read-only, as they do when they are first used to serialize. This method is for source-generated contexts only.
+        /// The fast path has its element and attribute names and its choice of members compiled in, from
+        /// <see cref="XmlSourceGenerationOptionsAttribute"/>. It is not used when the options ask for another naming
+        /// policy, property mapping or choice of members, when they handle references, or when they supply a converter
+        /// for a type it writes directly. The serializer then writes from the metadata, which follows every option.
+        /// This method is for source-generated contexts only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void VerifyGeneratedOptions(
+        public static bool CanUseSerializeHandler(
             XmlSerializerOptions options,
             XmlNamingPolicy? elementNamingPolicy,
             XmlNamingPolicy? attributeNamingPolicy,
@@ -547,23 +519,26 @@ namespace CloudNimble.Text.Xml.Serialization
             params ReadOnlySpan<Type> directTypes)
         {
             ArgumentNullException.ThrowIfNull(options);
-            options.MakeReadOnly();
-            var elementPolicy = options.ElementNamingPolicy ?? options.PropertyNamingPolicy;
-            var attributePolicy = options.AttributeNamingPolicy ?? options.PropertyNamingPolicy;
-            ThrowIfCompiledDifferently(nameof(XmlSerializerOptions.ElementNamingPolicy), ReferenceEquals(elementNamingPolicy, elementPolicy), Describe(elementNamingPolicy), Describe(elementPolicy));
-            ThrowIfCompiledDifferently(nameof(XmlSerializerOptions.AttributeNamingPolicy), ReferenceEquals(attributeNamingPolicy, attributePolicy), Describe(attributeNamingPolicy), Describe(attributePolicy));
-            ThrowIfCompiledDifferently(nameof(XmlSerializerOptions.DefaultPropertyMapping), defaultPropertyMapping == options.DefaultPropertyMapping, defaultPropertyMapping.ToString(), options.DefaultPropertyMapping.ToString());
-            ThrowIfCompiledDifferently(nameof(XmlSerializerOptions.IncludeFields), includeFields == options.IncludeFields, includeFields.ToString(), options.IncludeFields.ToString());
-            ThrowIfCompiledDifferently(nameof(XmlSerializerOptions.IgnoreReadOnlyProperties), !options.IgnoreReadOnlyProperties, bool.FalseString, bool.TrueString);
-            ThrowIfCompiledDifferently(nameof(XmlSerializerOptions.IgnoreReadOnlyFields), !options.IgnoreReadOnlyFields, bool.FalseString, bool.TrueString);
+            if (options.ReferenceHandler is not null
+                || !ReferenceEquals(elementNamingPolicy, options.ElementNamingPolicy ?? options.PropertyNamingPolicy)
+                || !ReferenceEquals(attributeNamingPolicy, options.AttributeNamingPolicy ?? options.PropertyNamingPolicy)
+                || defaultPropertyMapping != options.DefaultPropertyMapping
+                || includeFields != options.IncludeFields
+                || options.IgnoreReadOnlyProperties
+                || options.IgnoreReadOnlyFields)
+            {
+                return false;
+            }
+
             foreach (var type in directTypes)
             {
                 if (options.HasCustomConverter(type))
                 {
-                    throw new NotSupportedException(
-                        $"The options supply a converter for '{type}', and the generated converters read and write that type directly. Use the reflection resolver for these options.");
+                    return false;
                 }
             }
+
+            return true;
         }
 
         /// <summary>
@@ -579,8 +554,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </exception>
         /// <remarks>
         /// A CDATA section ends at the first <c>]]&gt;</c>, so text that holds one is cut between the brackets and the angle
-        /// bracket and written as adjacent sections, which read back as one value. This method is for source-generated
-        /// converters only.
+        /// bracket and written as adjacent sections, which read back as one value. This method is for the write fast path of a
+        /// source-generated context only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static void WriteCData(Utf8XmlWriter writer, ReadOnlySpan<char> text)
@@ -601,7 +576,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// No element is open.
         /// </exception>
         /// <remarks>
-        /// This method is for source-generated converters only.
+        /// This method is for the write fast path of a source-generated context only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static void WriteLeafEnd(Utf8XmlWriter writer, ReadOnlySpan<byte> closeTag)
@@ -629,33 +604,6 @@ namespace CloudNimble.Text.Xml.Serialization
             return options.HasCustomConverter(typeof(T))
                 ? (XmlTypeInfo<T>?)DefaultXmlTypeInfoResolver.Instance.GetTypeInfo(typeof(T), options)
                 : null;
-        }
-
-        /// <summary>
-        /// Names a naming policy for a message.
-        /// </summary>
-        /// <param name="policy">The policy, or null.</param>
-        /// <returns>The name of the policy's type, or <c>none</c>.</returns>
-        internal static string Describe(XmlNamingPolicy? policy)
-        {
-            return policy is null ? "none" : policy.GetType().Name;
-        }
-
-        /// <summary>
-        /// Reports a setting whose run-time value differs from the one the converters were compiled with.
-        /// </summary>
-        /// <param name="setting">The name of the option.</param>
-        /// <param name="same">Whether the two values are the same.</param>
-        /// <param name="compiled">The value the converters were compiled with.</param>
-        /// <param name="actual">The value the options have.</param>
-        /// <exception cref="NotSupportedException">The two values differ.</exception>
-        internal static void ThrowIfCompiledDifferently(string setting, bool same, string compiled, string actual)
-        {
-            if (!same)
-            {
-                throw new NotSupportedException(
-                    $"The generated converters were compiled with {setting} = {compiled}, and the options have {actual}. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.");
-            }
         }
 
         #endregion

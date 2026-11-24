@@ -40,67 +40,122 @@ namespace CloudNimble.Text.Xml.Serialization
         internal static XmlObjectBinding Bind<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields | DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>(XmlSerializerOptions options)
         {
             var members = Discover<T>(options);
-            var extensionMember = PeelExtensionData(typeof(T), members);
-            ValidateSimpleContent(typeof(T), members);
+
             // An abstract class or an interface is never created: a document names one of its derived types.
             // It is bound for its members, which describe it and are what is written when an undeclared
             // derived type falls back to the declared type.
             var isAbstract = typeof(T).IsAbstract;
-            var ctor = isAbstract ? null : SelectConstructor(typeof(T), members);
-            var map = MapConstructor(ctor, members);
-            var bound = new XmlBoundProperty[members.Count];
-            var nextSlot = map.Length;
-            // The context caches what it reads and is not safe to share, so one is made for each type that is bound.
-            var nullability = options.RespectNullableAnnotations ? new NullabilityInfoContext() : null;
-            for (var i = 0; i < members.Count; i++)
-            {
-                var constructorIndex = -1;
-                if (ctor is not null)
-                {
-                    for (var p = 0; p < map.Length; p++)
-                    {
-                        if (map[p] == i)
-                        {
-                            constructorIndex = p;
-                            break;
-                        }
-                    }
-                }
-
-                try
-                {
-                    bound[i] = (XmlBoundProperty)CreatePropertyMethod.MakeGenericMethod(typeof(T), members[i].Type).Invoke(null, [members[i], options, constructorIndex >= 0 ? constructorIndex : nextSlot++, constructorIndex])!;
-                }
-                catch (TargetInvocationException ex) when (ex.InnerException is not null)
-                {
-                    throw ex.InnerException;
-                }
-
-                if (nullability is not null)
-                {
-                    ApplyNullableAnnotations(nullability, bound[i], members[i].Member, constructorIndex >= 0 ? ctor!.GetParameters()[constructorIndex] : null);
-                }
-            }
-
-            ApplyObjectCreationHandling(typeof(T), bound, members, options, ctor is not null && map.Length > 0);
-            ValidateElementNames(bound, options.PropertyNameCaseInsensitive);
+            var constructor = isAbstract ? null : SelectConstructor(typeof(T), members);
             Func<object>? create = null;
-            if (!isAbstract && (ctor is null || ctor.GetParameters().Length == 0))
+            XmlConstructorFacts? constructorFacts = null;
+            if (constructor is { } chosen && chosen.GetParameters().Length > 0)
             {
-                create = typeof(T).IsValueType || ctor is { IsPublic: true }
+                constructorFacts = XmlConstructorFacts.FromReflection(chosen, static name => IsIgnoredMember(typeof(T), name));
+            }
+            else if (!isAbstract)
+            {
+                create = typeof(T).IsValueType || constructor is { IsPublic: true }
                     ? CreatePublic<T>
                     : CreateNonPublic<T>;
             }
 
+            if (options.RespectNullableAnnotations)
+            {
+                // The context caches what it reads and is not safe to share, so one is made for each type that is bound.
+                ReadNullableAnnotations(new NullabilityInfoContext(), members, constructorFacts);
+            }
+
+            return Bind(typeof(T), members, constructorFacts, create, options);
+        }
+
+        /// <summary>
+        /// Builds the binding of a type from metadata a source generator emitted.
+        /// </summary>
+        /// <typeparam name="T">The type that is bound.</typeparam>
+        /// <param name="objectInfo">The metadata.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The members and constructor.</returns>
+        /// <remarks>
+        /// Nothing here reflects over the members of <typeparamref name="T"/>. The attributes on the type itself are
+        /// read from it, which trimming allows: a type the program uses keeps its attributes.
+        /// </remarks>
+        internal static XmlObjectBinding Bind<T>(XmlObjectInfoValues<T> objectInfo, XmlSerializerOptions options)
+        {
+            var values = objectInfo.PropertyMetadataInitializer?.Invoke(options) ?? [];
+            var facts = new List<XmlMemberFacts>(values.Length);
+            foreach (var value in values)
+            {
+                facts.Add(value.CreateFacts());
+            }
+
+            XmlConstructorFacts? constructor = null;
+            if (objectInfo.ObjectWithParameterizedConstructorCreator is { } createWithArguments)
+            {
+                var declared = objectInfo.ConstructorParameterMetadataInitializer!();
+                var parameters = new XmlParameterFacts[declared.Length];
+                foreach (var parameter in declared)
+                {
+                    parameters[parameter.Position] = new XmlParameterFacts(parameter.Name, parameter.ParameterType, parameter.HasDefaultValue, parameter.DefaultValue, isIgnoredMember: false)
+                    {
+                        RefusesNull = !parameter.IsNullable,
+                    };
+                }
+
+                constructor = new XmlConstructorFacts(parameters, arguments => createWithArguments(arguments)!);
+            }
+
+            Func<object>? create = null;
+            if (constructor is null && objectInfo.ObjectCreator is { } creator)
+            {
+                create = () => creator()!;
+            }
+
+            var binding = Bind(typeof(T), CreateModels(facts, options), constructor, create, options);
+            binding.NoMetadata = objectInfo.PropertyMetadataInitializer is null;
+            return binding;
+        }
+
+        /// <summary>
+        /// Builds the binding of a type from the models of its members and the facts of its constructor.
+        /// </summary>
+        /// <param name="type">The type that is bound.</param>
+        /// <param name="members">The member models, in the order they are written. An extension-data member is taken out of the list.</param>
+        /// <param name="constructor">The constructor the object is created through, or null when it is created with no arguments or never created.</param>
+        /// <param name="create">Creates the object with no arguments, or null.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The members and constructor.</returns>
+        /// <remarks>
+        /// This is the one place a type is bound. The reflection resolver and a source-generated context both end
+        /// here, with facts that came from reflection or from generated code.
+        /// </remarks>
+        internal static XmlObjectBinding Bind(Type type, List<XmlMemberModel> members, XmlConstructorFacts? constructor, Func<object>? create, XmlSerializerOptions options)
+        {
+            var extensionMember = PeelExtensionData(type, members);
+            ValidateSimpleContent(type, members);
+            var map = MapConstructor(constructor, members);
+            var bound = new XmlBoundProperty[members.Count];
+            var nextSlot = map.Length;
+            for (var i = 0; i < members.Count; i++)
+            {
+                var constructorIndex = Array.IndexOf(map, i);
+                bound[i] = members[i].Member.CreateBound(members[i], options, constructorIndex >= 0 ? constructorIndex : nextSlot++, constructorIndex);
+                if (options.RespectNullableAnnotations)
+                {
+                    ApplyNullableAnnotations(bound[i], members[i].Member, type, constructorIndex >= 0 ? constructor!.Parameters[constructorIndex] : null);
+                }
+            }
+
+            ApplyObjectCreationHandling(type, bound, members, options, constructor is not null);
+            ValidateElementNames(bound, options.PropertyNameCaseInsensitive);
             XmlExtensionDataBinding? extension = null;
             if (extensionMember is { } ext)
             {
                 extension = new XmlExtensionDataBinding(
-                    CreateGetter<T, XmlExtensionData>(ext.Member),
-                    ext.CanSet ? CreateSetter<T, XmlExtensionData>(ext.Member) : null);
+                    (Func<object, XmlExtensionData>)ext.Member.Getter!,
+                    ext.CanSet ? (Action<object, XmlExtensionData>?)ext.Member.Setter : null);
             }
 
-            var polymorphic = typeof(T).GetCustomAttribute<XmlPolymorphicAttribute>();
+            var polymorphic = type.GetCustomAttribute<XmlPolymorphicAttribute>();
             var placement = polymorphic?.DiscriminatorPlacement ?? XmlDiscriminatorPlacement.ElementName;
             var unknown = polymorphic?.UnknownDerivedTypeHandling ?? XmlUnknownDerivedTypeHandling.FailSerialization;
             byte[] utf8DiscAttr = [];
@@ -108,7 +163,7 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (string.IsNullOrWhiteSpace(polymorphic!.TypeDiscriminatorPropertyName))
                 {
-                    throw new NotSupportedException($"[{nameof(XmlPolymorphicAttribute)}] on '{typeof(T)}' uses {nameof(XmlDiscriminatorPlacement.Attribute)} and requires {nameof(XmlPolymorphicAttribute.TypeDiscriminatorPropertyName)}.");
+                    throw new NotSupportedException($"[{nameof(XmlPolymorphicAttribute)}] on '{type}' uses {nameof(XmlDiscriminatorPlacement.Attribute)} and requires {nameof(XmlPolymorphicAttribute.TypeDiscriminatorPropertyName)}.");
                 }
 
                 utf8DiscAttr = Encoding.UTF8.GetBytes(polymorphic.TypeDiscriminatorPropertyName);
@@ -116,17 +171,54 @@ namespace CloudNimble.Text.Xml.Serialization
 
             return new XmlObjectBinding(
                 bound,
-                ctor is { } c && c.GetParameters().Length > 0 ? c : null,
+                constructor,
                 map,
                 create,
                 nextSlot,
                 extension,
-                new XmlPolymorphism(typeof(T), BindDerived(typeof(T), options, placement), placement, utf8DiscAttr, unknown));
+                new XmlPolymorphism(type, BindDerived(type, options, placement), placement, utf8DiscAttr, unknown));
         }
 
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Fills the facts of a reflected member, with the reflection call that creates its bound member.
+        /// </summary>
+        /// <typeparam name="T">The type that is bound, which may be derived from the type that declares the member.</typeparam>
+        /// <param name="member">A property or a field.</param>
+        /// <returns>The facts.</returns>
+        /// <remarks>
+        /// The bound member is generic over the member's type, which reflection knows only as a <see cref="Type"/>, so
+        /// it is closed at run time. A source-generated context supplies a delegate that was closed when the program
+        /// was compiled, which is what makes it usable under Native AOT.
+        /// </remarks>
+        [UnconditionalSuppressMessage("Trimming", "IL2060")]
+        [UnconditionalSuppressMessage("AOT", "IL3050")]
+        internal static XmlMemberFacts CreateFacts<T>(MemberInfo member)
+        {
+            var facts = new XmlMemberFacts(member);
+            if (facts.MemberType == typeof(XmlExtensionData))
+            {
+                // The extension-data member is not bound as a member, so its accessors are made here, where the type is known.
+                facts.Getter = CreateGetter<T, XmlExtensionData>(member);
+                facts.Setter = facts.HasSetter ? CreateSetter<T, XmlExtensionData>(member) : null;
+            }
+
+            facts.CreateBound = static (model, options, index, constructorIndex) =>
+            {
+                try
+                {
+                    return (XmlBoundProperty)CreatePropertyMethod.MakeGenericMethod(typeof(T), model.Type).Invoke(null, [model, options, index, constructorIndex])!;
+                }
+                catch (TargetInvocationException ex) when (ex.InnerException is not null)
+                {
+                    throw ex.InnerException;
+                }
+            };
+            return facts;
+        }
 
         /// <summary>
         /// Creates a <typeparamref name="T"/> through a parameterless constructor that is not public.
@@ -182,16 +274,16 @@ namespace CloudNimble.Text.Xml.Serialization
         [UnconditionalSuppressMessage("AOT", "IL3050")]
         internal static XmlBoundProperty CreateProperty<TDeclaring, TValue>(XmlMemberModel member, XmlSerializerOptions options, int index, int constructorIndex)
         {
-            var mixed = member.Member.IsDefined(typeof(XmlMixedAttribute), inherit: false);
+            var mixed = member.Member.IsDefined(typeof(XmlMixedAttribute));
             var typeForInfo = mixed ? typeof(XmlMixedText) : member.ConverterType;
             var typeInfo = member.Member.GetCustomAttribute<XmlConverterAttribute>() is { } memberConverter
-                ? CreateMemberTypeInfo(memberConverter, typeForInfo, options)
+                ? CreateMemberTypeInfo(memberConverter, typeForInfo, options, member.Member.WrapNullable)
                 : options.GetTypeInfo(typeForInfo);
             var name = new XmlName(member.LocalName, member.NamespaceUri.Length == 0 ? null : member.NamespaceUri);
             var info = new XmlPropertyInfo(name, typeInfo, member.IsNillable, member.IsRequired, member.Order, member.IsAttribute, member.IsText);
             var utf8Name = Encoding.UTF8.GetBytes(member.LocalName);
             var utf8Ns = member.NamespaceUri.Length == 0 ? [] : Encoding.UTF8.GetBytes(member.NamespaceUri);
-            var getter = CreateGetter<TDeclaring, TValue>(member.Member);
+            var getter = (Func<object, TValue>?)member.Member.Getter ?? CreateGetter<TDeclaring, TValue>(member.Member.Member!);
             // A member that is never read has no setter as far as reading goes. A constructor parameter of the same
             // name is still filled, as System.Text.Json fills it.
             var neverRead = member.Ignore is XmlIgnoreCondition.WhenReading && constructorIndex < 0;
@@ -200,21 +292,21 @@ namespace CloudNimble.Text.Xml.Serialization
                 throw new InvalidOperationException($"The member '{member.Member.Name}' on type '{member.Member.DeclaringType}' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read.");
             }
 
-            var setter = member.CanSet && !neverRead ? CreateSetter<TDeclaring, TValue>(member.Member) : null;
+            var setter = member.CanSet && !neverRead
+                ? (Action<object, TValue>?)member.Member.Setter ?? CreateSetter<TDeclaring, TValue>(member.Member.Member!)
+                : null;
             XmlCollectionBinding? collection = null;
             Type? collectionElement = null;
-            if (member.IsCollection && XmlCollectionShape.IsCollection(typeof(TValue), out var elementType))
+            if (member.IsCollection && member.Member.IsCollection(out var elementType))
             {
                 collectionElement = elementType;
                 var itemClr = mixed ? typeof(XmlMixedContentItem) : elementType;
                 var itemInfoType = mixed ? typeof(XmlMixedText) : elementType;
-                collection = XmlCollectionBinding.Create(
-                    typeof(TValue),
-                    itemClr,
-                    member.IsWrapped,
-                    Encoding.UTF8.GetBytes(member.ItemLocalName),
-                    options.GetTypeInfo(itemInfoType),
-                    mixed);
+                var utf8ItemName = Encoding.UTF8.GetBytes(member.ItemLocalName);
+                var itemInfo = options.GetTypeInfo(itemInfoType);
+                collection = member.Member.CreateCollectionBinding is { } createBinding
+                    ? createBinding(typeof(TValue), member.IsWrapped, utf8ItemName, itemInfo, mixed)
+                    : XmlCollectionBinding.Create(typeof(TValue), itemClr, member.IsWrapped, utf8ItemName, itemInfo, mixed);
             }
 
             var derivedSource = mixed ? null : collectionElement ?? member.ConverterType;
@@ -238,7 +330,11 @@ namespace CloudNimble.Text.Xml.Serialization
                 polymorphism = new XmlPolymorphism(derivedSource, BindDerived(derivedSource, options, placement), placement, utf8DiscAttr, unknown);
             }
 
-            return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism);
+            return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
+            {
+                HeldBoxFactory = member.Member.CreateHeldBox,
+                ReflectsHeldBox = member.Member.Member is not null,
+            };
         }
 
         /// <summary>
@@ -284,31 +380,110 @@ namespace CloudNimble.Text.Xml.Serialization
                 types.Push(type);
             }
 
-            var members = new List<XmlMemberModel>();
-            var names = new HashSet<string>(StringComparer.Ordinal);
-            var index = 0;
+            var facts = new List<XmlMemberFacts>();
             while (types.Count > 0)
             {
                 var type = types.Pop();
                 foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
-                    if (TryCreateModel(property, property.PropertyType, property.GetMethod, property.SetMethod, options, index, out var model))
-                    {
-                        AddMember(members, names, model);
-                        index++;
-                    }
+                    facts.Add(CreateFacts<T>(property));
                 }
 
-                if (options.IncludeFields)
+                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
-                    foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
-                    {
-                        if (TryCreateModel(field, field.FieldType, get: null, set: null, options, index, out var model))
-                        {
-                            AddMember(members, names, model);
-                            index++;
-                        }
-                    }
+                    facts.Add(CreateFacts<T>(field));
+                }
+            }
+
+            return CreateModels(facts, options);
+        }
+
+        /// <summary>
+        /// Turns the facts of the members of a type into the models of the ones that are serialized, in the order
+        /// they are written.
+        /// </summary>
+        /// <param name="facts">The facts of every property and field of the type and its base types: base types first, and within a type its properties and then its fields.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The models.</returns>
+        /// <remarks>
+        /// <para>
+        /// A field is serialized only when <see cref="XmlSerializerOptions.IncludeFields"/> is set. The rules for one
+        /// member are in <see cref="TryCreateModel"/>.
+        /// </para>
+        /// <para>
+        /// A type and its base types may declare a member of the same name. The rules are the ones
+        /// <c>System.Text.Json</c> has. The members are taken from the most derived type down. A member that
+        /// overrides or hides one of a base type is serialized in its place. An override that is ignored hides the
+        /// property it overrides; a member declared with <see langword="new"/> that is ignored leaves the member it
+        /// hides to be serialized. Two members that are not related in one of these ways and have the same XML name
+        /// are an error.
+        /// </para>
+        /// </remarks>
+        internal static List<XmlMemberModel> CreateModels(List<XmlMemberFacts> facts, XmlSerializerOptions options)
+        {
+            // The members are taken from the most derived type down. First, which of them are candidates: an ignored
+            // override stands for the property it overrides, so that one is not serialized either.
+            var candidates = new bool[facts.Count];
+            var ignored = new Dictionary<string, XmlMemberFacts>(StringComparer.Ordinal);
+            var hiddenBy = new XmlMemberFacts?[facts.Count];
+            for (var index = facts.Count - 1; index >= 0; index--)
+            {
+                var member = facts[index];
+                if (member.IsField && !options.IncludeFields)
+                {
+                    continue;
+                }
+
+                ignored.TryGetValue(member.Name, out hiddenBy[index]);
+                if (hiddenBy[index] is { IsVirtual: true } hidden && member.IsVirtual && hidden.MemberType == member.MemberType)
+                {
+                    continue;
+                }
+
+                if (IsIgnored(member))
+                {
+                    ignored.TryAdd(member.Name, member);
+                    continue;
+                }
+
+                candidates[index] = true;
+            }
+
+            // Then the models, in declaration order, so the first member that is mapped wrongly is the one reported.
+            var models = new XmlMemberModel?[facts.Count];
+            for (var index = 0; index < facts.Count; index++)
+            {
+                if (candidates[index] && TryCreateModel(facts[index], options, index, out var model))
+                {
+                    models[index] = model;
+                }
+            }
+
+            // Then the names, again from the most derived type down. A name that is taken belongs to a member of a
+            // more derived type: that is what overriding and hiding a member mean, and it is what an ignored member
+            // of the same C# name left behind. Anything else is two members mapped to one name.
+            var members = new List<XmlMemberModel>();
+            var owners = new Dictionary<string, XmlMemberFacts>(StringComparer.Ordinal);
+            for (var index = facts.Count - 1; index >= 0; index--)
+            {
+                if (models[index] is not { } model)
+                {
+                    continue;
+                }
+
+                var member = facts[index];
+                var key = (model.IsAttribute ? "a:" : model.IsText || model.IsCData ? "t:" : "e:") + model.LocalName;
+                if (!owners.TryGetValue(key, out var owner))
+                {
+                    owners.Add(key, member);
+                    members.Add(model);
+                    continue;
+                }
+
+                var replaced = member.Name == owner.Name && member.DeclaringType.IsAssignableFrom(owner.DeclaringType);
+                if (!replaced && hiddenBy[index] is null)
+                {
+                    throw new InvalidOperationException($"The type maps more than one member to the {(model.IsAttribute ? "attribute" : "element")} name '{model.LocalName}'.");
                 }
             }
 
@@ -356,7 +531,7 @@ namespace CloudNimble.Text.Xml.Serialization
             var populates = false;
             for (var i = 0; i < bound.Length; i++)
             {
-                var onMember = members[i].Member.GetCustomAttribute<XmlObjectCreationHandlingAttribute>(inherit: false)?.Handling;
+                var onMember = members[i].Member.GetCustomAttribute<XmlObjectCreationHandlingAttribute>()?.Handling;
                 if (hasConstructorParameters)
                 {
                     if ((onMember ?? onType) is XmlObjectCreationHandling.Populate)
@@ -395,9 +570,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Records, on a bound member, the nulls its nullable annotations refuse.
         /// </summary>
-        /// <param name="nullability">Reads the annotations.</param>
         /// <param name="property">The bound member.</param>
-        /// <param name="member">The property or field.</param>
+        /// <param name="member">The facts of the member, which say what its annotations refuse.</param>
+        /// <param name="type">The type that is bound, which the message for a constructor parameter names.</param>
         /// <param name="parameter">The constructor parameter the member fills, or null when it is set after construction.</param>
         /// <remarks>
         /// As System.Text.Json has it with <c>RespectNullableAnnotations</c>: what is read is checked against what
@@ -405,35 +580,67 @@ namespace CloudNimble.Text.Xml.Serialization
         /// differ under <c>[AllowNull]</c>, <c>[DisallowNull]</c>, <c>[MaybeNull]</c> and <c>[NotNull]</c>. A member
         /// compiled without annotations, and one whose type is a type parameter, says nothing and accepts null.
         /// </remarks>
-        internal static void ApplyNullableAnnotations(NullabilityInfoContext nullability, XmlBoundProperty property, MemberInfo member, ParameterInfo? parameter)
+        internal static void ApplyNullableAnnotations(XmlBoundProperty property, XmlMemberFacts member, Type type, XmlParameterFacts? parameter)
         {
-            var info = member is PropertyInfo propertyInfo ? nullability.Create(propertyInfo) : nullability.Create((FieldInfo)member);
-            if (info.ReadState is NullabilityState.NotNull)
+            if (member.NeverReturnsNull)
             {
                 property.NullWriteError = $"The property or field '{member.Name}' on type '{member.DeclaringType}' doesn't allow getting null values. Consider updating its nullability annotation.";
             }
 
             if (parameter is not null)
             {
-                if (nullability.Create(parameter).WriteState is NullabilityState.NotNull)
+                if (parameter.RefusesNull)
                 {
-                    property.NullReadError = $"The constructor parameter '{parameter.Name}' on type '{parameter.Member.DeclaringType}' doesn't allow null values. Consider updating its nullability annotation.";
+                    property.NullReadError = $"The constructor parameter '{parameter.Name}' on type '{type}' doesn't allow null values. Consider updating its nullability annotation.";
                 }
 
                 return;
             }
 
-            if (info.WriteState is NullabilityState.NotNull)
+            if (member.RefusesNull)
             {
                 property.NullReadError = $"The property or field '{member.Name}' on type '{member.DeclaringType}' doesn't allow setting null values. Consider updating its nullability annotation.";
             }
         }
 
         /// <summary>
+        /// Reads the nullable annotations of reflected members and constructor parameters into their facts.
+        /// </summary>
+        /// <param name="nullability">Reads the annotations.</param>
+        /// <param name="members">The member models.</param>
+        /// <param name="constructor">The constructor, or null.</param>
+        /// <remarks>
+        /// Reading the annotations takes reflection, so the reflection resolver does it only when the options ask
+        /// for them. A source-generated context has them already: the generator read them from the symbols.
+        /// </remarks>
+        internal static void ReadNullableAnnotations(NullabilityInfoContext nullability, List<XmlMemberModel> members, XmlConstructorFacts? constructor)
+        {
+            foreach (var model in members)
+            {
+                var facts = model.Member;
+                var info = facts.Member is PropertyInfo propertyInfo ? nullability.Create(propertyInfo) : nullability.Create((FieldInfo)facts.Member!);
+                facts.NeverReturnsNull = info.ReadState is NullabilityState.NotNull;
+                facts.RefusesNull = info.WriteState is NullabilityState.NotNull;
+            }
+
+            if (constructor is null)
+            {
+                return;
+            }
+
+            foreach (var parameter in constructor.Parameters)
+            {
+                parameter.RefusesNull = nullability.Create(parameter.Parameter!).WriteState is NullabilityState.NotNull;
+            }
+        }
+
+
+        /// <summary>
         /// Creates type info for a member that names its own converter with <see cref="XmlConverterAttribute"/>.
         /// </summary>
         /// <param name="attribute">The attribute on the member.</param>
         /// <param name="type">The member type.</param>
+        /// <param name="wrapNullable">Wraps the converter for a member whose type is a nullable value type, or null to close the wrapper by reflection.</param>
         /// <param name="options">The serializer options.</param>
         /// <returns>Type info that reads and writes the member with that converter. It belongs to the member, not to the options.</returns>
         /// <exception cref="InvalidOperationException">The converter does not convert the member's type.</exception>
@@ -444,7 +651,7 @@ namespace CloudNimble.Text.Xml.Serialization
         [UnconditionalSuppressMessage("Trimming", "IL2072")]
         [UnconditionalSuppressMessage("Trimming", "IL2071", Justification = "A value type always has its parameterless constructor.")]
         [UnconditionalSuppressMessage("AOT", "IL3050")]
-        internal static XmlTypeInfo CreateMemberTypeInfo(XmlConverterAttribute attribute, Type type, XmlSerializerOptions options)
+        internal static XmlTypeInfo CreateMemberTypeInfo(XmlConverterAttribute attribute, Type type, XmlSerializerOptions options, Func<XmlConverter, XmlConverter>? wrapNullable)
         {
             var target = Nullable.GetUnderlyingType(type) ?? type;
             var converter = attribute.CreateConverter().Resolve(target, options);
@@ -458,7 +665,9 @@ namespace CloudNimble.Text.Xml.Serialization
                 return typeInfo;
             }
 
-            var nullable = (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(target), converter)!;
+            var nullable = wrapNullable is not null
+                ? wrapNullable(converter)
+                : (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(target), converter)!;
             return nullable.CreateTypeInfo(type, options)!;
         }
 
@@ -508,20 +717,23 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Adds <paramref name="model"/> or throws when the XML name is already used.
+        /// Returns whether <paramref name="member"/> would be serialized and is marked never to be.
         /// </summary>
-        /// <param name="members">The members.</param>
-        /// <param name="names">The XML local names already used.</param>
-        /// <param name="model">The member.</param>
-        internal static void AddMember(List<XmlMemberModel> members, HashSet<string> names, XmlMemberModel model)
+        /// <param name="member">The facts of a property or a field.</param>
+        /// <returns>
+        /// <see langword="true"/> for a member that is public or included, can be read, and has
+        /// <see cref="XmlIgnoreAttribute"/> with <see cref="XmlIgnoreCondition.Always"/>.
+        /// </returns>
+        /// <remarks>
+        /// Such a member still hides the member of a base type that it overrides, which a member that was never a
+        /// candidate does not.
+        /// </remarks>
+        internal static bool IsIgnored(XmlMemberFacts member)
         {
-            var key = (model.IsAttribute ? "a:" : model.IsText || model.IsCData ? "t:" : "e:") + model.LocalName;
-            if (!names.Add(key))
-            {
-                throw new InvalidOperationException($"The type maps more than one member to the {(model.IsAttribute ? "attribute" : "element")} name '{model.LocalName}'.");
-            }
-
-            members.Add(model);
+            return !member.IsIndexer
+                && (member.IsPublic || member.IsDefined(typeof(XmlIncludeAttribute)))
+                && member.HasGetter
+                && member.GetCustomAttribute<XmlIgnoreAttribute>() is { Condition: XmlIgnoreCondition.Always };
         }
 
         /// <summary>
@@ -639,14 +851,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="constructor">The constructor, or null.</param>
         /// <param name="members">The members.</param>
         /// <returns>The map.</returns>
-        internal static int[] MapConstructor(ConstructorInfo? constructor, List<XmlMemberModel> members)
+        internal static int[] MapConstructor(XmlConstructorFacts? constructor, List<XmlMemberModel> members)
         {
             if (constructor is null)
             {
                 return [];
             }
 
-            var parameters = constructor.GetParameters();
+            var parameters = constructor.Parameters;
             var map = new int[parameters.Length];
             for (var i = 0; i < parameters.Length; i++)
             {
@@ -658,7 +870,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
 
                 map[i] = FindConstructorMember(members, name);
-                if (map[i] < 0 && !parameters[i].HasDefaultValue && !IsIgnoredMember(constructor.DeclaringType!, name))
+                if (map[i] < 0 && !parameters[i].HasDefaultValue && !parameters[i].IsIgnoredMember)
                 {
                     throw new NotSupportedException($"The constructor parameter '{name}' is not a serialized member.");
                 }
@@ -747,32 +959,28 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Builds a member model, or returns false when the member is not serialized.
         /// </summary>
-        /// <param name="member">The property or field.</param>
-        /// <param name="memberType">The member CLR type.</param>
-        /// <param name="get">The getter, if a property.</param>
-        /// <param name="set">The setter, if a property.</param>
+        /// <param name="member">The facts of the property or field.</param>
         /// <param name="options">The serializer options.</param>
         /// <param name="declarationIndex">The discovery index.</param>
         /// <param name="model">When this method returns true, the member.</param>
         /// <returns><see langword="true"/> when the member is serialized.</returns>
-        internal static bool TryCreateModel(MemberInfo member, Type memberType, MethodInfo? get, MethodInfo? set, XmlSerializerOptions options, int declarationIndex, out XmlMemberModel model)
+        internal static bool TryCreateModel(XmlMemberFacts member, XmlSerializerOptions options, int declarationIndex, out XmlMemberModel model)
         {
             model = default;
-            if (member is PropertyInfo property && property.GetIndexParameters().Length > 0)
+            var memberType = member.MemberType;
+            if (member.IsIndexer)
             {
                 return false;
             }
 
-            var include = member.IsDefined(typeof(XmlIncludeAttribute), inherit: false);
-            var isPublic = member is PropertyInfo
-                ? get is { IsPublic: true }
-                : ((FieldInfo)member).IsPublic;
+            var include = member.IsDefined(typeof(XmlIncludeAttribute));
+            var isPublic = member.IsPublic;
             if (!isPublic && !include)
             {
                 return false;
             }
 
-            if (get is null && member is PropertyInfo)
+            if (!member.HasGetter)
             {
                 return false;
             }
@@ -782,26 +990,24 @@ namespace CloudNimble.Text.Xml.Serialization
                 return false;
             }
 
-            if (member.IsDefined(typeof(XmlExtensionDataAttribute), inherit: false))
+            if (member.IsDefined(typeof(XmlExtensionDataAttribute)))
             {
                 if (memberType != typeof(XmlExtensionData))
                 {
                     throw new NotSupportedException($"Member '{member.DeclaringType}.{member.Name}' is marked [{nameof(XmlExtensionDataAttribute)}] but is not {nameof(XmlExtensionData)}.");
                 }
 
-                var extensionCanSet = member is FieldInfo extensionField
-                    ? !extensionField.IsInitOnly
-                    : set is not null;
+                var extensionCanSet = member.HasSetter;
                 model = new XmlMemberModel(member, memberType, member.Name, "", -1, declarationIndex, false, true, XmlIgnoreCondition.Never, extensionCanSet, false, false, false);
                 return true;
             }
 
             // A converter named on the member reads and writes the whole value, whatever its type: it may be an
             // attribute or text, and a collection is not taken apart into items.
-            var hasConverter = member.IsDefined(typeof(XmlConverterAttribute), inherit: false);
-            var text = member.GetCustomAttribute<XmlTextAttribute>(inherit: false);
-            var cdata = member.GetCustomAttribute<XmlCDataAttribute>(inherit: false);
-            var elements = member.GetCustomAttributes<XmlElementAttribute>(inherit: false);
+            var hasConverter = member.IsDefined(typeof(XmlConverterAttribute));
+            var text = member.GetCustomAttribute<XmlTextAttribute>();
+            var cdata = member.GetCustomAttribute<XmlCDataAttribute>();
+            var elements = member.GetCustomAttributes<XmlElementAttribute>();
             XmlElementAttribute? element = null;
             List<XmlElementAttribute>? typed = null;
             foreach (var candidate in elements)
@@ -826,7 +1032,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 throw new NotSupportedException($"Member '{member.DeclaringType}.{member.Name}' has more than one [{nameof(XmlElementAttribute)}] or a typed element choice. Polymorphic element choice is not enabled for this type.");
             }
 
-            var attribute = member.GetCustomAttribute<XmlAttributeAttribute>(inherit: false);
+            var attribute = member.GetCustomAttribute<XmlAttributeAttribute>();
             if (attribute is not null && element is not null)
             {
                 throw new NotSupportedException($"Member '{member.DeclaringType}.{member.Name}' is mapped as both an XML attribute and an element.");
@@ -837,11 +1043,8 @@ namespace CloudNimble.Text.Xml.Serialization
                 throw new NotSupportedException($"Member '{member.DeclaringType}.{member.Name}' is mapped as both simple content and an attribute or element.");
             }
 
-            var fieldInfo = member as FieldInfo;
-            var canSet = fieldInfo is not null
-                ? !fieldInfo.IsInitOnly
-                : set is not null;
-            if (!canSet && ((member is PropertyInfo && options.IgnoreReadOnlyProperties) || (fieldInfo is not null && options.IgnoreReadOnlyFields)))
+            var canSet = member.HasSetter;
+            if (!canSet && ((!member.IsField && options.IgnoreReadOnlyProperties) || (member.IsField && options.IgnoreReadOnlyFields)))
             {
                 return false;
             }
@@ -912,12 +1115,12 @@ namespace CloudNimble.Text.Xml.Serialization
             var isCollection = false;
             var isWrapped = false;
             var itemLocal = "";
-            if (!isAttribute && !isText && !hasConverter && XmlCollectionShape.IsCollection(memberType, out var elementType))
+            if (!isAttribute && !isText && !hasConverter && member.IsCollection(out var elementType))
             {
                 isCollection = true;
-                var array = member.GetCustomAttribute<XmlArrayAttribute>(inherit: false);
+                var array = member.GetCustomAttribute<XmlArrayAttribute>();
                 XmlArrayItemAttribute? arrayItem = null;
-                foreach (var candidate in member.GetCustomAttributes<XmlArrayItemAttribute>(inherit: false))
+                foreach (var candidate in member.GetCustomAttributes<XmlArrayItemAttribute>())
                 {
                     if (arrayItem is not null)
                     {
@@ -947,8 +1150,8 @@ namespace CloudNimble.Text.Xml.Serialization
                         : local;
             }
 
-            var isRequired = member.IsDefined(typeof(XmlRequiredAttribute), inherit: false)
-                || member.IsDefined(typeof(RequiredMemberAttribute), inherit: false);
+            var isRequired = member.IsDefined(typeof(XmlRequiredAttribute))
+                || member.IsRequiredMember;
             var isNillable = !memberType.IsValueType || Nullable.GetUnderlyingType(memberType) is not null || element is { IsNullable: true } || typed is [{ IsNullable: true }, ..] || isCollection;
             model = new XmlMemberModel(member, memberType, local, ns, order, declarationIndex, isRequired, isNillable, ignore, canSet, isAttribute, isText, isCData, isCollection, isWrapped, itemLocal, typed is { Count: > 0 } ? typed[0].Type : null);
             return true;
@@ -1036,7 +1239,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     continue;
                 }
 
-                if (member.Member.IsDefined(typeof(XmlMixedAttribute), inherit: false))
+                if (member.Member.IsDefined(typeof(XmlMixedAttribute)))
                 {
                     mixedCount++;
                     continue;
@@ -1106,7 +1309,7 @@ namespace CloudNimble.Text.Xml.Serialization
             XmlMemberModel? extension = null;
             for (var i = members.Count - 1; i >= 0; i--)
             {
-                if (!members[i].Member.IsDefined(typeof(XmlExtensionDataAttribute), inherit: false))
+                if (!members[i].Member.IsDefined(typeof(XmlExtensionDataAttribute)))
                 {
                     continue;
                 }

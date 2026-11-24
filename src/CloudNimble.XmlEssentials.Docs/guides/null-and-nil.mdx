@@ -181,7 +181,7 @@ The serializer doesn't check the following:
 - A member compiled without nullable annotations.
 - A member whose type is a type parameter with no `class`, `struct`, or `notnull` constraint.
 
-A source-generated context applies the same rules. It reads the option when the converter runs, and `[XmlSourceGenerationOptions(RespectNullableAnnotations = true)]` sets it on the options of `Default`.
+A source-generated context applies the same rules, and `[XmlSourceGenerationOptions(RespectNullableAnnotations = true)]` sets the option on the options of `Default`.
 
 ## Nullable value types
 

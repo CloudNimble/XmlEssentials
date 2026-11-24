@@ -54,7 +54,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var optionsAttr = SymbolHelpers.GetAttribute(type, SymbolHelpers.SourceGenerationOptionsAttribute);
             var options = ReadOptions(optionsAttr);
             var generationMode = optionsAttr is null ? 0 : SymbolHelpers.GetInt(optionsAttr, "GenerationMode", 0);
-            var emitSerialization = generationMode is 0 or 2 or 3;
+            var rootModes = new Dictionary<string, int>();
             var roots = new List<(ITypeSymbol Type, string PropertyName)>();
             var names = new HashSet<string>();
             foreach (var attribute in type.GetAttributes())
@@ -83,12 +83,24 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     propertyName += names.Count.ToString();
                 }
 
+                // A mode on the attribute overrides the mode of the context for that type. Default says nothing.
                 var mode = SymbolHelpers.GetInt(attribute, "GenerationMode", 0);
+                if (mode != 0)
+                {
+                    rootModes[SymbolHelpers.FullName(SymbolHelpers.UnwrapNullable(target))] = mode;
+                }
+
                 roots.Add((target, propertyName!));
-                _ = mode;
             }
 
-            var types = TypeGraphWalker.Walk(roots, options, emitSerialization, diagnostics);
+            var walked = TypeGraphWalker.Walk(roots, options, emitSerialization: true, diagnostics, type.ContainingAssembly);
+            var typed = new TypeSpec[walked.Length];
+            for (var i = 0; i < typed.Length; i++)
+            {
+                typed[i] = walked[i].WithMode(rootModes.TryGetValue(walked[i].ClrTypeName, out var rootMode) ? rootMode : generationMode);
+            }
+
+            var types = new EquatableArray<TypeSpec>(typed);
             var accessibility = type.DeclaredAccessibility is Accessibility.Public ? "public" : "internal";
             var namespaceName = type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString();
             return new ContextSpec(

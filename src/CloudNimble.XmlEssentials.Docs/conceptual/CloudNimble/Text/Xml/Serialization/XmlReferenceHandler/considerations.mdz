@@ -4,5 +4,5 @@
 - **`IgnoreCycles` is broader than its name.** It writes nil for every repeated object, including one that two members share without forming a cycle. System.Text.Json writes `null` only for a true cycle.
 - **Custom handlers.** A class derived from `XmlReferenceHandler` supplies the resolver that is used when reading. When writing, `id` and `ref` attributes are written only for the built-in `Preserve` instance. With any other handler, a repeated object is written as nil.
 - **Sequences.** `SerializeAsyncEnumerable` and `DeserializeAsyncEnumerable` don't apply the handler.
-- **Source generation.** A generated converter throws `NotSupportedException` when the options have a handler. Use the reflection resolver for types that need one.
+- **Source generation.** A source-generated context in the default mode or in `Metadata` mode applies the handler as the reflection resolver does.
 - **Thread safety.** `Preserve` and `IgnoreCycles` are stateless singletons. Each call to `Serialize` or `Deserialize` gets its own resolver, so options that use them can be shared between threads.

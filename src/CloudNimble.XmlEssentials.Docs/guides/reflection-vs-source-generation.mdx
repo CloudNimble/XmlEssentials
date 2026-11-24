@@ -5,7 +5,7 @@ description: "Compare the two ways XmlSerializer learns how to map a type, see w
 icon: "scale-balanced"
 ---
 
-Before `XmlSerializer` can read or write a type, it needs a *contract* for it: which members become elements, which become attributes, and how each value is converted. It gets that contract in one of two ways. With *reflection*, it inspects the type the first time you use it. With *source generation*, a Roslyn generator writes the mapping code while your project compiles. This article shows both, compares them, and helps you choose.
+Before `XmlSerializer` can read or write a type, it needs a *contract* for it: which members become elements, which become attributes, and how each value is converted. It gets that contract in one of two ways. With *reflection*, it inspects the type the first time you use it. With *source generation*, a Roslyn generator describes the type in code while your project compiles, and the serializer builds the contract from that description without reflection. This article shows both, compares them, and helps you choose.
 
 The split mirrors System.Text.Json: `XmlSerializerContext`, `[XmlSerializable]`, and `XmlTypeInfo<T>` play the roles of `JsonSerializerContext`, `[JsonSerializable]`, and `JsonTypeInfo<T>`.
 
@@ -53,7 +53,7 @@ Reflection needs nothing but the type. It has two costs:
 
 ## Source generation
 
-With source generation, you declare a partial class that derives from [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) and list your types on it. The generator, which ships inside the `XmlEssentials` package, fills in the class with a converter for each type.
+With source generation, you declare a partial class that derives from [`XmlSerializerContext`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlSerializerContext) and list your types on it. The generator, which ships inside the `XmlEssentials` package, fills in the class with metadata for each type and with code that writes it.
 
 ```csharp OrderXmlContext.cs
 [XmlSerializable<Order>]
@@ -119,17 +119,17 @@ For the full procedure, see [How to use source generation](/guides/source-genera
 | | Reflection | Source generation |
 | --- | --- | --- |
 | Setup | None. | A partial context class with one `[XmlSerializable]` attribute for each root type. |
-| When the contract is built | At run time, on the first call for each type and options instance. | At compile time. |
+| When the contract is built | At run time, on the first call for each type and options instance, by reflecting over the type. | The metadata is generated at compile time. The serializer creates the type info from it at run time, without reflecting over the type. |
 | Overloads you call | Those that take a value and optional `XmlSerializerOptions`. | Those that take an `XmlTypeInfo<T>` or an `XmlSerializerContext`. |
 | Trimming and Native AOT | Not safe. The overloads carry `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. | Safe. The overloads carry no trimming or AOT annotations. |
 | Mapping errors | Found at run time, when the type is first used. | Many are compiler errors, `XMLXE001` and up. |
-| `XmlSerializerOptions` settings | All apply. | Generated converters read some when they run and have others compiled in. Options that ask for a compiled-in setting to be different throw `NotSupportedException`. See [Set options](/guides/source-generation#set-options). |
-| Custom converters | Supported, on a type, on a member, and in the options. | `[XmlConverter]` on a type is supported. On a member it is the error `XMLXE009`. A converter in the options for a type the generated code writes itself throws `NotSupportedException`. See [Custom converters](/guides/custom-converters#use-a-converter-with-source-generation). |
-| `[XmlDerivedType]` polymorphism | Supported. | Not supported. The generator reports `XMLXE008`. |
-| `ReferenceHandler` | Supported. | Not supported. A generated converter throws `NotSupportedException`. |
+| `XmlSerializerOptions` settings | All apply. | All apply, with the same result. See [Set options](/guides/source-generation#set-options). |
+| Custom converters | Supported, on a type, on a member, and in the options. | Supported, on a type, on a member, and in the options. See [Custom converters](/guides/custom-converters#use-a-converter-with-source-generation). |
+| `[XmlDerivedType]` polymorphism | Supported. | Supported. |
+| `ReferenceHandler` | Supported. | Supported. |
 | Types the contract covers | Any type the serializer supports. | The types the context lists and the types reachable from them. Any other class, struct, or record is `NotSupportedException`; the context never maps the members of a type through reflection. |
 
-The last four rows describe the generator's default mode, in which it writes a converter for each type. In [metadata mode](/guides/source-generation-modes), a context hands the type to the run-time resolver, so every option and converter applies, but the context is no longer safe for Native AOT.
+Both approaches read and write with the same engine, so they produce the same documents for the same options. The source generation column describes the `Default` and `Metadata` generation modes. A context in the `Serialization` mode only writes, with the options it was compiled for. See [Source-generation modes](/guides/source-generation-modes).
 
 ## What each approach costs
 
@@ -143,8 +143,8 @@ The numbers below come from the graph benchmark in the repository: a `Customer` 
 What to notice:
 
 - **The first reflection call costs about 0.6 ms and 75 KB** for this graph. That's the time the serializer spends binding the type's members. It's paid once for each type and each `XmlSerializerOptions` instance, which is why you create one options instance and reuse it.
-- **After the first call, the two approaches are close.** A generated converter reads this graph in 3,092 ns against 3,358 ns for reflection, and writes it in 1,257 ns against 1,710 ns. Neither allocates when writing.
-- **The benchmark doesn't measure a first call through a generated context.** A generated converter is compiled code, so it has no members to bind before it runs.
+- **After the first call, both approaches read with the same engine.** A generated context needs no reflection, is safe for trimming and Native AOT, and has a write fast path. Neither approach allocates when writing.
+- **The benchmark doesn't measure a first call through a generated context.** On that call, the serializer creates the type info from the generated metadata, and it reflects over no members to do so.
 
 For the full tables, see [Benchmarks](/benchmarks).
 
@@ -191,7 +191,7 @@ The generator intercepts two shapes of call: `XmlSerializer.Serialize<T>(value)`
 A call is never intercepted when it passes an `XmlSerializerOptions` argument, even `null`. Options say how the call is to run: which resolver, which converters, which names. The call runs as you wrote it, and your options aren't changed. To use a generated context with your own options, create the context from them and pass its type info: `new MyContext(options).Order`.
 
 <Note>
-An intercepted call runs the generated converter with the options of the context's `Default` instance, which the `[XmlSourceGenerationOptions]` attribute on the context seeds. The generated converter has the limits in the comparison table. When two contexts list the same type, the call goes to one of them.
+An intercepted call uses the type info of the context's `Default` instance, with the options that the `[XmlSourceGenerationOptions]` attribute on the context seeds. When two contexts list the same type, the call goes to one of them.
 
 To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those calls are never intercepted.
 </Note>
@@ -201,15 +201,15 @@ To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those call
 Use **reflection** when:
 
 - You're writing an application that isn't trimmed or published with Native AOT, and the first-call cost doesn't matter.
-- You rely on custom converters, `[XmlDerivedType]`, `ReferenceHandler`, or an option such as `DefaultIgnoreCondition`.
+- You want no setup: there's no context to declare and no types to list.
 
 Use **source generation** when:
 
 - You publish with trimming or Native AOT. It's the only approach that works there.
-- Startup time matters, for example in a command-line tool or a serverless function, and you don't want the serializer to bind members at run time.
+- Startup time matters, for example in a command-line tool or a serverless function, and you don't want the serializer to reflect over your types at run time.
 - You want mapping mistakes reported by the compiler.
 
-You can mix the two: use a generated context for the types on your hot path and reflection for the rest.
+You can mix the two: use a generated context for the types you list on it and reflection for the rest. Custom converters, `[XmlDerivedType]`, `ReferenceHandler`, and every option work with both.
 
 ## See also
 

@@ -10,7 +10,7 @@ This article shows how to serialize an object graph in which the same object app
 The API mirrors System.Text.Json: set `XmlSerializerOptions.ReferenceHandler` to [`XmlReferenceHandler.Preserve`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceHandler) or `XmlReferenceHandler.IgnoreCycles`, as you would set `JsonSerializerOptions.ReferenceHandler`. The markup is different, because XML has attributes and namespaces where JSON has `$id` and `$ref` properties.
 
 <Note>
-Reference handling needs the reflection-based serializer. A generated converter throws `NotSupportedException` when the options have a `ReferenceHandler`. See [Source generation](/guides/source-generation).
+The examples on this page use the reflection-based serializer. A source-generated context handles references in the same way when its options have a `ReferenceHandler`. See [Source generation](/guides/source-generation).
 </Note>
 
 ## See what happens without a handler

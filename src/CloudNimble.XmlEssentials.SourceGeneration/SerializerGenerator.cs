@@ -11,7 +11,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 {
 
     /// <summary>
-    /// Incremental source generator for <c>XmlSerializerContext</c> metadata, converters, and interceptors.
+    /// Incremental source generator for <c>XmlSerializerContext</c> metadata, write fast paths, and interceptors.
     /// </summary>
     [Generator(LanguageNames.CSharp)]
     public sealed class SerializerGenerator : IIncrementalGenerator

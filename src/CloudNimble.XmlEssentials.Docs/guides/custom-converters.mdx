@@ -326,7 +326,7 @@ The converter is the type argument of the attribute. It must derive from `XmlCon
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
 
 <Note>
-`[XmlConverter]` can also be applied to a property or a field, as `[JsonConverter]` can in System.Text.Json. The converter then reads and writes that member only, and the other members of the same type keep their usual converter. The converter handles the whole value: a collection member isn't taken apart into items, and the member may be mapped with `[XmlAttribute]` or `[XmlText]`. A converter for `T` also serves a member of type `T?`. This form is for the reflection resolver. A source-generated context reports it as the compile-time error `XMLXE009`, because the generated code wouldn't call the converter.
+`[XmlConverter]` can also be applied to a property or a field, as `[JsonConverter]` can in System.Text.Json. The converter then reads and writes that member only, and the other members of the same type keep their usual converter. The converter handles the whole value: a collection member isn't taken apart into items, and the member may be mapped with `[XmlAttribute]` or `[XmlText]`. A converter for `T` also serves a member of type `T?`. The reflection resolver and a source-generated context both apply it.
 </Note>
 
 ## Replace a built-in converter
@@ -504,12 +504,11 @@ This factory is a teaching example. To change how enumerations are written witho
 
 ## Use a converter with source generation
 
-In the default generation mode, the generator writes a converter for each class and struct it reaches, and that generated converter reads and writes the members itself. Custom converters work with it as follows. A type with `[XmlConverter]` is read and written by that converter, and the generator writes none for it. A converter in `Converters` is used for the types the runtime handles: enumerations, collections, dictionaries, and types the context doesn't list. A converter in `Converters` for a type the generated code writes itself throws `NotSupportedException` when the type info is created. That is a class or struct the context generates a converter for, or a built-in value that a generated converter writes directly, such as `int` or `string`. `[XmlConverter]` on a member is the compile-time error `XMLXE009`.
+A source-generated context applies custom converters as the reflection resolver does, with the same result. That covers a converter in `Converters`, `[XmlConverter]` on a type, and `[XmlConverter]` on a member. A converter you supply for a type, in the options or with the attribute on the type, is used in place of the generated metadata for that type.
 
-To use custom converters with a context, generate the context in [metadata mode](/guides/source-generation-modes). The context then builds its type info with the run-time resolver, which applies every converter.
+The context needs no special setup. Create it from the options that hold the converter, and pass its type info to the serializer:
 
 ```csharp QuoteXmlContext.cs
-[XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
 [XmlSerializable<Quote>]
 public partial class QuoteXmlContext : XmlSerializerContext
 {
@@ -539,9 +538,7 @@ Q-17: 89.90 EUR
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
 
-<Warning>
-Adding a type to a default-mode context changes more than the calls that name the context. With [interceptors](/guides/reflection-vs-source-generation#interceptors) on, a call that passes no options, such as `XmlSerializer.Serialize(value)`, runs the generated converter for that type too, and a converter set with `[XmlConverter]` on the type of a class or struct member stops applying. A member whose type has only read-only properties, like `GeoPoint`, is then written with its property names and read back with default values. The same goes for every type the context reaches through the members of a listed type. A call that passes options is never redirected, so converters in `options.Converters` always apply. Keep a type that depends on `[XmlConverter]` out of default-mode contexts.
-</Warning>
+The context here is in the default generation mode, and the `Metadata` mode works the same way. See [Source-generation modes](/guides/source-generation-modes).
 
 ## Keep converters safe to share
 

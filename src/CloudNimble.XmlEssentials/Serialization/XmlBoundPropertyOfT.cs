@@ -221,7 +221,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "The held box has one constructor and no members found by name.")]
         [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "A value type always has its parameterless constructor.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The reflection resolver already closes this member's own generic type over the same value type. Native AOT callers use a generated context, which never holds values.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The reflection resolver already closes this member's own generic type over the same value type. A generated context supplies the box through XmlMetadataServices.CreateValuePropertyInfo, so this is not reached under Native AOT.")]
         internal override void UseHeldBox(ReadOnlySpan<Type> parameterTypes)
         {
             // A box is written again for the next object, so it may only ever be handed to something that
@@ -230,7 +230,7 @@ namespace CloudNimble.Text.Xml.Serialization
             // T or as null, so it has no box of its own to reuse, and a collection member's slot holds its
             // builder while the element is read.
             var type = typeof(TValue);
-            if (!type.IsValueType || Nullable.GetUnderlyingType(type) is not null || Collection is not null)
+            if (!type.IsValueType || Nullable.GetUnderlyingType(type) is not null || Collection is not null || (HeldBoxFactory is null && !ReflectsHeldBox))
             {
                 return;
             }
@@ -243,7 +243,9 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
-            _held = (XmlHeldBox<TValue>)Activator.CreateInstance(typeof(XmlStructHeldBox<>).MakeGenericType(type))!;
+            _held = HeldBoxFactory is not null
+                ? (XmlHeldBox<TValue>)HeldBoxFactory()
+                : (XmlHeldBox<TValue>)Activator.CreateInstance(typeof(XmlStructHeldBox<>).MakeGenericType(type))!;
         }
 
         /// <inheritdoc />

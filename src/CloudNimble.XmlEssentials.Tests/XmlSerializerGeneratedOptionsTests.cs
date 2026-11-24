@@ -6,9 +6,8 @@ namespace CloudNimble.XmlEssentials.Tests
 {
 
     /// <summary>
-    /// A generated converter follows the options it runs with. A setting it reads when it runs is honored, and
-    /// a setting that was compiled in is reported when the options ask for something else. Each test compiles
-    /// a program with the generator and runs it.
+    /// A generated context follows the options it runs with, and gives the result the reflection resolver gives
+    /// for them. Each test compiles a program with the generator and runs it.
     /// </summary>
     [TestClass]
     public class XmlSerializerGeneratedOptionsTests
@@ -93,8 +92,11 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
-        public void CompiledSettings_ThatTheOptionsContradict_AreReported()
+        public void Options_TheFastPathWasNotCompiledFor_AreAppliedFromTheMetadata()
         {
+            const string Plain = "<Item><Name " + Nil + "/><Count>0</Count><Limit " + Nil + "/><Ratio>0</Ratio><Always " + Nil + "/></Item>";
+            // The write fast path has the names and the choice of members compiled in. With other options it is not
+            // used, and the document is written from the metadata, as the reflection resolver writes it.
             XmlSerializerGeneratorTests.RunGenerated(Usings + Item + """
                 public static class Use
                 {
@@ -103,38 +105,54 @@ namespace CloudNimble.XmlEssentials.Tests
                         static string Show(Item item) => item.Name ?? "null";
                         return string.Join("\n",
                             Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.PropertyNamingPolicy = XmlNamingPolicy.CamelCase),
-                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.AttributeNamingPolicy = XmlNamingPolicy.KebabCaseLower),
+                            Both.Write(new Item { Code = "c" }, o => new AppXmlContext(o).Item, Show, o => o.AttributeNamingPolicy = XmlNamingPolicy.KebabCaseUpper),
                             Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.DefaultPropertyMapping = XmlPropertyMapping.Attribute),
                             Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.IncludeFields = true),
                             Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.IgnoreReadOnlyProperties = true),
                             Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.IgnoreReadOnlyFields = true),
-                            Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.Converters.Add(new Upper())),
+                            Both.Write(new Item { Name = "n" }, o => new AppXmlContext(o).Item, Show, o => o.Converters.Add(new Upper())),
                             Both.Write(new Item(), o => new AppXmlContext(o).Item, Show, o => o.Converters.Add(new Whole())));
                     }
                 }
 
                 public sealed class Upper : XmlConverter<string>
                 {
-                    public override string? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => throw new NotSupportedException();
+                    public override string? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        string? value = null;
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                            value = reader.GetString();
+                        }
+
+                        return value;
+                    }
 
                     public override void Write(Utf8XmlWriter writer, string value, XmlSerializerOptions options) => writer.WriteStringValue(value.ToUpperInvariant());
                 }
 
                 public sealed class Whole : XmlConverter<Item>
                 {
-                    public override Item? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => throw new NotSupportedException();
+                    public override Item? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                        }
+
+                        return new Item { Name = "whole" };
+                    }
 
                     public override void Write(Utf8XmlWriter writer, Item value, XmlSerializerOptions options) => writer.WriteStringValue("item");
                 }
-                """ + Compare).Should().Be(
-                "NotSupportedException: The generated converters were compiled with ElementNamingPolicy = none, and the options have XmlCamelCaseNamingPolicy. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
-                "NotSupportedException: The generated converters were compiled with AttributeNamingPolicy = none, and the options have XmlKebabCaseLowerNamingPolicy. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
-                "NotSupportedException: The generated converters were compiled with DefaultPropertyMapping = Element, and the options have Attribute. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
-                "NotSupportedException: The generated converters were compiled with IncludeFields = False, and the options have True. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
-                "NotSupportedException: The generated converters were compiled with IgnoreReadOnlyProperties = False, and the options have True. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
-                "NotSupportedException: The generated converters were compiled with IgnoreReadOnlyFields = False, and the options have True. Set it with [XmlSourceGenerationOptions] on the context, or use the reflection resolver for these options.\n" +
-                "NotSupportedException: The options supply a converter for 'System.String', and the generated converters read and write that type directly. Use the reflection resolver for these options.\n" +
-                "NotSupportedException: The options supply a converter for 'Item', and the generated converters read and write that type directly. Use the reflection resolver for these options.");
+                """ + Compare).Should().Be(string.Join("\n",
+                "<item><name " + Nil + "/><count>0</count><limit " + Nil + "/><ratio>0</ratio><always " + Nil + "/></item>", "same", "null", "null",
+                "<Item CODE=\"c\"><Name " + Nil + "/><Count>0</Count><Limit " + Nil + "/><Ratio>0</Ratio><Always " + Nil + "/></Item>", "same", "null", "null",
+                "<Item Count=\"0\" Ratio=\"0\"/>", "same", "null", "null",
+                Plain, "same", "null", "null",
+                Plain, "same", "null", "null",
+                Plain, "same", "null", "null",
+                "<Item><Name>N</Name><Count>0</Count><Limit " + Nil + "/><Ratio>0</Ratio><Always " + Nil + "/></Item>", "same", "N", "N",
+                "<Item>item</Item>", "same", "whole", "whole"));
         }
 
         [TestMethod]
@@ -433,33 +451,6 @@ namespace CloudNimble.XmlEssentials.Tests
                     }
                 }
                 """).Should().Be("XmlElement,XmlElement;null\nXmlElementNode,XmlElementNode;null");
-        }
-
-        [TestMethod]
-        public void MemberConverter_IsReportedRatherThanIgnored()
-        {
-            var source = Usings + """
-                public sealed class Hex : XmlConverter<int>
-                {
-                    public override int Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options) => 0;
-
-                    public override void Write(Utf8XmlWriter writer, int value, XmlSerializerOptions options) => writer.WriteStringValue("x");
-                }
-
-                public sealed class Item
-                {
-                    [XmlConverter<Hex>]
-                    public int Flags { get; set; }
-                }
-
-                [XmlSerializable<Item>]
-                internal partial class AppXmlContext : XmlSerializerContext
-                {
-                }
-                """;
-            var (_, diagnostics, _) = GeneratorTestHost.Run(source);
-            diagnostics.Where(d => d.Id is "XMLXE009").Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)).Should().Equal(
-                "'Item.Flags' names a converter with [XmlConverter]; a generated converter would not call it, so put the attribute on the member's type or use the reflection resolver for the declaring type");
         }
 
         [TestMethod]

@@ -35,6 +35,8 @@ BCL is a cached `System.Xml.Serialization.XmlSerializer`. Collection wrapping fo
 
 Cached reflection write is 0 B (writer cache). Source-gen write is 0 B and **faster than cached reflection** after generated converters call `WriteLeafStart`/`WriteLeafEnd` with prebuilt `"<Name>"u8` tags and `WriteNumberValue` / `WriteStringValue` for scalars. Source-gen read is slightly ahead of cached reflection on this graph. First-call is type-info bind (~0.6 ms, ~75 KB).
 
+**The two source-gen rows predate [single engine](25-single-engine-metadata.md) (K52).** `XmlEssentials_ReadCustomer_SourceGen` measured generated read code that no longer exists: a generated context now reads through the runtime engine from metadata. `XmlEssentials_WriteCustomer_SourceGen` still measures the write fast path. Neither was re-run; the owner asked that optimization and benchmarks wait for the end of the work.
+
 Reader and writer tokenizer benches (`Utf8XmlReaderBenchmarks`, `Utf8XmlWriterBenchmarks`) are a separate suite: tiny document, 200-item catalog, namespaced catalog. How to run them, how to report numbers, and the remaining namespaced-drain work are in [optimization](23-optimization.md).
 
 Fairness rules:

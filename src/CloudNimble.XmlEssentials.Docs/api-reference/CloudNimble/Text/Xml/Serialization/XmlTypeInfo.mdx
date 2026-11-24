@@ -55,7 +55,7 @@ Instances are created by the library. This class cannot be derived from outside 
 
 ### Read the contract of a type
 
-The following example lists the members of `Order` as the serializer maps them. The type info comes from a context in metadata mode, which builds it with the run-time resolver.
+The following example lists the members of `Order` as the serializer maps them. The type info comes from a source-generated context, which builds it from generated metadata. A context in the default mode gives the same list.
 
 ```csharp
 XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
@@ -96,8 +96,8 @@ Line: element, List`1
 
 - **Type info is read-only.** Every property has a getter only. Unlike `JsonTypeInfo`, you can't add, remove, or change members to customize a contract. Change the mapping with attributes, options, or a custom converter.
 - **You can't derive from it or construct it.** The constructors aren't accessible outside the library.
-- **`Properties` is filled only by the run-time resolver.** Type info from the reflection resolver, or from a context in metadata mode, lists one `XmlPropertyInfo` for each member in the order they're written. Type info for a generated converter, a simple value, or a custom converter has an empty list.
-- **`CreateObject` is `null` unless the type is an object with a parameterless constructor** that the run-time resolver bound. It's `null` for type info from a generated converter.
+- **`Properties` lists the members of a type mapped as an object.** Type info from the reflection resolver, or from a source-generated context in the default mode or in `Metadata` mode, lists one `XmlPropertyInfo` for each member in the order they're written. Type info for a simple value, for a custom converter, or from a context in `Serialization` mode has an empty list.
+- **`CreateObject` is `null` unless the type is mapped as an object and is created with no arguments.** It's `null` for a type that is created through a constructor with parameters, and for type info from a context in `Serialization` mode.
 - **Type info is bound to its `Options`.** The serializer uses those options when you pass the type info, whatever other options exist. Type info from `XmlSerializerOptions.GetTypeInfo` is cached on that instance, and asking for it makes the instance read-only.
 - **It's safe to share.** Keep and reuse type info across threads, as you would the options or the context it came from.
 

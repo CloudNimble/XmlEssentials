@@ -120,7 +120,7 @@ When XmlEssentials reads objects, the memory it allocates is the objects and str
 
 ### Source generation
 
-A [source-generated context](/guides/source-generation) removes reflection, which is what makes Native AOT possible. It's also a little faster once warm.
+A [source-generated context](/guides/source-generation) needs no reflection, which makes it safe for trimming and Native AOT. It has a write fast path, and it reads with the same engine as the reflection resolver.
 
 | Operation | System.Xml | XmlEssentials, reflection | XmlEssentials, source generation |
 | --- | --- | --- | --- |

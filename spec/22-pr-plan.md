@@ -21,9 +21,9 @@ Incremental, mergeable PRs. Each PR must compile, include tests for the new surf
 | 6c | Collections and dictionaries | **Done** |
 | 6d | Polymorphism / extension data | **Done** |
 | 6e | Mixed content, references, async enumerable | **Done** |
-| 7 | Source generator + context | Implemented (uncommitted) |
-| 7b | XSD generator | Implemented (uncommitted) |
-| 8 | AOT / trimming tests | Implemented (uncommitted) |
+| 7 | Source generator + context | Implemented. Reworked to emit metadata for the one runtime engine ([single engine](25-single-engine-metadata.md), K52); the rework is uncommitted. |
+| 7b | XSD generator | Implemented. Emits the same metadata and write fast path (uncommitted). |
+| 8 | AOT / trimming tests | Implemented. `Tests.Aot/EngineFeatures.cs` checks the engine's features through generated metadata (uncommitted). |
 | 9 | Benchmarks vs BCL XmlSerializer vs STJ | Implemented (uncommitted): `XmlSerializerGraphBenchmarks` adds first-call reflection and source-gen context on the Customer graph; existing object/scalar/sequence/reader/writer/DOM rows remain. |
 | 10 | DotNetDocs site | Partial (reader/writer conceptual pages exist) |
 | 11 | Breakdance freeze + coverage slogan check | Not started |

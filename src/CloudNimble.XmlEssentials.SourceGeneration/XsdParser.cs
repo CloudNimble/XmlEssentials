@@ -244,14 +244,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 typeSpecs.Add(new TypeSpec(
                     "global::" + ns + "." + enumName,
                     enumName,
-                    enumName,
-                    "",
                     3,
                     true,
                     false,
                     false,
-                    new EquatableArray<MemberSpec>([]),
-                    ""));
+                    new EquatableArray<MemberSpec>([])));
             }
 
             var bind = new XsdBindContext(ns, fileName, targetNs, classNames, complexTypes, typeMap, pocos, typeSpecs, diagnostics);
@@ -303,7 +300,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 var members = BindParticles(complex, className, bind);
                 var documentation = ReadDocumentation(element) ?? ReadDocumentation(complex);
                 pocos.Add((ns + "." + className + ".g.cs", EmitPoco(ns, className, elementName!, targetNs, members, documentation)));
-                typeSpecs.Add(ToTypeSpec(ns, className, elementName!, targetNs, members));
+                typeSpecs.Add(ToTypeSpec(ns, className, members));
             }
 
             foreach (var named in complexTypes)
@@ -316,12 +313,33 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
                 var members = BindParticles(named.Value, className, bind);
                 pocos.Add((ns + "." + className + ".g.cs", EmitPoco(ns, className, named.Key, targetNs, members, ReadDocumentation(named.Value))));
-                typeSpecs.Add(ToTypeSpec(ns, className, named.Key, targetNs, members));
+                typeSpecs.Add(ToTypeSpec(ns, className, members));
             }
 
             if (typeSpecs.Count == 0)
             {
                 return (pocos, null);
+            }
+
+            // The runtime library asks the context for the type info of each collection a member holds, so the
+            // collection types are listed too, with their item types named.
+            var listed = new HashSet<string>(StringComparer.Ordinal);
+            var objectCount = typeSpecs.Count;
+            for (var i = 0; i < objectCount; i++)
+            {
+                foreach (var member in typeSpecs[i].Members)
+                {
+                    var declared = member.ClrTypeName.TrimEnd('?');
+                    if (!member.IsCollection || member.IsExtensionData || !listed.Add(declared))
+                    {
+                        continue;
+                    }
+
+                    var factory = declared.EndsWith("[]", StringComparison.Ordinal)
+                        ? "XmlMetadataServices.CreateArrayInfo<" + member.ItemTypeName + ">(Options)"
+                        : "XmlMetadataServices.CreateCollectionInfo<" + declared + ", " + member.ItemTypeName + ">(Options)";
+                    typeSpecs.Add(new TypeSpec(declared, TypeGraphWalker.RuntimeName(declared), 5, false, true, false, new EquatableArray<MemberSpec>([]), factory));
+                }
             }
 
             var clrContext = "global::" + ns + "." + contextName;
@@ -493,7 +511,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 {
                     var nestedMembers = BindParticles(inline, nestedName, bind);
                     bind.Pocos.Add((bind.Namespace + "." + nestedName + ".g.cs", EmitPoco(bind.Namespace, nestedName, name!, bind.TargetNamespace, nestedMembers, ReadDocumentation(inline))));
-                    bind.TypeSpecs.Add(ToTypeSpec(bind.Namespace, nestedName, name!, bind.TargetNamespace, nestedMembers));
+                    bind.TypeSpecs.Add(ToTypeSpec(bind.Namespace, nestedName, nestedMembers));
                 }
                 else
                 {
@@ -758,23 +776,20 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// </summary>
         /// <param name="ns">The namespace.</param>
         /// <param name="className">The class name.</param>
-        /// <param name="rootName">The XML root name.</param>
-        /// <param name="rootNs">The XML namespace.</param>
         /// <param name="members">The members.</param>
         /// <returns>The type spec.</returns>
-        internal static TypeSpec ToTypeSpec(string ns, string className, string rootName, string rootNs, List<MemberSpec> members)
+        internal static TypeSpec ToTypeSpec(string ns, string className, List<MemberSpec> members)
         {
             return new TypeSpec(
                 "global::" + ns + "." + className,
                 className,
-                rootName,
-                rootNs,
                 0,
                 false,
                 true,
                 true,
                 new EquatableArray<MemberSpec>(members.ToArray()),
-                "");
+                metadata: MetadataBuilder.BuildFromMembers("global::" + ns + "." + className, members),
+                fastPath: !members.Exists(static member => member.IsExtensionData));
         }
 
         /// <summary>

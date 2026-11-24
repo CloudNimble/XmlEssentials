@@ -52,6 +52,7 @@ using CloudNimble.Text.Xml.Serialization;
 | [22-pr-plan.md](22-pr-plan.md) | PR plan |
 | [23-optimization.md](23-optimization.md) | Tokenizer/writer optimization playbook and backlog |
 | [24-doc-findings-resolution.md](24-doc-findings-resolution.md) | Defects found by the documentation pass, and their resolution |
+| [25-single-engine-metadata.md](25-single-engine-metadata.md) | Generated metadata and one runtime engine: design, public API, task list |
 
 ## How to read the spec
 

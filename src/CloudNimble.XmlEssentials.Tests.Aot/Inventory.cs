@@ -7,7 +7,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
 {
 
     /// <summary>
-    /// Holds one member of each kind that a generated converter hands to the runtime library: a dictionary,
+    /// Holds one member of each kind that a generated context describes to the runtime library: a dictionary,
     /// collections that are not lists, a collection with no setter, an XML value, and a value declared as object.
     /// </summary>
     public sealed class Inventory
