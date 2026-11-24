@@ -110,6 +110,13 @@ namespace CloudNimble.Text.Xml.Serialization
         internal bool ReflectsHeldBox;
 
         /// <summary>
+        /// For an element member with no namespace: the namespaces of the other element members that have its
+        /// local name, or null when there are none. An element of that name in one of them belongs to that member.
+        /// Set once, while the type is bound.
+        /// </summary>
+        internal byte[][]? SiblingNamespaces;
+
+        /// <summary>
         /// The message of the exception thrown when the member holds null as it is written, or null when the member
         /// may hold null. Set once, while the type is bound, when
         /// <see cref="XmlSerializerOptions.RespectNullableAnnotations"/> is on and the member is annotated as never
@@ -252,8 +259,32 @@ namespace CloudNimble.Text.Xml.Serialization
                 return false;
             }
 
-            return NameEquals(ref reader, Utf8LocalName, caseInsensitive)
+            return (NameEquals(ref reader, Utf8LocalName, caseInsensitive) && !IsInSiblingNamespace(ref reader))
                 || (ClaimsDerivedElementNames && Polymorphism.MatchesElementName(ref reader, caseInsensitive));
+        }
+
+        /// <summary>
+        /// Returns whether the element the reader is on is in a namespace that another member of this local name
+        /// has, and so is that member's.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <returns><see langword="true"/> when the element belongs to another member.</returns>
+        internal bool IsInSiblingNamespace(ref Utf8XmlReader reader)
+        {
+            if (SiblingNamespaces is not { } taken)
+            {
+                return false;
+            }
+
+            foreach (var namespaceUri in taken)
+            {
+                if (reader.NamespaceUriEquals(namespaceUri))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

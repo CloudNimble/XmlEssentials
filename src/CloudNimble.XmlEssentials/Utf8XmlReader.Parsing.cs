@@ -217,6 +217,37 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Leaves the attributes of the current start tag to a copy of this reader, so that reading on with
+        /// this reader cannot change them.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A copy of a reader shares the attribute table once a start tag has more attributes than fit inline,
+        /// and the buffer that decoded attribute values are kept in. The next start tag this reader reads
+        /// would write over both. Call this after copying the reader and before reading ahead with it: the
+        /// copy is then the only holder of the start tag's attributes, and this reader takes new memory when a
+        /// later start tag needs it. Nothing is given up, and so nothing is allocated later, when the start
+        /// tag keeps its attributes inline and none of its values needed decoding.
+        /// </para>
+        /// <para>
+        /// This reader must not read the attributes of the current start tag afterwards. Go back to the copy
+        /// for them.
+        /// </para>
+        /// </remarks>
+        internal void DetachAttributeStorage()
+        {
+            if (_attributeCount > InlineSlots)
+            {
+                _attributes = default;
+            }
+
+            if (_attributeDecodedLength > 0)
+            {
+                _attributeDecoded = default;
+            }
+        }
+
+        /// <summary>
         /// Copies current parse progress into an immutable snapshot.
         /// </summary>
         /// <returns>A new snapshot. Stacks are copied so the source reader can keep mutating.</returns>
@@ -2140,13 +2171,20 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <returns><see langword="false"/> when more data is required.</returns>
         /// <remarks>
+        /// <para>
         /// Kept out of <see cref="TrySkip"/> on purpose: the copy of the reader is a large local, and a method
         /// that declares one clears it on every call, including the final-block calls that never use it.
+        /// </para>
+        /// <para>
+        /// The copy keeps the attributes of the start tag (<see cref="DetachAttributeStorage"/>), so the start
+        /// tags that are read on the way do not write over them.
+        /// </para>
         /// </remarks>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal bool TrySkipPartial()
         {
             var restore = this;
+            DetachAttributeStorage();
             if (SkipChildren())
             {
                 return true;

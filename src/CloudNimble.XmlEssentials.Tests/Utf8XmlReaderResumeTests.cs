@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -32,6 +33,90 @@ namespace CloudNimble.XmlEssentials.Tests
             resumed.Read().Should().BeTrue();
             resumed.TokenType.Should().Be(XmlTokenType.EndElement);
             resumed.LocalNameEquals("a").Should().BeTrue();
+        }
+
+        [TestMethod]
+        [DataRow(1, true)]
+        [DataRow(9, false)]
+        [DataRow(9, true)]
+        public void TrySkip_OnAPartialBlock_KeepsTheAttributesOfTheStartTag(int attributeCount, bool valuesNeedDecoding)
+        {
+            // The child that is read on the way has as many attributes as the element, with other values. Nine
+            // is more than the reader keeps inline, and a value with a reference is decoded into a buffer.
+            var names = new[] { "a", "b", "c", "d", "e", "f", "g", "h", "i" }.Take(attributeCount).ToArray();
+            var own = string.Concat(names.Select(n => " " + n + "=\"" + (valuesNeedDecoding ? "&lt;" : "own-") + n + "\""));
+            var inner = string.Concat(names.Select(n => " " + n + "=\"" + (valuesNeedDecoding ? "&gt;" : "inner-") + n + n + "\""));
+            var startTag = "<r><e" + own + ">";
+            var element = startTag + "<f" + inner + ">x</f></e>";
+            var whole = Encoding.UTF8.GetBytes(element + "<g" + inner + "/></r>");
+            for (var split = startTag.Length; split < element.Length; split++)
+            {
+                var reader = new Utf8XmlReader(whole.AsSpan(0, split), false, default);
+                reader.Read().Should().BeTrue();
+                reader.Read().Should().BeTrue();
+
+                reader.TrySkip().Should().BeFalse();
+                reader.TokenType.Should().Be(XmlTokenType.StartElement);
+                reader.LocalNameEquals("e").Should().BeTrue();
+                reader.AttributeCount.Should().Be(attributeCount);
+                foreach (var name in names)
+                {
+                    reader.MoveToNextAttribute().Should().BeTrue();
+                    reader.LocalNameEquals(name).Should().BeTrue();
+                    reader.GetString().Should().Be((valuesNeedDecoding ? "<" : "own-") + name, "the block ends at byte {0}", split);
+                }
+
+                reader.MoveToNextAttribute().Should().BeFalse();
+            }
+
+            // When all of the element is there, the reader goes on to the attributes of the next start tag.
+            var complete = new Utf8XmlReader(whole, false, default);
+            complete.Read().Should().BeTrue();
+            complete.Read().Should().BeTrue();
+            complete.TrySkip().Should().BeTrue();
+            complete.Read().Should().BeTrue();
+            complete.LocalNameEquals("g").Should().BeTrue();
+            foreach (var name in names)
+            {
+                complete.MoveToNextAttribute().Should().BeTrue();
+                complete.LocalNameEquals(name).Should().BeTrue();
+                complete.GetString().Should().Be((valuesNeedDecoding ? ">" : "inner-") + name + name);
+            }
+
+            complete.MoveToNextAttribute().Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TrySkip_OnAPartialBlock_BelowTheInlineDepth_KeepsTheOpenElements_AndTheReaderResumes()
+        {
+            // Ten open elements are more than the reader keeps inline, and the skip goes ten deeper.
+            var outer = Enumerable.Range(0, 10).Select(i => "d" + i).ToArray();
+            var inner = Enumerable.Range(0, 10).Select(i => "q:c" + i).ToArray();
+            var element = "<p:e xmlns:q=\"urn:q\" a=\"1\">"
+                + string.Concat(inner.Select(n => "<" + n + ">")) + "x" + string.Concat(inner.Reverse().Select(n => "</" + n + ">"))
+                + "</p:e>";
+
+            SkipFailsAtEverySplit_ThenTheReaderResumes(
+                string.Concat(outer.Select(n => "<" + n + " xmlns:p=\"urn:" + n + "\">")),
+                element,
+                "<p:t/>" + string.Concat(outer.Reverse().Select(n => "</" + n + ">")),
+                "StartElement p:e{urn:d9} open @xmlns:q{http://www.w3.org/2000/xmlns/}=[urn:q] @:a{}=[1]");
+        }
+
+        [TestMethod]
+        public void TrySkip_OnAPartialBlock_KeepsTheNamespacesOfTheStartTag_AndTheReaderResumes()
+        {
+            // The element declares a prefix with a URI that needs decoding, uses it on an attribute, and sets
+            // xml:space. Its child has nine attributes and a declaration of its own.
+            const string element = "<e p:a=\"&lt;1\" xmlns:p=\"urn:a&amp;b\" xml:space=\"preserve\" b=\"2\" c=\"3\" d=\"4\" e=\"5\" f=\"6\" g=\"7\">"
+                + "<p:f p:a=\"&gt;2\" xmlns:q=\"urn:c&amp;d\" h1=\"1\" h2=\"2\" h3=\"3\" h4=\"4\" h5=\"5\" h6=\"6\" h7=\"7\"> <q:g q:z=\"&amp;\"/> </p:f></e>";
+
+            SkipFailsAtEverySplit_ThenTheReaderResumes(
+                "<r>",
+                element,
+                "<t/></r>",
+                "StartElement :e{} open @p:a{urn:a&b}=[<1] @xmlns:p{http://www.w3.org/2000/xmlns/}=[urn:a&b]"
+                + " @xml:space{http://www.w3.org/XML/1998/namespace}=[preserve] @:b{}=[2] @:c{}=[3] @:d{}=[4] @:e{}=[5] @:f{}=[6] @:g{}=[7]");
         }
 
         [TestMethod]
@@ -69,7 +154,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void CDataAndComment_KeepEveryCharacter_AroundPlainRuns(string declaration, string nel, string ls)
         {
             var xml = declaration + "<r><![CDATA[plain run ] ]] ]>x <&\r\nnext\rline é中😀 a\u0085b\u2028c]]]><!--plain run - x -\r\nnext\rline é中😀 a\u0085b\u2028c--></r>";
-            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml), new XmlReaderOptions { CommentHandling = XmlCommentHandling.Allow });
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml), new XmlReaderOptions { CommentHandling = XmlCommentHandling.Allow });
             while (reader.TokenType is not XmlTokenType.CData)
             {
                 reader.Read().Should().BeTrue();
@@ -155,7 +240,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 " lead and trail ",
             ];
             var xml = declaration + "<r>\n  <a>" + string.Join("</a>\n  <a>", texts) + "</a>\n  <a>a&amp;b</a>\n  <a>line\r\nend</a>\n</r>";
-            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml), new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant });
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml), new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Insignificant });
             var read = new System.Collections.Generic.List<string>();
             while (reader.Read())
             {
@@ -172,7 +257,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void ShortText_Xml11LineEnd_BecomesALineFeed()
         {
             var xml = "<?xml version=\"1.1\"?><r>ab" + (char)0x85 + "cd" + (char)0x2028 + "ef</r>";
-            var reader = new Utf8XmlReader(System.Text.Encoding.UTF8.GetBytes(xml));
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml));
             reader.Read().Should().BeTrue();
             reader.Read().Should().BeTrue();
             reader.Read().Should().BeTrue();
@@ -406,6 +491,43 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             var consumed = (int)reader.BytesConsumed;
             return first[consumed..].Concat(second).ToArray();
+        }
+
+        /// <summary>
+        /// Cuts the input at every byte inside <paramref name="element"/> after its start tag, and checks that
+        /// <see cref="Utf8XmlReader.TrySkip"/> returns false with the reader on the start tag as it was read,
+        /// and that a reader resumed from there reads the rest of the document as an unbroken read does.
+        /// </summary>
+        /// <param name="before">The XML before the element: start tags only.</param>
+        /// <param name="element">The element to skip.</param>
+        /// <param name="after">The rest of the document.</param>
+        /// <param name="startTag">The harness line for the start tag of the element.</param>
+        private static void SkipFailsAtEverySplit_ThenTheReaderResumes(string before, string element, string after, string startTag)
+        {
+            var whole = Encoding.UTF8.GetBytes(before + element + after);
+            var unbroken = XmlReaderHarness.Tokens(whole, new XmlReaderOptions());
+            var index = before.Count(c => c is '<');
+            unbroken[index].Should().Be(startTag);
+            var startTagEnd = before.Length + element.IndexOf('>') + 1;
+            for (var split = startTagEnd; split < before.Length + element.Length; split++)
+            {
+                var reader = new Utf8XmlReader(whole.AsSpan(0, split), false, default);
+                for (var i = 0; i <= index; i++)
+                {
+                    reader.Read().Should().BeTrue();
+                }
+
+                var depth = reader.CurrentDepth;
+                reader.TrySkip().Should().BeFalse();
+                reader.CurrentDepth.Should().Be(depth);
+                reader.BytesConsumed.Should().Be(startTagEnd);
+                XmlReaderHarness.Describe(ref reader).Should().Be(startTag, "the block ends at byte {0}", split);
+
+                var rest = new System.Collections.Generic.List<string>();
+                var resumed = new Utf8XmlReader(whole.AsSpan(startTagEnd), true, reader.CurrentState);
+                XmlReaderHarness.AppendTokens(ref resumed, rest);
+                rest.Should().Equal(unbroken.Skip(index + 1), "the block ends at byte {0}", split);
+            }
         }
 
         #endregion

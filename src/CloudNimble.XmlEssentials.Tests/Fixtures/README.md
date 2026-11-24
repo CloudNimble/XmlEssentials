@@ -8,6 +8,7 @@ Documents that were not written for this repository. They are read as bytes and 
 | `quick-xml/` | [tafia/quick-xml](https://github.com/tafia/quick-xml) `tests/documents`, `master` | 2026-11-22 |
 | `pugixml/` | [zeux/pugixml](https://github.com/zeux/pugixml) `tests/data`, `master` | 2026-11-22 |
 | `w3c-xmlconf/` | [W3C XML Conformance Test Suite](https://www.w3.org/XML/Test/) `xmlts20130923` | 2026-11-22 |
+| `captivate/` | The feed at `https://feeds.captivate.fm/whatsyourstorypod/`, as served | 2026-11-24 |
 
 ## Licensing: read before publishing this folder
 
@@ -21,6 +22,8 @@ that those repositories only carry as test data**. The repository licence does n
 | `quick-xml/sample_rss.xml`, `quick-xml/opennews_all.rss` | Third-party RSS feeds (podcast and news content). |
 | `quick-xml/document.xml`, `libreoffice_document.fodt`, `rpm_*.xml` | Office and package-metadata samples of unstated origin. |
 | `pugixml/` | MIT, Copyright (c) 2006-2026 Arseny Kapoulkine. Text in `pugixml/LICENSE.md`. |
+| `captivate/whatsyourstorypod.rss` | A third-party podcast feed. It states "Copyright © 2025-2026 Highway 99 Media. All Rights Reserved." **No licence is stated.** |
+| `captivate/whatsyourstorypod.values.txt` | Written for this repository from the feed (see below); it repeats the feed's text. |
 | `w3c-xmlconf/eduni/` | University of Edinburgh (Richard Tobin) tests, contributed to the W3C suite. |
 | `w3c-xmlconf/xmltest/` | James Clark's XML Test Cases (1998). Its own readme grants redistribution of the unmodified `xmltest.zip` only; these are individual files taken from the W3C distribution. |
 | `w3c-xmlconf/sun/`, `w3c-xmlconf/ibm/` | Copyright Sun Microsystems and IBM, contributed to the W3C suite. |
@@ -37,6 +40,12 @@ or fetch them in CI instead of committing them. The pinned counts and digests in
   `System.Xml.XmlReader` run in a throwaway script, so they are independent of this library.
   Five of the files are outside the supported subset (a KOI8-R feed, a Latin-1 declaration, three with a DOCTYPE) and
   are kept as rejection cases with their exact error message.
+- **captivate**: one real podcast feed, with RSS, Atom, iTunes and Podcast Index elements, CDATA sections of HTML, and
+  56 episodes. `XmlFixtureDocumentTests` pins its counts and digests like the others. `XmlPodcastFeedTests` reads it into
+  the types in `POCOs/Podcast` and checks every value against `whatsyourstorypod.values.txt`: one line for each
+  attribute and each element with text, as `path=value`, sorted by ordinal, with a line feed in a value written as a
+  backslash and `n`. `System.Xml.Linq` wrote that file in a throwaway script, so it is independent of this library.
+  The test reads the committed snapshot; it does not fetch the feed.
 - **w3c-xmlconf**: `XmlConformanceSuiteTests` reads each manifest and checks every case whose document is present
   against its `TYPE`. 283 cases run; 205 are UTF-8 without a DTD and are judged on well-formedness, and the other 78
   must be rejected for using a DTD or another encoding.

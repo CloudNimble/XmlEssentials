@@ -46,6 +46,40 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample14_Namespaces_ChoosePrefixes()
+        {
+            SampleOutput.Capture(Namespaces.ChoosePrefixes).Should().Be(
+                Declaration + "\n" +
+                "<Invoice xmlns=\"urn:example:billing\" xmlns:audit=\"urn:example:audit\" xmlns:ship=\"urn:example:shipping\" number=\"7\" audit:revision=\"2\">\n" +
+                "  <Customer>Fabrikam</Customer>\n" +
+                "  <ship:Note>Leave at the front desk</ship:Note>\n" +
+                "</Invoice>");
+        }
+
+        [TestMethod]
+        public void Sample14_Namespaces_DeclareOnType()
+        {
+            SampleOutput.Capture(Namespaces.DeclareOnType).Should().Be(
+                "<rss xmlns:itunes=\"http://www.itunes.com/dtds/podcast-1.0.dtd\">\n" +
+                "  <itunes:author>Contoso Radio</itunes:author>\n" +
+                "  <title>Field Notes</title>\n" +
+                "</rss>");
+        }
+
+        [TestMethod]
+        public void Sample14_Namespaces_DiscoverPrefixes()
+        {
+            SampleOutput.Capture(Namespaces.DiscoverPrefixes).Should().Be(
+                "'' is urn:example:billing\n" +
+                "'a' is urn:example:audit\n" +
+                "'s' is urn:example:shipping\n" +
+                "<Invoice xmlns=\"urn:example:billing\" xmlns:a=\"urn:example:audit\" xmlns:s=\"urn:example:shipping\" number=\"7\" a:revision=\"2\">\n" +
+                "  <Customer>Fabrikam</Customer>\n" +
+                "  <s:Note>Leave at the front desk</s:Note>\n" +
+                "</Invoice>");
+        }
+
+        [TestMethod]
         public void Sample14_Namespaces_QualifyMembers()
         {
             SampleOutput.Capture(Namespaces.QualifyMembers).Should().Be(
@@ -68,6 +102,18 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         public void Sample14_Namespaces_RejectWrongNamespace()
         {
             SampleOutput.Capture(Namespaces.RejectWrongNamespace).Should().Be("The root element is not in namespace 'urn:example:billing'. Path: /Invoice | LineNumber: 1 | BytePositionInLine: 48.");
+        }
+
+        [TestMethod]
+        public void Sample14_Namespaces_UseKnownNamespaces()
+        {
+            SampleOutput.Capture(Namespaces.UseKnownNamespaces).Should().Be(
+                "<rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"" +
+                " xmlns:googleplay=\"http://www.google.com/schemas/play-podcasts/1.0\" xmlns:itunes=\"http://www.itunes.com/dtds/podcast-1.0.dtd\" xmlns:media=\"http://search.yahoo.com/mrss/\"" +
+                " xmlns:podcast=\"https://podcastindex.org/namespace/1.0\" xmlns:psc=\"http://podlove.org/simple-chapters\" xmlns:sy=\"http://purl.org/rss/1.0/modules/syndication/\">\n" +
+                "  <itunes:author>Contoso Radio</itunes:author>\n" +
+                "  <title>Field Notes</title>\n" +
+                "</rss>");
         }
 
         [TestMethod]

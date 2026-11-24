@@ -1468,6 +1468,75 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void ElementNamesInTwoNamespaces_AreTwoNames_AndEachElementGoesToTheMemberOfItsNamespace()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public sealed class Pair
+                {
+                    [XmlAttribute("m", "urn:a")]
+                    public string? Mark { get; set; }
+
+                    [XmlElement("x")]
+                    public string? Plain { get; set; }
+
+                    [XmlElement("x", "urn:a")]
+                    public string? Qualified { get; set; }
+                }
+
+                [XmlSerializable<Pair>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Pair pair) => pair.Mark + "," + pair.Plain + "," + pair.Qualified;
+                        // The element of the namespace comes first, where the member with no namespace is tried first.
+                        var typeInfo = new AppXmlContext(new XmlSerializerOptions()).Pair;
+                        var read = XmlSerializer.Deserialize("<Pair xmlns:a=\"urn:a\" a:m=\"t\"><a:x>q</a:x><x>p</x></Pair>", typeInfo)!;
+                        return Both.Write(new Pair { Mark = "t", Plain = "p", Qualified = "q" }, o => new AppXmlContext(o).Pair, Show) + "\n" + Show(read);
+                    }
+                }
+                """ + Compare).Should().Be("<Pair xmlns:ns1=\"urn:a\" ns1:m=\"t\"><x>p</x><ns1:x>q</ns1:x></Pair>\nsame\nt,p,q\nt,p,q\nt,p,q");
+        }
+
+        [TestMethod]
+        public void NamespaceDeclarations_OfTheOptionsAndOfTheType_AreWrittenOnTheDocumentElement()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                [XmlRoot("feed")]
+                [XmlNamespaceDeclaration("a", "urn:a")]
+                public sealed class Feed
+                {
+                    [XmlAttribute("id", "urn:b")]
+                    public int Id { get; set; }
+
+                    [XmlElement("x", "urn:a")]
+                    public string? X { get; set; }
+                }
+
+                [XmlSerializable<Feed>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        return Both.Write(
+                            new Feed { Id = 7, X = "1" },
+                            o => new AppXmlContext(o).Feed,
+                            feed => feed.Id + "," + feed.X,
+                            o => o.Namespaces = new Dictionary<string, string> { ["b"] = "urn:b" });
+                    }
+                }
+                """ + Compare).Should().Be("<feed xmlns:b=\"urn:b\" xmlns:a=\"urn:a\" b:id=\"7\"><a:x>1</a:x></feed>\nsame\n7,1\n7,1");
+        }
+
+        [TestMethod]
         public void NullWrappedCollection_IsNil_UnlessTheIgnoreConditionLeavesItOut()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + """

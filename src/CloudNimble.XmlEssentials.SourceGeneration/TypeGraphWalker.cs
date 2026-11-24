@@ -1210,7 +1210,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     ?? (attributeName is { Length: > 0 }
                         ? attributeName
                         : Naming.Convert(member.Name, AttributePolicy(options)));
-                ns = SymbolHelpers.GetString(attribute, "Namespace") ?? "";
+                ns = SymbolHelpers.GetString(attribute, "Namespace") ?? SymbolHelpers.GetConstructorString(attribute, 1) ?? "";
             }
             else if (element is not null)
             {
@@ -1219,7 +1219,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     ?? (elementName is { Length: > 0 }
                         ? elementName
                         : Naming.Convert(member.Name, ElementPolicy(options)));
-                ns = SymbolHelpers.GetString(element, "Namespace") ?? "";
+                ns = SymbolHelpers.GetString(element, "Namespace") ?? SymbolHelpers.GetConstructorString(element, 1) ?? "";
             }
             else if (options.DefaultPropertyMapping == 1 && SymbolHelpers.IsScalar(memberType!))
             {

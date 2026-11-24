@@ -62,6 +62,13 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
                 XmlSerializer.Serialize(XmlSerializer.Deserialize(bagXml, context.FeatureNode)!, context.FeatureNode),
                 "<FeatureNode other=\"1\"><Child xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Name>n</Name><More>m</More></FeatureNode>",
                 "feature extension data");
+
+            // The prefixes a type declares are read from the type, and those of the options come first.
+            var prefixed = new FeatureXmlContext(new XmlSerializerOptions { Namespaces = KnownNamespaces.Edmx, OmitXmlDeclaration = true });
+            const string feedXml = "<feed xmlns:edmx=\"http://docs.oasis-open.org/odata/ns/edmx\" xmlns:a=\"urn:a\"><a:Title>t</a:Title></feed>";
+            Expect(XmlSerializer.Serialize(new FeatureFeed { Title = "t" }, prefixed.FeatureFeed), feedXml, "feature namespace declarations document");
+            Expect(XmlSerializer.Deserialize(feedXml, prefixed.FeatureFeed)!.Title!, "t", "feature namespace declarations value");
+            Expect(string.Join(",", XmlDocument.DiscoverNamespaces(feedXml).Keys), "edmx,a", "feature discovered namespaces");
         }
 
         #endregion
@@ -245,12 +252,29 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
     }
 
     /// <summary>
+    /// A document type that declares the prefix of its namespace.
+    /// </summary>
+    [XmlRoot("feed")]
+    [XmlNamespaceDeclaration("a", "urn:a")]
+    public sealed class FeatureFeed
+    {
+
+        /// <summary>
+        /// Gets or sets the title, an element in <c>urn:a</c>.
+        /// </summary>
+        [XmlElement("Title", "urn:a")]
+        public string? Title { get; set; }
+
+    }
+
+    /// <summary>
     /// The context for the types <see cref="EngineFeatures"/> checks. It has no options of its own, so each check
     /// supplies them.
     /// </summary>
     [XmlSerializable<FeatureOrder>]
     [XmlSerializable<FeatureShape>]
     [XmlSerializable<FeatureNode>]
+    [XmlSerializable<FeatureFeed>]
     internal partial class FeatureXmlContext : XmlSerializerContext
     {
     }

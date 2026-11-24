@@ -175,6 +175,66 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void DiscoverNamespaces_ListsEachPrefixWithItsFirstNamespace_InTheOrderTheyAreDeclared()
+        {
+            // The default namespace and three prefixes, declared at three depths. One prefix is bound again
+            // further in, and one declaration takes the default namespace away.
+            const string xml = "<r xmlns=\"urn:d\" xmlns:a=\"urn:a\"><a:c xmlns:b=\"urn:b\" xmlns:a=\"urn:other\"><e xmlns=\"\"/></a:c><f xmlns:c=\"urn:c\"/></r>";
+            string[] expected = ["=urn:d", "a=urn:a", "b=urn:b", "c=urn:c"];
+
+            XmlDocument.DiscoverNamespaces(Encoding.UTF8.GetBytes(xml)).Select(pair => pair.Key + "=" + pair.Value).Should().Equal(expected);
+            XmlDocument.DiscoverNamespaces(xml).Select(pair => pair.Key + "=" + pair.Value).Should().Equal(expected);
+            XmlDocument.DiscoverNamespaces(new TrickleStream(Encoding.UTF8.GetBytes(xml), 7)).Select(pair => pair.Key + "=" + pair.Value).Should().Equal(expected);
+
+            XmlDocument.DiscoverNamespaces("<r><c a=\"1\"/></r>").Should().BeEmpty();
+
+            // A default namespace that an inner element declares names that element's content only. Declared
+            // for the whole document it would rename everything else, so it is not listed. Its prefixes are.
+            XmlDocument.DiscoverNamespaces("<rss><channel><div xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:x=\"urn:x\"/></channel></rss>")
+                .Select(pair => pair.Key + "=" + pair.Value).Should().Equal("x=urn:x");
+        }
+
+        [TestMethod]
+        public void DiscoverNamespaces_OfADocumentThatIsNotWellFormedOrTooLarge_FailsAsParseFails()
+        {
+            const string open = "<r xmlns:a=\"urn:a\"><c>";
+            var small = new XmlDocumentOptions { MaxDocumentByteCount = 3 };
+            var parse = FluentActions.Invoking(() => XmlDocument.Parse(open)).Should().ThrowExactly<XmlException>().Which.Message;
+
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces(open)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(parse);
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces(Encoding.UTF8.GetBytes(open))).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(parse);
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces(new MemoryStream(Encoding.UTF8.GetBytes(open)))).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(parse);
+            parse.Should().Be("Unexpected end of XML.");
+
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces("<r/>", small)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (3).");
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces("<r/>"u8, small)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (3).");
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces(new MemoryStream("<r/>"u8.ToArray()), small)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (3).");
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces((string)null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("xml");
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces((Stream)null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("utf8Xml");
+        }
+
+        [TestMethod]
+        public void DiscoverNamespaces_OfText_DoesNotCheckTheEncodingTheDeclarationNames()
+        {
+            const string xml = "<?xml version=\"1.0\" encoding=\"utf-16\"?><r xmlns:a=\"urn:a\"/>";
+
+            XmlDocument.DiscoverNamespaces(xml).Select(pair => pair.Key + "=" + pair.Value).Should().Equal("a=urn:a");
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces(Encoding.UTF8.GetBytes(xml)))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("XmlEssentials is UTF-8 only. Declared encoding 'utf-16' is not supported.");
+        }
+
+        [TestMethod]
+        public void DiscoverNamespaces_ResultCanBeGivenToTheSerializer_WhichThenWritesTheSamePrefixes()
+        {
+            const string existing = "<LinkPair xmlns:first=\"urn:a\"><x>p</x><first:x>q</first:x></LinkPair>";
+            var options = new XmlSerializerOptions { Namespaces = XmlDocument.DiscoverNamespaces(existing), OmitXmlDeclaration = true };
+
+            var read = XmlSerializer.Deserialize<POCOs.LinkPair>(existing, options)!;
+
+            XmlSerializer.Serialize(read, options).Should().Be(existing);
+        }
+
+        [TestMethod]
         public async Task ParseAsync_AStreamThatArrivesInPieces_IsParsedAsParseParsesIt()
         {
             var xml = "<?xml version=\"1.0\"?><r a=\"1\"><!--c--><e>2</e></r>"u8.ToArray();

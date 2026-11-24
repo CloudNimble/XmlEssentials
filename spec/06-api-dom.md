@@ -61,6 +61,13 @@ public sealed class XmlDocument : IDisposable
     public static XmlDocument ParseValue(ref Utf8XmlReader reader);
     public static bool TryParseValue(ref Utf8XmlReader reader, [NotNullWhen(true)] out XmlDocument? document);
 
+    // The namespaces a document declares, by prefix ("" is the default namespace), in the order each prefix is
+    // first declared. Every start tag is read for prefixes; a prefix bound twice keeps its first namespace. A
+    // default namespace is listed only when the document element declares it; xmlns="" is not listed. No XmlDocument is built. Fails as Parse fails. The result fits XmlSerializerOptions.Namespaces.
+    public static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default);
+    public static OrderedDictionary<string, string> DiscoverNamespaces(string xml, XmlDocumentOptions options = default);
+    public static OrderedDictionary<string, string> DiscoverNamespaces(Stream utf8Xml, XmlDocumentOptions options = default);
+
     public static bool TryParse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options, out XmlDocument? document);
 
     public XmlElement RootElement { get; }

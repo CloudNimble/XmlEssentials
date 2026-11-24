@@ -36,28 +36,38 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             while (reader.Read())
             {
-                var line = new StringBuilder();
-                line.Append(reader.TokenType).Append(' ');
-                AppendName(ref reader, line);
-                if (reader.TokenType is XmlTokenType.StartElement)
-                {
-                    line.Append(reader.IsEmptyElement ? " empty" : " open");
-                    while (reader.MoveToNextAttribute())
-                    {
-                        line.Append(" @");
-                        AppendName(ref reader, line);
-                        line.Append("=[").Append(reader.GetString()).Append(']');
-                    }
-
-                    reader.MoveToElement();
-                }
-                else if (reader.TokenType is not XmlTokenType.EndElement)
-                {
-                    line.Append(" [").Append(reader.GetString()).Append(']');
-                }
-
-                tokens.Add(line.ToString());
+                tokens.Add(Describe(ref reader));
             }
+        }
+
+        /// <summary>
+        /// Describes the token the reader is on: type, prefix, local name, namespace URI, value, and attributes.
+        /// </summary>
+        /// <param name="reader">The reader, which is left on the same token.</param>
+        /// <returns>The line <see cref="AppendTokens"/> adds for the token.</returns>
+        public static string Describe(ref Utf8XmlReader reader)
+        {
+            var line = new StringBuilder();
+            line.Append(reader.TokenType).Append(' ');
+            AppendName(ref reader, line);
+            if (reader.TokenType is XmlTokenType.StartElement)
+            {
+                line.Append(reader.IsEmptyElement ? " empty" : " open");
+                while (reader.MoveToNextAttribute())
+                {
+                    line.Append(" @");
+                    AppendName(ref reader, line);
+                    line.Append("=[").Append(reader.GetString()).Append(']');
+                }
+
+                reader.MoveToElement();
+            }
+            else if (reader.TokenType is not XmlTokenType.EndElement)
+            {
+                line.Append(" [").Append(reader.GetString()).Append(']');
+            }
+
+            return line.ToString();
         }
 
         /// <summary>

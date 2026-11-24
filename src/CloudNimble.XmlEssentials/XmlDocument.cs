@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -125,6 +126,122 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal XmlDocument() : this([], 0)
         {
+        }
+
+        /// <summary>
+        /// Reads UTF-8 encoded XML and returns the namespaces it declares, each with the prefix it is declared
+        /// under.
+        /// </summary>
+        /// <param name="utf8Xml">The UTF-8 encoded XML to read.</param>
+        /// <param name="options">Options that control how the XML is read.</param>
+        /// <returns>
+        /// The namespace URIs, keyed by prefix, in the order the document first declares each prefix. The default
+        /// namespace of the document element has an empty string as its prefix.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// -or-
+        /// A limit set in <paramref name="options"/> is exceeded.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// var options = new XmlSerializerOptions { Namespaces = XmlDocument.DiscoverNamespaces(existingFeed) };
+        /// string xml = XmlSerializer.Serialize(feed, options);
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// <para>
+        /// Every start tag in the document is examined for prefixes, not only that of the document element. A
+        /// prefix that the document binds more than once is listed with the namespace of its first declaration.
+        /// The <c>xml</c> prefix is listed only if the document declares it.
+        /// </para>
+        /// <para>
+        /// A default namespace (<c>xmlns="..."</c>) is listed only when the document element declares it. One
+        /// that an element further in declares names the elements under that element alone, so it could not be
+        /// declared for the whole document without renaming the rest.
+        /// </para>
+        /// <para>
+        /// The result can be assigned to <see cref="XmlSerializerOptions.Namespaces"/>, so that what is serialized
+        /// uses the prefixes of an existing document. No <see cref="XmlDocument"/> is built.
+        /// </para>
+        /// </remarks>
+        public static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default)
+        {
+            ThrowIfDocumentTooLarge(utf8Xml.Length, options.MaxDocumentByteCount);
+            return DiscoverNamespaces(utf8Xml, options, ignoreDeclaredEncoding: false);
+        }
+
+        /// <summary>
+        /// Reads XML from a stream of UTF-8 bytes and returns the namespaces it declares, each with the prefix it
+        /// is declared under.
+        /// </summary>
+        /// <param name="utf8Xml">The stream to read. It is read to its end.</param>
+        /// <param name="options">Options that control how the XML is read.</param>
+        /// <returns>
+        /// The namespace URIs, keyed by prefix, in the order the document first declares each prefix. The default
+        /// namespace of the document element has an empty string as its prefix.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The stream does not hold a well-formed XML document.
+        /// -or-
+        /// A limit set in <paramref name="options"/> is exceeded.
+        /// </exception>
+        /// <remarks>
+        /// See <see cref="DiscoverNamespaces(ReadOnlySpan{byte}, XmlDocumentOptions)"/> for what is listed.
+        /// </remarks>
+        public static OrderedDictionary<string, string> DiscoverNamespaces(Stream utf8Xml, XmlDocumentOptions options = default)
+        {
+            ArgumentNullException.ThrowIfNull(utf8Xml);
+            var rented = XmlStreamBuffer.ReadToEnd(utf8Xml, options.MaxDocumentByteCount, out var length);
+            try
+            {
+                return DiscoverNamespaces(rented.AsSpan(0, length), options, ignoreDeclaredEncoding: false);
+            }
+            finally
+            {
+                ReturnBuffer(rented, length);
+            }
+        }
+
+        /// <summary>
+        /// Reads XML text and returns the namespaces it declares, each with the prefix it is declared under.
+        /// </summary>
+        /// <param name="xml">The XML text to read.</param>
+        /// <param name="options">Options that control how the XML is read.</param>
+        /// <returns>
+        /// The namespace URIs, keyed by prefix, in the order the document first declares each prefix. The default
+        /// namespace of the document element has an empty string as its prefix.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="xml"/> is not a well-formed XML document.
+        /// -or-
+        /// A limit set in <paramref name="options"/> is exceeded.
+        /// </exception>
+        /// <remarks>
+        /// See <see cref="DiscoverNamespaces(ReadOnlySpan{byte}, XmlDocumentOptions)"/> for what is listed. The
+        /// encoding that an XML declaration names is not checked, because the text is already decoded.
+        /// </remarks>
+        public static OrderedDictionary<string, string> DiscoverNamespaces(string xml, XmlDocumentOptions options = default)
+        {
+            ArgumentNullException.ThrowIfNull(xml);
+            var byteCount = Encoding.UTF8.GetByteCount(xml);
+            ThrowIfDocumentTooLarge(byteCount, options.MaxDocumentByteCount);
+            var rented = ArrayPool<byte>.Shared.Rent(byteCount);
+            var written = Encoding.UTF8.GetBytes(xml, rented);
+            try
+            {
+                return DiscoverNamespaces(rented.AsSpan(0, written), options, ignoreDeclaredEncoding: true);
+            }
+            finally
+            {
+                ReturnBuffer(rented, written);
+            }
         }
 
         /// <summary>
@@ -1010,6 +1127,54 @@ namespace CloudNimble.Text.Xml
         {
             ref var row = ref _rows[index];
             return IsElementKind(row.Kind) ? row.EndIndex : index + 1;
+        }
+
+        /// <summary>
+        /// Reads a document and collects its namespace declarations.
+        /// </summary>
+        /// <param name="utf8Xml">The document.</param>
+        /// <param name="options">The options.</param>
+        /// <param name="ignoreDeclaredEncoding">Whether the bytes were transcoded from characters, so the encoding the declaration names is not checked.</param>
+        /// <returns>The namespace URIs by prefix, in the order each prefix is first declared.</returns>
+        internal static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options, bool ignoreDeclaredEncoding)
+        {
+            var readerOptions = options.ToReaderOptions();
+            readerOptions.IgnoreDeclaredEncoding = ignoreDeclaredEncoding;
+            var found = new OrderedDictionary<string, string>(StringComparer.Ordinal);
+            var reader = new Utf8XmlReader(utf8Xml, isFinalBlock: true, new XmlReaderState(readerOptions));
+            var isDocumentElement = true;
+            while (reader.Read())
+            {
+                if (reader.TokenType is not XmlTokenType.StartElement)
+                {
+                    continue;
+                }
+
+                while (reader.MoveToNextAttribute())
+                {
+                    // A declaration with no value takes a binding away. It names no namespace.
+                    if (!reader.NamespaceUriEquals(XmlUtf8.Xmlns) || reader.ValueSpan.IsEmpty)
+                    {
+                        continue;
+                    }
+
+                    if (!reader.PrefixSpan.IsEmpty)
+                    {
+                        found.TryAdd(Encoding.UTF8.GetString(reader.LocalNameSpan), reader.GetString()!);
+                    }
+                    else if (isDocumentElement)
+                    {
+                        // A prefix means the same wherever it is declared. A default namespace does not: it
+                        // names the elements under the one that declares it, so only the document's own is listed.
+                        found.Add(string.Empty, reader.GetString()!);
+                    }
+                }
+
+                reader.MoveToElement();
+                isDocumentElement = false;
+            }
+
+            return found;
         }
 
         /// <summary>

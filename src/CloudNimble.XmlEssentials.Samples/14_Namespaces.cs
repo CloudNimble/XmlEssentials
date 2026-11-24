@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using CloudNimble.Text.Xml;
 using CloudNimble.XmlEssentials.Samples.Models.Shapes;
@@ -33,6 +34,35 @@ namespace CloudNimble.XmlEssentials.Samples
 
             Shipment? copy = XmlSerializer.Deserialize<Shipment>(xml, options);
             output.WriteLine($"Shipment {copy!.Id} travels with {copy.Carrier}");
+        }
+
+        /// <summary>
+        /// Chooses the prefixes of a document with <see cref="XmlSerializerOptions.Namespaces"/>.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void ChoosePrefixes(TextWriter output)
+        {
+            var options = new XmlSerializerOptions
+            {
+                Namespaces = new Dictionary<string, string>
+                {
+                    [""] = "urn:example:billing",
+                    ["audit"] = "urn:example:audit",
+                    ["ship"] = "urn:example:shipping",
+                },
+                WriteIndented = true,
+                NewLine = "\n",
+            };
+
+            var invoice = new Invoice
+            {
+                Number = 7,
+                Revision = 2,
+                Customer = "Fabrikam",
+                Note = "Leave at the front desk",
+            };
+
+            output.WriteLine(XmlSerializer.Serialize(invoice, options));
         }
 
         /// <summary>
@@ -99,6 +129,42 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
+        /// Declares a prefix on the type with <c>[XmlNamespaceDeclaration]</c>.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void DeclareOnType(TextWriter output)
+        {
+            var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+            var show = new PodcastShow { Title = "Field Notes", Author = "Contoso Radio" };
+
+            output.WriteLine(XmlSerializer.Serialize(show, options));
+        }
+
+        /// <summary>
+        /// Takes the prefixes of an existing document with <see cref="XmlDocument.DiscoverNamespaces(string, XmlDocumentOptions)"/>.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void DiscoverPrefixes(TextWriter output)
+        {
+            string existing = """
+                <Invoice xmlns="urn:example:billing" xmlns:a="urn:example:audit" number="6" a:revision="1">
+                  <Customer>Fabrikam</Customer>
+                  <s:Note xmlns:s="urn:example:shipping">Ring the bell</s:Note>
+                </Invoice>
+                """;
+
+            var namespaces = XmlDocument.DiscoverNamespaces(existing);
+            foreach (var (prefix, namespaceUri) in namespaces)
+            {
+                output.WriteLine($"'{prefix}' is {namespaceUri}");
+            }
+
+            var options = new XmlSerializerOptions { Namespaces = namespaces, WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+            var invoice = new Invoice { Number = 7, Revision = 2, Customer = "Fabrikam", Note = "Leave at the front desk" };
+            output.WriteLine(XmlSerializer.Serialize(invoice, options));
+        }
+
+        /// <summary>
         /// Shows what happens when a document's root element is in a different namespace than the type expects.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
@@ -114,6 +180,18 @@ namespace CloudNimble.XmlEssentials.Samples
             {
                 output.WriteLine(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Declares the customary prefixes of a format with <see cref="KnownNamespaces"/>.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void UseKnownNamespaces(TextWriter output)
+        {
+            var options = new XmlSerializerOptions { Namespaces = KnownNamespaces.Podcast, WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+            var show = new PodcastShow { Title = "Field Notes", Author = "Contoso Radio" };
+
+            output.WriteLine(XmlSerializer.Serialize(show, options));
         }
 
         #endregion

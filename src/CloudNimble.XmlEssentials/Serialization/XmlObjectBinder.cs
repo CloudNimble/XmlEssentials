@@ -147,6 +147,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             ApplyObjectCreationHandling(type, bound, members, options, constructor is not null);
             ValidateElementNames(bound, options.PropertyNameCaseInsensitive);
+            AssignSiblingNamespaces(bound, options.PropertyNameCaseInsensitive);
             XmlExtensionDataBinding? extension = null;
             if (extensionMember is { } ext)
             {
@@ -182,6 +183,46 @@ namespace CloudNimble.Text.Xml.Serialization
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Tells each element member that has no namespace which namespaces the other members of its local name
+        /// have, so that it leaves their elements to them.
+        /// </summary>
+        /// <param name="properties">The bound members.</param>
+        /// <param name="caseInsensitive">Whether names are compared without regard to ASCII case.</param>
+        /// <remarks>
+        /// A member with no namespace matches an element of its local name in any namespace. When another member
+        /// has the same local name and a namespace, an element in that namespace is that member's: without this,
+        /// <c>&lt;atom:link&gt;</c> would be read into the member for <c>&lt;link&gt;</c> whenever that member was
+        /// tried first.
+        /// </remarks>
+        internal static void AssignSiblingNamespaces(XmlBoundProperty[] properties, bool caseInsensitive)
+        {
+            foreach (var property in properties)
+            {
+                if (property.IsAttribute || property.IsText || property.Utf8NamespaceUri.Length > 0)
+                {
+                    continue;
+                }
+
+                List<byte[]>? taken = null;
+                foreach (var other in properties)
+                {
+                    if (other.IsAttribute || other.IsText || other.Utf8NamespaceUri.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    if (other.Utf8LocalName.AsSpan().SequenceEqual(property.Utf8LocalName)
+                        || (caseInsensitive && Ascii.EqualsIgnoreCase(other.Utf8LocalName, property.Utf8LocalName)))
+                    {
+                        (taken ??= []).Add(other.Utf8NamespaceUri);
+                    }
+                }
+
+                property.SiblingNamespaces = taken?.ToArray();
+            }
+        }
 
         /// <summary>
         /// Fills the facts of a reflected member, with the reflection call that creates its bound member.
@@ -465,9 +506,10 @@ namespace CloudNimble.Text.Xml.Serialization
 
             // Then the names, again from the most derived type down. A name that is taken belongs to a member of a
             // more derived type: that is what overriding and hiding a member mean, and it is what an ignored member
-            // of the same C# name left behind. Anything else is two members mapped to one name.
+            // of the same C# name left behind. Two element members may share a local name when their namespaces
+            // differ, as <link> and <atom:link> do in a feed. Anything else is two members mapped to one name.
             var members = new List<XmlMemberModel>();
-            var owners = new Dictionary<string, XmlMemberFacts>(StringComparer.Ordinal);
+            var owners = new Dictionary<string, List<XmlMemberModel>>(StringComparer.Ordinal);
             for (var index = facts.Count - 1; index >= 0; index--)
             {
                 if (models[index] is not { } model)
@@ -477,18 +519,25 @@ namespace CloudNimble.Text.Xml.Serialization
 
                 var member = facts[index];
                 var key = (model.IsAttribute ? "a:" : model.IsText || model.IsCData ? "t:" : "e:") + model.LocalName;
-                if (!owners.TryGetValue(key, out var owner))
+                if (!owners.TryGetValue(key, out var sameName))
                 {
-                    owners.Add(key, member);
+                    owners.Add(key, [model]);
                     members.Add(model);
                     continue;
                 }
 
-                var replaced = member.Name == owner.Name && member.DeclaringType.IsAssignableFrom(owner.DeclaringType);
-                if (!replaced && hiddenBy[index] is null)
+                if (hiddenBy[index] is not null || sameName.Exists(owner => member.Name == owner.Member.Name && member.DeclaringType.IsAssignableFrom(owner.Member.DeclaringType)))
+                {
+                    continue;
+                }
+
+                if (key[0] is not 'e' || sameName.Exists(owner => owner.NamespaceUri == model.NamespaceUri))
                 {
                     throw new InvalidOperationException($"The type maps more than one member to the {(model.IsAttribute ? "attribute" : "element")} name '{model.LocalName}'.");
                 }
+
+                sameName.Add(model);
+                members.Add(model);
             }
 
             members.Sort(static (left, right) =>

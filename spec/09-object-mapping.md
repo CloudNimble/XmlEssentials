@@ -76,7 +76,7 @@ A type and its base types may declare a member of the same name. The rules are S
 - An override marked `[XmlIgnore]` hides the property it overrides, so neither is serialized. This holds down the whole chain of overrides, and for a property that implements an interface member, whose accessors are virtual too.
 - A `new` member marked `[XmlIgnore]` does not hide the member it hides: the base member is serialized.
 - Attributes are not inherited, so a base property named with `[XmlElement("n")]` and its override with no attribute have different XML names, and both are written.
-- Two members that are not related in one of these ways and map to one XML name are `InvalidOperationException`: "The type maps more than one member to the element name 'X'." The exception is a base member whose C# name an ignored member of a more derived type has: it gives way without an error.
+- Two members that are not related in one of these ways and map to one XML name are `InvalidOperationException`: "The type maps more than one member to the element name 'X'." For elements, a name is a local name and a namespace: two element members may share a local name when their namespaces differ (`link` and `atom:link`). An element then goes to the member that names its namespace, and a member with no namespace takes an element of that local name in any other namespace ([decision 63](24-doc-findings-resolution.md)). Attributes are unchanged: one local name, one member. The exception is a base member whose C# name an ignored member of a more derived type has: it gives way without an error.
 - Among members that survive, the order is unchanged: base types first.
 
 The rule is applied once, in `XmlObjectBinder.CreateModels`, to the member facts of either resolver. Generated metadata says whether a property is virtual (`XmlPropertyInfoValues<TValue>.IsVirtual`, the name System.Text.Json uses).
@@ -340,10 +340,12 @@ Also accept `Dictionary<string, XmlElementNode>` (local-name keys, default ns) *
 
 ## Namespaces on write
 
-1. `[XmlNamespaceDeclaration("addr", "http://example.com/address")]` on the type → `xmlns:addr` on that element.
-2. `options.DefaultNamespace` / `[XmlRoot].Namespace` / `[XmlNamespace]` → default `xmlns`.
-3. Writer auto-declares remaining URIs.
-4. `[XmlNamespaceDeclarations]` on `Dictionary<string,string>` or `List<(string prefix, string uri)>` round-trips xmlns (BCL parity; Dictionary here is the K16 carve-out).
+1. Declarations on the **document element**, in this order: `XmlSerializerOptions.Namespaces` (a prefix-to-URI dictionary, copied and checked when set), then each `[XmlNamespaceDeclaration("addr", "http://example.com/address")]` on the type whose prefix and namespace the options did not already declare. They are written whether or not they are used. A type that is a member of another type declares nothing. The element that holds an asynchronous sequence (`ArrayOfX`) is a document element; so is each top-level value.
+2. `options.DefaultNamespace` / `[XmlRoot].Namespace` → the namespace of the document element.
+3. The writer declares every other URI where it is first needed: as the default namespace of an element, or with a generated prefix (`ns1`) for an attribute. A URI that step 1 declared is in scope everywhere, so the writer uses its prefix; when two prefixes are bound to one URI, the one declared last.
+4. How the document element is started when step 1 names its own namespace ([decision 64](24-doc-findings-resolution.md)): with no prefix when the empty prefix is bound to it; otherwise with the last prefix bound to it. In the second case no default namespace is in force, so a member with no namespace of its own is written in **no** namespace instead of inheriting the document element's. If the element's namespace has no declaration and the empty prefix is bound to another namespace, both would be `xmlns="..."` on one element: `InvalidOperationException` when the document is written.
+
+`KnownNamespaces` holds ready-made dictionaries for step 1 (`Edmx`, `Podcast`, `Rss`, `Sitemap`, `Soap11`, `Soap12`, `Svg`, `XmlSchema`), and `XmlDocument.DiscoverNamespaces` reads them from an existing document ([DOM](06-api-dom.md)). Nothing here affects reading.
 
 Name comparison for mapping is always `{local, ns}`, never prefix.
 

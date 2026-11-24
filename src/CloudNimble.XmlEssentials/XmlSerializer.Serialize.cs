@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Pipelines;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CloudNimble.Text.Xml.Nodes;
@@ -1148,7 +1149,7 @@ namespace CloudNimble.Text.Xml
                 if (!topLevelValues)
                 {
                     // The array element is in the namespace of its items, so they do not each declare it again.
-                    writer.WriteStartElement(string.Concat("ArrayOf", xmlTypeInfo.RootName.LocalName), xmlTypeInfo.RootName.NamespaceUri);
+                    xmlTypeInfo.WriteStartRoot(writer, Encoding.UTF8.GetBytes(string.Concat("ArrayOf", xmlTypeInfo.RootName.LocalName)));
                 }
 
                 await foreach (var value in values.WithCancellation(cancellationToken).ConfigureAwait(false))

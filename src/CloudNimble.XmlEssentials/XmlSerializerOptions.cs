@@ -623,6 +623,66 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets or sets the namespace declarations that are written on the document element, each as a prefix
+        /// and the namespace URI it is bound to.
+        /// </summary>
+        /// <value>
+        /// The declarations, keyed by prefix, in the order they are written, or <see langword="null"/> for none.
+        /// An empty prefix is the default namespace. The default is <see langword="null"/>.
+        /// </value>
+        /// <exception cref="ArgumentException">
+        /// The property is set to declarations of which one cannot be written: a prefix that is not an XML name
+        /// without a colon, the <c>xmlns</c> prefix, the <c>xml</c> prefix or its namespace bound to anything but
+        /// each other, the <c>xmlns</c> namespace, or a namespace URI that is <see langword="null"/> or empty.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// var options = new XmlSerializerOptions { Namespaces = KnownNamespaces.Podcast };
+        /// string xml = XmlSerializer.Serialize(feed, options);
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// <para>
+        /// Without this property the serializer declares a namespace where it is first needed and chooses how:
+        /// as the default namespace of an element, or with a generated prefix such as <c>ns1</c> for an attribute.
+        /// A namespace that is declared here is in scope for the whole document, so every element and attribute
+        /// in it is written with the prefix given here. A declaration is written whether or not anything uses it.
+        /// When two prefixes are bound to one namespace, the one declared last is used. The declarations are
+        /// written in the order given, with one exception: the declaration that names the namespace of the
+        /// document element itself comes first, because the element's start tag needs it.
+        /// </para>
+        /// <para>
+        /// The declarations are copied when the property is set. Use
+        /// <see cref="XmlDocument.DiscoverNamespaces(ReadOnlySpan{byte}, XmlDocumentOptions)"/> to take them from
+        /// an existing document, <see cref="KnownNamespaces"/> for those of a well-known format, or
+        /// <see cref="XmlNamespaceDeclarationAttribute"/> to state them on the type. These declarations take
+        /// precedence over the type's.
+        /// </para>
+        /// <para>
+        /// An empty prefix declares the default namespace on the document element, so an element with no
+        /// namespace of its own is in that namespace. When the document element has a namespace of its own that
+        /// is not this one and has no prefix declared, the two cannot both be written, and serialization throws an
+        /// <see cref="InvalidOperationException"/>.
+        /// </para>
+        /// <para>
+        /// The property affects writing only. When the serializer reads, it compares namespace URIs and never
+        /// prefixes.
+        /// </para>
+        /// </remarks>
+        public IReadOnlyDictionary<string, string>? Namespaces
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value is null ? null : XmlNamespaceDeclarations.Copy(value);
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the line ending that is written.
         /// </summary>
         /// <value>
@@ -1082,6 +1142,7 @@ namespace CloudNimble.Text.Xml
             DefaultBufferSize = options.DefaultBufferSize;
             DefaultIgnoreCondition = options.DefaultIgnoreCondition;
             DefaultNamespace = options.DefaultNamespace;
+            Namespaces = options.Namespaces;
             AttributeStyle = options.AttributeStyle;
             AttributesPerLine = options.AttributesPerLine;
             DefaultPropertyMapping = options.DefaultPropertyMapping;

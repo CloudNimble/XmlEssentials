@@ -177,6 +177,7 @@ public sealed class XmlSerializerOptions
     public bool EmitByteOrderMark { get; set; }
     public XmlVersion XmlVersion { get; set; }
     public string? DefaultNamespace { get; set; }
+    public IReadOnlyDictionary<string, string>? Namespaces { get; set; }   // prefix -> URI, declared on the document element
     public XmlNamingPolicy? ElementNamingPolicy { get; set; }
     public XmlNamingPolicy? AttributeNamingPolicy { get; set; }
     public XmlEnumHandling EnumHandling { get; set; }
@@ -569,6 +570,7 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
     public bool EmitByteOrderMark { get; set; }
     public XmlVersion XmlVersion { get; set; }
     public string? DefaultNamespace { get; set; }
+    public IReadOnlyDictionary<string, string>? Namespaces { get; set; }
     public bool IncludeFields { get; set; }
     public bool IgnoreReadOnlyProperties { get; set; }
     public bool IgnoreReadOnlyFields { get; set; }

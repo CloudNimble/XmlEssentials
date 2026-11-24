@@ -132,6 +132,22 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow(7)]
+        [DataRow(64)]
+        [DataRow(4_096)]
+        public async Task AsyncEnumerable_AValueWithManyAttributes_KeepsThemWhenItsChildHasAsMany(int chunk)
+        {
+            // An object is skipped to prove all of it has arrived, and then read. The skip reads the child's
+            // start tag: nine attributes on each is more than the reader keeps inline, and "&amp;" is decoded.
+            const string one = "<ReadAheadItem A=\"x&amp;y\" A1=\"1\" A2=\"2\" A3=\"3\" A4=\"4\" A5=\"5\" A6=\"6\" A7=\"7\" A8=\"8\"><C B=\"1&amp;2\" B1=\"b1\" B2=\"b2\" B3=\"b3\" B4=\"b4\" B5=\"b5\" B6=\"b6\" B7=\"b7\" B8=\"b8\"/></ReadAheadItem>";
+            var utf8 = Encoding.UTF8.GetBytes("<ArrayOfReadAheadItem>" + one + one + "</ArrayOfReadAheadItem>");
+
+            var read = await ToListAsync(XmlSerializer.DeserializeAsyncEnumerable<ReadAheadItem>(new TrickleStream(utf8, chunk), Bare));
+
+            read.Select(value => XmlSerializer.Serialize(value, Bare)).Should().Equal(one, one);
+        }
+
+        [TestMethod]
         public async Task AsyncEnumerable_WithoutOptions_UsesTheDefaults()
         {
             const string declaration = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";

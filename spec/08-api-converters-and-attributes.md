@@ -157,6 +157,14 @@ XML-specific:
 
 ```csharp
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = true)]
+public sealed class XmlNamespaceDeclarationAttribute : Attribute
+{
+    public XmlNamespaceDeclarationAttribute(string prefix, string namespaceUri);
+    public string Prefix { get; }
+    public string NamespaceUri { get; }
+}
+
 public sealed class XmlRootAttribute : Attribute
 {
     public XmlRootAttribute();

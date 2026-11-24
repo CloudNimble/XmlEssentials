@@ -114,7 +114,11 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 if (polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
                 {
-                    derived.WriteStart(writer);
+                    // The document element has the derived type's name, and the declarations of this type.
+                    if (!TryWriteStartDocumentElement(writer, derived.Utf8Name, derived.Utf8NamespaceUri))
+                    {
+                        derived.WriteStart(writer);
+                    }
                 }
                 else
                 {

@@ -21,6 +21,7 @@ namespace CloudNimble.Text.Xml.Serialization
         private readonly byte[]? _rootLeafOpenTag;
         private readonly byte[] _rootLocalName;
         private readonly byte[] _rootNamespaceUri;
+        private readonly XmlDocumentElementPlan? _documentElementPlan;
 
         #endregion
 
@@ -109,6 +110,7 @@ namespace CloudNimble.Text.Xml.Serialization
             IsNillable = isNillable;
             _rootLocalName = Encoding.UTF8.GetBytes(rootName.LocalName);
             _rootNamespaceUri = Encoding.UTF8.GetBytes(rootName.NamespaceUri);
+            _documentElementPlan = XmlNamespaceDeclarations.Plan(type, options);
             if (_rootNamespaceUri.Length == 0 && XmlChars.IsShortAsciiNcName(_rootLocalName, _rootLocalName.Length))
             {
                 _rootLeafOpenTag = [(byte)'<', .. _rootLocalName, (byte)'>'];
@@ -197,6 +199,32 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Starts an element as the document element of <see cref="Type"/>, with the namespaces of
+        /// <see cref="XmlSerializerOptions.Namespaces"/> and of the type's
+        /// <see cref="XmlNamespaceDeclarationAttribute"/>s declared on it, when there are any and the writer is
+        /// at the document level.
+        /// </summary>
+        /// <param name="writer">The writer.</param>
+        /// <param name="utf8LocalName">The local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The namespace of the element, or empty.</param>
+        /// <returns><see langword="false"/> when nothing was written, and the caller starts the element itself.</returns>
+        /// <exception cref="InvalidOperationException">The declared namespaces cannot be written on the element.</exception>
+        /// <remarks>
+        /// The name is a parameter because a document element is not always named for the type: a value of a
+        /// derived type is written under the derived type's name, and a sequence under a name of its own.
+        /// </remarks>
+        internal bool TryWriteStartDocumentElement(Utf8XmlWriter writer, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            if (_documentElementPlan is null || writer.CurrentDepth != 0)
+            {
+                return false;
+            }
+
+            _documentElementPlan.WriteStart(writer, utf8LocalName, utf8NamespaceUri);
+            return true;
+        }
+
+        /// <summary>
         /// Writes a null value as the document element.
         /// </summary>
         /// <param name="writer">The writer.</param>
@@ -227,18 +255,39 @@ namespace CloudNimble.Text.Xml.Serialization
         internal abstract void WriteRootAsObject(Utf8XmlWriter writer, object? value);
 
         /// <summary>
-        /// Writes the start tag of the document element, declaring its namespace when it has one.
+        /// Writes the start tag of the element named for <see cref="Type"/>, declaring its namespace when it has
+        /// one. When it is the document element, the namespaces of
+        /// <see cref="XmlSerializerOptions.Namespaces"/> and of the type's
+        /// <see cref="XmlNamespaceDeclarationAttribute"/>s are declared on it.
         /// </summary>
         /// <param name="writer">The writer.</param>
+        /// <exception cref="InvalidOperationException">The declared namespaces cannot be written on the document element.</exception>
         internal void WriteStartRoot(Utf8XmlWriter writer)
         {
-            if (_rootNamespaceUri.Length > 0)
+            WriteStartRoot(writer, _rootLocalName);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element in the namespace of <see cref="Type"/> under another local name:
+        /// the element that holds a sequence of values of the type.
+        /// </summary>
+        /// <param name="writer">The writer.</param>
+        /// <param name="utf8LocalName">The local name of the element.</param>
+        /// <exception cref="InvalidOperationException">The declared namespaces cannot be written on the document element.</exception>
+        internal void WriteStartRoot(Utf8XmlWriter writer, ReadOnlySpan<byte> utf8LocalName)
+        {
+            if (TryWriteStartDocumentElement(writer, utf8LocalName, _rootNamespaceUri))
             {
-                writer.WriteStartElement(_rootLocalName, _rootNamespaceUri);
                 return;
             }
 
-            writer.WriteStartElement(_rootLocalName);
+            if (_rootNamespaceUri.Length > 0)
+            {
+                writer.WriteStartElement(utf8LocalName, _rootNamespaceUri);
+                return;
+            }
+
+            writer.WriteStartElement(utf8LocalName);
         }
 
         #endregion

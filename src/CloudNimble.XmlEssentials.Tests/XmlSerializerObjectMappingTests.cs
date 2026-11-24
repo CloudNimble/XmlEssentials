@@ -404,6 +404,46 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void ElementNamesInOneNamespace_AreOneName_AndAreRefused()
+        {
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new QualifiedTwins(), Bare))
+                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The type maps more than one member to the element name 'x'.");
+        }
+
+        [TestMethod]
+        [DataRow("<LinkPair xmlns:a=\"urn:a\"><a:x>q</a:x><x>p</x></LinkPair>")]
+        [DataRow("<LinkPair xmlns:a=\"urn:a\"><x>p</x><a:x>q</a:x></LinkPair>")]
+        [DataRow("<LinkPair><x>p</x><x xmlns=\"urn:a\">q</x></LinkPair>")]
+        public void ElementNamesInTwoNamespaces_AreTwoNames_AndEachElementGoesToTheMemberOfItsNamespace(string xml)
+        {
+            var read = XmlSerializer.Deserialize<LinkPair>(xml)!;
+
+            read.Plain.Should().Be("p");
+            read.Qualified.Should().Be("q");
+            XmlSerializer.Serialize(read, Bare).Should().Be("<LinkPair><x>p</x><x xmlns=\"urn:a\">q</x></LinkPair>");
+        }
+
+        [TestMethod]
+        public void ElementNamesInTwoNamespaces_LeaveAnElementOfAThirdNamespace_ToTheMemberWithNoNamespace()
+        {
+            var read = XmlSerializer.Deserialize<LinkPair>("<LinkPair xmlns:b=\"urn:b\"><b:x>o</b:x></LinkPair>")!;
+
+            read.Plain.Should().Be("o");
+            read.Qualified.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void ElementNamesInTwoNamespaces_ThatDifferInCase_AreToldApartByNamespaceWhenCaseIsIgnored()
+        {
+            var ignoreCase = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            var read = XmlSerializer.Deserialize<LinkPairAnyCase>("<LinkPairAnyCase xmlns:a=\"urn:a\"><a:x>q</a:x><X>p</X></LinkPairAnyCase>", ignoreCase)!;
+
+            read.Plain.Should().Be("p");
+            read.Qualified.Should().Be("q");
+        }
+
+        [TestMethod]
         public void ElementNamesThatDifferOnlyInCase_AreAmbiguousOnlyWhenCaseIsIgnored()
         {
             var shelf = new LowerBookShelf { Item = new Book { Title = "t", Author = "a" }, Label = "l" };

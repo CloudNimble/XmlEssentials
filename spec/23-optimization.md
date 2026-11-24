@@ -598,6 +598,8 @@ The remaining object-graph columns (first call, source-generated context) come w
 
 The tables on this page are from before the [doc findings resolution](24-doc-findings-resolution.md). Slices 1 and 2 of that task changed hot paths in the reader, the writer, and both serializer paths, and no benchmark was run for either. The paths are listed there under "Hot paths changed", with the checks that decisions 45 to 48 added to every member read and write. Run the benchmarks and regenerate the tables before any number here is quoted, and before the next optimization pass uses them as a baseline.
 
+**Wide elements.** The reader checks a start tag for duplicate attribute names by comparing every pair (`CheckDuplicateNamespacedAttributes`), so that check grows with the square of the attribute count: about half a million comparisons at the default limit of 1,000 attributes, and 12.5 million at 5,000. `XmlLargeDocumentTests` reads such elements correctly; nothing has measured what they cost, and no benchmark has an element wider than a real document's. Measure before changing it.
+
 ---
 
 [Index](README.md) · [Previous: PR plan](22-pr-plan.md) · [Next: Doc findings resolution](24-doc-findings-resolution.md)

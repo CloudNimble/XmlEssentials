@@ -587,7 +587,8 @@ These features of `System.Xml.Serialization` have no counterpart in XmlEssential
 | `[XmlEnum("name")]` | Not supported | An enum is written with its C# member name, or as a number with `EnumHandling = XmlEnumHandling.Integer`. To write other names, use a custom converter. |
 | `[XmlType]` | Not supported | Name the root with `[XmlRoot]`, and a derived type with the argument of `[XmlDerivedType<T>]`. |
 | `[XmlChoiceIdentifier]` | Not supported | Use several `[XmlElement<T>]` attributes on one member, or [polymorphism](/guides/polymorphism). |
-| `[XmlNamespaceDeclarations]`, `XmlSerializerNamespaces` | Not supported | The writer declares each namespace where it's first used and chooses the prefix. See [Namespaces](/guides/namespaces). |
+| `XmlSerializerNamespaces` | [`XmlSerializerOptions.Namespaces`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), or `[XmlNamespaceDeclaration]` on the type | The prefixes are set once on the options or on the type, not passed to each `Serialize` call. See [Choose the prefixes](/guides/namespaces#choose-the-prefixes). |
+| `[XmlNamespaceDeclarations]` | No counterpart | The prefixes a document was read with aren't kept on the object. [`XmlDocument.DiscoverNamespaces`](/api-reference/CloudNimble/Text/Xml/XmlDocument) reads them from a document. |
 | `XmlAttributeOverrides`, `XmlRootAttribute` passed to the constructor | Not supported | Put the attributes on the type, or use a custom converter. |
 | `[DefaultValue]` | Ignored | `XmlIgnoreCondition.WhenWritingDefault` leaves out a member that has the default value of its type. |
 | `ShouldSerializeX()` and `XSpecified` | Ignored | Use `[XmlIgnore(Condition = ...)]`. |

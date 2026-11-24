@@ -161,14 +161,18 @@ namespace CloudNimble.Text.Xml.Serialization
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal bool TryReadWithReadAhead(ref Utf8XmlReader reader, out T? value)
         {
+            // The copy keeps the attributes of the start tag: the skip reads other start tags, and they would
+            // write over a table and a buffer that the two readers share.
             var start = reader;
-            if (!reader.TrySkip())
+            reader.DetachAttributeStorage();
+            var complete = reader.TrySkip();
+            reader = start;
+            if (!complete)
             {
                 value = default;
                 return false;
             }
 
-            reader = start;
             value = Converter.Read(ref reader, typeof(T), Options);
             return true;
         }
