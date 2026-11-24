@@ -1093,6 +1093,9 @@ namespace CloudNimble.XmlEssentials.Tests
 
                     public int Seen { get; private set; } = 1;
 
+                    [XmlInclude]
+                    public int Kept { get; private set; } = 3;
+
                     public int Peek() => Hush;
                 }
 
@@ -1186,7 +1189,7 @@ namespace CloudNimble.XmlEssentials.Tests
                             Same((o, c) => ShowHolder(Read(holder, o, c?.Holder))),
                             Same((o, c) => ShowHolder(Read(holder, o, c?.Holder)), o => o.PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate),
                             Same((o, c) => Write(new Hidden(), o, c?.Hidden)),
-                            Same((o, c) => { var h = Read("<Hidden><Secret>8</Secret><Hush>9</Hush><Seen>2</Seen></Hidden>", o, c?.Hidden); return h.Secret + "," + h.Peek() + "," + h.Seen; }),
+                            Same((o, c) => { var h = Read("<Hidden><Secret>8</Secret><Hush>9</Hush><Seen>2</Seen><Kept>4</Kept></Hidden>", o, c?.Hidden); return h.Secret + "," + h.Peek() + "," + h.Seen + "," + h.Kept; }),
                             Same((o, c) => { var n = Read("<Needs><Name>n</Name><Count>3</Count></Needs>", o, c?.Needs); return n.Name + "," + n.Count; }),
                             Same((o, c) => Read("<Needs><Name>n</Name></Needs>", o, c?.Needs).Name),
                             Same((o, c) => Read("<Odd><Name>n</Name></Odd>", o, c?.Odd).Name));
@@ -1208,8 +1211,8 @@ namespace CloudNimble.XmlEssentials.Tests
                 "root,True",
                 "7,0|l|1",
                 "7,2|l|1,9",
-                "<Hidden><Secret>5</Secret><Hush>6</Hush><Seen>1</Seen></Hidden>",
-                "8,9,2",
+                "<Hidden><Secret>5</Secret><Hush>6</Hush><Seen>1</Seen><Kept>3</Kept></Hidden>",
+                "8,9,1,4",
                 "n,3",
                 "XmlException: The required member 'Count' is missing. Path: /Needs | LineNumber: 1 | BytePositionInLine: 30.",
                 "n!"));

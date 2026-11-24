@@ -68,7 +68,7 @@ public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
     public ValueTask DisposeAsync();
     public void Flush();
     public Task FlushAsync(CancellationToken cancellationToken = default);
-    public void Reset();
+    public void Reset();                               // discards pending bytes, as Utf8JsonWriter.Reset does; Flush first to keep them
     public void Reset(IBufferWriter<byte> bufferWriter);
     public void Reset(Stream utf8Xml);
 

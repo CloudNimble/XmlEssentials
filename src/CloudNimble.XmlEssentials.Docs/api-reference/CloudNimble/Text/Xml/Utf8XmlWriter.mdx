@@ -656,7 +656,8 @@ public void Reset()
 
 The writer continues to use the original writer options and the original output
 (either [IBufferWriter`1](https://learn.microsoft.com/dotnet/api/system.buffers.ibufferwriter-1) or [Stream](https://learn.microsoft.com/dotnet/api/system.io.stream)). Bytes that are still pending are
-committed to that output first, and [Utf8XmlWriter.BytesCommitted](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#bytescommitted) is then set to 0.
+discarded, as `Utf8JsonWriter.Reset` discards them, and [Utf8XmlWriter.BytesCommitted](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#bytescommitted) is set to 0.
+Call [Utf8XmlWriter.Flush](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#flush) first to keep what has been written.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Reset
 
@@ -685,7 +686,8 @@ public void Reset(System.Buffers.IBufferWriter<byte> bufferWriter)
 #### Remarks
 
 The writer continues to use the original writer options but now writes to *bufferWriter*
-as the new output. Bytes that are still pending are committed to the previous output first.
+as the new output. Bytes that are still pending are discarded; call [Utf8XmlWriter.Flush](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#flush) first to commit
+them to the previous output.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Reset
 
@@ -714,7 +716,8 @@ public void Reset(System.IO.Stream utf8Xml)
 #### Remarks
 
 The writer continues to use the original writer options but now writes to *utf8Xml*
-as the new output. Bytes that are still pending are committed to the previous output first.
+as the new output. Bytes that are still pending are discarded; call [Utf8XmlWriter.Flush](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter#flush) first to commit
+them to the previous output.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

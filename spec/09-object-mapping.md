@@ -60,8 +60,8 @@ Serialize a member if:
 
 1. It is a public instance property with a getter, or a public instance field when `IncludeFields`, or a non-public member with `[XmlInclude]`.
 2. It is not `[XmlIgnore]` / `Condition` matches.
-3. If read-only (no setter, not `init`, not constructor-bound): skipped when `IgnoreReadOnlyProperties` / `IgnoreReadOnlyFields`, unless it is a collection or a dictionary, which needs no setter (as System.Text.Json; [decision 71](24-doc-findings-resolution.md)).
-4. `init` and `required` members are included (match STJ).
+3. If read-only (no setter the serializer uses, and not constructor-bound): skipped when `IgnoreReadOnlyProperties` / `IgnoreReadOnlyFields`, unless it is a collection or a dictionary, which needs no setter (as System.Text.Json; [decision 71](24-doc-findings-resolution.md)).
+4. `init` and `required` members are included (match STJ). A `set` or `init` accessor is used when it is public, or when the member is marked `[XmlInclude]`; one that is not public is not used otherwise, so the property is read-only to the serializer, as in System.Text.Json with `[JsonInclude]` ([decision 79](24-doc-findings-resolution.md)).
 5. Records: compiler-generated parameters bind like STJ.
 6. Record structs and structs are supported. Parameterless constructor is not required if `[XmlConstructor]` or a unique parameterized constructor can bind all required members.
 

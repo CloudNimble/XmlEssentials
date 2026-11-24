@@ -985,6 +985,8 @@ Second buffer: <Done/>
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
 
+`Reset` discards bytes that are still pending, as `Utf8JsonWriter.Reset` does, so a document that was abandoned half-way doesn't reach the output. Call `Flush` first to keep what was written, as the loop above does.
+
 | Overload | The writer then writes to |
 | --- | --- |
 | `Reset()` | The same output as before. |

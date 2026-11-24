@@ -1,6 +1,6 @@
 ---
 title: XmlIncludeAttribute
-description: "Indicates that a non-public property or field is included for serialization and deserialization. This class cannot be inherited."
+description: "Indicates that a non-public property or field is included for serialization and deserialization, and that a set accessor that is not public is used when read..."
 icon: lock
 tag: "SEALED"
 keywords: ['XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute', 'CloudNimble.Text.Xml.Serialization', 'class', 'System.Attribute', 'CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute', 'CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute', 'CloudNimble.Text.Xml.XmlSerializerOptions']
@@ -22,7 +22,8 @@ CloudNimble.Text.Xml.Serialization.XmlIncludeAttribute
 
 ## Summary
 
-Indicates that a non-public property or field is included for serialization and deserialization. This class cannot be inherited.
+Indicates that a non-public property or field is included for serialization and deserialization, and that a
+set accessor that is not public is used when reading. This class cannot be inherited.
 
 ## Usage
 
@@ -54,6 +55,10 @@ The code produces the following output:
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
 ## Remarks
+
+A public property whose `set` or `init` accessor is not public is written
+and is not set when a document is read, as a property with no setter is. Mark it with this attribute to
+have the accessor used.
 
 This attribute is analogous to `JsonIncludeAttribute` in `System.Text.Json`. It is not the
 `System.Xml.Serialization.XmlIncludeAttribute` of the base class library, which declares known types.

@@ -156,7 +156,9 @@ namespace CloudNimble.Text.Xml.Serialization
                 MemberType = property.PropertyType;
                 IsIndexer = property.GetIndexParameters().Length > 0;
                 HasGetter = property.GetMethod is not null;
-                HasSetter = property.SetMethod is not null;
+                // A set or init accessor that is not public is not used, as in System.Text.Json, unless the
+                // member is marked [XmlInclude]: the author closed it to outside code.
+                HasSetter = property.SetMethod is { } set && (set.IsPublic || Array.Exists(Attributes, static attribute => attribute is XmlIncludeAttribute));
                 IsPublic = property.GetMethod is { IsPublic: true };
                 IsVirtual = (property.GetMethod ?? property.SetMethod)!.IsVirtual;
             }

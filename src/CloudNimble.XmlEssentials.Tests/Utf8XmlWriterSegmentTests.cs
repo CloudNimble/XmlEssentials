@@ -202,6 +202,7 @@ namespace CloudNimble.XmlEssentials.Tests
             using var writer = new Utf8XmlWriter(first, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true });
             writer.WriteStartElement("e");
             writer.WriteStringValue("x]]");
+            writer.Flush();
             writer.Reset(second);
             writer.WriteStartElement("e");
             writer.WriteStringValue(">");
@@ -327,6 +328,7 @@ namespace CloudNimble.XmlEssentials.Tests
             using var writer = new Utf8XmlWriter(first, new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true });
             writer.WriteStartElement("e");
             writer.WriteBase64StringSegment([1], false);
+            writer.Flush();
             writer.Reset(second);
             writer.WriteStartElement("f");
             writer.WriteBase64StringSegment([2], true);

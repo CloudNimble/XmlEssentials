@@ -307,12 +307,15 @@ namespace CloudNimble.Text.Xml
         /// <remarks>
         /// The writer continues to use the original writer options and the original output
         /// (either <see cref="IBufferWriter{T}"/> or <see cref="Stream"/>). Bytes that are still pending are
-        /// committed to that output first, and <see cref="BytesCommitted"/> is then set to 0.
+        /// discarded, as <c>Utf8JsonWriter.Reset</c> discards them, and <see cref="BytesCommitted"/> is set to 0.
+        /// Call <see cref="Flush"/> first to keep what has been written.
         /// </remarks>
         public void Reset()
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            FlushBuffer();
+
+            // What is pending belongs to a document that is being abandoned, so it does not reach the output.
+            _buffered = 0;
             _autoNs = 0;
             _bracketRun = 0;
             _segment = XmlWriterSegment.None;
@@ -346,7 +349,8 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         /// <remarks>
         /// The writer continues to use the original writer options but now writes to <paramref name="bufferWriter"/>
-        /// as the new output. Bytes that are still pending are committed to the previous output first.
+        /// as the new output. Bytes that are still pending are discarded; call <see cref="Flush"/> first to commit
+        /// them to the previous output.
         /// </remarks>
         public void Reset(IBufferWriter<byte> bufferWriter)
         {
@@ -370,7 +374,8 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         /// <remarks>
         /// The writer continues to use the original writer options but now writes to <paramref name="utf8Xml"/>
-        /// as the new output. Bytes that are still pending are committed to the previous output first.
+        /// as the new output. Bytes that are still pending are discarded; call <see cref="Flush"/> first to commit
+        /// them to the previous output.
         /// </remarks>
         public void Reset(Stream utf8Xml)
         {

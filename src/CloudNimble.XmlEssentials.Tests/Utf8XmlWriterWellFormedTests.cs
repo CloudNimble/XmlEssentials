@@ -556,6 +556,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var writer = new Utf8XmlWriter(first, new XmlWriterOptions { OmitXmlDeclaration = true });
             writer.WriteStartElement("a");
             writer.WriteEndElement();
+            writer.Flush();
             var second = new ArrayBufferWriter<byte>();
             writer.Reset(second);
             writer.WriteStartElement("b");
@@ -571,6 +572,47 @@ namespace CloudNimble.XmlEssentials.Tests
             streamWriter.WriteEndElement();
             streamWriter.Dispose();
             Encoding.UTF8.GetString(stream.ToArray()).Should().Be("<c/>");
+        }
+
+        [TestMethod]
+        public void Reset_DiscardsWhatIsPending_AsUtf8JsonWriterDoes()
+        {
+            // A document that is abandoned half-way must not reach the output. What was flushed stays.
+            var buffer = new ArrayBufferWriter<byte>();
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            writer.WriteStartElement("kept");
+            writer.WriteEndElement();
+            writer.Flush();
+            writer.Reset();
+            writer.WriteStartElement("abandoned");
+            writer.BytesPending.Should().Be(10);
+            writer.Reset();
+            writer.BytesPending.Should().Be(0);
+            writer.BytesCommitted.Should().Be(0);
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<kept/>");
+
+            // The writer is at the start of a document again, and writes to the same output.
+            writer.WriteStartElement("next");
+            writer.WriteEndElement();
+            writer.Flush();
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<kept/><next/>");
+
+            // Changing the output discards too, for a buffer and for a stream.
+            writer.Reset();
+            writer.WriteStartElement("abandoned");
+            var other = new ArrayBufferWriter<byte>();
+            writer.Reset(other);
+            writer.WriteStartElement("abandoned");
+            using var stream = new MemoryStream();
+            writer.Reset(stream);
+            other.WrittenCount.Should().Be(0);
+            writer.WriteStartElement("abandoned");
+            using var last = new MemoryStream();
+            writer.Reset(last);
+            writer.Flush();
+            Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<kept/><next/>");
+            stream.Length.Should().Be(0);
+            last.Length.Should().Be(0);
         }
 
         #endregion

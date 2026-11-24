@@ -308,10 +308,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     getter = accessorName + "_get(" + accessorTarget + ")";
                 }
 
-                // A property has a setter whenever it has a set or init accessor, whatever its accessibility: that is
-                // what the reflection resolver uses. An init accessor and one that is not accessible are called
-                // through an accessor.
-                if (property.SetMethod is { } set)
+                // A property has a setter when its set or init accessor is public, or the property is marked
+                // [XmlInclude]: that is what the reflection resolver uses. An init accessor and one that is not
+                // accessible are called through an accessor.
+                if (property.SetMethod is { } set
+                    && (set.DeclaredAccessibility is Accessibility.Public || SymbolHelpers.GetAttribute(property, SymbolHelpers.IncludeAttribute) is not null))
                 {
                     if (!set.IsInitOnly && IsAccessible(set, home) && IsAccessible(property, home))
                     {

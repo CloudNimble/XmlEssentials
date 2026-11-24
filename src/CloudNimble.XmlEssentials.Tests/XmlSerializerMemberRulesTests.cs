@@ -28,6 +28,31 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Public Methods
 
         [TestMethod]
+        public void SetterThatIsNotPublic_IsNotUsed_UnlessTheMemberIsIncluded()
+        {
+            // System.Text.Json has the same rule, with [JsonInclude].
+            const string document =
+                "<SetterAccess><Included>a</Included><Init>b</Init><Internal>c</Internal><Private>d</Private><PrivateInit>e</PrivateInit><Public>f</Public></SetterAccess>";
+
+            var read = XmlSerializer.Deserialize<SetterAccess>(document)!;
+
+            read.Included.Should().Be("a");
+            read.Init.Should().Be("b");
+            read.Internal.Should().Be("-");
+            read.Private.Should().Be("-");
+            read.PrivateInit.Should().Be("-");
+            read.Public.Should().Be("f");
+
+            // Every one of them is written: a property is written from its getter.
+            XmlSerializer.Serialize(new SetterAccess(), new XmlSerializerOptions { OmitXmlDeclaration = true }).Should().Be(
+                "<SetterAccess><Included>-</Included><Init>-</Init><Internal>-</Internal><Private>-</Private><PrivateInit>-</PrivateInit><Public>-</Public></SetterAccess>");
+
+            // A property whose setter is not used is read-only, and is left out with the other read-only properties.
+            XmlSerializer.Serialize(new SetterAccess(), new XmlSerializerOptions { OmitXmlDeclaration = true, IgnoreReadOnlyProperties = true }).Should().Be(
+                "<SetterAccess><Included>-</Included><Init>-</Init><Public>-</Public></SetterAccess>");
+        }
+
+        [TestMethod]
         [DataRow("a]]>b", "<CDataMapped><![CDATA[a]]]]><![CDATA[>b]]></CDataMapped>", DisplayName = "in the middle")]
         [DataRow("]]>", "<CDataMapped><![CDATA[]]]]><![CDATA[>]]></CDataMapped>", DisplayName = "alone")]
         [DataRow("]]>]]>", "<CDataMapped><![CDATA[]]]]><![CDATA[>]]]]><![CDATA[>]]></CDataMapped>", DisplayName = "twice")]
