@@ -431,7 +431,8 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            if (Polymorphism.Derived.Length > 0 && Polymorphism.TryGetDerivedWrite(value.GetType()) is { } derived)
+            object? content = Polymorphism.Derived.Length > 0 ? value : null;
+            if (content is not null && Polymorphism.ResolveWrite(ref content) is { } derived)
             {
                 if (Polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
                 {
@@ -443,7 +444,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     XmlConverterHelpers.WriteDiscriminator(writer, Polymorphism.Placement, Polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
                 }
 
-                derived.WriteContent(writer, value);
+                derived.WriteContent(writer, content);
                 writer.WriteEndElement();
                 return;
             }

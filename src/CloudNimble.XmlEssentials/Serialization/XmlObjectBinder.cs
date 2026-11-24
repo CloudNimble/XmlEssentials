@@ -421,11 +421,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </remarks>
         internal static XmlPolymorphism BindChoices(XmlMemberModel member, Type declared, List<XmlElementChoice> choices, XmlSerializerOptions options)
         {
+            // A named value says which element it is, so its elements may hold any types, and two of them one type.
+            var isNamed = declared == typeof(XmlNamedValue);
             var bindings = new XmlDerivedBinding[choices.Count];
             for (var index = 0; index < choices.Count; index++)
             {
                 var choice = choices[index];
-                if (!declared.IsAssignableFrom(choice.Type))
+                if (!isNamed && !declared.IsAssignableFrom(choice.Type))
                 {
                     throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' has an element for the type '{choice.Type}', which is not a '{declared}'.");
                 }
@@ -433,9 +435,9 @@ namespace CloudNimble.Text.Xml.Serialization
                 var name = choice.ElementName ?? XmlTypeNames.ElementName(choice.Type, options);
                 for (var earlier = 0; earlier < index; earlier++)
                 {
-                    if (bindings[earlier].Type == choice.Type)
+                    if (!isNamed && bindings[earlier].Type == choice.Type)
                     {
-                        throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' has more than one element for the type '{choice.Type}'. A value is written under the element of its type, so a type can have one.");
+                        throw new NotSupportedException($"Member '{member.Member.DeclaringType}.{member.Member.Name}' has more than one element for the type '{choice.Type}'. A value is written under the element of its type, so a type can have one. Declare the member as {nameof(XmlNamedValue)} to let each value name its element.");
                     }
 
                     if (bindings[earlier].Discriminator == name && choices[earlier].Namespace == choice.Namespace)
@@ -452,11 +454,15 @@ namespace CloudNimble.Text.Xml.Serialization
                     name,
                     choice.Namespace is null ? null : Encoding.UTF8.GetBytes(choice.Namespace))
                 {
+                    Namespace = choice.Namespace,
                     Nested = nested.Derived.Length > 0 && nested.Placement is not XmlDiscriminatorPlacement.ElementName ? nested : null,
                 };
             }
 
-            return new XmlPolymorphism(declared, bindings, XmlDiscriminatorPlacement.ElementName, null, XmlUnknownDerivedTypeHandling.FailSerialization);
+            return new XmlPolymorphism(declared, bindings, XmlDiscriminatorPlacement.ElementName, null, XmlUnknownDerivedTypeHandling.FailSerialization)
+            {
+                IsNamed = isNamed,
+            };
         }
 
         /// <summary>

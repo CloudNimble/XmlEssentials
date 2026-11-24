@@ -122,13 +122,78 @@ namespace CloudNimble.XmlEssentials.Tests
                     "Member '" + Types + "ChoiceOfAnotherType.One' has an element for the type 'System.String', which is not a '" + Types + "ChoiceShape'.");
             FluentActions.Invoking(() => Bare.GetTypeInfo<ChoiceOfOneTypeTwice>())
                 .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
-                    "Member '" + Types + "ChoiceOfOneTypeTwice.One' has more than one element for the type '" + Types + "ChoiceCircle'. A value is written under the element of its type, so a type can have one.");
+                    "Member '" + Types + "ChoiceOfOneTypeTwice.One' has more than one element for the type '" + Types + "ChoiceCircle'. A value is written under the element of its type, so a type can have one. Declare the member as XmlNamedValue to let each value name its element.");
             FluentActions.Invoking(() => Bare.GetTypeInfo<ChoiceOfOneNameTwice>())
                 .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                     "Member '" + Types + "ChoiceOfOneNameTwice.One' has more than one element named 'a'. An element is read as the type of its name, so a name can have one.");
             FluentActions.Invoking(() => Bare.GetTypeInfo<ChoiceOfItemsHalfTyped>())
                 .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                     "Member '" + Types + "ChoiceOfItemsHalfTyped.Values' has more than one [XmlArrayItemAttribute] or a typed item choice. Polymorphic collection items are not enabled for this type.");
+        }
+
+        [TestMethod]
+        public void NamedValue_IsWrittenUnderTheElementItNames_SoTwoElementsCanHoldOneType()
+        {
+            const string xsi = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"";
+            var value = new NamedHolder
+            {
+                Items =
+                {
+                    new XmlNamedValue("v", "1"),
+                    new XmlNamedValue("k", "2"),
+                    new XmlNamedValue("n", 3),
+                    new XmlNamedValue("shape", new TypedCircle { Radius = 1 }),
+                    new XmlNamedValue("k", null),
+                    new XmlNamedValue("plain", new ChoiceShape { Name = "p" }),
+                },
+                Phone = new XmlNamedValue { Name = "Work", Value = "w" },
+                Spaced = new XmlNamedValue("id", "x") { Namespace = "urn:b" },
+                Wrapped = { new XmlNamedValue("b", "1"), new XmlNamedValue("a", "2") },
+            };
+
+            var xml = XmlSerializer.Serialize(value, Bare);
+
+            xml.Should().Be(
+                "<NamedHolder><Work>w</Work><v>1</v><k>2</k><n>3</n><shape" + xsi + " xsi:type=\"circle\"><Radius>1</Radius></shape>" +
+                "<k" + xsi + " xsi:nil=\"true\"/><plain><Name>p</Name></plain><id xmlns=\"urn:b\">x</id><wrapped><b>1</b><a>2</a></wrapped></NamedHolder>");
+            var read = XmlSerializer.Deserialize<NamedHolder>(xml, Bare)!;
+            read.Phone!.Name.Should().Be("Work");
+            read.Phone.Value.Should().Be("w");
+            read.Phone.Namespace.Should().BeNull();
+            read.Items.ConvertAll(item => item.Name).Should().Equal("v", "k", "n", "shape", "k", "plain");
+            read.Items[0].Value.Should().Be("1");
+            read.Items[2].Value.Should().Be(3);
+            read.Items[3].Value.Should().BeOfType<TypedCircle>().Which.Radius.Should().Be(1);
+            read.Items[4].Value.Should().BeNull();
+            read.Items[5].Value.Should().BeOfType<ChoiceShape>().Which.Name.Should().Be("p");
+            read.Spaced!.Namespace.Should().Be("urn:b");
+            read.Spaced.Value.Should().Be("x");
+            read.Wrapped.ConvertAll(item => item.Name + "=" + item.Value).Should().Equal("b=1", "a=2");
+            XmlSerializer.Serialize(read, Bare).Should().Be(xml);
+
+            // With no namespace given, the first element of that name is the one.
+            XmlSerializer.Serialize(new NamedHolder { Spaced = new XmlNamedValue("id", "y") }, Bare)
+                .Should().Be("<NamedHolder><id xmlns=\"urn:a\">y</id><wrapped/></NamedHolder>");
+        }
+
+        [TestMethod]
+        public void NamedValue_ThatNamesNoElementOfTheMember_OrHoldsAnotherType_IsRefused()
+        {
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new NamedHolder { Phone = new XmlNamedValue("Mobile", "m") }, Bare))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The member has no element named 'Mobile' for a XmlNamedValue.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new NamedHolder { Spaced = new XmlNamedValue("id", "x") { Namespace = "urn:c" } }, Bare))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The member has no element named 'id' for a XmlNamedValue.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new NamedHolder { Phone = new XmlNamedValue("Home", 5) }, Bare))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be("The element 'Home' holds a value of type 'System.String', and the value given for it is of type 'System.Int32'.");
+
+            // A type that derives from the type of the element is another type, unless that type declares it.
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new NamedHolder { Items = { new XmlNamedValue("plain", new ChoiceCircle()) } }, Bare))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
+                    "The element 'plain' holds a value of type '" + Types + "ChoiceShape', and the value given for it is of type '" + Types + "ChoiceCircle'.");
+            FluentActions.Invoking(() => Bare.GetTypeInfo<NamedOfOneNameTwice>())
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
+                    "Member '" + Types + "NamedOfOneNameTwice.One' has more than one element named 'a'. An element is read as the type of its name, so a name can have one.");
+            FluentActions.Invoking(() => new XmlNamedValue(" ", 1)).Should().ThrowExactly<ArgumentException>().Which.ParamName.Should().Be("name");
         }
 
         [TestMethod]

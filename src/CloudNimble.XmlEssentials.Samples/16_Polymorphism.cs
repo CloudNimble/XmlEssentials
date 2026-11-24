@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using CloudNimble.Text.Xml;
+using CloudNimble.Text.Xml.Serialization;
 #if NET11_0_OR_GREATER
 using CloudNimble.XmlEssentials.Samples.Models.Closed;
 #endif
@@ -96,6 +97,28 @@ namespace CloudNimble.XmlEssentials.Samples
             var account = new Account { Name = "Operations", LedgerCode = "OPS-17" };
 
             output.WriteLine(XmlSerializer.Serialize(account, options));
+        }
+
+        /// <summary>
+        /// Serializes a list whose elements have two names and one type, so each value names its element.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void NameEachValue(TextWriter output)
+        {
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            var card = new ContactCard
+            {
+                Phones = { new XmlNamedValue("Work", "555-0100"), new XmlNamedValue("Home", "555-0199") },
+            };
+
+            string xml = XmlSerializer.Serialize(card, options);
+            output.WriteLine(xml);
+
+            ContactCard read = XmlSerializer.Deserialize<ContactCard>(xml, options)!;
+            foreach (XmlNamedValue phone in read.Phones)
+            {
+                output.WriteLine($"{phone.Name}: {phone.Value}");
+            }
         }
 
         /// <summary>

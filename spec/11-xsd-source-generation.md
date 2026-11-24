@@ -86,15 +86,15 @@ Hand-written contexts that reference generated types still go through Serializer
 | `xs:extension` of a named complex type (complex or simple content) | CLR inheritance, with only the extension's own members on the derived class; **default** member order is base then derived. `[XmlPropertyOrder]` is **not** auto-emitted (schema sequence is per type, which matches default walk). |
 | `abstract="true"` | an `abstract` class |
 | anonymous complex type | nested class named `{Parent}_{Element}` |
-| `xs:choice` of elements of different types | one member `Item` with `[XmlElement<T>]` per alternative; its type is the nearest class all alternatives derive from, or `object` |
-| a choice or sequence that repeats, of elements of different types | one `List<T>` member `Items` with `[XmlElement<T>]` per element, which keeps the order of the document. `Item` and `Items` are the generator's names: they take a number when the type, or a type it extends, uses the name |
+| `xs:choice` of elements | one member `Item` with `[XmlElement<T>]` per alternative; its type is the nearest class all alternatives derive from, or `object`, or `XmlNamedValue` when two alternatives have one CLR type |
+| a choice or sequence that repeats | one `List<T>` member `Items` with `[XmlElement<T>]` per element, including the elements of the groups nested in it, which keeps the order of the document; `List<XmlNamedValue>` when two elements have one CLR type. `Item` and `Items` are the generator's names: they take a number when the type, or a type it extends, uses the name |
 | a choice or sequence that repeats around one element | a `List<T>` of that element, and the item of a wrapper when the group is all an anonymous type holds |
-| `ref` to the head of a substitution group | one member with `[XmlElement<T>]` for the head (unless `abstract`) and each element that may stand for it, transitively |
+| `ref` to the head of a substitution group | one member with `[XmlElement<T>]` for the head (unless `abstract`) and each element that may stand for it, transitively; `XmlNamedValue` when two of them have one CLR type |
 | `mixed="true"` | the attributes, and one `[XmlMixed] List<XmlMixedContentItem> Content`; the context lists `XmlMixedText` |
 | `default` / `fixed` on an attribute, or on an element that must be present | a property initializer; a value type with a default is not nullable |
 | element and attribute form | when every element is in the target namespace, members name none; otherwise each element member names its own (`""` for an unqualified local element, the target namespace for a global element or `form="qualified"`). A global attribute, a `ref` to one and `form="qualified"` / `attributeFormDefault="qualified"` put an attribute in the target namespace |
 
-Not mapped, and reported: a choice or a repeating group whose elements are not of different CLR types or that holds anything but elements (members of their own: optional for a choice, XMLESS011; a list each for a repeating group, which loses the order between them, XMLESS018); a substitution group whose elements are not of different types (the head only, XMLESS018); a `ref`, group or base type that is not in the schema (XMLESS018); `xs:restriction` of a named complex type, which is a derived class with no members (XMLESS011); `default` and `fixed` on an element that may be absent or of a type with no C# constant (XMLESS011). Members keep the order of the schema: the generator does not sort them with an unstable sort.
+Not mapped, and reported: a choice that holds a sequence, a group or an element that repeats, which one value cannot hold (an optional member each, XMLESS011; no document is lost); a repeating group that holds `xs:any` or one element name with two types (a list each, which loses the order between them, XMLESS018); a `ref`, group or base type that is not in the schema (XMLESS018); `xs:restriction` of a named complex type, which is a derived class with no members (XMLESS011); `default` and `fixed` on an element that may be absent or of a type with no C# constant (XMLESS011). Members keep the order of the schema: the generator does not sort them with an unstable sort.
 A type has no write fast path when it is abstract or has derived types, or a member holds one of those, a choice of elements, mixed content, extension data, or an element or item that names its own empty or other namespace through the form rules.
 ## Diagnostics
 
@@ -102,7 +102,7 @@ A type has no write fast path when it is abstract or has derived types, or a mem
 - XMLESS011 (info): the schema says something the generated code does not act on, and the documents stay the same (`xs:redefine`, `xs:notation`, identity constraints, `xs:choice`, `default`, `fixed`, a restriction of a complex type)
 - XMLESS012: name collision in generated C#: two types in one namespace, two members of one class, a member named like its class, or two values of one enumeration
 - XMLESS013: invalid XML name for a generated member
-- XMLESS018 (warning): the schema allows a document the generated types cannot read or write as the schema describes it (a repeating group or a substitution group whose elements are not of different types, a missing `ref`, group or base type, several global elements of one type)
+- XMLESS018 (warning): the schema allows a document the generated types cannot read or write as the schema describes it (a repeating group that holds a wildcard or one element name with two types, a missing `ref`, group or base type, several global elements of one type)
 
 ## Non-goals (this generator)
 

@@ -180,6 +180,7 @@
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlMixedContentItem",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlMixedElement",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlMixedText",
+                          "api-reference/CloudNimble/Text/Xml/Serialization/XmlNamedValue",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlNamespaceDeclarationAttribute",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlNumberHandling",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectCreationHandling",

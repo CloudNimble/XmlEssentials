@@ -104,6 +104,60 @@ namespace CloudNimble.XmlEssentials.Tests
             """;
 
         /// <summary>
+        /// A schema where elements that may stand in one place have one type: a choice of two text elements, a
+        /// sequence that repeats with two text elements and a group inside it, a choice of two elements of one
+        /// complex type, and a substitution group of text elements. It also has what stays as members of their
+        /// own: a choice with an element that repeats, and a group that repeats around a wildcard.
+        /// </summary>
+        private const string BoxSchema = """
+            <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+              <xs:element name="item" type="xs:string"/>
+              <xs:element name="thing" type="xs:string" substitutionGroup="item"/>
+              <xs:complexType name="Address">
+                <xs:sequence>
+                  <xs:element name="City" type="xs:string"/>
+                </xs:sequence>
+              </xs:complexType>
+              <xs:group name="Counted">
+                <xs:sequence>
+                  <xs:element name="Count" type="xs:int"/>
+                </xs:sequence>
+              </xs:group>
+              <xs:element name="Box">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:choice>
+                      <xs:element name="Home" type="xs:string"/>
+                      <xs:element name="Work" type="xs:string"/>
+                    </xs:choice>
+                    <xs:sequence maxOccurs="unbounded">
+                      <xs:element name="Key" type="xs:string"/>
+                      <xs:element name="Value" type="xs:string"/>
+                      <xs:group ref="Counted"/>
+                    </xs:sequence>
+                    <xs:choice>
+                      <xs:element name="BillTo" type="Address"/>
+                      <xs:element name="ShipTo" type="Address"/>
+                    </xs:choice>
+                    <xs:choice>
+                      <xs:element name="Many" type="xs:int" maxOccurs="unbounded"/>
+                      <xs:element name="One" type="xs:string"/>
+                    </xs:choice>
+                    <xs:choice>
+                      <xs:element name="Only" type="xs:int"/>
+                    </xs:choice>
+                    <xs:element ref="item"/>
+                    <xs:sequence minOccurs="0" maxOccurs="unbounded">
+                      <xs:element name="Left" type="xs:string"/>
+                      <xs:any/>
+                    </xs:sequence>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:schema>
+            """;
+
+        /// <summary>
         /// A schema with a target namespace whose local elements are in no namespace, as they are when the schema
         /// does not say <c>elementFormDefault="qualified"</c>.
         /// </summary>
@@ -256,56 +310,74 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void ElementsOfOneType_CannotShareAMember_SoEachIsAMemberAndItIsReported()
+        public void ElementsOfOneType_ShareAMemberThatHoldsNamedValues()
         {
-            const string schema = """
-                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-                  <xs:element name="item" type="xs:string"/>
-                  <xs:element name="thing" type="xs:string" substitutionGroup="item"/>
-                  <xs:element name="Box">
-                    <xs:complexType>
-                      <xs:sequence>
-                        <xs:choice>
-                          <xs:element name="Home" type="xs:string"/>
-                          <xs:element name="Work" type="xs:string"/>
-                        </xs:choice>
-                        <xs:sequence maxOccurs="unbounded">
-                          <xs:element name="Key" type="xs:string"/>
-                          <xs:element name="Value" type="xs:string"/>
-                        </xs:sequence>
-                        <xs:choice>
-                          <xs:element name="Many" type="xs:int" maxOccurs="unbounded"/>
-                          <xs:element name="One" type="xs:string"/>
-                        </xs:choice>
-                        <xs:choice>
-                          <xs:element name="Only" type="xs:int"/>
-                        </xs:choice>
-                        <xs:element ref="item"/>
-                      </xs:sequence>
-                    </xs:complexType>
-                  </xs:element>
-                </xs:schema>
-                """;
-
-            var (declared, diagnostics) = XmlSerializerXsdMappingTests.Generate(schema, "box.xsd");
+            var (declared, diagnostics) = XmlSerializerXsdMappingTests.Generate(BoxSchema, "box.xsd");
 
             diagnostics.Should().Equal(
-                "Info XMLESS011: xs:choice in 'Box' is mapped as optional members, because its alternatives are not single elements of different types.",
-                "Warning XMLESS018: A repeating xs:sequence in 'Box' is mapped as members that each repeat, because its elements are not of different types. The order between them is not kept.",
-                "Info XMLESS011: xs:choice in 'Box' is mapped as optional members, because its alternatives are not single elements of different types.",
-                "Warning XMLESS018: The elements that may stand for 'item' in 'Box' are not of different types, so only 'item' itself is read and written there.");
+                "Info XMLESS011: xs:choice in 'Box' is mapped as optional members, because its alternatives are not single elements.",
+                "Warning XMLESS018: A repeating xs:sequence in 'Box' is mapped as members that each repeat, because it holds a wildcard or one element name with two types. The order between them is not kept.");
             declared.Should().Equal(
                 "class " + G + "Box [" + S + ".XmlRootAttribute(\"Box\")]",
-                "  string? Home [" + Ignore + "]",
-                "  string? Work [" + Ignore + "]",
-                "  System.Collections.Generic.List<string>? Key",
-                "  System.Collections.Generic.List<string>? Value",
+                "  " + S + ".XmlNamedValue? Item [" + S + ".XmlElementAttribute<System.String>(\"Home\"), " + S + ".XmlElementAttribute<System.String>(\"Work\"), " + Ignore + "]",
+                "  System.Collections.Generic.List<" + S + ".XmlNamedValue>? Items [" + S + ".XmlElementAttribute<System.String>(\"Key\"), " + S + ".XmlElementAttribute<System.String>(\"Value\"), " + S + ".XmlElementAttribute<System.Int32>(\"Count\")]",
+                "  " + S + ".XmlNamedValue? Item2 [" + S + ".XmlElementAttribute<" + G + "Address>(\"BillTo\"), " + S + ".XmlElementAttribute<" + G + "Address>(\"ShipTo\"), " + Ignore + "]",
                 "  System.Collections.Generic.List<int>? Many",
                 "  string? One [" + Ignore + "]",
                 "  int Only",
-                "  string? item [" + Ignore + "]",
-                "class " + G + "BoxXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<" + G + "Box>]",
-                "  " + S + ".XmlTypeInfo<" + G + "Box> Box");
+                "  " + S + ".XmlNamedValue? item [" + S + ".XmlElementAttribute<System.String>(\"item\"), " + S + ".XmlElementAttribute<System.String>(\"thing\"), " + Ignore + "]",
+                "  System.Collections.Generic.List<string>? Left",
+                "  " + S + ".XmlExtensionData? Extra [" + S + ".XmlExtensionDataAttribute]",
+                "class " + G + "Address [" + S + ".XmlRootAttribute(\"Address\")]",
+                "  string? City [" + Ignore + "]",
+                "class " + G + "BoxXmlContext : XmlSerializerContext [" + S + ".XmlSerializableAttribute<" + G + "Box>, " + S + ".XmlSerializableAttribute<" + G + "Address>, " + S + ".XmlSerializableAttribute<" + S + ".XmlNamedValue>]",
+                "  " + S + ".XmlTypeInfo<" + G + "Box> Box",
+                "  " + S + ".XmlTypeInfo<" + G + "Address> Address",
+                "  " + S + ".XmlTypeInfo<" + S + ".XmlNamedValue> XmlNamedValue");
+        }
+
+        [TestMethod]
+        public void ElementsOfOneType_AreReadAndWrittenByName_InTheOrderOfTheDocument_AsReflectionDoes()
+        {
+            XmlSerializerXsdMappingTests.Execute(BoxSchema, "box.xsd", """
+                using System;
+                using System.Linq;
+                using CloudNimble.Text.Xml;
+                using CloudNimble.Text.Xml.Serialization;
+                using XmlEssentials.Generated;
+
+                public static class Use
+                {
+                    private static string Show(XmlNamedValue named)
+                    {
+                        return named.Name + "=" + (named.Value is Address address ? "address(" + address.City + ")" : named.Value);
+                    }
+
+                    public static string Run()
+                    {
+                        // Work and Home are both text, and so are Key and Value. The element name is what tells them apart.
+                        const string document =
+                            "<Box><Work>w</Work>" +
+                            "<Key>k1</Key><Value>v1</Value><Count>1</Count><Key>k2</Key><Value>v2</Value><Count>2</Count>" +
+                            "<ShipTo><City>Paris</City></ShipTo><Many>7</Many><Only>3</Only><thing>t</thing></Box>";
+                        var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+                        var context = new BoxXmlContext(options);
+                        var read = XmlSerializer.Deserialize(document, context.Box)!;
+                        var shown = string.Join("|", Show(read.Item!), string.Join(",", read.Items!.Select(Show)), Show(read.Item2!), read.Many![0], read.Only, Show(read.item!));
+                        var written = XmlSerializer.Serialize(read, context.Box);
+                        var reflected = XmlSerializer.Serialize(read, new XmlSerializerOptions { OmitXmlDeclaration = true });
+
+                        // A value made in code names its element the same way.
+                        var made = new Box { Item = new XmlNamedValue("Home", "h"), Items = [new XmlNamedValue("Value", "v"), new XmlNamedValue("Key", "k")], Only = 1 };
+                        return shown + "\n" + (written == document ? "identical" : written) + "\n" + (written == reflected ? "same" : "reflection: " + reflected)
+                            + "\n" + XmlSerializer.Serialize(made, context.Box);
+                    }
+                }
+                """).Should().Be(
+                    "Work=w|Key=k1,Value=v1,Count=1,Key=k2,Value=v2,Count=2|ShipTo=address(Paris)|7|3|thing=t\n" +
+                    "identical\n" +
+                    "same\n" +
+                    "<Box><Home>h</Home><Value>v</Value><Key>k</Key><Only>1</Only></Box>");
         }
 
         [TestMethod]

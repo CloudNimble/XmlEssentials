@@ -214,6 +214,15 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample16_Polymorphism_NameEachValue()
+        {
+            SampleOutput.Capture(Polymorphism.NameEachValue).Should().Be(
+                "<ContactCard><Work>555-0100</Work><Home>555-0199</Home></ContactCard>\n" +
+                "Work: 555-0100\n" +
+                "Home: 555-0199");
+        }
+
+        [TestMethod]
         public void Sample16_Polymorphism_FallBackToAncestor()
         {
             SampleOutput.Capture(Polymorphism.FallBackToAncestor).Should().Be(

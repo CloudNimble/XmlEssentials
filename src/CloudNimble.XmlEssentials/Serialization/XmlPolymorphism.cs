@@ -33,6 +33,12 @@ namespace CloudNimble.Text.Xml.Serialization
         internal readonly bool HasElementNames;
 
         /// <summary>
+        /// Whether the member holds <see cref="XmlNamedValue"/>: each value names its element, so two elements may
+        /// hold one type.
+        /// </summary>
+        internal bool IsNamed { get; init; }
+
+        /// <summary>
         /// Whether a value read here has to be checked for a derived type.
         /// </summary>
         internal readonly bool IsActive;
@@ -163,7 +169,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </remarks>
         internal object? ReadDerived(ref Utf8XmlReader reader, XmlDerivedBinding derived)
         {
-            if (!DeclaredType.IsAssignableFrom(derived.Type))
+            if (!IsNamed && !DeclaredType.IsAssignableFrom(derived.Type))
             {
                 throw XmlException.Create($"The element identifies the type '{derived.Type}', which is not a '{DeclaredType}'.");
             }
@@ -176,9 +182,12 @@ namespace CloudNimble.Text.Xml.Serialization
             try
             {
                 // An alternative of a choice may be of a type whose own derived types an attribute identifies.
-                return derived.Nested is { } nested
+                var value = derived.Nested is { } nested
                     ? nested.ReadValue(ref reader, derived.Info)
                     : derived.Info.ReadElementAsObject(ref reader);
+
+                // A named value remembers which element it was, since its type does not say.
+                return IsNamed ? new XmlNamedValue(derived.Discriminator, value) { Namespace = derived.Namespace } : value;
             }
             catch (XmlException ex)
             {
@@ -280,6 +289,46 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             throw new NotSupportedException($"The type '{runtime}' is not a declared derived type of '{DeclaredType}'.");
+        }
+
+        /// <summary>
+        /// Finds the element a value is written under, and what is written inside it.
+        /// </summary>
+        /// <param name="value">
+        /// The value of the member or the item. When this method returns, what is written inside the element: the
+        /// same value, or the value a <see cref="XmlNamedValue"/> holds, which may be null.
+        /// </param>
+        /// <returns>The binding, or null when the value is written under the member's own name.</returns>
+        /// <exception cref="NotSupportedException">
+        /// The type of the value has no element; or a named value names an element the member does not have, or
+        /// holds a value that is not of the type of its element.
+        /// </exception>
+        internal XmlDerivedBinding? ResolveWrite(ref object? value)
+        {
+            if (!IsNamed)
+            {
+                return TryGetDerivedWrite(value!.GetType());
+            }
+
+            var named = (XmlNamedValue)value!;
+            foreach (var derived in Derived)
+            {
+                if (derived.Discriminator != named.Name || (named.Namespace is not null && named.Namespace != derived.Namespace))
+                {
+                    continue;
+                }
+
+                var content = named.Value;
+                if (content is not null && content.GetType() != derived.Type && (derived.Nested is null || !derived.Type.IsInstanceOfType(content)))
+                {
+                    throw new NotSupportedException($"The element '{named.Name}' holds a value of type '{derived.Type}', and the value given for it is of type '{content.GetType()}'.");
+                }
+
+                value = content;
+                return derived;
+            }
+
+            throw new NotSupportedException($"The member has no element named '{named.Name}' for a {nameof(XmlNamedValue)}.");
         }
 
         #endregion

@@ -14,6 +14,11 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
         #region Fields
 
+        /// <summary>
+        /// The CLR type of a value that names its element, which a member holds when two of its elements have one type.
+        /// </summary>
+        internal const string NamedValue = "global::CloudNimble.Text.Xml.Serialization.XmlNamedValue";
+
         internal const string Xs = "http://www.w3.org/2001/XMLSchema";
 
         #endregion
@@ -409,12 +414,34 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var listed = new HashSet<string>(StringComparer.Ordinal);
             var objectCount = typeSpecs.Count;
             var hasMixed = false;
+            var hasNamed = false;
             for (var i = 0; i < objectCount; i++)
             {
                 foreach (var member in typeSpecs[i].Members)
                 {
                     hasMixed |= member.IsMixed;
+                    hasNamed |= (member.IsCollection ? member.ItemTypeName : member.ClrTypeName) == NamedValue;
                 }
+            }
+
+            if (hasNamed)
+            {
+                // A member that holds named values is of this type, which the runtime library asks the context for.
+                var named = new[]
+                {
+                    new MemberSpec("Name", "string", "Name", "", false, false, false, false, false, "", "", true, false, true, -1, -1, false, false),
+                    new MemberSpec("Namespace", "string", "Namespace", "", false, false, false, false, false, "", "", true, false, true, -1, -1, false, false),
+                    new MemberSpec("Value", "object", "Value", "", false, false, false, false, false, "", "", true, false, true, -1, -1, false, false),
+                };
+                typeSpecs.Add(new TypeSpec(
+                    NamedValue,
+                    "XmlNamedValue",
+                    0,
+                    false,
+                    true,
+                    false,
+                    new EquatableArray<MemberSpec>(named),
+                    metadata: MetadataBuilder.BuildFromMembers(NamedValue, named)));
             }
 
             if (hasMixed)
@@ -891,7 +918,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             if (isChoice)
             {
-                bind.Note("xs:choice in '" + owner + "' is mapped as optional members, because its alternatives are not single elements of different types.");
+                bind.Note("xs:choice in '" + owner + "' is mapped as optional members, because its alternatives are not single elements.");
                 optional = true;
             }
 
@@ -901,7 +928,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 var particles = compositor.Elements.FindAll(static particle => particle.NamespaceUri == Xs && particle.LocalName != "annotation");
                 if (!repeating && !(particles.Count == 1 && particles[0].LocalName == "element"))
                 {
-                    bind.Warn("A repeating xs:" + compositor.LocalName + " in '" + owner + "' is mapped as members that each repeat, because its elements are not of different types. The order between them is not kept.");
+                    bind.Warn("A repeating xs:" + compositor.LocalName + " in '" + owner + "' is mapped as members that each repeat, because it holds a wildcard or one element name with two types. The order between them is not kept.");
                 }
 
                 repeating = true;
@@ -947,34 +974,22 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="optional">Whether nothing of the compositor may be present.</param>
         /// <param name="isList">Whether the compositor repeats, so that the member is a list.</param>
         /// <returns>
-        /// <see langword="false"/> when the compositor holds anything but elements, an element that repeats inside
-        /// a choice that does not, or two elements of one type. Nothing is added then.
+        /// <see langword="false"/> when the compositor holds a wildcard, fewer than two elements, one element name
+        /// with two types, or, for a choice that does not repeat, anything but single elements. Nothing is added then.
         /// </returns>
+        /// <remarks>
+        /// A value is written under the element of its type. When two of the elements have one CLR type, the type
+        /// does not say which element a value is, so the member holds <c>XmlNamedValue</c>, where each value names
+        /// its element. A group that repeats is one list whatever groups it holds inside, because the list keeps
+        /// the order of the document, which is what separate members would lose.
+        /// </remarks>
         internal static bool TryBindAsOneMember(MiniElement compositor, string owner, XsdBindContext bind, List<MemberSpec> members, bool optional, bool isList)
         {
             // First the elements are found. What is reported while finding them is reported again when the
             // particles become members of their own, so it is taken back if this does not work out.
             var reported = bind.Diagnostics.Count;
             var elements = new List<(MiniElement Particle, string Name, MiniElement Declaration, bool IsReference)>();
-            var bound = true;
-            foreach (var particle in compositor.Elements)
-            {
-                if (particle.NamespaceUri != Xs || particle.LocalName == "annotation")
-                {
-                    continue;
-                }
-
-                if (particle.LocalName != "element"
-                    || (!isList && Repeats(particle))
-                    || !TryResolveElement(particle, owner, bind, out var name, out var declaration, out var isReference))
-                {
-                    bound = false;
-                    break;
-                }
-
-                elements.Add((particle, name, declaration, isReference));
-            }
-
+            var bound = TryCollectElements(compositor, owner, bind, elements, isList, new HashSet<string>(StringComparer.Ordinal));
             var found = bind.Diagnostics.Count;
 
             // Then their types. A class written for an anonymous type stays written, and so does what it reports.
@@ -983,7 +998,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 if (isReference && bind.Substitutes.ContainsKey(name))
                 {
-                    bound &= TryCollectSubstitutes(name, owner, bind, alternatives, new HashSet<string>(StringComparer.Ordinal));
+                    CollectSubstitutes(name, owner, bind, alternatives, new HashSet<string>(StringComparer.Ordinal));
                     continue;
                 }
 
@@ -992,7 +1007,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             // One element is an element: a sequence of one that repeats is a list of it, which needs no choice.
-            if (!bound || alternatives.Count < 2 || !HaveDifferentTypes(alternatives))
+            if (!bound || !TryMergeAlternatives(alternatives) || alternatives.Count < 2)
             {
                 bind.Diagnostics.RemoveRange(reported, found - reported);
                 return false;
@@ -1000,9 +1015,109 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
 
             // The name is the generator's, so EmitClass makes it give way to the names the schema gives.
             var ident = isList ? "Items" : "Item";
-            AddChoice(members, ident, ident, CommonType(alternatives, bind), alternatives, isList);
+            AddChoice(members, ident, ident, HaveDifferentTypes(alternatives) ? CommonType(alternatives, bind) : NamedValue, alternatives, isList);
             var added = members[members.Count - 1];
             added.Xsd!.HasGeneratedName = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Collects the element particles of a compositor.
+        /// </summary>
+        /// <param name="compositor">The compositor.</param>
+        /// <param name="owner">The owning class name.</param>
+        /// <param name="bind">The bind context.</param>
+        /// <param name="elements">The list the elements are added to.</param>
+        /// <param name="isList">Whether the compositor repeats, so that the groups inside it are followed.</param>
+        /// <param name="groups">The named groups being followed, which is how a group that holds itself is found.</param>
+        /// <returns>
+        /// <see langword="false"/> for a wildcard, an element that cannot be resolved, and, in a choice that does
+        /// not repeat, an element that repeats or a group: one value cannot hold those.
+        /// </returns>
+        internal static bool TryCollectElements(
+            MiniElement compositor,
+            string owner,
+            XsdBindContext bind,
+            List<(MiniElement Particle, string Name, MiniElement Declaration, bool IsReference)> elements,
+            bool isList,
+            HashSet<string> groups)
+        {
+            foreach (var particle in compositor.Elements)
+            {
+                if (particle.NamespaceUri != Xs || particle.LocalName == "annotation")
+                {
+                    continue;
+                }
+
+                if (particle.LocalName == "element")
+                {
+                    if ((!isList && Repeats(particle)) || !TryResolveElement(particle, owner, bind, out var name, out var declaration, out var isReference))
+                    {
+                        return false;
+                    }
+
+                    elements.Add((particle, name, declaration, isReference));
+                    continue;
+                }
+
+                if (!isList)
+                {
+                    return false;
+                }
+
+                if (particle.LocalName is "sequence" or "choice" or "all")
+                {
+                    if (!TryCollectElements(particle, owner, bind, elements, isList, groups))
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                // A reference to a named group stands for the particles of the group. Anything else (a wildcard)
+                // has no element name to stand for a type.
+                if (particle.LocalName != "group"
+                    || !bind.Groups.TryGetValue(LocalName(particle.Attr("ref") ?? ""), out var group)
+                    || !groups.Add(LocalName(particle.Attr("ref") ?? "")))
+                {
+                    return false;
+                }
+
+                if (!TryCollectElements(group, owner, bind, elements, isList, groups))
+                {
+                    return false;
+                }
+
+                groups.Remove(LocalName(particle.Attr("ref") ?? ""));
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Makes each element name appear once among the alternatives.
+        /// </summary>
+        /// <param name="alternatives">The alternatives, which may name one element more than once.</param>
+        /// <returns><see langword="false"/> when one element name has two types, so that a name would not say which.</returns>
+        internal static bool TryMergeAlternatives(List<XsdAlternative> alternatives)
+        {
+            for (var index = alternatives.Count - 1; index > 0; index--)
+            {
+                var earlier = alternatives.FindIndex(alternative => alternative.Name == alternatives[index].Name && alternative.Namespace == alternatives[index].Namespace);
+                if (earlier == index)
+                {
+                    continue;
+                }
+
+                if (alternatives[earlier].ClrTypeName != alternatives[index].ClrTypeName)
+                {
+                    return false;
+                }
+
+                alternatives.RemoveAt(index);
+            }
+
             return true;
         }
 
@@ -1082,16 +1197,15 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="bind">The bind context.</param>
         /// <param name="alternatives">The list the elements are added to.</param>
         /// <param name="visited">The heads that have been followed.</param>
-        /// <returns><see langword="false"/> when two of them have one CLR type.</returns>
         /// <remarks>
         /// An element that is abstract cannot appear in a document, so it is not added; the elements that stand
         /// for it are.
         /// </remarks>
-        internal static bool TryCollectSubstitutes(string head, string owner, XsdBindContext bind, List<XsdAlternative> alternatives, HashSet<string> visited)
+        internal static void CollectSubstitutes(string head, string owner, XsdBindContext bind, List<XsdAlternative> alternatives, HashSet<string> visited)
         {
             if (!visited.Add(head) || !bind.GlobalElements.TryGetValue(head, out var declaration))
             {
-                return true;
+                return;
             }
 
             if (declaration.Attr("abstract") != "true")
@@ -1104,11 +1218,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 foreach (var substitute in substitutes)
                 {
-                    TryCollectSubstitutes(substitute, owner, bind, alternatives, visited);
+                    CollectSubstitutes(substitute, owner, bind, alternatives, visited);
                 }
             }
-
-            return HaveDifferentTypes(alternatives);
         }
 
         /// <summary>
@@ -1234,22 +1346,21 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 // Where the head of a substitution group is allowed, so is each element of the group.
                 var substitutes = new List<XsdAlternative>();
-                if (TryCollectSubstitutes(name, owner, bind, substitutes, new HashSet<string>(StringComparer.Ordinal)))
+                CollectSubstitutes(name, owner, bind, substitutes, new HashSet<string>(StringComparer.Ordinal));
+                if (substitutes.Count > 0)
                 {
-                    if (substitutes.Count > 0)
-                    {
-                        var headType = declaration.Attr("type") is { } type && bind.ComplexTypes.ContainsKey(LocalName(type)) ? LocalName(type) : null;
-                        var declared = headType is not null && substitutes.TrueForAll(substitute => substitute.TypeName is not null && DerivesFrom(substitute.TypeName, headType, bind))
-                            ? bind.TypeMap[headType]
-                            : "object";
-                        // One element that may stand there is that element, with its own type.
-                        AddChoice(members, ident, name, substitutes.Count == 1 ? substitutes[0].ClrTypeName : declared, substitutes, unbounded);
-                    }
+                    var headType = declaration.Attr("type") is { } type && bind.ComplexTypes.ContainsKey(LocalName(type)) ? LocalName(type) : null;
+                    var declared = headType is not null && substitutes.TrueForAll(substitute => substitute.TypeName is not null && DerivesFrom(substitute.TypeName, headType, bind))
+                        ? bind.TypeMap[headType]
+                        : "object";
 
-                    return;
+                    // One element that may stand there is that element, with its own type. Elements of one type
+                    // are told apart by name, which a named value carries.
+                    AddChoice(members, ident, name, substitutes.Count == 1 ? substitutes[0].ClrTypeName : HaveDifferentTypes(substitutes) ? declared : NamedValue, substitutes, unbounded);
                 }
 
-                bind.Warn("The elements that may stand for '" + name + "' in '" + owner + "' are not of different types, so only '" + name + "' itself is read and written there.");
+                // With no element left to stand there, the head being abstract, nothing can appear.
+                return;
             }
 
             // The elements that may stand for the head of a substitution group are a choice, which the member of

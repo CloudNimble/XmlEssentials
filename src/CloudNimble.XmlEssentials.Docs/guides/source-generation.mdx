@@ -288,7 +288,7 @@ The generator reports problems as compiler diagnostics in the `XmlEssentials` ca
 | `XMLESS012` | The generated C# name '*name*' is used more than once | Two schema components produce the same class or enumeration name. |
 | `XMLESS013` | The XML name '*name*' is not a valid XML Name | A schema names an element or attribute with a name that isn't a valid XML name. |
 | `XMLESS015` | Member '*type*.*member*' is mapped as XML text, and its type is not a single value | A member with `[XmlText]` or `[XmlCData]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
-| `XMLESS018` | Varies | Warning. A schema allows a document that the generated classes can't read or write as the schema describes it. See [Generate types from an XSD](/guides/xsd-source-generation#not-mapped). |
+| `XMLESS018` | Varies | Warning. A schema allows a document that the generated classes can't read or write as the schema describes it. See [Generate types from an XSD](/guides/xsd-source-generation#limitations). |
 | `XMLESS017` | '*member*' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read | A required member is marked `[XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]`. Remove one of the two. |
 
 The IDs `XMLESS008`, `XMLESS009`, `XMLESS014`, and `XMLESS016` aren't used.

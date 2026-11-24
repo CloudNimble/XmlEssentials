@@ -17,6 +17,12 @@ namespace CloudNimble.Text.Xml.Serialization
         internal XmlTypeInfo Info { get; }
 
         /// <summary>
+        /// Gets the namespace the element was declared with, when this is an alternative of a choice of elements
+        /// that names one; otherwise <see langword="null"/>.
+        /// </summary>
+        internal string? Namespace { get; init; }
+
+        /// <summary>
         /// Gets the derived types of this type that an attribute identifies inside its element, when this is an
         /// alternative of a choice of elements; otherwise <see langword="null"/>.
         /// </summary>
@@ -88,13 +94,19 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Writes the attributes and content of a value inside the element of this derived type.
         /// </summary>
         /// <param name="writer">The writer, inside the start tag.</param>
-        /// <param name="value">The value, of this type or of a type that derives from it.</param>
+        /// <param name="value">The value, of this type or of a type that derives from it, or null.</param>
         /// <remarks>
         /// A value of a type that derives from an alternative of a choice is written with the discriminator the
-        /// alternative's own type gives it.
+        /// alternative's own type gives it. A null, which only a named value can hold here, is marked <c>xsi:nil</c>.
         /// </remarks>
-        internal void WriteContent(Utf8XmlWriter writer, object value)
+        internal void WriteContent(Utf8XmlWriter writer, object? value)
         {
+            if (value is null)
+            {
+                writer.WriteNilValue();
+                return;
+            }
+
             if (Nested is { } nested && value.GetType() != Type && nested.TryGetDerivedWrite(value.GetType()) is { } inner)
             {
                 XmlConverterHelpers.WriteDiscriminator(writer, nested.Placement, nested.Utf8DiscriminatorAttributeName, inner.Discriminator);

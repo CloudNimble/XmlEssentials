@@ -1685,6 +1685,10 @@ namespace CloudNimble.XmlEssentials.Tests
 
                     [XmlArray("wrap", Namespace = "")]
                     public List<int> Numbers { get; set; } = new();
+
+                    [XmlElement<string>("key")]
+                    [XmlElement<string>("value")]
+                    public List<XmlNamedValue> Pairs { get; set; } = new();
                 }
 
                 [XmlSerializable<Page>]
@@ -1702,15 +1706,17 @@ namespace CloudNimble.XmlEssentials.Tests
                         page.Many.Add(new Square { S = 3 });
                         page.Wrapped.Add(new Circle { R = 4 });
                         page.Numbers.Add(5);
-                        return Both.Write(page, o => new AppXmlContext(o).Page, p => p.One!.GetType().Name + "," + p.Many.Count + "," + p.Many[2].GetType().Name + "," + p.Wrapped[0].GetType().Name + "," + p.Local + "," + p.Numbers[0]);
+                        page.Pairs.Add(new XmlNamedValue("value", "v"));
+                        page.Pairs.Add(new XmlNamedValue("key", "k"));
+                        return Both.Write(page, o => new AppXmlContext(o).Page, p => p.One!.GetType().Name + "," + p.Many.Count + "," + p.Many[2].GetType().Name + "," + p.Wrapped[0].GetType().Name + "," + p.Local + "," + p.Numbers[0] + "," + p.Pairs[0].Name + "=" + p.Pairs[0].Value + "," + p.Pairs[1].Name + "=" + p.Pairs[1].Value);
                     }
                 }
                 """ + Compare).Should().Be(
                 "<page xmlns=\"urn:p\"><square><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><S>1</S></square>"
                 + "<t>a</t><n>2</n><sq><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><S>3</S></sq>"
                 + "<wrapped><c><Name xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><R>4</R></c></wrapped>"
-                + "<local xmlns=\"\">l</local><wrap xmlns=\"\"><int>5</int></wrap></page>"
-                + "\nsame\nSquare,3,Square,Circle,l,5\nSquare,3,Square,Circle,l,5");
+                + "<local xmlns=\"\">l</local><wrap xmlns=\"\"><int>5</int></wrap><value>v</value><key>k</key></page>"
+                + "\nsame\nSquare,3,Square,Circle,l,5,value=v,key=k\nSquare,3,Square,Circle,l,5,value=v,key=k");
         }
 
         [TestMethod]

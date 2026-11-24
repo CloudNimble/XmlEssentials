@@ -148,7 +148,8 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
         /// <remarks>
         /// The document names the derived type with a prefix in <c>xsi:type</c>, as a document written against the
         /// schema by another producer does. The optional elements it leaves out are left out again, the attribute
-        /// it leaves out has its default, and the choice that repeats keeps its order, mixed content included.
+        /// it leaves out has its default, the choice of two text elements says which one it was, and the choice that
+        /// repeats keeps its order, mixed content included.
         /// </remarks>
         internal static void CheckShapesFromXsd()
         {
@@ -156,12 +157,12 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
                 "<d:drawing xmlns:d=\"urn:shapes\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" scale=\"1.5\">" +
                 "<d:Main xsi:type=\"d:Ring\" id=\"1\"><d:Name>m</d:Name><d:Radius>3</d:Radius></d:Main>" +
                 "<d:Mode>next-day</d:Mode><d:Tags><d:Tag>a</d:Tag><d:Tag>b</d:Tag></d:Tags>" +
-                "<d:Text>t</d:Text><d:Body>one <d:b>two</d:b></d:Body><d:Count>5</d:Count></d:drawing>";
+                "<d:Work>w</d:Work><d:Text>t</d:Text><d:Body>one <d:b>two</d:b></d:Body><d:Count>5</d:Count></d:drawing>";
             const string expected =
                 "<drawing xmlns=\"urn:shapes\" scale=\"1.5\" rev=\"3\">" +
                 "<Main xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"Ring\" id=\"1\"><Name>m</Name><Radius>3</Radius></Main>" +
                 "<Mode>next-day</Mode><Tags><Tag>a</Tag><Tag>b</Tag></Tags>" +
-                "<Text>t</Text><Body>one <d:b xmlns:d=\"urn:shapes\">two</d:b></Body><Count>5</Count></drawing>";
+                "<Work>w</Work><Text>t</Text><Body>one <d:b xmlns:d=\"urn:shapes\">two</d:b></Body><Count>5</Count></drawing>";
             var context = new ShapesXmlContext(new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultNamespace = "urn:shapes" });
             var read = XmlSerializer.Deserialize(document, context.Drawing);
             if (read?.Main is not Ring { id: 1, Name: "m", Radius: 3, Inner: null }
@@ -169,6 +170,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
                 || read.Note is not null
                 || read.Tags is not ["a", "b"]
                 || read.rev != 3
+                || read.Item is not { Name: "Work", Value: "w" }
                 || read.Items is not ["t", Para { Content: [XmlMixedText { Text: "one " }, XmlMixedElement] }, 5])
             {
                 throw new InvalidOperationException("xsd-shapes was not read as the document gives it.");

@@ -341,10 +341,52 @@ String
 
 Each item is written under the element of its own type, and the list keeps its order when it is read back. The same works on a member that holds one value, and inside a wrapper with more than one `[XmlArrayItem<T>]`.
 
-- Each type can have one element name and each element name one type, because a value is written under the element of its type. Two elements for one type are refused when the type is first used.
+- Each type can have one element name and each element name one type, because a value is written under the element of its type. Two elements for one type are refused when the type is first used, unless the member holds [named values](#when-two-elements-hold-the-same-type).
 - Every type must be assignable to the member's type, or to the item type of a collection.
 - A value whose type has no element is refused with a `NotSupportedException`, except a value of the member's own type, which is written under the member's name.
 - When the type of an element declares derived types with `xsi:type` or an attribute, they still apply inside that element: a value of one of them is written under the element of its base type, with its discriminator.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+### When two elements hold the same type
+
+A `Home` and a `Work` element that both hold text can't be told apart by the type of the value. Declare the member as [`XmlNamedValue`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNamedValue), or as a collection of it, and each value says which element it is:
+
+```csharp ContactCard.cs
+public sealed class ContactCard
+{
+    [XmlElement<string>("Home")]
+    [XmlElement<string>("Work")]
+    public List<XmlNamedValue> Phones { get; set; } = [];
+}
+```
+
+```csharp Program.cs
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var card = new ContactCard
+{
+    Phones = { new XmlNamedValue("Work", "555-0100"), new XmlNamedValue("Home", "555-0199") },
+};
+
+string xml = XmlSerializer.Serialize(card, options);
+output.WriteLine(xml);
+
+ContactCard read = XmlSerializer.Deserialize<ContactCard>(xml, options)!;
+foreach (XmlNamedValue phone in read.Phones)
+{
+    output.WriteLine($"{phone.Name}: {phone.Value}");
+}
+```
+
+The code produces the following output:
+
+```
+<ContactCard><Work>555-0100</Work><Home>555-0199</Home></ContactCard>
+Work: 555-0100
+Home: 555-0199
+```
+
+The name must be one of the member's elements, and the value must be of the type that element holds; anything else is refused with a `NotSupportedException` when it is written. A value that is `null` is written as an element marked `xsi:nil="true"`.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
