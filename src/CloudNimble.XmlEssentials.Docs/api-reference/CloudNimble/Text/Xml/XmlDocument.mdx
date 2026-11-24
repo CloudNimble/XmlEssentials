@@ -347,7 +347,7 @@ Open a `Utf8XmlWriter`, write your own elements, and call `XmlElement.WriteTo` f
 - `Dispose` clears the buffers and returns them to `ArrayPool<T>.Shared`. After that, the document and every `XmlElement` from it throw `ObjectDisposedException`.
 - Parsing allocates the `XmlDocument` object and, in the usual case, nothing else. In the project's benchmarks, parsing four real documents takes 0.34 to 0.42 of the time `System.Xml.XmlDocument` takes and allocates about 104 bytes. See [Benchmarks](/benchmarks).
 - The whole document is in memory. For input that is too large for that, read it with `Utf8XmlReader` and use `ParseValue` for the parts that need random access.
-- There is no document cache and no `ParseAsync`.
+- `ParseAsync` reads the stream asynchronously and then parses it in one pass.
 
 ### What is kept
 
@@ -720,6 +720,56 @@ An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation
 When [XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount) is set, reading stops as soon as the
 stream is found to be longer than that limit. The stream is not closed.
 
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ParseAsync
+
+Parses a stream of UTF-8 bytes that holds a single XML document into an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument),
+without blocking the calling thread. The stream is read to completion.
+
+#### Syntax
+
+```csharp
+public static System.Threading.Tasks.Task<CloudNimble.Text.Xml.XmlDocument> ParseAsync(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions), System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8Xml` | `System.IO.Stream` | The stream that holds the UTF-8 encoded XML text to parse. |
+| `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
+document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
+to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
+| `cancellationToken` | `System.Threading.CancellationToken` | The token to monitor for cancellation requests. |
+
+#### Returns
+
+Type: `System.Threading.Tasks.Task<CloudNimble.Text.Xml.XmlDocument>`
+A task that produces an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation of the XML document.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `OperationCanceledException` | *cancellationToken* was canceled. |
+| `XmlException` | *utf8Xml* does not hold a well-formed XML document.
+-or-
+*utf8Xml* exceeds a limit that is set in *options*. |
+
+#### Examples
+
+```csharp
+await using var stream = File.OpenRead("catalog.xml");
+using var document = await XmlDocument.ParseAsync(stream);
+var count = document.RootElement.GetChild("item").GetChild("qty").GetInt32();
+```
+
+#### Remarks
+
+A [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) stream is refused before the task is created. When
+[XmlDocumentOptions.MaxDocumentByteCount](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#maxdocumentbytecount) is set, reading stops as soon as the stream
+is found to be longer than that limit. The stream is not closed.
+
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ParseValue
 
 Parses one XML element (including its attributes and descendants) from the provided reader.
@@ -826,6 +876,60 @@ the limits set in *options*; otherwise, [`false`](https://learn.microsoft.com/do
 
 This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) in every case where
 [XmlDocument.Parse](/api-reference/CloudNimble/Text/Xml/XmlDocument#parse) throws an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException).
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryParseValue
+
+Attempts to parse one XML element (including its attributes and descendants) from the provided reader.
+
+#### Syntax
+
+```csharp
+public static bool TryParseValue(ref CloudNimble.Text.Xml.Utf8XmlReader reader, out CloudNimble.Text.Xml.XmlDocument document)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `reader` | `CloudNimble.Text.Xml.Utf8XmlReader` | The reader to read. It is positioned on or before the start tag of the element. |
+| `document` | `CloudNimble.Text.Xml.XmlDocument?` | When this method returns, contains the parsed document if the element was read, or
+[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it was not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the element was read; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the reader's input ends
+before the element does and [Utf8XmlReader.IsFinalBlock](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isfinalblock) is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool),
+or if the reader is on an end tag.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `XmlException` | *reader* reaches an end tag before it reaches a start tag.
+-or-
+*reader* reaches the end of its input without reading an element, and
+[Utf8XmlReader.IsFinalBlock](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader#isfinalblock) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+-or-
+The XML that *reader* reads is not well formed. |
+
+#### Examples
+
+```csharp
+var reader = new Utf8XmlReader(block, isFinalBlock: false, state);
+if (!XmlDocument.TryParseValue(ref reader, out XmlDocument? item))
+{
+    // The element is not all in this block. Read more input and call again.
+}
+```
+
+#### Remarks
+
+This is the counterpart of `JsonDocument.TryParseValue`. When this method returns
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the reader is where [XmlDocument.ParseValue](/api-reference/CloudNimble/Text/Xml/XmlDocument#parsevalue) leaves it: on the end tag of
+the element, or on the element itself if it is an empty-element tag. When it returns
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) or throws, the reader is where it was before the call, so the caller can
+supply more input and call again. The element is read twice: once to find its end, and once to keep it.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteTo
 

@@ -1419,6 +1419,55 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void DerivedTypeNames_OfAMemberAndOfAWrappedCollection_DoNotCompete()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                [XmlDerivedType<Circle>]
+                [XmlDerivedType<Square>]
+                public abstract class Shape
+                {
+                    public string? Label { get; set; }
+                }
+
+                public sealed class Circle : Shape
+                {
+                    public double Radius { get; set; }
+                }
+
+                public sealed class Square : Shape
+                {
+                    public double Side { get; set; }
+                }
+
+                public sealed class Album
+                {
+                    public Shape? Cover { get; set; }
+
+                    [XmlArray]
+                    public List<Shape> Pages { get; set; } = new();
+                }
+
+                [XmlSerializable<Album>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Album album) => album.Cover!.GetType().Name + ":" + string.Join(",", album.Pages.Select(page => page.GetType().Name));
+                        var album = new Album { Cover = new Circle { Label = "c", Radius = 2 } };
+                        album.Pages.Add(new Square { Label = "s", Side = 4 });
+                        album.Pages.Add(new Circle { Label = "p", Radius = 3 });
+                        return Both.Write(album, o => new AppXmlContext(o).Album, Show);
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<Album><Circle><Label>c</Label><Radius>2</Radius></Circle><Pages><Square><Label>s</Label><Side>4</Side></Square><Circle><Label>p</Label><Radius>3</Radius></Circle></Pages></Album>\nsame\nCircle:Square,Circle\nCircle:Square,Circle");
+        }
+
+        [TestMethod]
         public void NullWrappedCollection_IsNil_UnlessTheIgnoreConditionLeavesItOut()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + """

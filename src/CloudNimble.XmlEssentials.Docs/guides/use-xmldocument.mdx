@@ -69,11 +69,38 @@ What to notice:
 
 - `RootElement` is the document element. It's where every query starts.
 - When you already have UTF-8 bytes, pass them as bytes. The `string` and `ReadOnlySpan<char>` overloads convert the text to UTF-8 first.
-- The `Stream` overload reads the stream to its end and doesn't close it. There is no `ParseAsync`; to parse from a stream without blocking, read the bytes yourself and pass them to `Parse`.
+- The `Stream` overload reads the stream to its end and doesn't close it. To read the stream without blocking, use [`ParseAsync`](#parse-a-stream-without-blocking).
 - The input must be UTF-8 (or text that the string overloads convert). In bytes, a declaration that names another encoding, such as `encoding="utf-16"`, is rejected. In a string or a span of characters, the declared encoding isn't checked.
 - Input that isn't a well-formed XML document throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). So does a document that has more than one root element, no root element, or a document type declaration (`<!DOCTYPE ...>`), which XmlEssentials never accepts.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)
+
+### Parse a stream without blocking
+
+`XmlDocument.ParseAsync` reads a `Stream` of UTF-8 to its end with asynchronous reads and then parses what it read. It's the counterpart of `JsonDocument.ParseAsync`.
+
+```csharp
+byte[] utf8 = """<Order id="1044"><Item>Monitor</Item></Order>"""u8.ToArray();
+
+await using var stream = new MemoryStream(utf8);
+using XmlDocument document = await XmlDocument.ParseAsync(stream);
+
+output.WriteLine($"order {document.RootElement.GetAttribute("id").GetInt32()}: {document.RootElement.GetChild("Item").GetString()}");
+```
+
+The code produces the following output:
+
+```text
+order 1044: Monitor
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)
+
+What to notice:
+
+- It takes the same `XmlDocumentOptions` as `Parse`, and a `CancellationToken`. A canceled token cancels the task.
+- A `null` stream throws `ArgumentNullException` from the call itself, not from the task.
+- The stream isn't closed. With `MaxDocumentByteCount` set, reading stops as soon as the stream is found to be longer than the limit.
 
 ## Dispose the document
 
@@ -186,6 +213,41 @@ What to notice:
 - Names are case-sensitive, as XML requires.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)
+
+### Pass a name as characters or as UTF-8
+
+`GetChild`, `TryGetChild`, `GetAttribute` and `TryGetAttribute` also take the name as a `ReadOnlySpan<char>` or as a `ReadOnlySpan<byte>` of UTF-8, as `JsonElement.GetProperty` and `TryGetProperty` do. Use them when the name is part of a longer string, or when you have it as a `u8` literal.
+
+```csharp
+const string xml = """<Order id="1042"><Customer>Ada Lovelace</Customer><Total>129.90</Total></Order>""";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+ReadOnlySpan<char> wanted = "Customer;Total;Discount";
+foreach (Range part in wanted.Split(';'))
+{
+    ReadOnlySpan<char> name = wanted[part];
+    output.WriteLine(order.TryGetChild(name, out XmlElement child)
+        ? $"{name}: {child.GetString()}"
+        : $"{name}: not in the order");
+}
+
+output.WriteLine($"id: {order.GetAttribute("id"u8).GetInt32()}");
+```
+
+The code produces the following output:
+
+```text
+Customer: Ada Lovelace
+Total: 129.90
+Discount: not in the order
+id: 1042
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)
+
+These overloads match the local name in any namespace. To match one namespace, use the overloads that take a `string`.
 
 ### Find names in a namespace
 
@@ -414,9 +476,9 @@ The getters follow the XML Schema lexical forms, not the current culture:
 | --- | --- | --- |
 | `GetString` | Any value. Returns it unchanged, white space included. | Never. Returns `null` for a nil element. |
 | `GetBoolean` | `true`, `false`, `1`, `0` | The value is anything else, including `True`. |
-| `GetInt32`, `GetInt64` | An optional sign and digits | The value isn't an integer or doesn't fit the type. |
+| `GetByte`, `GetSByte`, `GetInt16`, `GetUInt16`, `GetInt32`, `GetUInt32`, `GetInt64`, `GetUInt64` | An optional sign and digits | The value isn't an integer or doesn't fit the type. |
 | `GetDecimal` | An optional sign, digits, and a decimal point | The value has an exponent or doesn't fit a `decimal`. |
-| `GetDouble` | A decimal or exponent form, `INF`, `-INF`, `NaN` | The value isn't an `xs:double`. |
+| `GetDouble`, `GetSingle` | A decimal or exponent form, `INF`, `-INF`, `NaN` | The value isn't an `xs:double` or an `xs:float`. |
 | `GetDateTime`, `GetDateTimeOffset` | An `xs:dateTime` such as `2026-03-14T09:30:00Z` | The value isn't a date and time that the type can hold. |
 | `GetGuid` | The `D`, `N`, `B`, and `P` GUID formats | The value is in another format. |
 | `GetBytesFromBase64` | Base64 text | The value isn't valid Base64. |
@@ -424,10 +486,58 @@ The getters follow the XML Schema lexical forms, not the current culture:
 What to notice:
 
 - The typed getters ignore white space around the value, so `<Parcels> 3 </Parcels>` is the integer `3`. `GetString` returns `" 3 "`.
-- A failed conversion throws `XmlException`. It doesn't throw `FormatException`, and there are no `TryGetInt32`-style methods. To handle a value that might not parse, catch the exception or read the string and parse it yourself.
-- Only the types in the table have getters. For `float`, `short`, `byte`, the unsigned integers, `TimeSpan`, or an enum, call `GetString` and convert the result, or [deserialize the element](#deserialize-from-a-document-or-an-element).
+- A failed conversion throws `XmlException`. It doesn't throw `FormatException`. For a value that might not convert, use a [`TryGet` method](#read-a-value-that-might-not-convert).
+- For a `TimeSpan` or an enum, call `GetString` and convert the result, or [deserialize the element](#deserialize-from-a-document-or-an-element).
 - `GetDateTime` returns `DateTimeKind.Utc` for a value that ends in `Z`, `Unspecified` for a value with no time zone, and local time for any other offset. `GetDateTimeOffset` gives a value with no time zone the local offset. Use `GetDateTimeOffset` with explicit offsets when the result must not depend on the machine.
 - Name lookups, enumeration, and the numeric, Boolean, date, and GUID getters don't allocate. Members that return a `string` or a `byte[]` allocate that result.
+
+### Read a value that might not convert
+
+Each typed getter except `GetBoolean` and `GetString` has a `TryGet` counterpart, as `JsonElement` has: `TryGetInt32`, `TryGetDouble`, `TryGetGuid`, `TryGetBytesFromBase64` and the rest. It returns `false` when the value isn't in the form the type needs or doesn't fit the type.
+
+```csharp
+const string xml = """
+    <Reading sensor="12">
+      <Level>high</Level>
+      <Ratio>0.75</Ratio>
+      <Count>70000</Count>
+    </Reading>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement reading = document.RootElement;
+
+byte sensor = reading.GetAttribute("sensor").GetByte();
+float ratio = reading.GetChild("Ratio").GetSingle();
+output.WriteLine($"sensor: {sensor}");
+output.WriteLine($"ratio: {ratio.ToString(CultureInfo.InvariantCulture)}");
+
+XmlElement level = reading.GetChild("Level");
+output.WriteLine(level.TryGetInt32(out int number)
+    ? $"level: {number}"
+    : $"level: not an integer ('{level.GetString()}')");
+
+XmlElement count = reading.GetChild("Count");
+output.WriteLine($"count as a short: {count.TryGetInt16(out short small)} ({small})");
+output.WriteLine($"count as a uint: {count.TryGetUInt32(out uint large)} ({large})");
+```
+
+The code produces the following output:
+
+```text
+sensor: 12
+ratio: 0.75
+level: not an integer ('high')
+count as a short: False (0)
+count as a uint: True (70000)
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)
+
+What to notice:
+
+- When a `TryGet` method returns `false`, the value it gives back is the default for the type.
+- A `TryGet` method throws where the getter throws for a reason other than the value: `XmlException` for a nil element, which has no value, and `InvalidOperationException` for a default `XmlElement`.
 
 ## Read text and markup
 
@@ -784,6 +894,51 @@ What to notice:
 - The document copies what it keeps. It doesn't depend on the reader's input after `ParseValue` returns.
 - The reader's own `XmlReaderOptions` apply. `ParseValue` takes no `XmlDocumentOptions`.
 - If the reader has no element left to read, the document has no root, and `RootElement` throws an `XmlException`.
+
+### When the input arrives in blocks
+
+A reader that was created with `isFinalBlock: false` might be given only part of an element. `ParseValue` throws for an element that isn't complete. `TryParseValue` returns `false` instead and leaves the reader where it was, so you can read more input and call it again. It's the counterpart of `JsonDocument.TryParseValue`.
+
+```csharp
+ReadOnlySpan<byte> feed = """<Feed><Entry id="1"><Title>First post</Title></Entry><Entry id="2"><Title>Second post</Title></Entry></Feed>"""u8;
+
+// The first block of the input ends inside the second entry.
+var reader = new Utf8XmlReader(feed[..80], isFinalBlock: false, default);
+while (reader.Read())
+{
+    if (reader.TokenType is not XmlTokenType.StartElement || !reader.LocalNameEquals("Entry"u8))
+    {
+        continue;
+    }
+
+    if (!XmlDocument.TryParseValue(ref reader, out XmlDocument? entry))
+    {
+        output.WriteLine($"The next entry isn't all here. The reader is still on its {reader.TokenType}.");
+        break;
+    }
+
+    using (entry)
+    {
+        XmlElement root = entry.RootElement;
+        output.WriteLine($"{root.GetAttribute("id").GetInt32()}: {root.GetChild("Title").GetString()}");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+1: First post
+The next entry isn't all here. The reader is still on its StartElement.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)
+
+What to notice:
+
+- `TryParseValue` returns `false` in two cases: the element isn't all in the block and the block isn't the last one, or the reader is on an end tag.
+- XML that isn't well formed still throws an `XmlException`, and so does an element that is cut short in the last block. The reader hasn't moved when the exception leaves the method.
+- To go on after `false`, keep the bytes from `BytesConsumed` onward, add the next block, and create a reader with `CurrentState`, as [Read a stream in blocks](/guides/use-utf8xmlreader#read-a-stream-in-blocks) shows.
 
 For the reader itself, see [Use Utf8XmlReader](/guides/use-utf8xmlreader).
 

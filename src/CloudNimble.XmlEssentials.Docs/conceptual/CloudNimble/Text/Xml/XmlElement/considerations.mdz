@@ -11,8 +11,8 @@
 - The text of an element that has child elements includes the white space between them when the document keeps it, which is the default. For `<r>`, a line break, two spaces, `<c>x</c>`, a line break, and `</r>`, the value of `r` is `"\n  x\n"` and the value of `c` is `"x"`.
 - `GetString` returns the value unchanged, white space included, and `null` for a nil element. `GetInnerText` returns an empty string for a nil element, a comment, or a processing instruction.
 - The typed getters ignore white space around the value and follow the XML Schema lexical forms. `GetBoolean` accepts `true`, `false`, `1`, and `0`. `GetDecimal` doesn't accept an exponent. `GetDouble` accepts `INF`, `-INF`, and `NaN`.
-- A value that can't be converted throws `XmlException`. There are no `TryGet` methods for values.
-- There are getters only for `bool`, `int`, `long`, `decimal`, `double`, `DateTime`, `DateTimeOffset`, `Guid`, and Base64 bytes. For another type, convert the result of `GetString`.
+- A value that can't be converted throws `XmlException` from a getter and returns `false` from the `TryGet` method for the same type. A `TryGet` method still throws for a nil element and for a default `XmlElement`.
+- The getters are those of `JsonElement`: `bool`, the eight integer types, `float`, `double`, `decimal`, `DateTime`, `DateTimeOffset`, `Guid`, and Base64 bytes. For another type, convert the result of `GetString`.
 - `GetDateTime` returns `DateTimeKind.Utc` for a value that ends in `Z`, `Unspecified` for a value without a time zone, and local time for any other offset. `GetDateTimeOffset` gives a value without a time zone the local offset.
 
 ### Navigation

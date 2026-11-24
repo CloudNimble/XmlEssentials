@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.Threading.Tasks;
 using CloudNimble.Text.Xml;
 
 namespace CloudNimble.XmlEssentials.Samples
@@ -14,6 +15,21 @@ namespace CloudNimble.XmlEssentials.Samples
     {
 
         #region Public Methods
+
+        /// <summary>
+        /// Parses an order from a stream without blocking the calling thread.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        /// <returns>A task that completes when the sample has run.</returns>
+        public static async Task ParseFromStreamAsync(TextWriter output)
+        {
+            byte[] utf8 = """<Order id="1044"><Item>Monitor</Item></Order>"""u8.ToArray();
+
+            await using var stream = new MemoryStream(utf8);
+            using XmlDocument document = await XmlDocument.ParseAsync(stream);
+
+            output.WriteLine($"order {document.RootElement.GetAttribute("id").GetInt32()}: {document.RootElement.GetChild("Item").GetString()}");
+        }
 
         /// <summary>
         /// Parses the same order from a string, UTF-8 bytes, a stream, and a sequence.
@@ -180,6 +196,37 @@ namespace CloudNimble.XmlEssentials.Samples
                 if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
                 {
                     using XmlDocument entry = XmlDocument.ParseValue(ref reader);
+                    XmlElement root = entry.RootElement;
+                    output.WriteLine($"{root.GetAttribute("id").GetInt32()}: {root.GetChild("Title").GetString()}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Parses the elements that are all in a block of input, and stops at the one that is not.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void TryParseValue(TextWriter output)
+        {
+            ReadOnlySpan<byte> feed = """<Feed><Entry id="1"><Title>First post</Title></Entry><Entry id="2"><Title>Second post</Title></Entry></Feed>"""u8;
+
+            // The first block of the input ends inside the second entry.
+            var reader = new Utf8XmlReader(feed[..80], isFinalBlock: false, default);
+            while (reader.Read())
+            {
+                if (reader.TokenType is not XmlTokenType.StartElement || !reader.LocalNameEquals("Entry"u8))
+                {
+                    continue;
+                }
+
+                if (!XmlDocument.TryParseValue(ref reader, out XmlDocument? entry))
+                {
+                    output.WriteLine($"The next entry isn't all here. The reader is still on its {reader.TokenType}.");
+                    break;
+                }
+
+                using (entry)
+                {
                     XmlElement root = entry.RootElement;
                     output.WriteLine($"{root.GetAttribute("id").GetInt32()}: {root.GetChild("Title").GetString()}");
                 }

@@ -266,6 +266,20 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample23_WriteElementsAndValues_WriteCompleteElementsWithOtherNames()
+        {
+            SampleOutput.Capture(WriteElementsAndValues.WriteCompleteElementsWithOtherNames).Should().Be(
+                "<Order>\n" +
+                "  <Item>Keyboard</Item>\n" +
+                "  <Quantity>2</Quantity>\n" +
+                "  <Total>129.90</Total>\n" +
+                "  <Placed>2026-03-14T09:30:00Z</Placed>\n" +
+                "  <Rush>true</Rush>\n" +
+                "  <Total/>\n" +
+                "</Order>");
+        }
+
+        [TestMethod]
         public void Sample23_WriteElementsAndValues_ControlLayout()
         {
             SampleOutput.Capture(WriteElementsAndValues.ControlLayout).Should().Be(

@@ -203,6 +203,20 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Creates a reader over the input this reader has not consumed.
+        /// </summary>
+        /// <returns>A reader that goes on from where this one is, and shares no state with it.</returns>
+        /// <remarks>
+        /// A copy of a reader shares its stacks and its attribute table with the reader it was copied from, so
+        /// reading ahead with a copy can change what the original holds. This reader is built from a snapshot,
+        /// which copies them. It starts with no current token: the token this reader is on is not repeated.
+        /// </remarks>
+        internal readonly Utf8XmlReader CreateLookAhead()
+        {
+            return new Utf8XmlReader(_span[_pos..], _isFinalBlock, CurrentState);
+        }
+
+        /// <summary>
         /// Copies current parse progress into an immutable snapshot.
         /// </summary>
         /// <returns>A new snapshot. Stacks are copied so the source reader can keep mutating.</returns>

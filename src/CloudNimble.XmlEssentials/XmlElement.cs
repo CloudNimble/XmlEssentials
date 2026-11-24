@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using CloudNimble.Text.Xml.Nodes;
 
@@ -375,6 +376,58 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets the first attribute of this element that has the local name specified as a read-only span of characters, in any namespace.
+        /// </summary>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the attribute.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no attribute with the specified local name.
+        /// </exception>
+        public XmlElement GetAttribute(ReadOnlySpan<char> localName)
+        {
+            if (!TryFindAttribute(localName, null, out var value))
+            {
+                throw XmlException.Create($"Attribute '{localName.ToString()}' was not found.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the first attribute of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the attribute to find, without a prefix.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the attribute.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no attribute with the specified local name.
+        /// </exception>
+        public XmlElement GetAttribute(ReadOnlySpan<byte> utf8LocalName)
+        {
+            if (!TryFindAttributeUtf8(utf8LocalName, out var value))
+            {
+                throw XmlException.Create($"Attribute '{Encoding.UTF8.GetString(utf8LocalName)}' was not found.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
         /// Gets the value of this node as a <see cref="bool"/>.
         /// </summary>
         /// <returns>
@@ -399,6 +452,33 @@ namespace CloudNimble.Text.Xml
             if (!parsed)
             {
                 throw XmlException.Create("The value is not a boolean.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the value of this node as a <see cref="byte"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as a <see cref="byte"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:unsignedByte</c>, or it is outside the range of a <see cref="byte"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public byte GetByte()
+        {
+            if (!TryGetByte(out var value))
+            {
+                throw XmlException.Create("The value is not a valid integer.");
             }
 
             return value;
@@ -494,6 +574,64 @@ namespace CloudNimble.Text.Xml
             if (!TryGetChild(localName, namespaceUri, out var value))
             {
                 throw XmlException.Create($"Child element '{localName}' was not found.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the first child element of this element that has the local name specified as a read-only span of characters, in any namespace.
+        /// </summary>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the child element.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no child element with the specified local name.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants.
+        /// </remarks>
+        public XmlElement GetChild(ReadOnlySpan<char> localName)
+        {
+            if (!TryFindChild(localName, null, out var value))
+            {
+                throw XmlException.Create($"Child element '{localName.ToString()}' was not found.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the first child element of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the child element to find, without a prefix.</param>
+        /// <returns>
+        /// An <see cref="XmlElement"/> that represents the child element.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This element has no child element with the specified local name.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants.
+        /// </remarks>
+        public XmlElement GetChild(ReadOnlySpan<byte> utf8LocalName)
+        {
+            if (!TryFindChildUtf8(utf8LocalName, out var value))
+            {
+                throw XmlException.Create($"Child element '{Encoding.UTF8.GetString(utf8LocalName)}' was not found.");
             }
 
             return value;
@@ -694,6 +832,33 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets the value of this node as a <see cref="short"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as a <see cref="short"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:short</c>, or it is outside the range of a <see cref="short"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public short GetInt16()
+        {
+            if (!TryGetInt16(out var value))
+            {
+                throw XmlException.Create("The value is not a valid integer.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
         /// Gets the value of this node as an <see cref="int"/>.
         /// </summary>
         /// <returns>
@@ -780,6 +945,64 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Gets the value of this node as an <see cref="sbyte"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as an <see cref="sbyte"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:byte</c>, or it is outside the range of an <see cref="sbyte"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public sbyte GetSByte()
+        {
+            if (!TryGetSByte(out var value))
+            {
+                throw XmlException.Create("The value is not a valid integer.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the value of this node as a <see cref="float"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as a <see cref="float"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:float</c>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// The literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are accepted in any letter case.
+        /// </remarks>
+        public float GetSingle()
+        {
+            if (!TryGetSingle(out var value))
+            {
+                throw XmlException.Create("The value is not a valid float.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
         /// Gets the value of this node as a <see cref="string"/>.
         /// </summary>
         /// <returns>
@@ -798,6 +1021,90 @@ namespace CloudNimble.Text.Xml
         public string? GetString()
         {
             return IsNil ? null : ValueString();
+        }
+
+        /// <summary>
+        /// Gets the value of this node as a <see cref="ushort"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as a <see cref="ushort"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:unsignedShort</c>, or it is outside the range of a <see cref="ushort"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public ushort GetUInt16()
+        {
+            if (!TryGetUInt16(out var value))
+            {
+                throw XmlException.Create("The value is not a valid integer.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the value of this node as a <see cref="uint"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as a <see cref="uint"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:unsignedInt</c>, or it is outside the range of a <see cref="uint"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public uint GetUInt32()
+        {
+            if (!TryGetUInt32(out var value))
+            {
+                throw XmlException.Create("The value is not a valid integer.");
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the value of this node as a <see cref="ulong"/>.
+        /// </summary>
+        /// <returns>
+        /// The value of this node as a <see cref="ulong"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The value is not an <c>xs:unsignedLong</c>, or it is outside the range of a <see cref="ulong"/>.
+        /// -or-
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public ulong GetUInt64()
+        {
+            if (!TryGetUInt64(out var value))
+            {
+                throw XmlException.Create("The value is not a valid integer.");
+            }
+
+            return value;
         }
 
         /// <summary>
@@ -827,6 +1134,104 @@ namespace CloudNimble.Text.Xml
         {
             ArgumentNullException.ThrowIfNull(localName);
             return TryFindAttribute(localName, null, out value);
+        }
+
+        /// <summary>
+        /// Looks for the first attribute of this element that has the local name specified as a read-only span of characters, in any namespace.
+        /// </summary>
+        /// <param name="localName">The local name of the attribute to find, without a prefix.</param>
+        /// <param name="value">
+        /// When this method returns, contains the attribute if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the attribute was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// This method returns <see langword="false"/> if this node is not an element.
+        /// </remarks>
+        public bool TryGetAttribute(ReadOnlySpan<char> localName, out XmlElement value)
+        {
+            return TryFindAttribute(localName, null, out value);
+        }
+
+        /// <summary>
+        /// Looks for the first attribute of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the attribute to find, without a prefix.</param>
+        /// <param name="value">
+        /// When this method returns, contains the attribute if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the attribute was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// This method returns <see langword="false"/> if this node is not an element.
+        /// </remarks>
+        public bool TryGetAttribute(ReadOnlySpan<byte> utf8LocalName, out XmlElement value)
+        {
+            return TryFindAttributeUtf8(utf8LocalName, out value);
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="byte"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:unsignedByte</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetByte(out byte value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseByte(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a byte array, decoded from Base64 text.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the decoded bytes, or <see langword="null"/> if the value is not valid Base64. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is valid Base64 text (<c>xs:base64Binary</c>); otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetBytesFromBase64([NotNullWhen(true)] out byte[]? value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryDecodeBase64(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
         }
 
         /// <summary>
@@ -889,6 +1294,384 @@ namespace CloudNimble.Text.Xml
             ArgumentNullException.ThrowIfNull(localName);
             ArgumentNullException.ThrowIfNull(namespaceUri);
             return TryFindChild(localName, namespaceUri, out value);
+        }
+
+        /// <summary>
+        /// Looks for the first child element of this element that has the local name specified as a read-only span of characters, in any namespace.
+        /// </summary>
+        /// <param name="localName">The local name of the child element to find, without a prefix.</param>
+        /// <param name="value">
+        /// When this method returns, contains the child element if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the child element was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants. This method returns <see langword="false"/> if this node is not an element.
+        /// </remarks>
+        public bool TryGetChild(ReadOnlySpan<char> localName, out XmlElement value)
+        {
+            return TryFindChild(localName, null, out value);
+        }
+
+        /// <summary>
+        /// Looks for the first child element of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the child element to find, without a prefix.</param>
+        /// <param name="value">
+        /// When this method returns, contains the child element if it was found, or a default
+        /// <see cref="XmlElement"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the child element was found; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Only direct children are searched, not deeper descendants. This method returns <see langword="false"/> if this node is not an element.
+        /// </remarks>
+        public bool TryGetChild(ReadOnlySpan<byte> utf8LocalName, out XmlElement value)
+        {
+            return TryFindChildUtf8(utf8LocalName, out value);
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:dateTime</c> that a <see cref="DateTime"/> can represent; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// The value is read as it is by <see cref="GetDateTime"/>.
+        /// </remarks>
+        public bool TryGetDateTime(out DateTime value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseDateTime(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="DateTimeOffset"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:dateTime</c> that a <see cref="DateTimeOffset"/> can represent; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// The value is read as it is by <see cref="GetDateTimeOffset"/>.
+        /// </remarks>
+        public bool TryGetDateTimeOffset(out DateTimeOffset value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseDateTimeOffset(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="decimal"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:decimal</c> that a <see cref="decimal"/> can represent; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetDecimal(out decimal value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseDecimal(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="double"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:double</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// The literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are accepted in any letter case.
+        /// </remarks>
+        public bool TryGetDouble(out double value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseDouble(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="Guid"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is a GUID in the <c>D</c>, <c>N</c>, <c>B</c>, or <c>P</c> format; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetGuid(out Guid value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseGuid(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="short"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:short</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetInt16(out short value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseInt16(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as an <see cref="int"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:int</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetInt32(out int value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseInt32(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="long"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:long</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        public bool TryGetInt64(out long value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseInt64(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as an <see cref="sbyte"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:byte</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public bool TryGetSByte(out sbyte value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseSByte(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="float"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:float</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        /// <remarks>
+        /// The literals <c>INF</c>, <c>-INF</c>, and <c>NaN</c> are accepted in any letter case.
+        /// </remarks>
+        public bool TryGetSingle(out float value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseSingle(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="ushort"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:unsignedShort</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public bool TryGetUInt16(out ushort value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseUInt16(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="uint"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:unsignedInt</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public bool TryGetUInt32(out uint value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseUInt32(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
+        }
+
+        /// <summary>
+        /// Attempts to get the value of this node as a <see cref="ulong"/>.
+        /// </summary>
+        /// <param name="value">When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized.</param>
+        /// <returns>
+        /// <see langword="true"/> if the whole value is an <c>xs:unsignedLong</c>; otherwise, <see langword="false"/>.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// This value is a default <see cref="XmlElement"/>, which refers to no node.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The parent <see cref="XmlDocument"/> has been disposed.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// This node is an element that is marked as nil.
+        /// </exception>
+        [CLSCompliant(false)]
+        public bool TryGetUInt64(out ulong value)
+        {
+            var utf8 = TypedValueUtf8(out var rented);
+            var parsed = XmlLexical.TryParseUInt64(utf8, out value);
+            XmlDocument.ReturnScratch(rented);
+            return parsed;
         }
 
         /// <summary>
@@ -1007,7 +1790,7 @@ namespace CloudNimble.Text.Xml
         /// <param name="namespaceUri">The namespace URI, or <see langword="null"/> to match any.</param>
         /// <param name="value">When this method returns true, the attribute cursor.</param>
         /// <returns><see langword="true"/> if the attribute exists.</returns>
-        internal bool TryFindAttribute(string localName, string? namespaceUri, out XmlElement value)
+        internal bool TryFindAttribute(ReadOnlySpan<char> localName, string? namespaceUri, out XmlElement value)
         {
             var document = EnsureDocument();
             ref var row = ref document.Row(_index);
@@ -1031,13 +1814,40 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Finds an attribute, in any namespace, by a local name that is given as UTF-8.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 local name.</param>
+        /// <param name="value">When this method returns true, the attribute cursor.</param>
+        /// <returns><see langword="true"/> if the attribute exists.</returns>
+        internal bool TryFindAttributeUtf8(ReadOnlySpan<byte> utf8LocalName, out XmlElement value)
+        {
+            var document = EnsureDocument();
+            ref var row = ref document.Row(_index);
+            if (XmlDocument.IsElementKind(row.Kind))
+            {
+                var end = _index + 1 + row.AttributeCount;
+                for (var i = _index + 1; i < end; i++)
+                {
+                    if (document.LocalName(in document.Row(i)).SequenceEqual(utf8LocalName))
+                    {
+                        value = new XmlElement(document, i);
+                        return true;
+                    }
+                }
+            }
+
+            value = default;
+            return false;
+        }
+
+        /// <summary>
         /// Finds a child element by local name and, optionally, namespace.
         /// </summary>
         /// <param name="localName">The local name.</param>
         /// <param name="namespaceUri">The namespace URI, or <see langword="null"/> to match any.</param>
         /// <param name="value">When this method returns true, the child cursor.</param>
         /// <returns><see langword="true"/> if the child exists.</returns>
-        internal bool TryFindChild(string localName, string? namespaceUri, out XmlElement value)
+        internal bool TryFindChild(ReadOnlySpan<char> localName, string? namespaceUri, out XmlElement value)
         {
             var document = EnsureDocument();
             ChildRange(document, out var first, out var end);
@@ -1047,6 +1857,30 @@ namespace CloudNimble.Text.Xml
                 if (XmlDocument.IsElementKind(child.Kind)
                     && XmlDocument.Utf8Equals(document.LocalName(in child), localName)
                     && (namespaceUri is null || XmlDocument.Utf8Equals(document.NamespaceUri(in child), namespaceUri)))
+                {
+                    value = new XmlElement(document, i);
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Finds a child element, in any namespace, by a local name that is given as UTF-8.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 local name.</param>
+        /// <param name="value">When this method returns true, the child cursor.</param>
+        /// <returns><see langword="true"/> if the child exists.</returns>
+        internal bool TryFindChildUtf8(ReadOnlySpan<byte> utf8LocalName, out XmlElement value)
+        {
+            var document = EnsureDocument();
+            ChildRange(document, out var first, out var end);
+            for (var i = first; i < end; i = document.NextSiblingIndex(i))
+            {
+                ref var child = ref document.Row(i);
+                if (XmlDocument.IsElementKind(child.Kind) && document.LocalName(in child).SequenceEqual(utf8LocalName))
                 {
                     value = new XmlElement(document, i);
                     return true;

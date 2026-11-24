@@ -105,6 +105,8 @@ public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
     public void WriteElementString(string localName, Guid value);
     public void WriteElementString(ReadOnlySpan<char> localName, ReadOnlySpan<char> value);
     public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8Value);
+    // WriteElementString, in full: a name as string, ReadOnlySpan<char>, ReadOnlySpan<byte> or XmlEncodedText,
+    // with a value as string?, ReadOnlySpan<char>, ReadOnlySpan<byte>, DateTime, DateTimeOffset or Guid (24 overloads).
 
     public void WriteElementNumber(string localName, int value);
     public void WriteElementNumber(string localName, long value);
@@ -113,18 +115,22 @@ public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
     public void WriteElementNumber(string localName, decimal value);
     [CLSCompliant(false)] public void WriteElementNumber(string localName, uint value);
     [CLSCompliant(false)] public void WriteElementNumber(string localName, ulong value);
+    // WriteElementNumber, in full: each of the seven number types with a name in each of the four forms (28 overloads).
 
     public void WriteElementBoolean(string localName, bool value);
     public void WriteElementBoolean(ReadOnlySpan<char> localName, bool value);
     public void WriteElementBoolean(ReadOnlySpan<byte> utf8LocalName, bool value);
+    public void WriteElementBoolean(XmlEncodedText localName, bool value);
     public void WriteElementBase64String(string localName, ReadOnlySpan<byte> bytes);
     public void WriteElementBase64String(ReadOnlySpan<char> localName, ReadOnlySpan<byte> bytes);
     public void WriteElementBase64String(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> bytes);
+    public void WriteElementBase64String(XmlEncodedText localName, ReadOnlySpan<byte> bytes);
 
     public void WriteNilElement(string localName);
     public void WriteNilElement(string localName, string? namespaceUri);
     public void WriteNilElement(ReadOnlySpan<char> localName);
     public void WriteNilElement(ReadOnlySpan<byte> utf8LocalName);
+    public void WriteNilElement(XmlEncodedText localName);
 
     public void WriteAttributeString(string name, string? value);
     public void WriteAttributeString(string localName, string? namespaceUri, string? value);

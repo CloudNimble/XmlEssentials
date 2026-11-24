@@ -25,6 +25,12 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample26_ParseWithXmlDocument_ParseFromStreamAsync()
+        {
+            SampleOutput.Capture(output => ParseWithXmlDocument.ParseFromStreamAsync(output).GetAwaiter().GetResult()).Should().Be("order 1044: Monitor");
+        }
+
+        [TestMethod]
         public void Sample26_ParseWithXmlDocument_Comments()
         {
             SampleOutput.Capture(ParseWithXmlDocument.Comments).Should().Be(
@@ -66,6 +72,14 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
             SampleOutput.Capture(ParseWithXmlDocument.ParseValue).Should().Be(
                 "1: First post\n" +
                 "2: Second post");
+        }
+
+        [TestMethod]
+        public void Sample26_ParseWithXmlDocument_TryParseValue()
+        {
+            SampleOutput.Capture(ParseWithXmlDocument.TryParseValue).Should().Be(
+                "1: First post\n" +
+                "The next entry isn't all here. The reader is still on its StartElement.");
         }
 
         [TestMethod]
@@ -117,6 +131,16 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
         }
 
         [TestMethod]
+        public void Sample27_QueryWithXmlElement_NamesAsSpans()
+        {
+            SampleOutput.Capture(QueryWithXmlElement.NamesAsSpans).Should().Be(
+                "Customer: Ada Lovelace\n" +
+                "Total: 129.90\n" +
+                "Discount: not in the order\n" +
+                "id: 1042");
+        }
+
+        [TestMethod]
         public void Sample27_QueryWithXmlElement_Namespaces()
         {
             SampleOutput.Capture(QueryWithXmlElement.Namespaces).Should().Be(
@@ -152,6 +176,17 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "GetRawXml:    <Note priority=\"high\">Ship <b>today</b>, <![CDATA[before 5 & not later]]>.<?audit checked?></Note>\n" +
                 "On the processing instruction, GetString is 'checked' and GetInnerText is ''\n" +
                 "GetRawXml on an attribute is empty: True");
+        }
+
+        [TestMethod]
+        public void Sample27_QueryWithXmlElement_TryTypedValues()
+        {
+            SampleOutput.Capture(QueryWithXmlElement.TryTypedValues).Should().Be(
+                "sensor: 12\n" +
+                "ratio: 0.75\n" +
+                "level: not an integer ('high')\n" +
+                "count as a short: False (0)\n" +
+                "count as a uint: True (70000)");
         }
 
         [TestMethod]

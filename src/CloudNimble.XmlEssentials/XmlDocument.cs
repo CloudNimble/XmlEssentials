@@ -1,10 +1,13 @@
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Unicode;
+using System.Threading;
+using System.Threading.Tasks;
 using CloudNimble.Text.Xml.Nodes;
 
 namespace CloudNimble.Text.Xml
@@ -39,6 +42,10 @@ namespace CloudNimble.Text.Xml
     {
 
         #region Fields
+
+        private const string NoElementMessage = "The reader is not on an element and has none left to read.";
+
+        private const string UnmatchedEndTagMessage = "End tag without a matching start tag.";
 
         private XmlDeclarationInfo? _declaration;
         private bool _disposed;
@@ -321,6 +328,49 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Parses a stream of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>,
+        /// without blocking the calling thread. The stream is read to completion.
+        /// </summary>
+        /// <param name="utf8Xml">The stream that holds the UTF-8 encoded XML text to parse.</param>
+        /// <param name="options">
+        /// Options that control the parser behavior. By default, comments are kept, so that writing the
+        /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
+        /// to <see cref="XmlCommentHandling.Skip"/>.
+        /// </param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>
+        /// A task that produces an <see cref="XmlDocument"/> representation of the XML document.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="OperationCanceledException">
+        /// <paramref name="cancellationToken"/> was canceled.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Xml"/> does not hold a well-formed XML document.
+        /// -or-
+        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// await using var stream = File.OpenRead("catalog.xml");
+        /// using var document = await XmlDocument.ParseAsync(stream);
+        /// var count = document.RootElement.GetChild("item").GetChild("qty").GetInt32();
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// A <see langword="null"/> stream is refused before the task is created. When
+        /// <see cref="XmlDocumentOptions.MaxDocumentByteCount"/> is set, reading stops as soon as the stream
+        /// is found to be longer than that limit. The stream is not closed.
+        /// </remarks>
+        public static Task<XmlDocument> ParseAsync(Stream utf8Xml, XmlDocumentOptions options = default, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(utf8Xml);
+            return ParseStreamAsync(utf8Xml, options, cancellationToken);
+        }
+
+        /// <summary>
         /// Parses one XML element (including its attributes and descendants) from the provided reader.
         /// </summary>
         /// <param name="reader">The reader to read. It is positioned on or before the start tag of the element.</param>
@@ -352,7 +402,7 @@ namespace CloudNimble.Text.Xml
                 {
                     // The reader ran out of input without reaching a start tag. A document with no element
                     // has nothing to give back.
-                    throw XmlException.Create("The reader is not on an element and has none left to read.");
+                    throw XmlException.Create(NoElementMessage);
                 }
 
                 return document;
@@ -397,6 +447,95 @@ namespace CloudNimble.Text.Xml
                 document = null;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Attempts to parse one XML element (including its attributes and descendants) from the provided reader.
+        /// </summary>
+        /// <param name="reader">The reader to read. It is positioned on or before the start tag of the element.</param>
+        /// <param name="document">
+        /// When this method returns, contains the parsed document if the element was read, or
+        /// <see langword="null"/> if it was not. This parameter is treated as uninitialized.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the element was read; <see langword="false"/> if the reader's input ends
+        /// before the element does and <see cref="Utf8XmlReader.IsFinalBlock"/> is <see langword="false"/>,
+        /// or if the reader is on an end tag.
+        /// </returns>
+        /// <exception cref="XmlException">
+        /// <paramref name="reader"/> reaches an end tag before it reaches a start tag.
+        /// -or-
+        /// <paramref name="reader"/> reaches the end of its input without reading an element, and
+        /// <see cref="Utf8XmlReader.IsFinalBlock"/> is <see langword="true"/>.
+        /// -or-
+        /// The XML that <paramref name="reader"/> reads is not well formed.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// var reader = new Utf8XmlReader(block, isFinalBlock: false, state);
+        /// if (!XmlDocument.TryParseValue(ref reader, out XmlDocument? item))
+        /// {
+        ///     // The element is not all in this block. Read more input and call again.
+        /// }
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// This is the counterpart of <c>JsonDocument.TryParseValue</c>. When this method returns
+        /// <see langword="true"/>, the reader is where <see cref="ParseValue"/> leaves it: on the end tag of
+        /// the element, or on the element itself if it is an empty-element tag. When it returns
+        /// <see langword="false"/> or throws, the reader is where it was before the call, so the caller can
+        /// supply more input and call again. The element is read twice: once to find its end, and once to keep it.
+        /// </remarks>
+        public static bool TryParseValue(ref Utf8XmlReader reader, [NotNullWhen(true)] out XmlDocument? document)
+        {
+            document = null;
+            if (reader.TokenType is XmlTokenType.EndElement)
+            {
+                return false;
+            }
+
+            // The element is found and read to its end by a second reader first. That reader shares nothing
+            // with this one, so when the element turns out not to be complete, or not to be well formed, the
+            // caller's reader has not moved.
+            var started = reader.TokenType is XmlTokenType.StartElement or XmlTokenType.Attribute;
+            if (!started || !reader.IsEmptyElement)
+            {
+                var open = started ? 1 : 0;
+                var ahead = reader.CreateLookAhead();
+                while (!started || open > 0)
+                {
+                    if (!ahead.Read())
+                    {
+                        if (reader.IsFinalBlock)
+                        {
+                            throw XmlException.Create(NoElementMessage);
+                        }
+
+                        return false;
+                    }
+
+                    if (ahead.TokenType is XmlTokenType.StartElement)
+                    {
+                        started = true;
+                        if (!ahead.IsEmptyElement)
+                        {
+                            open++;
+                        }
+                    }
+                    else if (ahead.TokenType is XmlTokenType.EndElement)
+                    {
+                        if (!started)
+                        {
+                            throw XmlException.Create(UnmatchedEndTagMessage);
+                        }
+
+                        open--;
+                    }
+                }
+            }
+
+            document = ParseValue(ref reader);
+            return true;
         }
 
         /// <summary>
@@ -699,7 +838,7 @@ namespace CloudNimble.Text.Xml
                             {
                                 // ParseValue takes a reader wherever its caller left it, which may be on or
                                 // just before the end tag of an element this document never saw start.
-                                throw XmlException.Create("End tag without a matching start tag.");
+                                throw XmlException.Create(UnmatchedEndTagMessage);
                             }
 
                             depth--;
@@ -907,6 +1046,19 @@ namespace CloudNimble.Text.Xml
                 document.Dispose();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Reads <paramref name="utf8Xml"/> to its end and parses what was read.
+        /// </summary>
+        /// <param name="utf8Xml">The stream.</param>
+        /// <param name="options">The parser options.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The document, which owns the buffer the stream was read into.</returns>
+        internal static async Task<XmlDocument> ParseStreamAsync(Stream utf8Xml, XmlDocumentOptions options, CancellationToken cancellationToken)
+        {
+            var utf8 = await XmlStreamBuffer.ReadToEndAsync(utf8Xml, options.MaxDocumentByteCount, cancellationToken).ConfigureAwait(false);
+            return ParseOwned(utf8.Array!, utf8.Count, options, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>

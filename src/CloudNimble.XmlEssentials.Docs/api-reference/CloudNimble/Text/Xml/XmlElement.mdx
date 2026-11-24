@@ -480,8 +480,8 @@ The code produces the following output:
 - The text of an element that has child elements includes the white space between them when the document keeps it, which is the default. For `<r>`, a line break, two spaces, ``x``, a line break, and `</r>`, the value of `r` is `"\n  x\n"` and the value of `c` is `"x"`.
 - `GetString` returns the value unchanged, white space included, and `null` for a nil element. `GetInnerText` returns an empty string for a nil element, a comment, or a processing instruction.
 - The typed getters ignore white space around the value and follow the XML Schema lexical forms. `GetBoolean` accepts `true`, `false`, `1`, and `0`. `GetDecimal` doesn't accept an exponent. `GetDouble` accepts `INF`, `-INF`, and `NaN`.
-- A value that can't be converted throws `XmlException`. There are no `TryGet` methods for values.
-- There are getters only for `bool`, `int`, `long`, `decimal`, `double`, `DateTime`, `DateTimeOffset`, `Guid`, and Base64 bytes. For another type, convert the result of `GetString`.
+- A value that can't be converted throws `XmlException` from a getter and returns `false` from the `TryGet` method for the same type. A `TryGet` method still throws for a nil element and for a default `XmlElement`.
+- The getters are those of `JsonElement`: `bool`, the eight integer types, `float`, `double`, `decimal`, `DateTime`, `DateTimeOffset`, `Guid`, and Base64 bytes. For another type, convert the result of `GetString`.
 - `GetDateTime` returns `DateTimeKind.Utc` for a value that ends in `Z`, `Unspecified` for a value without a time zone, and local time for any other offset. `GetDateTimeOffset` gives a value without a time zone the local offset.
 
 ### Navigation
@@ -940,6 +940,64 @@ An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents 
 | `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
 | `XmlException` | This element has no attribute with the specified local name and namespace URI. |
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetAttribute
+
+Gets the first attribute of this element that has the local name specified as a read-only span of characters, in any namespace.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlElement GetAttribute(System.ReadOnlySpan<char> localName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the attribute to find, without a prefix. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlElement`
+An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents the attribute.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This element has no attribute with the specified local name. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetAttribute
+
+Gets the first attribute of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlElement GetAttribute(System.ReadOnlySpan<byte> utf8LocalName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the attribute to find, without a prefix. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlElement`
+An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents the attribute.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This element has no attribute with the specified local name. |
+
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetBoolean
 
 Gets the value of this node as a [Boolean](https://learn.microsoft.com/dotnet/api/system.boolean).
@@ -962,6 +1020,31 @@ The value of this node as a [Boolean](https://learn.microsoft.com/dotnet/api/sys
 | `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
 | `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
 | `XmlException` | The value is not an `xs:boolean`, which is `true`, `false`, `1`, or `0`.
+-or-
+This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetByte
+
+Gets the value of this node as a [Byte](https://learn.microsoft.com/dotnet/api/system.byte).
+
+#### Syntax
+
+```csharp
+public byte GetByte()
+```
+
+#### Returns
+
+Type: `byte`
+The value of this node as a [Byte](https://learn.microsoft.com/dotnet/api/system.byte).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:unsignedByte`, or it is outside the range of a [Byte](https://learn.microsoft.com/dotnet/api/system.byte).
 -or-
 This node is an element that is marked as nil. |
 
@@ -1054,6 +1137,72 @@ An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents 
 | `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
 | `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
 | `XmlException` | This element has no child element with the specified local name and namespace URI. |
+
+#### Remarks
+
+Only direct children are searched, not deeper descendants.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetChild
+
+Gets the first child element of this element that has the local name specified as a read-only span of characters, in any namespace.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlElement GetChild(System.ReadOnlySpan<char> localName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the child element to find, without a prefix. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlElement`
+An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents the child element.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This element has no child element with the specified local name. |
+
+#### Remarks
+
+Only direct children are searched, not deeper descendants.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetChild
+
+Gets the first child element of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+
+#### Syntax
+
+```csharp
+public CloudNimble.Text.Xml.XmlElement GetChild(System.ReadOnlySpan<byte> utf8LocalName)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the child element to find, without a prefix. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlElement`
+An [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) that represents the child element.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This element has no child element with the specified local name. |
 
 #### Remarks
 
@@ -1266,6 +1415,31 @@ an empty string.
 
 Unlike [XmlElement.GetString](/api-reference/CloudNimble/Text/Xml/XmlElement#getstring), this method does not return [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for an element that is marked as nil.
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt16
+
+Gets the value of this node as a [Int16](https://learn.microsoft.com/dotnet/api/system.int16).
+
+#### Syntax
+
+```csharp
+public short GetInt16()
+```
+
+#### Returns
+
+Type: `short`
+The value of this node as a [Int16](https://learn.microsoft.com/dotnet/api/system.int16).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:short`, or it is outside the range of a [Int16](https://learn.microsoft.com/dotnet/api/system.int16).
+-or-
+This node is an element that is marked as nil. |
+
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInt32
 
 Gets the value of this node as an [Int32](https://learn.microsoft.com/dotnet/api/system.int32).
@@ -1344,6 +1518,60 @@ string for an attribute, because an attribute has no markup outside its element.
 The markup is written again from the parsed node with [XmlElement.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlElement#writeto), without an XML
 declaration. It is not a copy of the original input.
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetSByte
+
+Gets the value of this node as an [SByte](https://learn.microsoft.com/dotnet/api/system.sbyte).
+
+#### Syntax
+
+```csharp
+public sbyte GetSByte()
+```
+
+#### Returns
+
+Type: `sbyte`
+The value of this node as an [SByte](https://learn.microsoft.com/dotnet/api/system.sbyte).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:byte`, or it is outside the range of an [SByte](https://learn.microsoft.com/dotnet/api/system.sbyte).
+-or-
+This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetSingle
+
+Gets the value of this node as a [Single](https://learn.microsoft.com/dotnet/api/system.single).
+
+#### Syntax
+
+```csharp
+public float GetSingle()
+```
+
+#### Returns
+
+Type: `float`
+The value of this node as a [Single](https://learn.microsoft.com/dotnet/api/system.single).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:float`.
+-or-
+This node is an element that is marked as nil. |
+
+#### Remarks
+
+The literals `INF`, `-INF`, and `NaN` are accepted in any letter case.
+
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetString
 
 Gets the value of this node as a [String](https://learn.microsoft.com/dotnet/api/system.string).
@@ -1384,6 +1612,81 @@ public System.Type GetType()
 #### Returns
 
 Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetUInt16
+
+Gets the value of this node as a [UInt16](https://learn.microsoft.com/dotnet/api/system.uint16).
+
+#### Syntax
+
+```csharp
+public ushort GetUInt16()
+```
+
+#### Returns
+
+Type: `ushort`
+The value of this node as a [UInt16](https://learn.microsoft.com/dotnet/api/system.uint16).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:unsignedShort`, or it is outside the range of a [UInt16](https://learn.microsoft.com/dotnet/api/system.uint16).
+-or-
+This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetUInt32
+
+Gets the value of this node as a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32).
+
+#### Syntax
+
+```csharp
+public uint GetUInt32()
+```
+
+#### Returns
+
+Type: `uint`
+The value of this node as a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:unsignedInt`, or it is outside the range of a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32).
+-or-
+This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetUInt64
+
+Gets the value of this node as a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64).
+
+#### Syntax
+
+```csharp
+public ulong GetUInt64()
+```
+
+#### Returns
+
+Type: `ulong`
+The value of this node as a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | The value is not an `xs:unsignedLong`, or it is outside the range of a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64).
+-or-
+This node is an element that is marked as nil. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
 
@@ -1483,6 +1786,132 @@ Type: `bool`
 
 This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this node is not an element.
 
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetAttribute
+
+Looks for the first attribute of this element that has the local name specified as a read-only span of characters, in any namespace.
+
+#### Syntax
+
+```csharp
+public bool TryGetAttribute(System.ReadOnlySpan<char> localName, out CloudNimble.Text.Xml.XmlElement value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the attribute to find, without a prefix. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns, contains the attribute if it was found, or a default
+[XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) if it was not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the attribute was found; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+
+#### Remarks
+
+This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this node is not an element.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetAttribute
+
+Looks for the first attribute of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+
+#### Syntax
+
+```csharp
+public bool TryGetAttribute(System.ReadOnlySpan<byte> utf8LocalName, out CloudNimble.Text.Xml.XmlElement value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the attribute to find, without a prefix. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns, contains the attribute if it was found, or a default
+[XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) if it was not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the attribute was found; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+
+#### Remarks
+
+This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this node is not an element.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetByte
+
+Attempts to get the value of this node as a [Byte](https://learn.microsoft.com/dotnet/api/system.byte).
+
+#### Syntax
+
+```csharp
+public bool TryGetByte(out byte value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `byte` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:unsignedByte`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetBytesFromBase64
+
+Attempts to get the value of this node as a byte array, decoded from Base64 text.
+
+#### Syntax
+
+```csharp
+public bool TryGetBytesFromBase64(out byte[] value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `byte[]?` | When this method returns, contains the decoded bytes, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the value is not valid Base64. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is valid Base64 text (`xs:base64Binary`); otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
 
 Looks for the first child element of this element that has the specified local name, in any namespace.
@@ -1555,6 +1984,467 @@ Type: `bool`
 
 Only direct children are searched, not deeper descendants. This method returns
 [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this node is not an element.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
+
+Looks for the first child element of this element that has the local name specified as a read-only span of characters, in any namespace.
+
+#### Syntax
+
+```csharp
+public bool TryGetChild(System.ReadOnlySpan<char> localName, out CloudNimble.Text.Xml.XmlElement value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `localName` | `System.ReadOnlySpan<char>` | The local name of the child element to find, without a prefix. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns, contains the child element if it was found, or a default
+[XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) if it was not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the child element was found; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+
+#### Remarks
+
+Only direct children are searched, not deeper descendants. This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this node is not an element.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetChild
+
+Looks for the first child element of this element that has the local name specified as a read-only span of UTF-8 bytes, in any namespace.
+
+#### Syntax
+
+```csharp
+public bool TryGetChild(System.ReadOnlySpan<byte> utf8LocalName, out CloudNimble.Text.Xml.XmlElement value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `utf8LocalName` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded local name of the child element to find, without a prefix. |
+| `value` | `CloudNimble.Text.Xml.XmlElement` | When this method returns, contains the child element if it was found, or a default
+[XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement) if it was not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the child element was found; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+
+#### Remarks
+
+Only direct children are searched, not deeper descendants. This method returns [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if this node is not an element.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDateTime
+
+Attempts to get the value of this node as a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime).
+
+#### Syntax
+
+```csharp
+public bool TryGetDateTime(out System.DateTime value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.DateTime` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:dateTime` that a [DateTime](https://learn.microsoft.com/dotnet/api/system.datetime) can represent; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+#### Remarks
+
+The value is read as it is by [XmlElement.GetDateTime](/api-reference/CloudNimble/Text/Xml/XmlElement#getdatetime).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDateTimeOffset
+
+Attempts to get the value of this node as a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset).
+
+#### Syntax
+
+```csharp
+public bool TryGetDateTimeOffset(out System.DateTimeOffset value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.DateTimeOffset` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:dateTime` that a [DateTimeOffset](https://learn.microsoft.com/dotnet/api/system.datetimeoffset) can represent; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+#### Remarks
+
+The value is read as it is by [XmlElement.GetDateTimeOffset](/api-reference/CloudNimble/Text/Xml/XmlElement#getdatetimeoffset).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDecimal
+
+Attempts to get the value of this node as a [Decimal](https://learn.microsoft.com/dotnet/api/system.decimal).
+
+#### Syntax
+
+```csharp
+public bool TryGetDecimal(out decimal value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `decimal` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:decimal` that a [Decimal](https://learn.microsoft.com/dotnet/api/system.decimal) can represent; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetDouble
+
+Attempts to get the value of this node as a [Double](https://learn.microsoft.com/dotnet/api/system.double).
+
+#### Syntax
+
+```csharp
+public bool TryGetDouble(out double value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `double` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:double`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+#### Remarks
+
+The literals `INF`, `-INF`, and `NaN` are accepted in any letter case.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetGuid
+
+Attempts to get the value of this node as a [Guid](https://learn.microsoft.com/dotnet/api/system.guid).
+
+#### Syntax
+
+```csharp
+public bool TryGetGuid(out System.Guid value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `System.Guid` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is a GUID in the `D`, `N`, `B`, or `P` format; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt16
+
+Attempts to get the value of this node as a [Int16](https://learn.microsoft.com/dotnet/api/system.int16).
+
+#### Syntax
+
+```csharp
+public bool TryGetInt16(out short value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `short` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:short`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt32
+
+Attempts to get the value of this node as an [Int32](https://learn.microsoft.com/dotnet/api/system.int32).
+
+#### Syntax
+
+```csharp
+public bool TryGetInt32(out int value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `int` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:int`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetInt64
+
+Attempts to get the value of this node as a [Int64](https://learn.microsoft.com/dotnet/api/system.int64).
+
+#### Syntax
+
+```csharp
+public bool TryGetInt64(out long value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `long` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:long`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetSByte
+
+Attempts to get the value of this node as an [SByte](https://learn.microsoft.com/dotnet/api/system.sbyte).
+
+#### Syntax
+
+```csharp
+public bool TryGetSByte(out sbyte value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `sbyte` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:byte`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetSingle
+
+Attempts to get the value of this node as a [Single](https://learn.microsoft.com/dotnet/api/system.single).
+
+#### Syntax
+
+```csharp
+public bool TryGetSingle(out float value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `float` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:float`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+#### Remarks
+
+The literals `INF`, `-INF`, and `NaN` are accepted in any letter case.
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt16
+
+Attempts to get the value of this node as a [UInt16](https://learn.microsoft.com/dotnet/api/system.uint16).
+
+#### Syntax
+
+```csharp
+public bool TryGetUInt16(out ushort value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `ushort` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:unsignedShort`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt32
+
+Attempts to get the value of this node as a [UInt32](https://learn.microsoft.com/dotnet/api/system.uint32).
+
+#### Syntax
+
+```csharp
+public bool TryGetUInt32(out uint value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `uint` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:unsignedInt`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TryGetUInt64
+
+Attempts to get the value of this node as a [UInt64](https://learn.microsoft.com/dotnet/api/system.uint64).
+
+#### Syntax
+
+```csharp
+public bool TryGetUInt64(out ulong value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `value` | `ulong` | When this method returns, contains the value if it could be read, or the default value if it could not. This parameter is treated as uninitialized. |
+
+#### Returns
+
+Type: `bool`
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the whole value is an `xs:unsignedLong`; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `InvalidOperationException` | This value is a default [XmlElement](/api-reference/CloudNimble/Text/Xml/XmlElement), which refers to no node. |
+| `ObjectDisposedException` | The parent [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) has been disposed. |
+| `XmlException` | This node is an element that is marked as nil. |
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> WriteTo
 

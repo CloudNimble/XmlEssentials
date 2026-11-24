@@ -325,6 +325,28 @@ public long? LinePosition { get; private set; }
 Type: `long?`
 The one-based UTF-8 byte offset in the line, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
 
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Message <Badge color="blue">Override</Badge>
+
+Gets the message that describes the error.
+
+#### Syntax
+
+```csharp
+public override string Message { get; }
+```
+
+#### Property Value
+
+Type: `string`
+The message. When the library made the exception and [XmlException.Path](/api-reference/CloudNimble/Text/Xml/XmlException#path) is set, the path follows the
+message, and the line and the position in the line follow the path when they are known:
+`The value is not a valid integer. Path: /Order/Lines[1]/Qty | LineNumber: 4 | BytePositionInLine: 50.`
+
+#### Remarks
+
+This is what `System.Text.Json` does with `JsonException.Message`. The message of an
+exception that your code makes, in a converter for example, is left as you wrote it.
+
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Message <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 
 <Note>Inherited from `System.Exception`</Note>
@@ -352,7 +374,7 @@ public string Path { get; private set; }
 #### Property Value
 
 Type: `string?`
-The document path, such as `/Order/Lines/Line[2]/@sku`, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
+The document path, such as `/Order/Lines/Line[1]/@sku`, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if it is not known.
 
 #### Remarks
 
@@ -362,7 +384,7 @@ The document path, such as `/Order/Lines/Line[2]/@sku`, or [`null`](https://lear
           is `text()`.
 
 When a document is read, an item of a collection has its position in the collection after its name,
-counted from 1: `Line[2]` is the second item. When an object is written, the path is made of the
+counted from 0 as `System.Text.Json` counts: `Line[1]` is the second item. When an object is written, the path is made of the
 elements the writer has open, and has no positions.
 
 A path that was given to the constructor is left as it is.

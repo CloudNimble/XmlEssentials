@@ -316,6 +316,40 @@ The serialization metadata for type *T*.
 Generated contexts call this method for an enumeration they list or reach. A converter the caller supplied for the
 enumeration, in the options or with [XmlConverterAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverterAttribute), is used in place of the built-in one.
 
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateException
+
+Creates the exception that generated code throws for an error it finds while it writes a value.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.XmlException CreateException(string message)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `message` | `string` | The message that describes the error. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.XmlException`
+An [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) that the serializer treats as one of its own: when the serializer gives
+it a [XmlException.Path](/api-reference/CloudNimble/Text/Xml/XmlException#path), the path follows the message.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *message* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+
+#### Remarks
+
+An exception that is created with a constructor of [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) keeps the message it
+was given. Generated code uses this method so that an error reads the same whether a write fast path
+or the serializer found it.
+
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateNullableInfo
 
 Creates metadata for [Nullable`1](https://learn.microsoft.com/dotnet/api/system.nullable-1) of a value type that is not one of the built-in scalars.

@@ -104,6 +104,29 @@ namespace CloudNimble.XmlEssentials.Samples
         }
 
         /// <summary>
+        /// Finds elements and attributes by names that are spans of characters and UTF-8 bytes.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void NamesAsSpans(TextWriter output)
+        {
+            const string xml = """<Order id="1042"><Customer>Ada Lovelace</Customer><Total>129.90</Total></Order>""";
+
+            using XmlDocument document = XmlDocument.Parse(xml);
+            XmlElement order = document.RootElement;
+
+            ReadOnlySpan<char> wanted = "Customer;Total;Discount";
+            foreach (Range part in wanted.Split(';'))
+            {
+                ReadOnlySpan<char> name = wanted[part];
+                output.WriteLine(order.TryGetChild(name, out XmlElement child)
+                    ? $"{name}: {child.GetString()}"
+                    : $"{name}: not in the order");
+            }
+
+            output.WriteLine($"id: {order.GetAttribute("id"u8).GetInt32()}");
+        }
+
+        /// <summary>
         /// Finds elements and attributes by namespace URI, and reads the parts of a qualified name.
         /// </summary>
         /// <param name="output">The writer that receives what the sample prints.</param>
@@ -200,6 +223,38 @@ namespace CloudNimble.XmlEssentials.Samples
             }
 
             output.WriteLine($"GetRawXml on an attribute is empty: {note.GetAttribute("priority").GetRawXml().Length == 0}");
+        }
+
+        /// <summary>
+        /// Reads values that might not convert, without an exception.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void TryTypedValues(TextWriter output)
+        {
+            const string xml = """
+                <Reading sensor="12">
+                  <Level>high</Level>
+                  <Ratio>0.75</Ratio>
+                  <Count>70000</Count>
+                </Reading>
+                """;
+
+            using XmlDocument document = XmlDocument.Parse(xml);
+            XmlElement reading = document.RootElement;
+
+            byte sensor = reading.GetAttribute("sensor").GetByte();
+            float ratio = reading.GetChild("Ratio").GetSingle();
+            output.WriteLine($"sensor: {sensor}");
+            output.WriteLine($"ratio: {ratio.ToString(CultureInfo.InvariantCulture)}");
+
+            XmlElement level = reading.GetChild("Level");
+            output.WriteLine(level.TryGetInt32(out int number)
+                ? $"level: {number}"
+                : $"level: not an integer ('{level.GetString()}')");
+
+            XmlElement count = reading.GetChild("Count");
+            output.WriteLine($"count as a short: {count.TryGetInt16(out short small)} ({small})");
+            output.WriteLine($"count as a uint: {count.TryGetUInt32(out uint large)} ({large})");
         }
 
         /// <summary>

@@ -406,7 +406,9 @@ namespace CloudNimble.Text.Xml
                 return true;
             }
 
+            // The check for a named literal leaves NaN behind. A value that is refused is the default.
             var body = StripPlus(s);
+            value = default;
             return IsFloatLexical(s, body) && Utf8Parser.TryParse(body, out value, out var consumed) && consumed == body.Length;
         }
 

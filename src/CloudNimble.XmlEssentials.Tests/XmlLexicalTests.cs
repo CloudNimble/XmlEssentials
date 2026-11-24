@@ -332,8 +332,10 @@ namespace CloudNimble.XmlEssentials.Tests
         [DataRow("1 e3")]
         public void Double_Invalid(string text)
         {
-            XmlLexical.TryParseDouble(Utf8(text), out _).Should().BeFalse();
-            XmlLexical.TryParseSingle(Utf8(text), out _).Should().BeFalse();
+            XmlLexical.TryParseDouble(Utf8(text), out var refused).Should().BeFalse();
+            refused.Should().Be(0d, "a value that is refused is the default, not what the check for a named literal left");
+            XmlLexical.TryParseSingle(Utf8(text), out var refusedSingle).Should().BeFalse();
+            refusedSingle.Should().Be(0f);
             ReaderText(text).TryGetDouble(out _).Should().BeFalse();
             ReaderText(text).TryGetSingle(out _).Should().BeFalse();
             DomThrows(text, e => e.GetDouble());
@@ -591,6 +593,96 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Dom_Getters_ReadEveryTypeByTheSharedRules()
+        {
+            DomReads<byte>(" +255 ", (XmlElement e, out byte v) => e.TryGetByte(out v), e => e.GetByte(), byte.MaxValue);
+            DomRefuses<byte>("256", (XmlElement e, out byte v) => e.TryGetByte(out v), e => e.GetByte(), "The value is not a valid integer.");
+            DomReads<short>(" -32768 ", (XmlElement e, out short v) => e.TryGetInt16(out v), e => e.GetInt16(), short.MinValue);
+            DomRefuses<short>("32768", (XmlElement e, out short v) => e.TryGetInt16(out v), e => e.GetInt16(), "The value is not a valid integer.");
+            DomReads<int>(" +2147483647 ", (XmlElement e, out int v) => e.TryGetInt32(out v), e => e.GetInt32(), int.MaxValue);
+            DomRefuses<int>("1e3", (XmlElement e, out int v) => e.TryGetInt32(out v), e => e.GetInt32(), "The value is not a valid integer.");
+            DomReads<long>("-9223372036854775808", (XmlElement e, out long v) => e.TryGetInt64(out v), e => e.GetInt64(), long.MinValue);
+            DomRefuses<long>("9223372036854775808", (XmlElement e, out long v) => e.TryGetInt64(out v), e => e.GetInt64(), "The value is not a valid integer.");
+            DomReads<sbyte>("-128", (XmlElement e, out sbyte v) => e.TryGetSByte(out v), e => e.GetSByte(), sbyte.MinValue);
+            DomRefuses<sbyte>("128", (XmlElement e, out sbyte v) => e.TryGetSByte(out v), e => e.GetSByte(), "The value is not a valid integer.");
+            DomReads<ushort>("65535", (XmlElement e, out ushort v) => e.TryGetUInt16(out v), e => e.GetUInt16(), ushort.MaxValue);
+            DomRefuses<ushort>("-1", (XmlElement e, out ushort v) => e.TryGetUInt16(out v), e => e.GetUInt16(), "The value is not a valid integer.");
+            DomReads<uint>("4294967295", (XmlElement e, out uint v) => e.TryGetUInt32(out v), e => e.GetUInt32(), uint.MaxValue);
+            DomRefuses<uint>("4294967296", (XmlElement e, out uint v) => e.TryGetUInt32(out v), e => e.GetUInt32(), "The value is not a valid integer.");
+            DomReads<ulong>("18446744073709551615", (XmlElement e, out ulong v) => e.TryGetUInt64(out v), e => e.GetUInt64(), ulong.MaxValue);
+            DomRefuses<ulong>("18446744073709551616", (XmlElement e, out ulong v) => e.TryGetUInt64(out v), e => e.GetUInt64(), "The value is not a valid integer.");
+            DomReads<decimal>(" 12.50 ", (XmlElement e, out decimal v) => e.TryGetDecimal(out v), e => e.GetDecimal(), 12.50m);
+            DomRefuses<decimal>("1e2", (XmlElement e, out decimal v) => e.TryGetDecimal(out v), e => e.GetDecimal(), "The value is not a valid decimal.");
+            DomReads<double>("-INF", (XmlElement e, out double v) => e.TryGetDouble(out v), e => e.GetDouble(), double.NegativeInfinity);
+            DomRefuses<double>("Infinity", (XmlElement e, out double v) => e.TryGetDouble(out v), e => e.GetDouble(), "The value is not a valid double.");
+            DomReads<float>(" 0.25 ", (XmlElement e, out float v) => e.TryGetSingle(out v), e => e.GetSingle(), 0.25f);
+            DomRefuses<float>("e3", (XmlElement e, out float v) => e.TryGetSingle(out v), e => e.GetSingle(), "The value is not a valid float.");
+            DomReads<Guid>("{00112233-4455-6677-8899-aabbccddeeff}", (XmlElement e, out Guid v) => e.TryGetGuid(out v), e => e.GetGuid(), Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"));
+            DomRefuses<Guid>("gg112233-4455-6677-8899-aabbccddeeff", (XmlElement e, out Guid v) => e.TryGetGuid(out v), e => e.GetGuid(), "The value is not a valid GUID.");
+            DomReads<DateTime>("2020-01-02T03:04:05Z", (XmlElement e, out DateTime v) => e.TryGetDateTime(out v), e => e.GetDateTime(), new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc));
+            DomRefuses<DateTime>("March 5, 2020", (XmlElement e, out DateTime v) => e.TryGetDateTime(out v), e => e.GetDateTime(), "The value is not a valid dateTime.");
+            DomReads<DateTimeOffset>("2020-01-02T03:04:05-08:00", (XmlElement e, out DateTimeOffset v) => e.TryGetDateTimeOffset(out v), e => e.GetDateTimeOffset(), new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.FromHours(-8)));
+            DomRefuses<DateTimeOffset>("2020-13-02T03:04:05Z", (XmlElement e, out DateTimeOffset v) => e.TryGetDateTimeOffset(out v), e => e.GetDateTimeOffset(), "The value is not a valid dateTime.");
+        }
+
+        [TestMethod]
+        public void Dom_TryGetBytesFromBase64_DecodesOrReturnsFalse()
+        {
+            using var valid = Document(" AQ\r\n  ID ");
+            valid.RootElement.TryGetBytesFromBase64(out var bytes).Should().BeTrue();
+            bytes.Should().Equal(1, 2, 3);
+            using var invalid = Document("AQI");
+            invalid.RootElement.TryGetBytesFromBase64(out var none).Should().BeFalse();
+            none.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void Dom_TryGetters_ReadAnAttributeValue()
+        {
+            using var document = XmlDocument.Parse("<e a=\" +12 \" b=\"x\"/>");
+            document.RootElement.GetAttribute("a").TryGetInt16(out var value).Should().BeTrue();
+            value.Should().Be(12);
+            document.RootElement.GetAttribute("b").TryGetInt16(out var none).Should().BeFalse();
+            none.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void Dom_TryGetters_ThrowForANilElementAndForNoElement_AsTheGettersDo()
+        {
+            using var document = XmlDocument.Parse("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
+            var nil = document.RootElement;
+            foreach (var read in new Action<XmlElement>[]
+            {
+                e => e.TryGetByte(out _),
+                e => e.TryGetBytesFromBase64(out _),
+                e => e.TryGetDateTime(out _),
+                e => e.TryGetDateTimeOffset(out _),
+                e => e.TryGetDecimal(out _),
+                e => e.TryGetDouble(out _),
+                e => e.TryGetGuid(out _),
+                e => e.TryGetInt16(out _),
+                e => e.TryGetInt32(out _),
+                e => e.TryGetInt64(out _),
+                e => e.TryGetSByte(out _),
+                e => e.TryGetSingle(out _),
+                e => e.TryGetUInt16(out _),
+                e => e.TryGetUInt32(out _),
+                e => e.TryGetUInt64(out _),
+                e => e.GetByte(),
+                e => e.GetInt16(),
+                e => e.GetSByte(),
+                e => e.GetSingle(),
+                e => e.GetUInt16(),
+                e => e.GetUInt32(),
+                e => e.GetUInt64(),
+            })
+            {
+                FluentActions.Invoking(() => read(nil)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is nil and has no value.");
+                FluentActions.Invoking(() => read(default)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The XML element is empty.");
+            }
+        }
+
+        [TestMethod]
         public void GetString_KeepsWhitespace_ThatTypedGettersCollapse()
         {
             ReaderText(" 42 ").GetString().Should().Be(" 42 ");
@@ -608,6 +700,23 @@ namespace CloudNimble.XmlEssentials.Tests
         private static XmlDocument Document(string text)
         {
             return XmlDocument.Parse("<e>" + Escape(text) + "</e>", new XmlDocumentOptions { WhitespaceHandling = XmlWhitespaceHandling.Significant });
+        }
+
+        private static void DomReads<T>(string text, TryRead<T> tryGet, Func<XmlElement, T> get, T expected)
+        {
+            using var document = Document(text);
+            tryGet(document.RootElement, out var value).Should().BeTrue("the DOM must read '{0}'", text);
+            value.Should().Be(expected);
+            get(document.RootElement).Should().Be(expected);
+        }
+
+        private static void DomRefuses<T>(string text, TryRead<T> tryGet, Func<XmlElement, T> get, string message)
+        {
+            using var document = Document(text);
+            var root = document.RootElement;
+            tryGet(root, out var value).Should().BeFalse("the DOM must refuse '{0}'", text);
+            value.Should().Be(default(T));
+            FluentActions.Invoking(() => get(root)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
         }
 
         private static void DomThrows(string text, Action<XmlElement> read)

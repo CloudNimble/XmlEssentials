@@ -2,7 +2,10 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Nodes;
 using FluentAssertions;
@@ -172,6 +175,52 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public async Task ParseAsync_AStreamThatArrivesInPieces_IsParsedAsParseParsesIt()
+        {
+            var xml = "<?xml version=\"1.0\"?><r a=\"1\"><!--c--><e>2</e></r>"u8.ToArray();
+            using var expected = XmlDocument.Parse(new MemoryStream(xml));
+            expected.RootElement.GetRawXml().Should().Be("<r a=\"1\"><!--c--><e>2</e></r>");
+
+            var stream = new TrickleStream(xml, 3);
+            using var document = await XmlDocument.ParseAsync(stream);
+            document.RootElement.GetRawXml().Should().Be("<r a=\"1\"><!--c--><e>2</e></r>");
+            document.Declaration!.Value.Version.Should().Be("1.0");
+            stream.BytesRead.Should().Be(xml.Length);
+
+            using var skipped = await XmlDocument.ParseAsync(new TrickleStream(xml, 3), new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Skip });
+            skipped.RootElement.GetRawXml().Should().Be("<r a=\"1\"><e>2</e></r>");
+        }
+
+        [TestMethod]
+        public async Task ParseAsync_ACanceledToken_CancelsTheTask()
+        {
+            using var source = new CancellationTokenSource();
+            source.Cancel();
+            using var stream = new MemoryStream("<e/>"u8.ToArray());
+            await FluentActions.Awaiting(() => XmlDocument.ParseAsync(stream, default, source.Token)).Should().ThrowExactlyAsync<TaskCanceledException>();
+        }
+
+        [TestMethod]
+        public async Task ParseAsync_ADocumentThatIsNotWellFormedOrTooLarge_FailsAsParseFails()
+        {
+            var malformed = "<e><f></e>"u8.ToArray();
+            var syncMessage = FluentActions.Invoking(() => XmlDocument.Parse(new MemoryStream(malformed))).Should().ThrowExactly<XmlException>().Which.Message;
+            syncMessage.Should().Be("End tag does not match start tag.");
+            (await FluentActions.Awaiting(() => XmlDocument.ParseAsync(new TrickleStream(malformed, 2))).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("End tag does not match start tag.");
+
+            var large = "<e>0123456789</e>"u8.ToArray();
+            var limit = new XmlDocumentOptions { MaxDocumentByteCount = 8 };
+            FluentActions.Invoking(() => XmlDocument.Parse(new MemoryStream(large), limit)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (8).");
+            (await FluentActions.Awaiting(() => XmlDocument.ParseAsync(new TrickleStream(large, 2), limit)).Should().ThrowExactlyAsync<XmlException>()).Which.Message.Should().Be("MaxDocumentByteCount exceeded (8).");
+        }
+
+        [TestMethod]
+        public void ParseAsync_ANullStream_IsRefusedBeforeATaskIsCreated()
+        {
+            FluentActions.Invoking(() => { _ = XmlDocument.ParseAsync(null!); }).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("utf8Xml");
+        }
+
+        [TestMethod]
         public void TryParse_Malformed_ReturnsFalse()
         {
             XmlDocument.TryParse("<e>"u8, default, out var document).Should().BeFalse();
@@ -198,6 +247,165 @@ namespace CloudNimble.XmlEssentials.Tests
             using var document = XmlDocument.ParseValue(ref reader);
             document.RootElement.LocalName.Should().Be("e");
             document.RootElement.GetInt32().Should().Be(1);
+        }
+
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void TryParseValue_AnElementThatIsAllThere_IsParsedAsParseValueParsesIt(bool isFinalBlock)
+        {
+            var reader = new Utf8XmlReader("<r><!--c--><e a=\"1\">x<f/></e><g/></r>"u8, isFinalBlock, default);
+            reader.Read();
+            reader.Read();
+            reader.TokenType.Should().Be(XmlTokenType.Comment);
+
+            XmlDocument.TryParseValue(ref reader, out var document).Should().BeTrue("the reader moves on to the element that follows the comment");
+            using (document)
+            {
+                document!.RootElement.GetRawXml().Should().Be("<e a=\"1\">x<f/></e>");
+            }
+
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            reader.LocalNameEquals("e").Should().BeTrue();
+
+            reader.Read();
+            XmlDocument.TryParseValue(ref reader, out var empty).Should().BeTrue();
+            using (empty)
+            {
+                empty!.RootElement.GetRawXml().Should().Be("<g/>");
+            }
+
+            reader.TokenType.Should().Be(XmlTokenType.StartElement, "an empty element has no end tag to stop on");
+            reader.LocalNameEquals("g").Should().BeTrue();
+        }
+
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void TryParseValue_FromAnAttribute_ParsesTheElementThatOwnsIt(bool isFinalBlock)
+        {
+            var reader = new Utf8XmlReader("<r><e a=\"1\">x</e></r>"u8, isFinalBlock, default);
+            reader.Read();
+            reader.Read();
+            reader.MoveToNextAttribute().Should().BeTrue();
+
+            XmlDocument.TryParseValue(ref reader, out var document).Should().BeTrue();
+            using (document)
+            {
+                document!.RootElement.GetRawXml().Should().Be("<e a=\"1\">x</e>");
+            }
+        }
+
+        [TestMethod]
+        public void TryParseValue_AnElementThatIsNotAllThere_ReturnsFalseAndLeavesTheReaderWhereItWas()
+        {
+            var reader = new Utf8XmlReader("<r><e a=\"1\" b=\"&lt;\">x<f>"u8, isFinalBlock: false, default);
+            reader.Read();
+            reader.Read();
+            var consumed = reader.BytesConsumed;
+
+            XmlDocument.TryParseValue(ref reader, out var document).Should().BeFalse();
+            document.Should().BeNull();
+            reader.TokenType.Should().Be(XmlTokenType.StartElement);
+            reader.LocalNameEquals("e").Should().BeTrue();
+            reader.BytesConsumed.Should().Be(consumed);
+
+            // The reader goes on from the start tag as if nothing had been tried.
+            reader.MoveToNextAttribute().Should().BeTrue();
+            reader.GetString().Should().Be("1");
+            reader.MoveToNextAttribute().Should().BeTrue();
+            reader.GetString().Should().Be("<");
+            reader.Read().Should().BeTrue();
+            reader.TokenType.Should().Be(XmlTokenType.Text);
+            reader.GetString().Should().Be("x");
+        }
+
+        [TestMethod]
+        public void TryParseValue_AnElementWithManyAttributesThatIsNotAllThere_KeepsTheAttributesOfTheStartTag()
+        {
+            // Nine attributes are more than the reader keeps inline, and each value needs decoding. The child
+            // that is read ahead has nine of its own.
+            var names = new[] { "a", "b", "c", "d", "e", "f", "g", "h", "i" };
+            var own = string.Concat(names.Select(n => " " + n + "=\"&lt;" + n + "\""));
+            var inner = string.Concat(names.Select(n => " " + n + "=\"&gt;" + n + n + "\""));
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes("<r><e" + own + "><f" + inner + ">x</f>"), isFinalBlock: false, default);
+            reader.Read();
+            reader.Read();
+
+            XmlDocument.TryParseValue(ref reader, out var document).Should().BeFalse();
+            document.Should().BeNull();
+            foreach (var name in names)
+            {
+                reader.MoveToNextAttribute().Should().BeTrue();
+                reader.LocalNameEquals(name).Should().BeTrue();
+                reader.GetString().Should().Be("<" + name);
+            }
+
+            reader.MoveToNextAttribute().Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void TryParseValue_BeforeAnElementThatHasNotArrived_ReturnsFalse()
+        {
+            var reader = new Utf8XmlReader("<r><!--c-->"u8, isFinalBlock: false, default);
+            reader.Read();
+            reader.Read();
+            var consumed = reader.BytesConsumed;
+
+            XmlDocument.TryParseValue(ref reader, out var document).Should().BeFalse();
+            document.Should().BeNull();
+            reader.TokenType.Should().Be(XmlTokenType.Comment);
+            reader.BytesConsumed.Should().Be(consumed);
+        }
+
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void TryParseValue_OnAnEndTag_ReturnsFalse(bool isFinalBlock)
+        {
+            var reader = new Utf8XmlReader("<r><e/></r>"u8, isFinalBlock, default);
+            reader.Read();
+            reader.Read();
+            reader.Read();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            var consumed = reader.BytesConsumed;
+
+            XmlDocument.TryParseValue(ref reader, out var document).Should().BeFalse();
+            document.Should().BeNull();
+            reader.TokenType.Should().Be(XmlTokenType.EndElement);
+            reader.BytesConsumed.Should().Be(consumed);
+        }
+
+        [TestMethod]
+        [DataRow("<r>t</r>", 2, true, "End tag without a matching start tag.")]
+        [DataRow("<r>t</r>", 2, false, "End tag without a matching start tag.")]
+        [DataRow("<r><e>x</f></r>", 1, true, "End tag does not match start tag.")]
+        [DataRow("<r><e>x</f></r>", 1, false, "End tag does not match start tag.")]
+        [DataRow("<r><e>x", 1, true, "Unexpected end of XML.")]
+        [DataRow("<r/><!--c-->", 2, true, "The reader is not on an element and has none left to read.")]
+        public void TryParseValue_XmlThatParseValueRefuses_ThrowsAndLeavesTheReaderWhereItWas(string xml, int reads, bool isFinalBlock, string message)
+        {
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(xml), isFinalBlock, default);
+            for (var i = 0; i < reads; i++)
+            {
+                reader.Read();
+            }
+
+            var token = reader.TokenType;
+            var consumed = reader.BytesConsumed;
+            string? thrown = null;
+            try
+            {
+                XmlDocument.TryParseValue(ref reader, out _);
+            }
+            catch (XmlException ex)
+            {
+                thrown = ex.Message;
+            }
+
+            thrown.Should().Be(message);
+            reader.TokenType.Should().Be(token);
+            reader.BytesConsumed.Should().Be(consumed);
         }
 
         [TestMethod]
@@ -349,6 +557,66 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             using var document = XmlDocument.Parse("<e>3.5</e>");
             document.RootElement.GetDouble().Should().Be(3.5d);
+        }
+
+        [TestMethod]
+        public void GetChild_AndGetAttribute_TakeTheNameAsCharactersOrAsUtf8()
+        {
+            using var document = XmlDocument.Parse("<r xmlns:p=\"urn:p\" a=\"1\" p:b=\"2\" \u00E9=\"3\"><x>4</x><p:y>5</p:y><\u00E9>6</\u00E9>t</r>");
+            var root = document.RootElement;
+
+            root.GetAttribute("a".AsSpan()).GetInt32().Should().Be(1);
+            root.GetAttribute("b".AsSpan()).GetInt32().Should().Be(2, "the name is looked for in any namespace");
+            root.GetAttribute("\u00E9".AsSpan()).GetInt32().Should().Be(3);
+            root.GetAttribute("a"u8).GetInt32().Should().Be(1);
+            root.GetAttribute("b"u8).GetInt32().Should().Be(2);
+            root.GetAttribute("\u00E9"u8).GetInt32().Should().Be(3);
+            root.GetChild("x".AsSpan()).GetInt32().Should().Be(4);
+            root.GetChild("y".AsSpan()).GetInt32().Should().Be(5);
+            root.GetChild("\u00E9".AsSpan()).GetInt32().Should().Be(6);
+            root.GetChild("x"u8).GetInt32().Should().Be(4);
+            root.GetChild("y"u8).GetInt32().Should().Be(5);
+            root.GetChild("\u00E9"u8).GetInt32().Should().Be(6);
+
+            root.TryGetAttribute("b".AsSpan(), out var attribute).Should().BeTrue();
+            attribute.Should().Be(root.GetAttribute("b"));
+            root.TryGetAttribute("b"u8, out attribute).Should().BeTrue();
+            attribute.Should().Be(root.GetAttribute("b"));
+            root.TryGetChild("y".AsSpan(), out var child).Should().BeTrue();
+            child.Should().Be(root.GetChild("y"));
+            root.TryGetChild("y"u8, out child).Should().BeTrue();
+            child.Should().Be(root.GetChild("y"));
+        }
+
+        [TestMethod]
+        public void GetChild_AndGetAttribute_WithANameThatIsNotThere_ThrowWhereTheTryMethodsReturnFalse()
+        {
+            using var document = XmlDocument.Parse("<r a=\"1\"><x>4</x>t</r>");
+            var root = document.RootElement;
+
+            root.TryGetAttribute("x".AsSpan(), out var none).Should().BeFalse("x is a child, not an attribute");
+            none.Should().Be(default(XmlElement));
+            root.TryGetAttribute("x"u8, out none).Should().BeFalse();
+            none.Should().Be(default(XmlElement));
+            root.TryGetChild("a".AsSpan(), out none).Should().BeFalse("a is an attribute, not a child");
+            none.Should().Be(default(XmlElement));
+            root.TryGetChild("a"u8, out none).Should().BeFalse();
+            none.Should().Be(default(XmlElement));
+
+            FluentActions.Invoking(() => root.GetAttribute("\u00E9".AsSpan())).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Attribute '\u00E9' was not found.");
+            FluentActions.Invoking(() => root.GetAttribute("\u00E9"u8)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Attribute '\u00E9' was not found.");
+            FluentActions.Invoking(() => root.GetChild("\u00E9".AsSpan())).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Child element '\u00E9' was not found.");
+            FluentActions.Invoking(() => root.GetChild("\u00E9"u8)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Child element '\u00E9' was not found.");
+
+            // An attribute has no attributes and no children, so nothing is found on one.
+            var a = root.GetAttribute("a");
+            a.TryGetAttribute("a".AsSpan(), out _).Should().BeFalse();
+            a.TryGetAttribute("a"u8, out _).Should().BeFalse();
+            a.TryGetChild("x".AsSpan(), out _).Should().BeFalse();
+            a.TryGetChild("x"u8, out _).Should().BeFalse();
+
+            FluentActions.Invoking(() => default(XmlElement).TryGetAttribute("a"u8, out _)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The XML element is empty.");
+            FluentActions.Invoking(() => default(XmlElement).TryGetChild("x"u8, out _)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The XML element is empty.");
         }
 
         [TestMethod]

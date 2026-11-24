@@ -1215,7 +1215,8 @@ namespace CloudNimble.Text.Xml.Serialization
 
         /// <summary>
         /// Throws when an element name could belong to two members: a member's own name, or the name one of its
-        /// derived types is written under, is also used by another member.
+        /// derived types is written under, is also used by another member. The derived types of a collection in a
+        /// wrapper are not counted, because they are written inside the wrapper.
         /// </summary>
         /// <param name="properties">The bound members.</param>
         /// <param name="caseInsensitive">Whether names are compared without regard to case.</param>
@@ -1229,7 +1230,7 @@ namespace CloudNimble.Text.Xml.Serialization
             var owners = new Dictionary<string, XmlBoundProperty>(caseInsensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
             foreach (var property in properties)
             {
-                if (property.IsAttribute || property.IsText || !property.Polymorphism.HasElementNames)
+                if (property.IsAttribute || property.IsText || !property.ClaimsDerivedElementNames)
                 {
                     continue;
                 }
@@ -1252,7 +1253,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     throw new InvalidOperationException($"The type maps more than one member to the element name '{property.Info.Name.LocalName}'.");
                 }
 
-                foreach (var derived in property.Polymorphism.HasElementNames ? property.Polymorphism.Derived : [])
+                foreach (var derived in property.ClaimsDerivedElementNames ? property.Polymorphism.Derived : [])
                 {
                     if (owners[Encoding.UTF8.GetString(derived.Utf8Name)] != property)
                     {

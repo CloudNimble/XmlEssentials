@@ -57,7 +57,9 @@ public sealed class XmlDocument : IDisposable
     public static XmlDocument Parse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default);
     public static XmlDocument Parse(ReadOnlySequence<byte> utf8Xml, XmlDocumentOptions options = default);
     public static XmlDocument Parse(Stream utf8Xml, XmlDocumentOptions options = default);
+    public static Task<XmlDocument> ParseAsync(Stream utf8Xml, XmlDocumentOptions options = default, CancellationToken cancellationToken = default);
     public static XmlDocument ParseValue(ref Utf8XmlReader reader);
+    public static bool TryParseValue(ref Utf8XmlReader reader, [NotNullWhen(true)] out XmlDocument? document);
 
     public static bool TryParse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options, out XmlDocument? document);
 
@@ -82,6 +84,8 @@ public readonly struct XmlElement : IEquatable<XmlElement>
     public XmlElement GetChild(string localName);
     public XmlElement GetChild(string localName, string namespaceUri);
     public bool TryGetChild(string localName, out XmlElement value);
+    // GetChild, TryGetChild, GetAttribute and TryGetAttribute also take the local name as ReadOnlySpan<char>
+    // and as ReadOnlySpan<byte> of UTF-8, in any namespace, as JsonElement.GetProperty and TryGetProperty do.
     public bool TryGetChild(string localName, string namespaceUri, out XmlElement value);
 
     public XmlElement GetAttribute(string localName);
@@ -100,6 +104,17 @@ public readonly struct XmlElement : IEquatable<XmlElement>
     public DateTimeOffset GetDateTimeOffset();
     public Guid GetGuid();
     public byte[] GetBytesFromBase64();
+    public byte GetByte();
+    public short GetInt16();
+    public float GetSingle();
+    [CLSCompliant(false)] public sbyte GetSByte();
+    [CLSCompliant(false)] public ushort GetUInt16();
+    [CLSCompliant(false)] public uint GetUInt32();
+    [CLSCompliant(false)] public ulong GetUInt64();
+
+    // One for each getter of JsonElement: Byte, BytesFromBase64, DateTime, DateTimeOffset, Decimal, Double, Guid,
+    // Int16, Int32, Int64, SByte, Single, UInt16, UInt32, UInt64.
+    public bool TryGetInt32(out int value);
 
     public Enumerator EnumerateChildren();
     public AttributeEnumerator EnumerateAttributes();
@@ -131,7 +146,7 @@ Prolog/epilog comments and PIs are **preserved** in the parse buffer and round-t
 ### Values
 
 - `GetString()` returns the text exactly as parsed (after the reader's line-end and attribute-value normalization), whitespace included. For an element it is the concatenated text and CDATA of its descendants. For a nil element it is `null`.
-- `GetInt32()`, `GetDouble()`, `GetDateTime()`, and the other typed getters apply the lexical rules in [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant) through the same code as `Utf8XmlReader`. `<n> 42 </n>` is the string `" 42 "` and the integer `42`.
+- `GetInt32()`, `GetDouble()`, `GetDateTime()`, and the other typed getters apply the lexical rules in [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant) through the same code as `Utf8XmlReader`. `<n> 42 </n>` is the string `" 42 "` and the integer `42`. A `TryGet` method returns `false`, with the default value, for a value the type cannot hold; it throws what the getter throws for a nil element (`XmlException`) and for a default `XmlElement` (`InvalidOperationException`), as `JsonElement.TryGetInt32` throws for a value of the wrong kind. `ParseAsync` reads the stream with asynchronous reads and then parses it as `Parse(Stream)` does; a `null` stream is refused before a task is created, as `JsonDocument.ParseAsync` refuses it. `TryParseValue` returns false, with the reader where it was, when the reader's block ends before the element does and the block is not the last, and when the reader is on an end tag; in every other case it does what `ParseValue` does, and the reader has not moved when an exception leaves it, as with `JsonDocument.TryParseValue`. The element is read twice, the first time by a reader that shares nothing with the caller's.
 - A typed getter on a nil element throws: the element has no value.
 - `IsEmptyElement` is true for `<e/>` and false for `<e></e>`, including when the element is nil.
 - Name lookups compare `{local, namespace URI}`. The overloads without a namespace match the local name in any namespace. `XmlElementNode.SetAttribute` is not a lookup: without a namespace it sets the attribute in no namespace.

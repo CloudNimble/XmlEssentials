@@ -4,7 +4,7 @@
 - `Dispose` clears the buffers and returns them to `ArrayPool<T>.Shared`. After that, the document and every `XmlElement` from it throw `ObjectDisposedException`.
 - Parsing allocates the `XmlDocument` object and, in the usual case, nothing else. In the project's benchmarks, parsing four real documents takes 0.34 to 0.42 of the time `System.Xml.XmlDocument` takes and allocates about 104 bytes. See [Benchmarks](/benchmarks).
 - The whole document is in memory. For input that is too large for that, read it with `Utf8XmlReader` and use `ParseValue` for the parts that need random access.
-- There is no document cache and no `ParseAsync`.
+- `ParseAsync` reads the stream asynchronously and then parses it in one pass.
 
 ### What is kept
 

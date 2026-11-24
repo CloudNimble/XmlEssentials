@@ -539,7 +539,7 @@ namespace CloudNimble.XmlEssentials.Tests
             writer.WriteStartElement("e6");
             writer.WriteNilValue();
             writer.WriteEndElement();
-            writer.WriteElementString("e7", null);
+            writer.WriteElementString("e7", (string?)null);
             writer.WriteStartElement("e8");
             writer.WriteFullEndElement();
             writer.WriteStartElement("e9");

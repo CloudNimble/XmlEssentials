@@ -15,7 +15,7 @@ using (var writer = new Utf8XmlWriter(buffer, options))
     writer.WriteElementBoolean("Rush", true);
     writer.WriteElementString("Placed", new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
     writer.WriteElementBase64String("Signature", [0x58, 0x4D, 0x4C, 0x21]);
-    writer.WriteElementString("Comment", null);
+    writer.WriteElementString("Comment", (string?)null);
     writer.WriteEmptyElement("Gift");
     writer.WriteNilElement("Discount");
 

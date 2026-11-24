@@ -5,6 +5,7 @@ using System.Text;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Tests.POCOs;
+using CloudNimble.XmlEssentials.Tests.POCOs.Wrappers;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -353,6 +354,44 @@ namespace CloudNimble.XmlEssentials.Tests
             var xml = XmlSerializer.Serialize(sorted, Bare);
             xml.Should().Be("<SortedDictionaryOfStringInt32><a>1</a><b>2</b></SortedDictionaryOfStringInt32>");
             XmlSerializer.Deserialize<SortedDictionary<string, int>>(xml).Should().Equal(sorted);
+        }
+
+        [TestMethod]
+        public void DerivedTypeName_BesideAWrappedCollection_IsNotAnItemOfTheCollection()
+        {
+            const string xml = "<PolyWrappedOfNamedShape><NamedCircle><Label>a</Label></NamedCircle><Items><NamedSquare><Label>b</Label></NamedSquare></Items></PolyWrappedOfNamedShape>";
+            var read = XmlSerializer.Deserialize<PolyWrapped<NamedShape>>(xml)!;
+            read.Items.Should().ContainSingle().Which.Should().BeOfType<NamedSquare>().Which.Label.Should().Be("b");
+
+            var strict = new XmlSerializerOptions { UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow };
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<PolyWrapped<NamedShape>>(xml, strict))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'NamedCircle'. Path: /PolyWrappedOfNamedShape | LineNumber: 1 | BytePositionInLine: 39.");
+        }
+
+        [TestMethod]
+        public void DerivedTypeNames_OfAMemberAndOfAWrappedCollection_DoNotCompete()
+        {
+            var album = new ShapeAlbum
+            {
+                Cover = new NamedCircle { Label = "c", Radius = 2 },
+                Pages = [new NamedSquare { Label = "s", Side = 4 }, new NamedCircle { Label = "p", Radius = 3 }],
+            };
+            const string xml = "<ShapeAlbum><NamedCircle><Label>c</Label><Radius>2</Radius></NamedCircle><Pages><NamedSquare><Label>s</Label><Side>4</Side></NamedSquare><NamedCircle><Label>p</Label><Radius>3</Radius></NamedCircle></Pages></ShapeAlbum>";
+            XmlSerializer.Serialize(album, Bare).Should().Be(xml);
+
+            var read = XmlSerializer.Deserialize<ShapeAlbum>(xml)!;
+            read.Cover.Should().BeOfType<NamedCircle>().Which.Radius.Should().Be(2);
+            read.Pages.Should().HaveCount(2);
+            read.Pages[0].Should().BeOfType<NamedSquare>().Which.Side.Should().Be(4);
+            read.Pages[1].Should().BeOfType<NamedCircle>().Which.Radius.Should().Be(3);
+            XmlSerializer.Serialize(read, Bare).Should().Be(xml);
+        }
+
+        [TestMethod]
+        public void DerivedTypeNames_OfAMemberAndOfACollectionWithNoWrapper_AreRefused()
+        {
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new ShapeStrip(), Bare))
+                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The type maps more than one member to the element name 'NamedCircle'.");
         }
 
         [TestMethod]

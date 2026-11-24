@@ -122,11 +122,11 @@ The state holds more than `JsonReaderState` does. To resume inside a document, t
 | `WriteStartElement`, 8 overloads: a local name, a local name with a namespace URI, and a prefix with both, as UTF-8, characters, or strings | The same 8 overloads | Same. |
 | | `WriteStartElement(XmlEncodedText)` | Added. |
 | `WriteEndElement()`, `WriteFullEndElement()` | The same names | Same. |
-| `WriteElementString`, 18 overloads: a name as UTF-8, characters, or a string, with a value as UTF-8, characters, a string, `DateTime`, `DateTimeOffset`, or `Guid` | 7 overloads: `(string, string?)`, `(string, DateTime)`, `(string, DateTimeOffset)`, `(string, Guid)`, `(ReadOnlySpan<char>, ReadOnlySpan<char>)`, `(ReadOnlySpan<byte>, ReadOnlySpan<byte>)`, and `(string localName, string? namespaceUri, string? value)` | Partial. The name and the value have the same kind, and the typed values take a string name. The overload with a namespace URI is added. |
-| `WriteElementNumber`, 21 overloads: a name as UTF-8, characters, or a string, with `int`, `long`, `double`, `float`, `decimal`, `uint`, or `ulong` | 7 overloads, with a string name | Partial. |
-| `WriteElementBoolean`, 3 overloads | The same 3 overloads | Same. |
-| `WriteElementBase64String`, 3 overloads | The same 3 overloads | Same. |
-| `WriteNilElement`, 3 overloads | The same 3 overloads, and `(string localName, string? namespaceUri)` | Same. One overload added. |
+| `WriteElementString`, 18 overloads: a name as UTF-8, characters, or a string, with a value as UTF-8, characters, a string, `DateTime`, `DateTimeOffset`, or `Guid` | The same 18 overloads, the same 6 values with a name as `XmlEncodedText`, and `(string localName, string? namespaceUri, string? value)` | Same. 7 overloads added. |
+| `WriteElementNumber`, 21 overloads: a name as UTF-8, characters, or a string, with `int`, `long`, `double`, `float`, `decimal`, `uint`, or `ulong` | The same 21 overloads, and the same 7 numbers with a name as `XmlEncodedText` | Same. 7 overloads added. |
+| `WriteElementBoolean`, 3 overloads | The same 3 overloads, and `(XmlEncodedText, bool)` | Same. One overload added. |
+| `WriteElementBase64String`, 3 overloads | The same 3 overloads, and `(XmlEncodedText, ReadOnlySpan<byte>)` | Same. One overload added. |
+| `WriteNilElement`, 3 overloads | The same 3 overloads, `(string localName, string? namespaceUri)`, and `(XmlEncodedText)` | Same. Two overloads added. |
 | `WriteAttributeString`, 6 overloads | 5 overloads | Partial. `(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri, ReadOnlySpan<byte> utf8Value)` is not implemented. |
 | | `WriteAttributeNumber(string, int)`, `(string, long)`, `(string, double)` | Added. |
 | `WriteStartAttribute`, 3 overloads, and `WriteEndAttribute()` | The same names and overloads | Same. |

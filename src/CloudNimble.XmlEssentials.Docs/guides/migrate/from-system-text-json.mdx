@@ -180,7 +180,7 @@ Contract customization isn't supported. `XmlTypeInfo` and `XmlPropertyInfo` desc
 
 | System.Text.Json | XmlEssentials | Notes |
 | --- | --- | --- |
-| `JsonDocument` | [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument) | Read-only, pooled, `IDisposable`. `Parse`, `ParseValue`, `RootElement`, `WriteTo`. No `ParseAsync`. See [Use XmlDocument](/guides/use-xmldocument). |
+| `JsonDocument` | [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument) | Read-only, pooled, `IDisposable`. `Parse`, `ParseAsync`, `ParseValue`, `TryParseValue`, `RootElement`, `WriteTo`. See [Use XmlDocument](/guides/use-xmldocument). |
 | `JsonElement` | [`XmlElement`](/api-reference/CloudNimble/Text/Xml/XmlElement) | A struct. One type for elements, attributes, text, and comments. |
 | `JsonElement.GetProperty`, `TryGetProperty` | `GetChild`, `TryGetChild`, `GetAttribute`, `TryGetAttribute` | An element has two sets of named members. |
 | `EnumerateObject`, `EnumerateArray` | `EnumerateChildren`, `EnumerateAttributes` | |

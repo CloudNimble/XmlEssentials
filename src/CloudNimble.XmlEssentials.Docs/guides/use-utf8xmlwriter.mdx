@@ -210,7 +210,7 @@ using (var writer = new Utf8XmlWriter(buffer, options))
     writer.WriteElementBoolean("Rush", true);
     writer.WriteElementString("Placed", new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
     writer.WriteElementBase64String("Signature", [0x58, 0x4D, 0x4C, 0x21]);
-    writer.WriteElementString("Comment", null);
+    writer.WriteElementString("Comment", (string?)null);
     writer.WriteEmptyElement("Gift");
     writer.WriteNilElement("Discount");
 
@@ -258,6 +258,55 @@ To choose between the two ways of closing an element:
 - `WriteFullEndElement` always writes the end tag, so an element with no content becomes `<Notes></Notes>`, whatever `EmptyElementStyle` is. Use it for consumers that treat the two forms differently, such as HTML parsers.
 
 `WriteEmptyElement` and `WriteElementString` with a `null` string follow `EmptyElementStyle` too. See [Control the layout](#control-the-layout).
+
+### Pass the name as bytes, characters, or an encoded name
+
+Every `WriteElement*` method takes the name of the element as a `string`, a `ReadOnlySpan<char>`, a `ReadOnlySpan<byte>` of UTF-8, or an [`XmlEncodedText`](#encode-names-you-write-often), as the `Write*` methods of `Utf8JsonWriter` take a property name. `WriteElementString` takes its text in the same three forms. Each form writes the same element.
+
+```csharp
+private static readonly XmlEncodedText TotalName = XmlEncodedText.Encode("Total");
+```
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+ReadOnlySpan<char> header = "Placed;Rush";
+int separator = header.IndexOf(';');
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order"u8);
+    writer.WriteElementString("Item"u8, "Keyboard");
+    writer.WriteElementNumber("Quantity"u8, 2);
+    writer.WriteElementNumber(TotalName, 129.90m);
+    writer.WriteElementString(header[..separator], new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
+    writer.WriteElementBoolean(header[(separator + 1)..], true);
+    writer.WriteElementString(TotalName, (string?)null);
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<Order>
+  <Item>Keyboard</Item>
+  <Quantity>2</Quantity>
+  <Total>129.90</Total>
+  <Placed>2026-03-14T09:30:00Z</Placed>
+  <Rush>true</Rush>
+  <Total/>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+What to notice:
+
+- A `u8` literal or an `XmlEncodedText` is already UTF-8, so the writer copies the name without converting it.
+- A `null` literal for the text doesn't say which overload you mean, and the call doesn't compile. Cast it, as `(string?)null` in the sample, or pass a `string` variable. `Utf8JsonWriter.WriteString` has the same rule.
 
 ## How the writer escapes values
 
@@ -807,7 +856,7 @@ What to know:
 
 - `Encode` takes a `string`, a `ReadOnlySpan<char>`, or UTF-8 bytes, and copies them.
 - Encoding doesn't check the name. The writer checks it each time it writes it, unless validation is off.
-- `XmlEncodedText` is for element names in no namespace: `WriteStartElement` and `WriteEmptyElement` have an overload for it. For other names, a `u8` literal (as `"Items"u8` in the sample) gives the same benefit with no field.
+- `XmlEncodedText` is for element names in no namespace: `WriteStartElement`, `WriteEmptyElement`, `WriteNilElement` and every `WriteElement*` method have an overload for it. For other names, a `u8` literal (as `"Items"u8` in the sample) gives the same benefit with no field.
 - It's for names only. A name is never escaped, so don't use it to carry text.
 
 ## Flush and dispose

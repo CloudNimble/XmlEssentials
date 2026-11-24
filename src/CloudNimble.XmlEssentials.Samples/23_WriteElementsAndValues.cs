@@ -13,6 +13,12 @@ namespace CloudNimble.XmlEssentials.Samples
     public static class WriteElementsAndValues
     {
 
+        #region Fields
+
+        private static readonly XmlEncodedText TotalName = XmlEncodedText.Encode("Total");
+
+        #endregion
+
         #region Public Methods
 
         /// <summary>
@@ -179,13 +185,39 @@ namespace CloudNimble.XmlEssentials.Samples
                 writer.WriteElementBoolean("Rush", true);
                 writer.WriteElementString("Placed", new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
                 writer.WriteElementBase64String("Signature", [0x58, 0x4D, 0x4C, 0x21]);
-                writer.WriteElementString("Comment", null);
+                writer.WriteElementString("Comment", (string?)null);
                 writer.WriteEmptyElement("Gift");
                 writer.WriteNilElement("Discount");
 
                 writer.WriteStartElement("Notes");
                 writer.WriteFullEndElement();
 
+                writer.WriteEndElement();
+            }
+
+            output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+        }
+
+        /// <summary>
+        /// Writes complete elements whose names are UTF-8 bytes, a span of characters, and an encoded name.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void WriteCompleteElementsWithOtherNames(TextWriter output)
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+            ReadOnlySpan<char> header = "Placed;Rush";
+            int separator = header.IndexOf(';');
+
+            using (var writer = new Utf8XmlWriter(buffer, options))
+            {
+                writer.WriteStartElement("Order"u8);
+                writer.WriteElementString("Item"u8, "Keyboard");
+                writer.WriteElementNumber("Quantity"u8, 2);
+                writer.WriteElementNumber(TotalName, 129.90m);
+                writer.WriteElementString(header[..separator], new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
+                writer.WriteElementBoolean(header[(separator + 1)..], true);
+                writer.WriteElementString(TotalName, (string?)null);
                 writer.WriteEndElement();
             }
 

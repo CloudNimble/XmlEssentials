@@ -527,6 +527,32 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
+        /// pre-encoded <see cref="XmlEncodedText"/>.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
+        public void WriteNilElement(XmlEncodedText localName)
+        {
+            WriteStartElement(localName);
+            WriteNilValue();
+            WriteEndElement();
+        }
+
+        /// <summary>
         /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a string.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
@@ -1266,6 +1292,447 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Writes an element with the local name specified as a string and text specified as a read-only span of characters as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(string localName, ReadOnlySpan<char> value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and text specified as a read-only span of UTF-8 bytes as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(string localName, ReadOnlySpan<byte> utf8Value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(utf8Value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a string value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed, or <see langword="null"/> to write an empty element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<char> localName, string? value)
+        {
+            WriteStartElement(localName);
+            if (value is not null)
+            {
+                WriteStringValue(value);
+            }
+
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and text specified as a read-only span of UTF-8 bytes as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<char> localName, ReadOnlySpan<byte> utf8Value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(utf8Value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="DateTime"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The value is formatted as it is by <see cref="WriteStringValue(DateTime)"/>.
+        /// </remarks>
+        public void WriteElementString(ReadOnlySpan<char> localName, DateTime value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="DateTimeOffset"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c> with its offset.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<char> localName, DateTimeOffset value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="Guid"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<char> localName, Guid value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a string value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed, or <see langword="null"/> to write an empty element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, string? value)
+        {
+            WriteStartElement(utf8LocalName);
+            if (value is not null)
+            {
+                WriteStringValue(value);
+            }
+
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and text specified as a read-only span of characters as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<char> value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="DateTime"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The value is formatted as it is by <see cref="WriteStringValue(DateTime)"/>.
+        /// </remarks>
+        public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, DateTime value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="DateTimeOffset"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c> with its offset.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, DateTimeOffset value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="Guid"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, Guid value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a string value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed, or <see langword="null"/> to write an empty element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(XmlEncodedText localName, string? value)
+        {
+            WriteStartElement(localName);
+            if (value is not null)
+            {
+                WriteStringValue(value);
+            }
+
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and text specified as a read-only span of characters as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(XmlEncodedText localName, ReadOnlySpan<char> value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and text specified as a read-only span of UTF-8 bytes as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8Value">The UTF-8 encoded text to write as the content of the element, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(XmlEncodedText localName, ReadOnlySpan<byte> utf8Value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(utf8Value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="DateTime"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The value is formatted as it is by <see cref="WriteStringValue(DateTime)"/>.
+        /// </remarks>
+        public void WriteElementString(XmlEncodedText localName, DateTime value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="DateTimeOffset"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The value to write as an XML Schema <c>dateTime</c> with its offset.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(XmlEncodedText localName, DateTimeOffset value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="Guid"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementString(XmlEncodedText localName, Guid value)
+        {
+            WriteStartElement(localName);
+            WriteStringValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
         /// Writes an element with the local name specified as a string and an <see cref="int"/> value as its content.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
@@ -1492,6 +1959,492 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, int value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, long value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, double value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, float value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, decimal value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<char> localName, uint value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<char> localName, ulong value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, int value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, long value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, double value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, float value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, decimal value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, uint value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, ulong value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(XmlEncodedText localName, int value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(XmlEncodedText localName, long value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(XmlEncodedText localName, double value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(XmlEncodedText localName, float value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(XmlEncodedText localName, decimal value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(XmlEncodedText localName, uint value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(XmlEncodedText localName, ulong value)
+        {
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
         /// Writes an element with the local name specified as a string and a <see cref="bool"/> value as its content.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
@@ -1563,6 +2516,28 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="bool"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBoolean(XmlEncodedText localName, bool value)
+        {
+            WriteStartElement(localName);
+            WriteBooleanValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
         /// Writes an element with the local name specified as a string and binary data, encoded as base64 text, as its content.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
@@ -1629,6 +2604,28 @@ namespace CloudNimble.Text.Xml
         public void WriteElementBase64String(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> bytes)
         {
             WriteStartElement(utf8LocalName);
+            WriteBase64StringValue(bytes);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and binary data, encoded as base64 text, as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBase64String(XmlEncodedText localName, ReadOnlySpan<byte> bytes)
+        {
+            WriteStartElement(localName);
             WriteBase64StringValue(bytes);
             WriteEndElement();
         }

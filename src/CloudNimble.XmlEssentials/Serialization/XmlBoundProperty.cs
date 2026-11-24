@@ -29,6 +29,17 @@ namespace CloudNimble.Text.Xml.Serialization
         internal readonly byte[]? AttributeHead;
 
         /// <summary>
+        /// Whether an element under the member's parent that has the name of one of the member's derived types
+        /// belongs to the member.
+        /// </summary>
+        /// <remarks>
+        /// It does for a member that holds one value and for a collection with no wrapper, whose values are
+        /// children of the parent. It does not for a collection in a wrapper: its items are children of the
+        /// wrapper, so their names say nothing about the children of the parent.
+        /// </remarks>
+        internal readonly bool ClaimsDerivedElementNames;
+
+        /// <summary>
         /// The collection mapping, or null when the member is not a collection.
         /// </summary>
         internal readonly XmlCollectionBinding? Collection;
@@ -185,6 +196,7 @@ namespace CloudNimble.Text.Xml.Serialization
             Collection = collection;
             IsUnwrappedCollection = collection is { Wrapped: false };
             Polymorphism = polymorphism;
+            ClaimsDerivedElementNames = polymorphism.HasElementNames && collection is not { Wrapped: true };
             if (IsAttribute && utf8NamespaceUri.Length == 0 && XmlChars.IsShortAsciiNcName(utf8LocalName, utf8LocalName.Length))
             {
                 AttributeHead = [(byte)' ', .. utf8LocalName, (byte)'=', (byte)'"'];
@@ -241,7 +253,7 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             return NameEquals(ref reader, Utf8LocalName, caseInsensitive)
-                || (Polymorphism.HasElementNames && Polymorphism.MatchesElementName(ref reader, caseInsensitive));
+                || (ClaimsDerivedElementNames && Polymorphism.MatchesElementName(ref reader, caseInsensitive));
         }
 
         /// <summary>
