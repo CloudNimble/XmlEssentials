@@ -176,6 +176,28 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "<CardPayment kind=\"card\"><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>");
         }
 
+#if NET11_0_OR_GREATER
+        [TestMethod]
+        public void Sample16_Polymorphism_InferClosedTypes()
+        {
+            SampleOutput.Capture(Polymorphism.InferClosedTypes).Should().Be(
+                "<Outbox>\n" +
+                "  <Messages>\n" +
+                "    <EmailNotification>\n" +
+                "      <Text>Your order shipped.</Text>\n" +
+                "      <Address>ada@example.com</Address>\n" +
+                "    </EmailNotification>\n" +
+                "    <SmsNotification>\n" +
+                "      <Text>Your code is 4242.</Text>\n" +
+                "      <Number>+1 555 0100</Number>\n" +
+                "    </SmsNotification>\n" +
+                "  </Messages>\n" +
+                "</Outbox>\n" +
+                "EmailNotification\n" +
+                "SmsNotification");
+        }
+#endif
+
         [TestMethod]
         public void Sample16_Polymorphism_UseAttributeDiscriminator()
         {

@@ -352,6 +352,7 @@ These options take effect when reading. See [Deserialize](/guides/deserialize) a
 | `NumberHandling` | `XmlNumberHandling.AllowNamedFloatingPointLiterals` | Whether `INF`, `-INF`, and `NaN` are written and read for `float` and `double`. With `Strict`, they throw an `XmlException`. |
 | `ReferenceHandler` | `null` | How an object that appears more than once, or a cycle, is handled. See [Preserve references](/guides/preserve-references). |
 | `Converters` | Empty | Your own converters, tried before the built-in ones. See [Custom converters](/guides/custom-converters). |
+| `InferClosedTypePolymorphism` | `false` | Takes the derived types of a closed type from the list the compiler makes, for a type that declares none. Needs C# 15 and .NET 11. See [Polymorphism](/guides/polymorphism#infer-the-derived-types-of-a-closed-type). |
 
 ### Limits
 
@@ -373,16 +374,6 @@ The limits protect against oversized or hostile input. See [Security](/guides/se
 | `TypeInfoResolver` | The reflection resolver, or `null` when reflection is turned off | Supplies the XML mapping for each type. Set it to a source-generated context to avoid reflection. See [Use source generation](/guides/source-generation). |
 | `TypeInfoResolverChain` | Empty | The same resolver as a list, for combining several contexts. |
 | `IsReadOnly` | `false` | Read-only. Tells you whether the instance can still be changed. |
-
-### Options that have no effect
-
-<Warning>
-The property in the following table can be set, and the copy constructor copies it, but in version 1.0 the serializer doesn't read it. Setting it changes nothing.
-</Warning>
-
-| Option | Default |
-| --- | --- |
-| `InferClosedTypePolymorphism` | `false` |
 
 ## See also
 

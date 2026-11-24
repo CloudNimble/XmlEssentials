@@ -674,6 +674,86 @@ namespace CloudNimble.XmlEssentials.Tests
                     "<Drawing><Numbers xmlns=\"urn:w\"><i xmlns=\"urn:i\">1</i></Numbers><Shapes><shape xmlns=\"urn:round\"><Radius>2</Radius></shape><shape xmlns=\"urn:square\"><Side>3</Side></shape></Shapes></Drawing>|1,Circle,Square");
         }
 
+#if NET11_0_OR_GREATER
+        [TestMethod]
+        public void ClosedTypes_AreInferredByAGeneratedContext()
+        {
+            // The compiler this test compiles with is older than the closed modifier, so the source carries the
+            // attribute the modifier makes the compiler write.
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                [System.Runtime.CompilerServices.IsClosedType(DerivedTypes = new[] { typeof(Circle), typeof(Polygon), typeof(Full<>) })]
+                public abstract class Shape
+                {
+                }
+
+                public sealed class Circle : Shape
+                {
+                    public int Radius { get; set; }
+                }
+
+                [System.Runtime.CompilerServices.IsClosedType(DerivedTypes = new[] { typeof(Square) })]
+                public abstract class Polygon : Shape
+                {
+                    public int Sides { get; set; }
+                }
+
+                public sealed class Square : Polygon
+                {
+                }
+
+                // Listed without arguments, and not a derived type of Shape, which takes none.
+                public sealed class Full<T> : Shape
+                {
+                }
+
+                public sealed class Drawing
+                {
+                    [XmlArray]
+                    public List<Shape> Shapes { get; set; } = new();
+                }
+
+                [XmlSerializable<Drawing>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static XmlSerializerOptions Options(bool infer) => new XmlSerializerOptions { InferClosedTypePolymorphism = infer, OmitXmlDeclaration = true };
+
+                    private static string Thrown(Func<string> action)
+                    {
+                        try
+                        {
+                            return action();
+                        }
+                        catch (Exception ex)
+                        {
+                            return ex.GetType().Name + ": " + ex.Message;
+                        }
+                    }
+
+                    public static string Run()
+                    {
+                        var value = new Drawing { Shapes = { new Circle { Radius = 1 }, new Square { Sides = 4 } } };
+                        var generated = XmlSerializer.Serialize(value, new AppXmlContext(Options(true)).Drawing);
+                        var reflected = XmlSerializer.Serialize(value, Options(true));
+                        var read = XmlSerializer.Deserialize(generated, new AppXmlContext(Options(true)).Drawing)!;
+                        var generatedOff = Thrown(() => XmlSerializer.Serialize(value, new AppXmlContext(Options(false)).Drawing));
+                        var reflectedOff = Thrown(() => XmlSerializer.Serialize(value, Options(false)));
+                        return string.Join("\n",
+                            generated == reflected ? generated : generated + " <> reflection: " + reflected,
+                            read.Shapes[0].GetType().Name + "," + read.Shapes[1].GetType().Name,
+                            generatedOff == reflectedOff ? generatedOff : generatedOff + " <> reflection: " + reflectedOff);
+                    }
+                }
+                """).Should().Be(
+                    "<Drawing><Shapes><Circle><Radius>1</Radius></Circle><Square><Sides>4</Sides></Square></Shapes></Drawing>\n" +
+                    "Circle,Square\n" +
+                    "NotSupportedException: The type 'Shape' is not supported.");
+        }
+#endif
+
         [TestMethod]
         public void NamesAreMatchedWithoutCase_WhenTheOptionsAskForIt()
         {

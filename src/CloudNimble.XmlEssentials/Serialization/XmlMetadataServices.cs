@@ -250,6 +250,14 @@ namespace CloudNimble.Text.Xml.Serialization
                 return custom;
             }
 
+            // An abstract type with no derived types, declared or inferred under these options, has nothing that
+            // could be created for it, and writing a value as it would drop the members of the value's own type.
+            // The reflection resolver refuses such a type, and with the same message.
+            if (!XmlObjectBinder.IsObjectType(typeof(T), options))
+            {
+                throw new NotSupportedException($"The type '{typeof(T)}' is not supported.");
+            }
+
             var converter = new XmlObjectConverter<T>(options, bindingOptions => XmlObjectBinder.Bind(objectInfo, bindingOptions), objectInfo.SerializeHandler);
             return (XmlTypeInfo<T>)converter.CreateTypeInfo(typeof(T), options)!;
         }

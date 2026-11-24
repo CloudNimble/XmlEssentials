@@ -44,7 +44,7 @@ public class Product
 | `DiscriminatorPlacement` | Where the type discriminator is written: the element name, a named attribute, or `xsi:type`. | `ElementName` |
 | `TypeDiscriminatorPropertyName` | The name of the discriminator attribute. Required with `XmlDiscriminatorPlacement.Attribute`, and not used otherwise. | `null` |
 | `UnknownDerivedTypeHandling` | What happens to a runtime type, or a discriminator in a document, that isn't declared. | `FailSerialization` |
-| `InferClosedTypePolymorphism` | Not read by the serializer in this release. | `false` |
+| `InferClosedTypePolymorphism` | Whether the derived types of a closed type are inferred. Not set by default, which leaves it to `XmlSerializerOptions.InferClosedTypePolymorphism`. | Not set |
 
 With the default placement, `[XmlPolymorphic]` itself is optional: `[XmlDerivedType<T>]` attributes alone give the same result. Add `[XmlPolymorphic]` to choose another placement or another way to handle undeclared types.
 
@@ -148,7 +148,7 @@ Car
 
 - The declared base type can be a concrete class, an abstract class, or an interface. An abstract class or an interface must list its derived types with `[XmlDerivedType<T>]`. When the serializer reads an element that doesn't identify one of them, it throws `XmlException`, because it can't create the declared type.
 - Derived types inherit the attribute and the list of derived types. Serializing a derived type directly also writes its discriminator.
-- `InferClosedTypePolymorphism` is not read in this release, here or on `XmlSerializerOptions`. Derived types must be listed.
+- `InferClosedTypePolymorphism` takes the derived types of a closed type from the list the compiler makes. Set to `true`, it infers for the type whatever `XmlSerializerOptions.InferClosedTypePolymorphism` says; set to `false`, it turns inference off for the type. On a type that isn't closed, `true` throws an `InvalidOperationException` the first time the type is used. A closed type needs C# 15 and .NET 11.
 - A source-generated context reads and writes derived types as the reflection resolver does. Listing the base type on the context also covers the derived types it declares.
 - The mapping is built once for each `XmlSerializerOptions` instance and cached. There is no API to add derived types at run time.
 
@@ -202,8 +202,7 @@ One of the enumeration values that specifies where the type discriminator is wri
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> InferClosedTypePolymorphism
 
-Gets or sets a value that indicates whether closed derived types are inferred when the type has no
-[XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute).
+Gets or sets a value that indicates whether the derived types of a closed type are inferred.
 
 #### Syntax
 
@@ -214,11 +213,23 @@ public bool InferClosedTypePolymorphism { get; set; }
 #### Property Value
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if closed derived types are inferred; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if the derived types of the type are taken from its closed hierarchy;
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if they are not, whatever the options say. When the property is not set,
+[XmlSerializerOptions.InferClosedTypePolymorphism](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#inferclosedtypepolymorphism) decides. The getter returns
+[`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) for a property that is not set.
 
 #### Remarks
 
-The serializer does not read this property.
+A closed type is a class declared with the `closed` modifier, which needs C# 15 and
+.NET 11. Its derived types are all in its own assembly, and the compiler lists them. With this
+property, a derived type is written and read as if the type had an
+[XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) for it, with the name of the derived type as its discriminator.
+
+Derived types that are declared with [XmlDerivedTypeAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) are the whole list: nothing
+is inferred for a type that declares one.
+
+Setting the property to [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) on a type that is not closed throws an
+[InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception) the first time the type is used.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeDiscriminatorPropertyName
 

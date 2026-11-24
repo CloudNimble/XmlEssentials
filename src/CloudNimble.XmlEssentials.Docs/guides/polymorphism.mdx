@@ -349,11 +349,95 @@ The code produces the following output:
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
+## Infer the derived types of a closed type
+
+A closed type is a class declared with the `closed` modifier, which needs C# 15 and .NET 11. Every type that derives from it is in its own assembly, and the compiler lists them. Set `InferClosedTypePolymorphism` and the serializer takes the derived types from that list, so you don't write an `[XmlDerivedType<T>]` for each one.
+
+```csharp
+public closed class Notification
+{
+    public string? Text { get; set; }
+}
+
+public sealed class EmailNotification : Notification
+{
+    public string? Address { get; set; }
+}
+
+public sealed class SmsNotification : Notification
+{
+    public string? Number { get; set; }
+}
+
+public sealed class Outbox
+{
+    [XmlArray]
+    public List<Notification> Messages { get; set; } = [];
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    InferClosedTypePolymorphism = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+    WriteIndented = true,
+};
+var outbox = new Outbox
+{
+    Messages =
+    {
+        new EmailNotification { Text = "Your order shipped.", Address = "ada@example.com" },
+        new SmsNotification { Text = "Your code is 4242.", Number = "+1 555 0100" },
+    },
+};
+
+string xml = XmlSerializer.Serialize(outbox, options);
+output.WriteLine(xml);
+
+Outbox? copy = XmlSerializer.Deserialize<Outbox>(xml, options);
+foreach (Notification message in copy!.Messages)
+{
+    output.WriteLine(message.GetType().Name);
+}
+```
+
+The code produces the following output:
+
+```text
+<Outbox>
+  <Messages>
+    <EmailNotification>
+      <Text>Your order shipped.</Text>
+      <Address>ada@example.com</Address>
+    </EmailNotification>
+    <SmsNotification>
+      <Text>Your code is 4242.</Text>
+      <Number>+1 555 0100</Number>
+    </SmsNotification>
+  </Messages>
+</Outbox>
+EmailNotification
+SmsNotification
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
+
+The rules are those of `InferClosedTypePolymorphism` in System.Text.Json:
+
+- The discriminator of a derived type is its name. For a generic type that is the name without its type arguments. It goes through the naming policy, and it is written where `DiscriminatorPlacement` says, as a declared discriminator is.
+- A derived type that is closed itself can't be created, so the types that derive from it are used in its place.
+- `[XmlPolymorphic(InferClosedTypePolymorphism = true)]` on a type infers for that type whatever the options say, and `false` turns it off for that type.
+- A type that declares a derived type with `[XmlDerivedType<T>]` has nothing inferred. What it declares is the whole list.
+- `[XmlPolymorphic(InferClosedTypePolymorphism = true)]` on a type that isn't closed throws an `InvalidOperationException` the first time the type is used.
+- A closed type whose derived types aren't inferred, and that declares none, isn't supported: `XmlSerializer` throws a `NotSupportedException`.
+
+A source-generated context lists the derived types of a closed type, so the same options work with it.
+
 ## What isn't supported
 
 - **Members of type `object`.** A member declared as `object` is written as the type its value has, with no discriminator, so the document doesn't say which type wrote it. It is read back as an `XmlElement`, which you can read as the type you expect with `XmlSerializer.Deserialize<T>(element)`. Set `UnknownTypeHandling` to `XmlUnknownTypeHandling.XmlNode` to read an `XmlNode` you can change instead. To get the derived type back when reading, declare the member as a base type with `[XmlDerivedType]`.
-- **Inferred derived types.** `InferClosedTypePolymorphism`, on the attribute and on the options, is not read in this release. List each derived type with `[XmlDerivedType<T>]`.
-- **A namespace per derived type.** `XmlDerivedTypeAttribute.Namespace` is not read. A derived type's element is written in the namespace that is in scope.
 - **Configuring polymorphism at run time.** The attributes are the only way to declare derived types. There is no contract-customization API for it.
 
 ## See also

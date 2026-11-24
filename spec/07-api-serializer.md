@@ -164,7 +164,7 @@ public sealed class XmlSerializerOptions
     public XmlConverter GetConverter(Type typeToConvert);
     public XmlReferenceHandler? ReferenceHandler { get; set; }
     public bool AllowDuplicateProperties { get; set; }
-    public bool InferClosedTypePolymorphism { get; set; }
+    public bool InferClosedTypePolymorphism { get; set; }          // default false; derived types of a closed type are inferred (.NET 11)
 
     public bool IsReadOnly { get; }
     public void MakeReadOnly();

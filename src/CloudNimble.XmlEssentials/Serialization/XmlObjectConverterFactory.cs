@@ -37,7 +37,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             ArgumentNullException.ThrowIfNull(typeToConvert);
             ArgumentNullException.ThrowIfNull(options);
-            if (!XmlObjectBinder.IsObjectType(typeToConvert))
+            if (!XmlObjectBinder.IsObjectType(typeToConvert, options))
             {
                 return null;
             }

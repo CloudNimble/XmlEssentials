@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using CloudNimble.Text.Xml;
+#if NET11_0_OR_GREATER
+using CloudNimble.XmlEssentials.Samples.Models.Closed;
+#endif
 using CloudNimble.XmlEssentials.Samples.Models.Shapes;
 
 namespace CloudNimble.XmlEssentials.Samples
@@ -107,6 +110,40 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine(XmlSerializer.Serialize(card, options));
             output.WriteLine(XmlSerializer.Serialize(card, card.GetType(), options));
         }
+
+#if NET11_0_OR_GREATER
+        /// <summary>
+        /// Takes the derived types of a closed type from the list the compiler makes, with no attributes.
+        /// </summary>
+        /// <param name="output">The writer that receives what the sample prints.</param>
+        public static void InferClosedTypes(TextWriter output)
+        {
+            var options = new XmlSerializerOptions
+            {
+                InferClosedTypePolymorphism = true,
+                NewLine = "\n",
+                OmitXmlDeclaration = true,
+                WriteIndented = true,
+            };
+            var outbox = new Outbox
+            {
+                Messages =
+                {
+                    new EmailNotification { Text = "Your order shipped.", Address = "ada@example.com" },
+                    new SmsNotification { Text = "Your code is 4242.", Number = "+1 555 0100" },
+                },
+            };
+
+            string xml = XmlSerializer.Serialize(outbox, options);
+            output.WriteLine(xml);
+
+            Outbox? copy = XmlSerializer.Deserialize<Outbox>(xml, options);
+            foreach (Notification message in copy!.Messages)
+            {
+                output.WriteLine(message.GetType().Name);
+            }
+        }
+#endif
 
         /// <summary>
         /// Names the derived type with an attribute on the member's element.

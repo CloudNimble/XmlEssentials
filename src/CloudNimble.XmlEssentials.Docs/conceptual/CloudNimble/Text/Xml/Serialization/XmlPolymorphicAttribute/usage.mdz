@@ -15,7 +15,7 @@ public class Product
 | `DiscriminatorPlacement` | Where the type discriminator is written: the element name, a named attribute, or `xsi:type`. | `ElementName` |
 | `TypeDiscriminatorPropertyName` | The name of the discriminator attribute. Required with `XmlDiscriminatorPlacement.Attribute`, and not used otherwise. | `null` |
 | `UnknownDerivedTypeHandling` | What happens to a runtime type, or a discriminator in a document, that isn't declared. | `FailSerialization` |
-| `InferClosedTypePolymorphism` | Not read by the serializer in this release. | `false` |
+| `InferClosedTypePolymorphism` | Whether the derived types of a closed type are inferred. Not set by default, which leaves it to `XmlSerializerOptions.InferClosedTypePolymorphism`. | Not set |
 
 With the default placement, `[XmlPolymorphic]` itself is optional: `[XmlDerivedType<T>]` attributes alone give the same result. Add `[XmlPolymorphic]` to choose another placement or another way to handle undeclared types.
 

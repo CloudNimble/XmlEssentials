@@ -176,7 +176,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 create,
                 nextSlot,
                 extension,
-                new XmlPolymorphism(type, BindDerived(type, options, placement), placement, utf8DiscAttr, unknown));
+                new XmlPolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown));
         }
 
         #endregion
@@ -331,7 +331,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     }
                 }
 
-                polymorphism = new XmlPolymorphism(derivedSource, BindDerived(derivedSource, options, placement), placement, utf8DiscAttr, unknown);
+                polymorphism = new XmlPolymorphism(derivedSource, BindDerived(derivedSource, options, placement, polymorphic), placement, utf8DiscAttr, unknown);
             }
 
             return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
@@ -694,16 +694,18 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Returns whether <paramref name="type"/> is mapped as an object with properties.
         /// </summary>
         /// <param name="type">The CLR type.</param>
+        /// <param name="options">The serializer options, or null when the question is asked without them.</param>
         /// <returns>
         /// <see langword="true"/> for a concrete class or struct that is not a built-in primitive, and for an
-        /// abstract class or an interface that declares derived types with <see cref="XmlDerivedTypeAttribute"/>.
+        /// abstract class or an interface that declares derived types with <see cref="XmlDerivedTypeAttribute"/>
+        /// or has them inferred from its closed hierarchy.
         /// </returns>
         /// <remarks>
         /// An abstract type with no declared derived types stays unsupported: nothing could be created for it
         /// when reading, and writing a value as its declared type would silently drop the members of the
         /// value's own type.
         /// </remarks>
-        internal static bool IsObjectType(Type type)
+        internal static bool IsObjectType(Type type, XmlSerializerOptions? options = null)
         {
             if (type.IsPrimitive || type.IsEnum || type.IsArray || type.IsPointer
                 || type == typeof(object) || type == typeof(string) || typeof(Delegate).IsAssignableFrom(type)
@@ -714,10 +716,45 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (type.IsInterface || type.IsAbstract)
             {
-                return type.IsDefined(typeof(XmlDerivedTypeAttribute), inherit: true);
+                return type.IsDefined(typeof(XmlDerivedTypeAttribute), inherit: true) || InfersDerivedTypes(type, options);
             }
 
             return type.IsClass || type.IsValueType;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a closed type: a class declared with the
+        /// <see langword="closed"/> modifier, whose derived types the compiler lists.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns><see langword="true"/> for a closed type. Always <see langword="false"/> before .NET 11, which has no closed types.</returns>
+        internal static bool IsClosedType(Type type)
+        {
+#if NET11_0_OR_GREATER
+            return type.IsDefined(typeof(System.Runtime.CompilerServices.IsClosedTypeAttribute), inherit: false);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>
+        /// Returns whether the derived types of <paramref name="type"/> are to be inferred from its closed hierarchy.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <param name="options">The serializer options, or null when the question is asked without them.</param>
+        /// <returns>
+        /// What <see cref="XmlPolymorphicAttribute.InferClosedTypePolymorphism"/> says when it is set on the type.
+        /// Otherwise <see langword="true"/> for a closed type when the options ask for it, or when there are no
+        /// options to ask.
+        /// </returns>
+        internal static bool InfersDerivedTypes(Type type, XmlSerializerOptions? options)
+        {
+            if (type.GetCustomAttribute<XmlPolymorphicAttribute>(inherit: false)?.InferClosedTypePolymorphismOrNull is { } asked)
+            {
+                return asked;
+            }
+
+            return (options is null || options.InferClosedTypePolymorphism) && IsClosedType(type);
         }
 
         /// <summary>
@@ -1282,8 +1319,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="type">The declared CLR type.</param>
         /// <param name="options">The serializer options.</param>
         /// <param name="placement">Where the discriminator is written.</param>
-        /// <returns>The derived bindings, or null when none are declared.</returns>
-        internal static XmlDerivedBinding[]? BindDerived(Type type, XmlSerializerOptions options, XmlDiscriminatorPlacement placement)
+        /// <param name="polymorphic">The <see cref="XmlPolymorphicAttribute"/> of the type, or null when it has none.</param>
+        /// <returns>The derived bindings, or null when none are declared and none are inferred.</returns>
+        /// <remarks>
+        /// The derived types a type declares with <see cref="XmlDerivedTypeAttribute"/> are the whole list. A type
+        /// that declares none has them inferred from its closed hierarchy when the attribute or the options ask.
+        /// </remarks>
+        internal static XmlDerivedBinding[]? BindDerived(Type type, XmlSerializerOptions options, XmlDiscriminatorPlacement placement, XmlPolymorphicAttribute? polymorphic)
         {
             var derivedList = new List<XmlDerivedBinding>();
             foreach (var attr in type.GetCustomAttributes<XmlDerivedTypeAttribute>(inherit: true))
@@ -1305,8 +1347,93 @@ namespace CloudNimble.Text.Xml.Serialization
                     attr.Namespace is { } derivedNamespace ? Encoding.UTF8.GetBytes(derivedNamespace) : null));
             }
 
+            if (derivedList.Count == 0 && InfersDerivedTypes(type, options))
+            {
+                if (!IsClosedType(type))
+                {
+                    // Only the attribute gets here: the options infer for closed types and for nothing else.
+                    throw new InvalidOperationException($"The type '{type}' enables {nameof(XmlPolymorphicAttribute)}.{nameof(XmlPolymorphicAttribute.InferClosedTypePolymorphism)} but is not a closed type, so no derived types can be inferred. Declare the type 'closed' or register its derived types using {nameof(XmlDerivedTypeAttribute)}.");
+                }
+
+#if NET11_0_OR_GREATER
+                var inferred = new List<Type>();
+                AddClosedDerivedTypes(type, inferred);
+                foreach (var derived in inferred)
+                {
+                    // The name of a generic type carries its arity after a grave accent, which is no part of an XML name.
+                    var name = derived.Name;
+                    var arity = name.IndexOf('`');
+                    var disc = arity < 0 ? name : name[..arity];
+                    var elementName = placement is XmlDiscriminatorPlacement.ElementName
+                        ? options.ConvertElementName(disc)
+                        : disc;
+                    derivedList.Add(new XmlDerivedBinding(Encoding.UTF8.GetBytes(elementName), derived, options.GetTypeInfo(derived), disc));
+                }
+#endif
+            }
+
             return derivedList.Count > 0 ? derivedList.ToArray() : null;
         }
+
+#if NET11_0_OR_GREATER
+        /// <summary>
+        /// Adds the derived types of a closed type that an instance can have.
+        /// </summary>
+        /// <param name="closedType">The closed type.</param>
+        /// <param name="found">The list the types are added to.</param>
+        /// <remarks>
+        /// <para>
+        /// A derived type that is closed itself cannot be created, so its own derived types are added in its place.
+        /// </para>
+        /// <para>
+        /// The compiler lists a generic derived type without its type arguments. It is a derived type of
+        /// <paramref name="closedType"/> when it takes the same arguments, so it is given them. A type that
+        /// takes another number of arguments, cannot take these, or derives from the closed type with other
+        /// arguments is not a derived type of this one, and is left out.
+        /// </para>
+        /// </remarks>
+        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "The derived type is one the compiler listed for the closed type, with the arguments of the closed type.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The derived type is one the compiler listed for the closed type, with the arguments of the closed type. A generated context lists it.")]
+        internal static void AddClosedDerivedTypes(Type closedType, List<Type> found)
+        {
+            foreach (var listed in closedType.GetCustomAttribute<System.Runtime.CompilerServices.IsClosedTypeAttribute>(inherit: false)!.DerivedTypes)
+            {
+                var derived = listed;
+                if (derived.IsGenericTypeDefinition)
+                {
+                    var arguments = closedType.GetGenericArguments();
+                    if (derived.GetGenericArguments().Length != arguments.Length)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        derived = derived.MakeGenericType(arguments);
+                    }
+                    catch (ArgumentException)
+                    {
+                        // The arguments do not meet a constraint of the derived type.
+                        continue;
+                    }
+                }
+
+                if (!closedType.IsAssignableFrom(derived))
+                {
+                    continue;
+                }
+
+                if (IsClosedType(derived))
+                {
+                    AddClosedDerivedTypes(derived, found);
+                }
+                else
+                {
+                    found.Add(derived);
+                }
+            }
+        }
+#endif
 
         /// <summary>
         /// Removes the extension-data member from <paramref name="members"/> and returns it.

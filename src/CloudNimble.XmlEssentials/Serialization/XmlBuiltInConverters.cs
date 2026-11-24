@@ -178,7 +178,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return XmlCollectionConverterFactory.Instance.CreateConverter(type, options);
             }
 
-            return XmlObjectBinder.IsObjectType(type)
+            return XmlObjectBinder.IsObjectType(type, options)
                 ? XmlObjectConverterFactory.Instance.CreateConverter(type, options)
                 : null;
         }

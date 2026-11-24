@@ -336,6 +336,115 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                     VisitReachable(attributeClass.TypeArguments[0], options, emitSerialization, seen, specs, diagnostics);
                 }
             }
+
+            // The derived types of a closed type are inferred when the options or the type ask for it, which is
+            // only known when the context runs, so the context lists them whenever the type is closed.
+            if (symbol is INamedTypeSymbol closedType)
+            {
+                var inferred = new List<ITypeSymbol>();
+                AddClosedDerivedTypes(closedType, inferred);
+                foreach (var derived in inferred)
+                {
+                    VisitReachable(derived, options, emitSerialization, seen, specs, diagnostics);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the <c>IsClosedTypeAttribute</c> the compiler puts on a class declared with the
+        /// <see langword="closed"/> modifier, or null.
+        /// </summary>
+        /// <param name="symbol">A type or a member.</param>
+        /// <returns>The attribute, which lists the derived types, or null when the symbol is not a closed type.</returns>
+        internal static AttributeData? ClosedTypeAttribute(ISymbol symbol)
+        {
+            foreach (var attribute in symbol.GetAttributes())
+            {
+                if (attribute.AttributeClass is { Name: "IsClosedTypeAttribute" } attributeClass
+                    && attributeClass.ContainingNamespace.ToDisplayString() is "System.Runtime.CompilerServices")
+                {
+                    return attribute;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Adds the derived types of a closed type that an instance can have, as the runtime library infers them.
+        /// </summary>
+        /// <param name="closedType">A type, which may not be closed.</param>
+        /// <param name="found">The list the types are added to.</param>
+        /// <remarks>
+        /// A derived type that is closed itself has its own derived types added in its place. A generic derived
+        /// type is listed without type arguments and is given the arguments of the closed type; one that takes
+        /// another number of arguments, or does not derive from this closed type, is left out.
+        /// </remarks>
+        internal static void AddClosedDerivedTypes(INamedTypeSymbol closedType, List<ITypeSymbol> found)
+        {
+            if (ClosedTypeAttribute(closedType) is not { } attribute)
+            {
+                return;
+            }
+
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (argument.Key != "DerivedTypes" || argument.Value.Kind is not TypedConstantKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var listed in argument.Value.Values)
+                {
+                    if (listed.Value is not INamedTypeSymbol derived)
+                    {
+                        continue;
+                    }
+
+                    if (derived.IsUnboundGenericType)
+                    {
+                        if (derived.Arity != closedType.TypeArguments.Length)
+                        {
+                            continue;
+                        }
+
+                        derived = derived.OriginalDefinition.Construct([.. closedType.TypeArguments]);
+                    }
+
+                    if (!DerivesFrom(derived, closedType))
+                    {
+                        continue;
+                    }
+
+                    if (ClosedTypeAttribute(derived) is not null)
+                    {
+                        AddClosedDerivedTypes(derived, found);
+                    }
+                    else
+                    {
+                        found.Add(derived);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> has <paramref name="baseType"/> among its base types.
+        /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="baseType">The base type to look for.</param>
+        /// <returns><see langword="true"/> when the type derives from the base type.</returns>
+        internal static bool DerivesFrom(INamedTypeSymbol type, INamedTypeSymbol baseType)
+        {
+            for (var current = type.BaseType; current is not null; current = current.BaseType)
+            {
+                if (SymbolEqualityComparer.Default.Equals(current, baseType))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -873,12 +982,18 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
-        /// Returns whether <paramref name="symbol"/> carries <c>[XmlDerivedType]</c> in either of its forms.
+        /// Returns whether <paramref name="symbol"/> carries <c>[XmlDerivedType]</c> in either of its forms, or is
+        /// a closed type, whose derived types may be inferred.
         /// </summary>
         /// <param name="symbol">A type or a member.</param>
-        /// <returns><see langword="true"/> when derived types are declared on it.</returns>
+        /// <returns><see langword="true"/> when derived types are declared on it, or may be inferred for it.</returns>
         internal static bool DeclaresDerivedTypes(ISymbol symbol)
         {
+            if (ClosedTypeAttribute(symbol) is not null)
+            {
+                return true;
+            }
+
             foreach (var attribute in symbol.GetAttributes())
             {
                 // The attribute has a generic form, XmlDerivedTypeAttribute<T>, whose definition has the same name.

@@ -461,17 +461,27 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets a value that indicates whether closed generic polymorphism is inferred.
+        /// Gets or sets a value that indicates whether the derived types of a closed type are inferred.
         /// </summary>
         /// <value>
-        /// <see langword="true"/> if closed generic polymorphism is inferred; otherwise, <see langword="false"/>.
-        /// The default is <see langword="false"/>. The serializer does not currently act on this value.
+        /// <see langword="true"/> if the derived types of a closed type that declares none are taken from its
+        /// closed hierarchy; otherwise, <see langword="false"/>. The default is <see langword="false"/>.
         /// </value>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// The value is stored and copied by the copy constructor, but the serializer does not currently read it.
+        /// <para>
+        /// A closed type is a class declared with the <see langword="closed"/> modifier, which needs C# 15 and
+        /// .NET 11. Its derived types are all in its own assembly, and the compiler lists them. A derived type is
+        /// written and read as if the closed type had an <see cref="XmlDerivedTypeAttribute"/> for it, with the
+        /// name of the derived type as its discriminator.
+        /// </para>
+        /// <para>
+        /// <see cref="XmlPolymorphicAttribute.InferClosedTypePolymorphism"/> on a type takes precedence over this
+        /// value, and a type that declares derived types with <see cref="XmlDerivedTypeAttribute"/> has nothing
+        /// inferred. This is the counterpart of <c>JsonSerializerOptions.InferClosedTypePolymorphism</c>.
+        /// </para>
         /// </remarks>
         public bool InferClosedTypePolymorphism
         {

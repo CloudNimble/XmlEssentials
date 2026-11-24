@@ -116,7 +116,7 @@ public sealed class XmlPolymorphicAttribute : Attribute
     public string? TypeDiscriminatorPropertyName { get; set; }
     public XmlDiscriminatorPlacement DiscriminatorPlacement { get; set; }
     public XmlUnknownDerivedTypeHandling UnknownDerivedTypeHandling { get; set; }
-    public bool InferClosedTypePolymorphism { get; set; }
+    public bool InferClosedTypePolymorphism { get; set; }  // unset leaves it to the options; true infers for this type, false turns it off
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]

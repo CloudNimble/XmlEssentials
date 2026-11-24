@@ -303,6 +303,18 @@ Unknown derived types: `UnknownDerivedTypeHandling` (default `FailSerialization`
 
 Per-member `[XmlElement<Book>("Book")]` duplicates this for one property ([K35](01-identity-and-decisions.md#key-decisions)).
 
+**Closed types.** `InferClosedTypePolymorphism`, on `XmlSerializerOptions` and on `[XmlPolymorphic]`, takes the derived types of a closed type from the list the compiler makes (`IsClosedTypeAttribute.DerivedTypes`). The rules are those of `JsonSerializerOptions.InferClosedTypePolymorphism` and `JsonPolymorphicAttribute.InferClosedTypePolymorphism`, taken from a probe of .NET 11:
+
+- The option is `false` by default. The attribute is unset by default, which leaves it to the option; `true` infers for the type whatever the option says, and `false` turns it off for the type. The attribute is read from the type itself, not from a base type.
+- A type that declares a derived type with `[XmlDerivedType]` has nothing inferred: what it declares is the whole list.
+- The discriminator of an inferred derived type is its name, without the arity of a generic type. It goes through the element naming policy under `ElementName` placement and is used as it is under `Attribute` and `XsiType`, as a declared discriminator is.
+- A derived type that is closed itself cannot be created, so its own derived types stand in its place, at any depth.
+- A generic derived type is listed without type arguments and is given the arguments of the closed type. One that takes another number of arguments, cannot take these arguments, or does not derive from this closed form is left out. (System.Text.Json lists a derived type of another closed form; that is not followed.)
+- The attribute set to `true` on a type that is not closed is `InvalidOperationException` when the type is bound: "The type 'T' enables XmlPolymorphicAttribute.InferClosedTypePolymorphism but is not a closed type, so no derived types can be inferred. Declare the type 'closed' or register its derived types using XmlDerivedTypeAttribute."
+- A closed type is implicitly abstract. With no derived types declared and none inferred it is not supported (`NotSupportedException`, "The type 'T' is not supported."), in the reflection resolver and in a generated context alike.
+- Closed types need C# 15 and .NET 11. In the `net10.0` build no type is closed, so the option has no type to act on and the attribute set to `true` is refused.
+- A generated context lists the derived types of every closed type it reaches, because whether they are inferred is known only when it runs. A type that holds a closed type has no write fast path.
+
 ## Enums
 
 - Default: write member **name** after `PropertyNamingPolicy` (or `EnumHandling.Name`).

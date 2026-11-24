@@ -12,9 +12,9 @@ Each instance caches the converter and the type metadata for every type it has b
 
 `IndentSize`, `DefaultBufferSize`, and the `Max*` limits are `0` on a new instance. For each of them, `0` selects the built-in value: an indent of 2, a 16,384-byte buffer, a depth of 64, 1,000 attributes, 1,024 bytes for a name, 16,777,216 bytes for a text value, and 1,048,576 bytes for a comment. `MaxDocumentByteCount` is the exception: `0` means no limit.
 
-### Options that have no effect
+### Closed types
 
-The serializer doesn't read `InferClosedTypePolymorphism` in version 1.0. It can be set and copied, but it changes nothing.
+`InferClosedTypePolymorphism` takes the derived types of a closed type from the list the compiler makes, for a type that declares none with `[XmlDerivedType<T>]`. It is `false` by default, as in System.Text.Json. A closed type needs C# 15 and .NET 11. See [Infer the derived types of a closed type](/guides/polymorphism#infer-the-derived-types-of-a-closed-type).
 
 ### Differences from JsonSerializerOptions
 
