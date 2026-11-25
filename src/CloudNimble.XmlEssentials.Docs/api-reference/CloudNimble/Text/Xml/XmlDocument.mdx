@@ -455,14 +455,14 @@ under.
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.OrderedDictionary<string, string> DiscoverNamespaces(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+public static System.Collections.Generic.OrderedDictionary<string, string> DiscoverNamespaces(System.ReadOnlySpan<byte> xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML to read. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML to read. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control how the XML is read. |
 
 #### Returns
@@ -475,7 +475,7 @@ namespace of the document element has an empty string as its prefix.
 
 | Exception | Description |
 |-----------|-------------|
-| `XmlException` | *utf8Xml* is not a well-formed XML document.
+| `XmlException` | *xml* is not a well-formed XML document.
 -or-
 A limit set in *options* is exceeded. |
 
@@ -507,14 +507,14 @@ is declared under.
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.OrderedDictionary<string, string> DiscoverNamespaces(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+public static System.Collections.Generic.OrderedDictionary<string, string> DiscoverNamespaces(System.IO.Stream xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream to read. It is read to its end. |
+| `xml` | `System.IO.Stream` | The stream to read. It is read to its end. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control how the XML is read. |
 
 #### Returns
@@ -527,7 +527,7 @@ namespace of the document element has an empty string as its prefix.
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The stream does not hold a well-formed XML document.
 -or-
 A limit set in *options* is exceeded. |
@@ -746,14 +746,14 @@ Parses a span of UTF-8 bytes that holds a single XML document into an [XmlDocume
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.XmlDocument Parse(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.ReadOnlySpan<byte> xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
 document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
 to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
@@ -767,14 +767,14 @@ An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation
 
 | Exception | Description |
 |-----------|-------------|
-| `XmlException` | *utf8Xml* is not a well-formed XML document.
+| `XmlException` | *xml* is not a well-formed XML document.
 -or-
-*utf8Xml* exceeds a limit that is set in *options*. |
+*xml* exceeds a limit that is set in *options*. |
 
 #### Remarks
 
 The bytes are copied into a pooled buffer that the document owns, so the document does not
-depend on *utf8Xml* after this method returns.
+depend on *xml* after this method returns.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
@@ -783,14 +783,14 @@ Parses a sequence of UTF-8 bytes that holds a single XML document into an [XmlDo
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.XmlDocument Parse(System.Buffers.ReadOnlySequence<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.Buffers.ReadOnlySequence<byte> xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.Buffers.ReadOnlySequence<byte>` | The UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
 document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
 to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
@@ -804,15 +804,15 @@ An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation
 
 | Exception | Description |
 |-----------|-------------|
-| `OverflowException` | *utf8Xml* is longer than [MaxValue](https://learn.microsoft.com/dotnet/api/system.int32.maxvalue) bytes. |
-| `XmlException` | *utf8Xml* is not a well-formed XML document.
+| `OverflowException` | *xml* is longer than [MaxValue](https://learn.microsoft.com/dotnet/api/system.int32.maxvalue) bytes. |
+| `XmlException` | *xml* is not a well-formed XML document.
 -or-
-*utf8Xml* exceeds a limit that is set in *options*. |
+*xml* exceeds a limit that is set in *options*. |
 
 #### Remarks
 
 The bytes are copied into one pooled buffer that the document owns, so the document does not
-depend on *utf8Xml* after this method returns.
+depend on *xml* after this method returns.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Parse
 
@@ -822,14 +822,14 @@ The stream is read to completion.
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.XmlDocument Parse(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
+public static CloudNimble.Text.Xml.XmlDocument Parse(System.IO.Stream xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream that holds the UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream that holds the UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
 document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
 to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
@@ -843,10 +843,10 @@ An [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument) representation
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* does not hold a well-formed XML document.
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `XmlException` | *xml* does not hold a well-formed XML document.
 -or-
-*utf8Xml* exceeds a limit that is set in *options*. |
+*xml* exceeds a limit that is set in *options*. |
 
 #### Remarks
 
@@ -861,14 +861,14 @@ without blocking the calling thread. The stream is read to completion.
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.Task<CloudNimble.Text.Xml.XmlDocument> ParseAsync(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions), System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.Task<CloudNimble.Text.Xml.XmlDocument> ParseAsync(System.IO.Stream xml, CloudNimble.Text.Xml.XmlDocumentOptions options = default(CloudNimble.Text.Xml.XmlDocumentOptions), System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream that holds the UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream that holds the UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
 document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
 to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
@@ -883,11 +883,11 @@ A task that produces an [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDoc
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `OperationCanceledException` | *cancellationToken* was canceled. |
-| `XmlException` | *utf8Xml* does not hold a well-formed XML document.
+| `XmlException` | *xml* does not hold a well-formed XML document.
 -or-
-*utf8Xml* exceeds a limit that is set in *options*. |
+*xml* exceeds a limit that is set in *options*. |
 
 #### Examples
 
@@ -985,14 +985,14 @@ Attempts to parse a span of UTF-8 bytes that holds a single XML document into an
 #### Syntax
 
 ```csharp
-public static bool TryParse(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlDocumentOptions options, out CloudNimble.Text.Xml.XmlDocument document)
+public static bool TryParse(System.ReadOnlySpan<byte> xml, CloudNimble.Text.Xml.XmlDocumentOptions options, out CloudNimble.Text.Xml.XmlDocument document)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlDocumentOptions` | Options that control the parser behavior. By default, comments are kept, so that writing the
 document back does not lose them. To leave comments out, set [XmlDocumentOptions.CommentHandling](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions#commenthandling)
 to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandling). |
@@ -1002,7 +1002,7 @@ to [XmlCommentHandling.Skip](/api-reference/CloudNimble/Text/Xml/XmlCommentHandl
 #### Returns
 
 Type: `bool`
-[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if *utf8Xml* is a well-formed XML document that is within
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) if *xml* is a well-formed XML document that is within
 the limits set in *options*; otherwise, [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool).
 
 #### Remarks

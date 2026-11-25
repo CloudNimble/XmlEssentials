@@ -341,20 +341,20 @@ public static class XmlSerializer
     public static object? Deserialize(ReadOnlySpan<char> xml, Type returnType, XmlSerializerContext context);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> utf8Xml, XmlSerializerOptions? options = null);
-    public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo);
-    public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> utf8Xml, XmlSerializerContext context);
+    public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> xml, XmlSerializerOptions? options = null);
+    public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> xml, XmlTypeInfo<TValue> xmlTypeInfo);
+    public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> xml, XmlSerializerContext context);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static object? Deserialize(ReadOnlySpan<byte> utf8Xml, Type returnType, XmlSerializerOptions? options = null);
-    public static object? Deserialize(ReadOnlySpan<byte> utf8Xml, Type returnType, XmlSerializerContext context);
+    public static object? Deserialize(ReadOnlySpan<byte> xml, Type returnType, XmlSerializerOptions? options = null);
+    public static object? Deserialize(ReadOnlySpan<byte> xml, Type returnType, XmlSerializerContext context);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> utf8Xml, XmlSerializerOptions? options = null);
-    public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo);
-    public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> utf8Xml, XmlSerializerContext context);
+    public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> xml, XmlSerializerOptions? options = null);
+    public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> xml, XmlTypeInfo<TValue> xmlTypeInfo);
+    public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> xml, XmlSerializerContext context);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static object? Deserialize(ReadOnlySequence<byte> utf8Xml, Type returnType, XmlSerializerOptions? options = null);
-    public static object? Deserialize(ReadOnlySequence<byte> utf8Xml, Type returnType, XmlSerializerContext context);
+    public static object? Deserialize(ReadOnlySequence<byte> xml, Type returnType, XmlSerializerOptions? options = null);
+    public static object? Deserialize(ReadOnlySequence<byte> xml, Type returnType, XmlSerializerContext context);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
     public static TValue? Deserialize<TValue>(ref Utf8XmlReader reader, XmlSerializerOptions? options = null);
@@ -365,36 +365,36 @@ public static class XmlSerializer
     public static object? Deserialize(ref Utf8XmlReader reader, Type returnType, XmlSerializerContext context);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static TValue? Deserialize<TValue>(Stream utf8Xml, XmlSerializerOptions? options = null);
-    public static TValue? Deserialize<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo);
-    public static TValue? Deserialize<TValue>(Stream utf8Xml, XmlSerializerContext context);
+    public static TValue? Deserialize<TValue>(Stream xml, XmlSerializerOptions? options = null);
+    public static TValue? Deserialize<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo);
+    public static TValue? Deserialize<TValue>(Stream xml, XmlSerializerContext context);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static object? Deserialize(Stream utf8Xml, Type returnType, XmlSerializerOptions? options = null);
-    public static object? Deserialize(Stream utf8Xml, Type returnType, XmlSerializerContext context);
+    public static object? Deserialize(Stream xml, Type returnType, XmlSerializerOptions? options = null);
+    public static object? Deserialize(Stream xml, Type returnType, XmlSerializerContext context);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
-    public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
-    public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Xml, XmlSerializerContext context, CancellationToken cancellationToken = default);
+    public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
+    public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
+    public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream xml, XmlSerializerContext context, CancellationToken cancellationToken = default);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static ValueTask<object?> DeserializeAsync(Stream utf8Xml, Type returnType, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
-    public static ValueTask<object?> DeserializeAsync(Stream utf8Xml, Type returnType, XmlSerializerContext context, CancellationToken cancellationToken = default);
+    public static ValueTask<object?> DeserializeAsync(Stream xml, Type returnType, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
+    public static ValueTask<object?> DeserializeAsync(Stream xml, Type returnType, XmlSerializerContext context, CancellationToken cancellationToken = default);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
     public static Task SerializeAsync<TValue>(PipeWriter utf8Xml, TValue value, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
-    public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
+    public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
+    public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
+    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
-    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
-    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, bool topLevelValues, CancellationToken cancellationToken = default);
+    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
+    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
+    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo, bool topLevelValues, CancellationToken cancellationToken = default);
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader utf8Xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
-    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
+    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);
+    public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default);
 
     [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
     public static Task SerializeAsyncEnumerable<TValue>(Stream utf8Xml, IAsyncEnumerable<TValue> values, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default);

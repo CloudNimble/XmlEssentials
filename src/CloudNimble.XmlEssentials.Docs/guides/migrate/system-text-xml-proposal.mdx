@@ -195,8 +195,8 @@ One default differs from what the proposal's examples show. A collection member 
 | `Task SerializeAsync<T>(Stream utf8Xml, T value, ...)`, both forms | The same overloads | Renamed. |
 | `T? Deserialize<T>(string xml, ...)`, both forms | The same overloads | Renamed. |
 | `T? Deserialize<T>(ReadOnlySpan<char> xml, ...)`, both forms | The same overloads | Renamed. |
-| `T? Deserialize<T>(ReadOnlySpan<byte> utf8Xml, ...)`, both forms | The same overloads | Renamed. |
-| `ValueTask<T?> DeserializeAsync<T>(Stream utf8Xml, ...)`, both forms | The same overloads | Renamed. |
+| `T? Deserialize<T>(ReadOnlySpan<byte> utf8Xml, ...)`, both forms | The same overloads, with the parameter named `xml` | Renamed. |
+| `ValueTask<T?> DeserializeAsync<T>(Stream utf8Xml, ...)`, both forms | The same overloads, with the parameter named `xml` | Renamed. |
 | `Deserialize<T>(ref reader)`, used in the proposal's examples | `Deserialize<TValue>(ref Utf8XmlReader reader, ...)` | Renamed. |
 | `XmlTypeInfo<T>`, used in the signatures and not defined in the proposal | [`XmlTypeInfo<T>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) and the non-generic `XmlTypeInfo` | Same name. |
 | | Overloads that take an `XmlSerializerContext` | Added. |

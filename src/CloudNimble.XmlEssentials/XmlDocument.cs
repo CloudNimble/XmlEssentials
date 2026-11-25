@@ -132,14 +132,14 @@ namespace CloudNimble.Text.Xml
         /// Reads UTF-8 encoded XML and returns the namespaces it declares, each with the prefix it is declared
         /// under.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML to read.</param>
+        /// <param name="xml">The UTF-8 encoded XML to read.</param>
         /// <param name="options">Options that control how the XML is read.</param>
         /// <returns>
         /// The namespace URIs, keyed by prefix, in the order the document first declares each prefix. The default
         /// namespace of the document element has an empty string as its prefix.
         /// </returns>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// <paramref name="xml"/> is not a well-formed XML document.
         /// -or-
         /// A limit set in <paramref name="options"/> is exceeded.
         /// </exception>
@@ -165,24 +165,24 @@ namespace CloudNimble.Text.Xml
         /// uses the prefixes of an existing document. No <see cref="XmlDocument"/> is built.
         /// </para>
         /// </remarks>
-        public static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default)
+        public static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> xml, XmlDocumentOptions options = default)
         {
-            ThrowIfDocumentTooLarge(utf8Xml.Length, options.MaxDocumentByteCount);
-            return DiscoverNamespaces(utf8Xml, options, ignoreDeclaredEncoding: false);
+            ThrowIfDocumentTooLarge(xml.Length, options.MaxDocumentByteCount);
+            return DiscoverNamespaces(xml, options, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>
         /// Reads XML from a stream of UTF-8 bytes and returns the namespaces it declares, each with the prefix it
         /// is declared under.
         /// </summary>
-        /// <param name="utf8Xml">The stream to read. It is read to its end.</param>
+        /// <param name="xml">The stream to read. It is read to its end.</param>
         /// <param name="options">Options that control how the XML is read.</param>
         /// <returns>
         /// The namespace URIs, keyed by prefix, in the order the document first declares each prefix. The default
         /// namespace of the document element has an empty string as its prefix.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The stream does not hold a well-formed XML document.
@@ -192,10 +192,10 @@ namespace CloudNimble.Text.Xml
         /// <remarks>
         /// See <see cref="DiscoverNamespaces(ReadOnlySpan{byte}, XmlDocumentOptions)"/> for what is listed.
         /// </remarks>
-        public static OrderedDictionary<string, string> DiscoverNamespaces(Stream utf8Xml, XmlDocumentOptions options = default)
+        public static OrderedDictionary<string, string> DiscoverNamespaces(Stream xml, XmlDocumentOptions options = default)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            var rented = XmlStreamBuffer.ReadToEnd(utf8Xml, options.MaxDocumentByteCount, out var length);
+            ArgumentNullException.ThrowIfNull(xml);
+            var rented = XmlStreamBuffer.ReadToEnd(xml, options.MaxDocumentByteCount, out var length);
             try
             {
                 return DiscoverNamespaces(rented.AsSpan(0, length), options, ignoreDeclaredEncoding: false);
@@ -353,7 +353,7 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Parses a span of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="options">
         /// Options that control the parser behavior. By default, comments are kept, so that writing the
         /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
@@ -363,26 +363,26 @@ namespace CloudNimble.Text.Xml
         /// An <see cref="XmlDocument"/> representation of the XML document.
         /// </returns>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// <paramref name="xml"/> is not a well-formed XML document.
         /// -or-
-        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// <paramref name="xml"/> exceeds a limit that is set in <paramref name="options"/>.
         /// </exception>
         /// <remarks>
         /// The bytes are copied into a pooled buffer that the document owns, so the document does not
-        /// depend on <paramref name="utf8Xml"/> after this method returns.
+        /// depend on <paramref name="xml"/> after this method returns.
         /// </remarks>
-        public static XmlDocument Parse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default)
+        public static XmlDocument Parse(ReadOnlySpan<byte> xml, XmlDocumentOptions options = default)
         {
-            ThrowIfDocumentTooLarge(utf8Xml.Length, options.MaxDocumentByteCount);
-            var rented = ArrayPool<byte>.Shared.Rent(utf8Xml.Length);
-            utf8Xml.CopyTo(rented);
-            return ParseOwned(rented, utf8Xml.Length, options, ignoreDeclaredEncoding: false);
+            ThrowIfDocumentTooLarge(xml.Length, options.MaxDocumentByteCount);
+            var rented = ArrayPool<byte>.Shared.Rent(xml.Length);
+            xml.CopyTo(rented);
+            return ParseOwned(rented, xml.Length, options, ignoreDeclaredEncoding: false);
         }
 
         /// <summary>
         /// Parses a sequence of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="options">
         /// Options that control the parser behavior. By default, comments are kept, so that writing the
         /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
@@ -392,23 +392,23 @@ namespace CloudNimble.Text.Xml
         /// An <see cref="XmlDocument"/> representation of the XML document.
         /// </returns>
         /// <exception cref="OverflowException">
-        /// <paramref name="utf8Xml"/> is longer than <see cref="int.MaxValue"/> bytes.
+        /// <paramref name="xml"/> is longer than <see cref="int.MaxValue"/> bytes.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// <paramref name="xml"/> is not a well-formed XML document.
         /// -or-
-        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// <paramref name="xml"/> exceeds a limit that is set in <paramref name="options"/>.
         /// </exception>
         /// <remarks>
         /// The bytes are copied into one pooled buffer that the document owns, so the document does not
-        /// depend on <paramref name="utf8Xml"/> after this method returns.
+        /// depend on <paramref name="xml"/> after this method returns.
         /// </remarks>
-        public static XmlDocument Parse(ReadOnlySequence<byte> utf8Xml, XmlDocumentOptions options = default)
+        public static XmlDocument Parse(ReadOnlySequence<byte> xml, XmlDocumentOptions options = default)
         {
-            var length = checked((int)utf8Xml.Length);
+            var length = checked((int)xml.Length);
             ThrowIfDocumentTooLarge(length, options.MaxDocumentByteCount);
             var rented = ArrayPool<byte>.Shared.Rent(length);
-            utf8Xml.CopyTo(rented);
+            xml.CopyTo(rented);
             return ParseOwned(rented, length, options, ignoreDeclaredEncoding: false);
         }
 
@@ -416,7 +416,7 @@ namespace CloudNimble.Text.Xml
         /// Parses a stream of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream that holds the UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream that holds the UTF-8 encoded XML text to parse.</param>
         /// <param name="options">
         /// Options that control the parser behavior. By default, comments are kept, so that writing the
         /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
@@ -426,21 +426,21 @@ namespace CloudNimble.Text.Xml
         /// An <see cref="XmlDocument"/> representation of the XML document.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> does not hold a well-formed XML document.
+        /// <paramref name="xml"/> does not hold a well-formed XML document.
         /// -or-
-        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// <paramref name="xml"/> exceeds a limit that is set in <paramref name="options"/>.
         /// </exception>
         /// <remarks>
         /// When <see cref="XmlDocumentOptions.MaxDocumentByteCount"/> is set, reading stops as soon as the
         /// stream is found to be longer than that limit. The stream is not closed.
         /// </remarks>
-        public static XmlDocument Parse(Stream utf8Xml, XmlDocumentOptions options = default)
+        public static XmlDocument Parse(Stream xml, XmlDocumentOptions options = default)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            var rented = XmlStreamBuffer.ReadToEnd(utf8Xml, options.MaxDocumentByteCount, out var length);
+            ArgumentNullException.ThrowIfNull(xml);
+            var rented = XmlStreamBuffer.ReadToEnd(xml, options.MaxDocumentByteCount, out var length);
             return ParseOwned(rented, length, options, ignoreDeclaredEncoding: false);
         }
 
@@ -448,7 +448,7 @@ namespace CloudNimble.Text.Xml
         /// Parses a stream of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>,
         /// without blocking the calling thread. The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream that holds the UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream that holds the UTF-8 encoded XML text to parse.</param>
         /// <param name="options">
         /// Options that control the parser behavior. By default, comments are kept, so that writing the
         /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
@@ -459,15 +459,15 @@ namespace CloudNimble.Text.Xml
         /// A task that produces an <see cref="XmlDocument"/> representation of the XML document.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="OperationCanceledException">
         /// <paramref name="cancellationToken"/> was canceled.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> does not hold a well-formed XML document.
+        /// <paramref name="xml"/> does not hold a well-formed XML document.
         /// -or-
-        /// <paramref name="utf8Xml"/> exceeds a limit that is set in <paramref name="options"/>.
+        /// <paramref name="xml"/> exceeds a limit that is set in <paramref name="options"/>.
         /// </exception>
         /// <example>
         /// <code>
@@ -481,10 +481,10 @@ namespace CloudNimble.Text.Xml
         /// <see cref="XmlDocumentOptions.MaxDocumentByteCount"/> is set, reading stops as soon as the stream
         /// is found to be longer than that limit. The stream is not closed.
         /// </remarks>
-        public static Task<XmlDocument> ParseAsync(Stream utf8Xml, XmlDocumentOptions options = default, CancellationToken cancellationToken = default)
+        public static Task<XmlDocument> ParseAsync(Stream xml, XmlDocumentOptions options = default, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            return ParseStreamAsync(utf8Xml, options, cancellationToken);
+            ArgumentNullException.ThrowIfNull(xml);
+            return ParseStreamAsync(xml, options, cancellationToken);
         }
 
         /// <summary>
@@ -534,7 +534,7 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Attempts to parse a span of UTF-8 bytes that holds a single XML document into an <see cref="XmlDocument"/>.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="options">
         /// Options that control the parser behavior. By default, comments are kept, so that writing the
         /// document back does not lose them. To leave comments out, set <see cref="XmlDocumentOptions.CommentHandling"/>
@@ -545,18 +545,18 @@ namespace CloudNimble.Text.Xml
         /// <see langword="null"/> if it failed. This parameter is treated as uninitialized.
         /// </param>
         /// <returns>
-        /// <see langword="true"/> if <paramref name="utf8Xml"/> is a well-formed XML document that is within
+        /// <see langword="true"/> if <paramref name="xml"/> is a well-formed XML document that is within
         /// the limits set in <paramref name="options"/>; otherwise, <see langword="false"/>.
         /// </returns>
         /// <remarks>
         /// This method returns <see langword="false"/> in every case where
         /// <see cref="Parse(ReadOnlySpan{byte}, XmlDocumentOptions)"/> throws an <see cref="XmlException"/>.
         /// </remarks>
-        public static bool TryParse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options, out XmlDocument? document)
+        public static bool TryParse(ReadOnlySpan<byte> xml, XmlDocumentOptions options, out XmlDocument? document)
         {
             try
             {
-                document = Parse(utf8Xml, options);
+                document = Parse(xml, options);
                 return true;
             }
             catch (XmlException)
@@ -1297,15 +1297,15 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads <paramref name="utf8Xml"/> to its end and parses what was read.
+        /// Reads <paramref name="xml"/> to its end and parses what was read.
         /// </summary>
-        /// <param name="utf8Xml">The stream.</param>
+        /// <param name="xml">The stream.</param>
         /// <param name="options">The parser options.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The document, which owns the buffer the stream was read into.</returns>
-        internal static async Task<XmlDocument> ParseStreamAsync(Stream utf8Xml, XmlDocumentOptions options, CancellationToken cancellationToken)
+        internal static async Task<XmlDocument> ParseStreamAsync(Stream xml, XmlDocumentOptions options, CancellationToken cancellationToken)
         {
-            var utf8 = await XmlStreamBuffer.ReadToEndAsync(utf8Xml, options.MaxDocumentByteCount, cancellationToken).ConfigureAwait(false);
+            var utf8 = await XmlStreamBuffer.ReadToEndAsync(xml, options.MaxDocumentByteCount, cancellationToken).ConfigureAwait(false);
             return ParseOwned(utf8.Array!, utf8.Count, options, ignoreDeclaredEncoding: false);
         }
 

@@ -54,21 +54,21 @@ public sealed class XmlDocument : IDisposable
 {
     public static XmlDocument Parse(string xml, XmlDocumentOptions options = default);
     public static XmlDocument Parse(ReadOnlySpan<char> xml, XmlDocumentOptions options = default);
-    public static XmlDocument Parse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default);
-    public static XmlDocument Parse(ReadOnlySequence<byte> utf8Xml, XmlDocumentOptions options = default);
-    public static XmlDocument Parse(Stream utf8Xml, XmlDocumentOptions options = default);
-    public static Task<XmlDocument> ParseAsync(Stream utf8Xml, XmlDocumentOptions options = default, CancellationToken cancellationToken = default);
+    public static XmlDocument Parse(ReadOnlySpan<byte> xml, XmlDocumentOptions options = default);
+    public static XmlDocument Parse(ReadOnlySequence<byte> xml, XmlDocumentOptions options = default);
+    public static XmlDocument Parse(Stream xml, XmlDocumentOptions options = default);
+    public static Task<XmlDocument> ParseAsync(Stream xml, XmlDocumentOptions options = default, CancellationToken cancellationToken = default);
     public static XmlDocument ParseValue(ref Utf8XmlReader reader);
     public static bool TryParseValue(ref Utf8XmlReader reader, [NotNullWhen(true)] out XmlDocument? document);
 
     // The namespaces a document declares, by prefix ("" is the default namespace), in the order each prefix is
     // first declared. Every start tag is read for prefixes; a prefix bound twice keeps its first namespace. A
     // default namespace is listed only when the document element declares it; xmlns="" is not listed. No XmlDocument is built. Fails as Parse fails. The result fits XmlSerializerOptions.Namespaces.
-    public static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options = default);
+    public static OrderedDictionary<string, string> DiscoverNamespaces(ReadOnlySpan<byte> xml, XmlDocumentOptions options = default);
     public static OrderedDictionary<string, string> DiscoverNamespaces(string xml, XmlDocumentOptions options = default);
-    public static OrderedDictionary<string, string> DiscoverNamespaces(Stream utf8Xml, XmlDocumentOptions options = default);
+    public static OrderedDictionary<string, string> DiscoverNamespaces(Stream xml, XmlDocumentOptions options = default);
 
-    public static bool TryParse(ReadOnlySpan<byte> utf8Xml, XmlDocumentOptions options, out XmlDocument? document);
+    public static bool TryParse(ReadOnlySpan<byte> xml, XmlDocumentOptions options, out XmlDocument? document);
 
     public XmlElement RootElement { get; }
     /// <summary>Immutable view. Not <see cref="Nodes.XmlDeclarationNode"/> (mutable tree only).</summary>
@@ -185,7 +185,7 @@ public abstract class XmlNode
     public abstract string? NamespaceUri { get; }
 
     public static XmlNode Parse(string xml); // document → root XmlElementNode; prolog comments/PIs discarded; attributes and children are made when first asked for
-    public static XmlNode Parse(ReadOnlySpan<byte> utf8Xml);
+    public static XmlNode Parse(ReadOnlySpan<byte> xml);
     public static XmlNode ParseValue(ref Utf8XmlReader reader);
 
     public abstract void WriteTo(Utf8XmlWriter writer);

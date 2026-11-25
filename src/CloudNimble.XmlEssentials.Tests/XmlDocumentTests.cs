@@ -210,7 +210,7 @@ namespace CloudNimble.XmlEssentials.Tests
             FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces("<r/>"u8, small)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (3).");
             FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces(new MemoryStream("<r/>"u8.ToArray()), small)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxDocumentByteCount exceeded (3).");
             FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces((string)null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("xml");
-            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces((Stream)null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("utf8Xml");
+            FluentActions.Invoking(() => XmlDocument.DiscoverNamespaces((Stream)null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("xml");
         }
 
         [TestMethod]
@@ -277,7 +277,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void ParseAsync_ANullStream_IsRefusedBeforeATaskIsCreated()
         {
-            FluentActions.Invoking(() => { _ = XmlDocument.ParseAsync(null!); }).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("utf8Xml");
+            FluentActions.Invoking(() => { _ = XmlDocument.ParseAsync(null!); }).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("xml");
         }
 
         [TestMethod]

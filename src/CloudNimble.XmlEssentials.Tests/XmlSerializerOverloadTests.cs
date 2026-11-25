@@ -345,7 +345,7 @@ namespace CloudNimble.XmlEssentials.Tests
             Named("writer", () => XmlSerializer.Serialize((Utf8XmlWriter)null!, 42));
             Named("utf8Xml", () => XmlSerializer.Serialize((Stream)null!, 42));
             Named("bufferWriter", () => XmlSerializer.Serialize((IBufferWriter<byte>)null!, 42));
-            Named("utf8Xml", () => XmlSerializer.Deserialize<int>((Stream)null!));
+            Named("xml", () => XmlSerializer.Deserialize<int>((Stream)null!));
             Named("document", () => XmlSerializer.Deserialize<int>((XmlDocument)null!));
             Named("node", () => XmlSerializer.Deserialize<int>((XmlNode)null!));
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsync((Stream)null!, 42)).Should().ThrowExactlyAsync<ArgumentNullException>())
@@ -355,9 +355,9 @@ namespace CloudNimble.XmlEssentials.Tests
             (await FluentActions.Awaiting(() => XmlSerializer.SerializeAsync(new MemoryStream(), 42, (XmlTypeInfo<int>)null!)).Should().ThrowExactlyAsync<ArgumentNullException>())
                 .Which.ParamName.Should().Be("xmlTypeInfo");
             (await FluentActions.Awaiting(() => XmlSerializer.DeserializeAsync<int>((Stream)null!).AsTask()).Should().ThrowExactlyAsync<ArgumentNullException>())
-                .Which.ParamName.Should().Be("utf8Xml");
+                .Which.ParamName.Should().Be("xml");
             (await FluentActions.Awaiting(() => XmlSerializer.DeserializeAsync<int>((PipeReader)null!).AsTask()).Should().ThrowExactlyAsync<ArgumentNullException>())
-                .Which.ParamName.Should().Be("utf8Xml");
+                .Which.ParamName.Should().Be("xml");
             (await FluentActions.Awaiting(() => XmlSerializer.DeserializeAsync(new Pipe().Reader, (XmlTypeInfo<int>)null!).AsTask()).Should().ThrowExactlyAsync<ArgumentNullException>())
                 .Which.ParamName.Should().Be("xmlTypeInfo");
         }

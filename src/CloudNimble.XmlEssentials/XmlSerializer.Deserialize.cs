@@ -300,15 +300,15 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <typeparamref name="TValue"/>.
+        /// <paramref name="xml"/> is not valid for <typeparamref name="TValue"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// No type metadata is available for <typeparamref name="TValue"/>.
@@ -317,9 +317,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> utf8Xml, XmlSerializerOptions? options = null)
+        public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> xml, XmlSerializerOptions? options = null)
         {
-            return Read<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), options));
+            return Read<TValue>(xml, GetTypeInfo(typeof(TValue), options));
         }
 
         /// <summary>
@@ -328,7 +328,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
@@ -337,14 +337,14 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <typeparamref name="TValue"/>.
+        /// <paramref name="xml"/> is not valid for <typeparamref name="TValue"/>.
         /// </exception>
-        public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo)
+        public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> xml, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            return Read<TValue>(utf8Xml, xmlTypeInfo);
+            return Read<TValue>(xml, xmlTypeInfo);
         }
 
         /// <summary>
@@ -353,7 +353,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
@@ -362,22 +362,22 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="context"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <typeparamref name="TValue"/>.
+        /// <paramref name="xml"/> is not valid for <typeparamref name="TValue"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
         /// </exception>
-        public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> utf8Xml, XmlSerializerContext context)
+        public static TValue? Deserialize<TValue>(ReadOnlySpan<byte> xml, XmlSerializerContext context)
         {
-            return Read<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), context));
+            return Read<TValue>(xml, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
         /// Parses the UTF-8 encoded text representing a single XML document into an instance of a specified type, using the specified options.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>
@@ -387,9 +387,9 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="returnType"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <paramref name="returnType"/>.
+        /// <paramref name="xml"/> is not valid for <paramref name="returnType"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// No type metadata is available for <paramref name="returnType"/>.
@@ -398,16 +398,16 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static object? Deserialize(ReadOnlySpan<byte> utf8Xml, Type returnType, XmlSerializerOptions? options = null)
+        public static object? Deserialize(ReadOnlySpan<byte> xml, Type returnType, XmlSerializerOptions? options = null)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return Read<object?>(utf8Xml, GetTypeInfo(returnType, options));
+            return Read<object?>(xml, GetTypeInfo(returnType, options));
         }
 
         /// <summary>
         /// Parses the UTF-8 encoded text representing a single XML document into an instance of a specified type, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <returns>
@@ -417,17 +417,17 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="returnType"/> or <paramref name="context"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <paramref name="returnType"/>.
+        /// <paramref name="xml"/> is not valid for <paramref name="returnType"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <paramref name="returnType"/>.
         /// </exception>
-        public static object? Deserialize(ReadOnlySpan<byte> utf8Xml, Type returnType, XmlSerializerContext context)
+        public static object? Deserialize(ReadOnlySpan<byte> xml, Type returnType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return Read<object?>(utf8Xml, GetTypeInfo(returnType, context));
+            return Read<object?>(xml, GetTypeInfo(returnType, context));
         }
 
         /// <summary>
@@ -436,15 +436,15 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The sequence of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The sequence of UTF-8 encoded XML text to parse.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <typeparamref name="TValue"/>.
+        /// <paramref name="xml"/> is not valid for <typeparamref name="TValue"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// No type metadata is available for <typeparamref name="TValue"/>.
@@ -453,9 +453,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> utf8Xml, XmlSerializerOptions? options = null)
+        public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> xml, XmlSerializerOptions? options = null)
         {
-            return Read<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), options));
+            return Read<TValue>(xml, GetTypeInfo(typeof(TValue), options));
         }
 
         /// <summary>
@@ -464,7 +464,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The sequence of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The sequence of UTF-8 encoded XML text to parse.</param>
         /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
@@ -473,14 +473,14 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <typeparamref name="TValue"/>.
+        /// <paramref name="xml"/> is not valid for <typeparamref name="TValue"/>.
         /// </exception>
-        public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo)
+        public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> xml, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            return Read<TValue>(utf8Xml, xmlTypeInfo);
+            return Read<TValue>(xml, xmlTypeInfo);
         }
 
         /// <summary>
@@ -489,7 +489,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The sequence of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The sequence of UTF-8 encoded XML text to parse.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
@@ -498,22 +498,22 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="context"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <typeparamref name="TValue"/>.
+        /// <paramref name="xml"/> is not valid for <typeparamref name="TValue"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
         /// </exception>
-        public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> utf8Xml, XmlSerializerContext context)
+        public static TValue? Deserialize<TValue>(ReadOnlySequence<byte> xml, XmlSerializerContext context)
         {
-            return Read<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), context));
+            return Read<TValue>(xml, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
         /// Parses the UTF-8 encoded byte sequence representing a single XML document into an instance of a specified type, using the specified options.
         /// </summary>
-        /// <param name="utf8Xml">The sequence of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The sequence of UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>
@@ -523,9 +523,9 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="returnType"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <paramref name="returnType"/>.
+        /// <paramref name="xml"/> is not valid for <paramref name="returnType"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// No type metadata is available for <paramref name="returnType"/>.
@@ -534,16 +534,16 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static object? Deserialize(ReadOnlySequence<byte> utf8Xml, Type returnType, XmlSerializerOptions? options = null)
+        public static object? Deserialize(ReadOnlySequence<byte> xml, Type returnType, XmlSerializerOptions? options = null)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return Read<object?>(utf8Xml, GetTypeInfo(returnType, options));
+            return Read<object?>(xml, GetTypeInfo(returnType, options));
         }
 
         /// <summary>
         /// Parses the UTF-8 encoded byte sequence representing a single XML document into an instance of a specified type, using type metadata from the specified serializer context.
         /// </summary>
-        /// <param name="utf8Xml">The sequence of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The sequence of UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <returns>
@@ -553,17 +553,17 @@ namespace CloudNimble.Text.Xml
         /// <paramref name="returnType"/> or <paramref name="context"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not well formed.
+        /// <paramref name="xml"/> is not well formed.
         /// -or-
-        /// <paramref name="utf8Xml"/> is not valid for <paramref name="returnType"/>.
+        /// <paramref name="xml"/> is not valid for <paramref name="returnType"/>.
         /// </exception>
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <paramref name="returnType"/>.
         /// </exception>
-        public static object? Deserialize(ReadOnlySequence<byte> utf8Xml, Type returnType, XmlSerializerContext context)
+        public static object? Deserialize(ReadOnlySequence<byte> xml, Type returnType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return Read<object?>(utf8Xml, GetTypeInfo(returnType, context));
+            return Read<object?>(xml, GetTypeInfo(returnType, context));
         }
 
         /// <summary>
@@ -708,13 +708,13 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -730,9 +730,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static TValue? Deserialize<TValue>(Stream utf8Xml, XmlSerializerOptions? options = null)
+        public static TValue? Deserialize<TValue>(Stream xml, XmlSerializerOptions? options = null)
         {
-            return Read<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), options));
+            return Read<TValue>(xml, GetTypeInfo(typeof(TValue), options));
         }
 
         /// <summary>
@@ -741,13 +741,13 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -756,10 +756,10 @@ namespace CloudNimble.Text.Xml
         /// -or-
         /// The stream holds more bytes than <see cref="XmlSerializerOptions.MaxDocumentByteCount"/> allows.
         /// </exception>
-        public static TValue? Deserialize<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo)
+        public static TValue? Deserialize<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            return Read<TValue>(utf8Xml, xmlTypeInfo);
+            return Read<TValue>(xml, xmlTypeInfo);
         }
 
         /// <summary>
@@ -768,13 +768,13 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <returns>
         /// A <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> or <paramref name="context"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -786,22 +786,22 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
         /// </exception>
-        public static TValue? Deserialize<TValue>(Stream utf8Xml, XmlSerializerContext context)
+        public static TValue? Deserialize<TValue>(Stream xml, XmlSerializerContext context)
         {
-            return Read<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), context));
+            return Read<TValue>(xml, GetTypeInfo(typeof(TValue), context));
         }
 
         /// <summary>
         /// Reads the UTF-8 encoded text representing a single XML document from a stream into an instance of a specified type, using the specified options. The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>
         /// A <paramref name="returnType"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> or <paramref name="returnType"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> or <paramref name="returnType"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -817,23 +817,23 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static object? Deserialize(Stream utf8Xml, Type returnType, XmlSerializerOptions? options = null)
+        public static object? Deserialize(Stream xml, Type returnType, XmlSerializerOptions? options = null)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return Read<object?>(utf8Xml, GetTypeInfo(returnType, options));
+            return Read<object?>(xml, GetTypeInfo(returnType, options));
         }
 
         /// <summary>
         /// Reads the UTF-8 encoded text representing a single XML document from a stream into an instance of a specified type, using type metadata from the specified serializer context. The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <returns>
         /// A <paramref name="returnType"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/>, <paramref name="returnType"/>, or <paramref name="context"/> is <see langword="null"/>.
+        /// <paramref name="xml"/>, <paramref name="returnType"/>, or <paramref name="context"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -845,10 +845,10 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <paramref name="returnType"/>.
         /// </exception>
-        public static object? Deserialize(Stream utf8Xml, Type returnType, XmlSerializerContext context)
+        public static object? Deserialize(Stream xml, Type returnType, XmlSerializerContext context)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return Read<object?>(utf8Xml, GetTypeInfo(returnType, context));
+            return Read<object?>(xml, GetTypeInfo(returnType, context));
         }
 
         /// <summary>
@@ -857,14 +857,14 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
         /// A task object that, when awaited, produces a <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is stored into the returned task.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -881,9 +881,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return ReadAsync<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), options), cancellationToken);
+            return ReadAsync<TValue>(xml, GetTypeInfo(typeof(TValue), options), cancellationToken);
         }
 
         /// <summary>
@@ -892,7 +892,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
@@ -901,7 +901,7 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="ArgumentNullException">
         /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
         /// -or-
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is stored into the returned task.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -911,10 +911,10 @@ namespace CloudNimble.Text.Xml
         /// The stream holds more bytes than <see cref="XmlSerializerOptions.MaxDocumentByteCount"/> allows.
         /// This exception is stored into the returned task.
         /// </exception>
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            return ReadAsync<TValue>(utf8Xml, xmlTypeInfo, cancellationToken);
+            return ReadAsync<TValue>(xml, xmlTypeInfo, cancellationToken);
         }
 
         /// <summary>
@@ -923,7 +923,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
@@ -932,7 +932,7 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="ArgumentNullException">
         /// <paramref name="context"/> is <see langword="null"/>.
         /// -or-
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is stored into the returned task.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -945,15 +945,15 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <typeparamref name="TValue"/>.
         /// </exception>
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Xml, XmlSerializerContext context, CancellationToken cancellationToken = default)
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream xml, XmlSerializerContext context, CancellationToken cancellationToken = default)
         {
-            return ReadAsync<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), context), cancellationToken);
+            return ReadAsync<TValue>(xml, GetTypeInfo(typeof(TValue), context), cancellationToken);
         }
 
         /// <summary>
         /// Asynchronously reads the UTF-8 encoded text representing a single XML document from a stream into an instance of a specified type, using the specified options. The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
@@ -963,7 +963,7 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="ArgumentNullException">
         /// <paramref name="returnType"/> is <see langword="null"/>.
         /// -or-
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is stored into the returned task.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -980,16 +980,16 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static ValueTask<object?> DeserializeAsync(Stream utf8Xml, Type returnType, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static ValueTask<object?> DeserializeAsync(Stream xml, Type returnType, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return ReadAsync<object?>(utf8Xml, GetTypeInfo(returnType, options), cancellationToken);
+            return ReadAsync<object?>(xml, GetTypeInfo(returnType, options), cancellationToken);
         }
 
         /// <summary>
         /// Asynchronously reads the UTF-8 encoded text representing a single XML document from a stream into an instance of a specified type, using type metadata from the specified serializer context. The stream is read to completion.
         /// </summary>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse.</param>
         /// <param name="returnType">The type of the object to convert to and return.</param>
         /// <param name="context">A metadata provider for serializable types.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
@@ -999,7 +999,7 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="ArgumentNullException">
         /// <paramref name="returnType"/> or <paramref name="context"/> is <see langword="null"/>.
         /// -or-
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is stored into the returned task.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is stored into the returned task.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1012,10 +1012,10 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="NotSupportedException">
         /// <paramref name="context"/> has no type metadata for <paramref name="returnType"/>.
         /// </exception>
-        public static ValueTask<object?> DeserializeAsync(Stream utf8Xml, Type returnType, XmlSerializerContext context, CancellationToken cancellationToken = default)
+        public static ValueTask<object?> DeserializeAsync(Stream xml, Type returnType, XmlSerializerContext context, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(returnType);
-            return ReadAsync<object?>(utf8Xml, GetTypeInfo(returnType, context), cancellationToken);
+            return ReadAsync<object?>(xml, GetTypeInfo(returnType, context), cancellationToken);
         }
 
         /// <summary>
@@ -1408,14 +1408,14 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The pipe reader of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The pipe reader of UTF-8 encoded XML text to parse.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
         /// A task object that, when awaited, produces a <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1432,9 +1432,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return ReadAsync<TValue>(utf8Xml, GetTypeInfo(typeof(TValue), options), cancellationToken);
+            return ReadAsync<TValue>(xml, GetTypeInfo(typeof(TValue), options), cancellationToken);
         }
 
         /// <summary>
@@ -1443,14 +1443,14 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The target type of the XML value.
         /// </typeparam>
-        /// <param name="utf8Xml">The pipe reader of UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The pipe reader of UTF-8 encoded XML text to parse.</param>
         /// <param name="xmlTypeInfo">The metadata about the type to convert.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
         /// A task object that, when awaited, produces a <typeparamref name="TValue"/> representation of the XML value.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1460,10 +1460,10 @@ namespace CloudNimble.Text.Xml
         /// The pipe holds more bytes than <see cref="XmlSerializerOptions.MaxDocumentByteCount"/> allows.
         /// This exception is stored into the returned task.
         /// </exception>
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(PipeReader xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            return ReadAsync<TValue>(utf8Xml, xmlTypeInfo, cancellationToken);
+            return ReadAsync<TValue>(xml, xmlTypeInfo, cancellationToken);
         }
 
         /// <summary>
@@ -1472,14 +1472,14 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The element type to deserialize asynchronously.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
         /// An <see cref="IAsyncEnumerable{T}"/> representation of the children of the document element.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1494,9 +1494,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return DeserializeAsyncEnumerable<TValue>(utf8Xml, topLevelValues: false, options, cancellationToken);
+            return DeserializeAsyncEnumerable<TValue>(xml, topLevelValues: false, options, cancellationToken);
         }
 
         /// <summary>
@@ -1505,7 +1505,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The element type to deserialize asynchronously.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
         /// <param name="topLevelValues"><see langword="true"/> to read each document in the stream as a value; <see langword="false"/> to read each child of the document element as a value.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
@@ -1513,7 +1513,7 @@ namespace CloudNimble.Text.Xml
         /// An <see cref="IAsyncEnumerable{T}"/> representation of the values in the stream.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
+        /// <paramref name="xml"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1528,9 +1528,9 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return DeserializeAsyncEnumerable(utf8Xml, (XmlTypeInfo<TValue>)GetTypeInfo(typeof(TValue), options), topLevelValues, cancellationToken);
+            return DeserializeAsyncEnumerable(xml, (XmlTypeInfo<TValue>)GetTypeInfo(typeof(TValue), options), topLevelValues, cancellationToken);
         }
 
         /// <summary>
@@ -1539,14 +1539,14 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The element type to deserialize asynchronously.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
         /// <param name="xmlTypeInfo">The metadata about the element type to convert.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
         /// An <see cref="IAsyncEnumerable{T}"/> representation of the children of the document element.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
+        /// <paramref name="xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1554,9 +1554,9 @@ namespace CloudNimble.Text.Xml
         /// A value is not valid for <typeparamref name="TValue"/>.
         /// This exception is thrown during enumeration, when the invalid part is reached.
         /// </exception>
-        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
+        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
         {
-            return DeserializeAsyncEnumerable(utf8Xml, xmlTypeInfo, topLevelValues: false, cancellationToken);
+            return DeserializeAsyncEnumerable(xml, xmlTypeInfo, topLevelValues: false, cancellationToken);
         }
 
         /// <summary>
@@ -1565,7 +1565,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The element type to deserialize asynchronously.
         /// </typeparam>
-        /// <param name="utf8Xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
+        /// <param name="xml">The stream of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
         /// <param name="xmlTypeInfo">The metadata about the element type to convert.</param>
         /// <param name="topLevelValues"><see langword="true"/> to read each document in the stream as a value; <see langword="false"/> to read each child of the document element as a value.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
@@ -1573,7 +1573,7 @@ namespace CloudNimble.Text.Xml
         /// An <see cref="IAsyncEnumerable{T}"/> representation of the values in the stream.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
+        /// <paramref name="xml"/> or <paramref name="xmlTypeInfo"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1587,9 +1587,9 @@ namespace CloudNimble.Text.Xml
         /// whole stream. A malformed document fails when the bad part is reached; values before it have
         /// already been returned.
         /// </remarks>
-        public static async IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, bool topLevelValues, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public static async IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream xml, XmlTypeInfo<TValue> xmlTypeInfo, bool topLevelValues, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
+            ArgumentNullException.ThrowIfNull(xml);
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
             var options = xmlTypeInfo.Options.ToReaderOptions();
             options.AllowMultipleRoots = topLevelValues;
@@ -1621,7 +1621,7 @@ namespace CloudNimble.Text.Xml
                         buffer = grown;
                     }
 
-                    var read = await utf8Xml.ReadAsync(buffer.AsMemory(length), cancellationToken).ConfigureAwait(false);
+                    var read = await xml.ReadAsync(buffer.AsMemory(length), cancellationToken).ConfigureAwait(false);
                     isFinalBlock = read == 0;
                     length += read;
                     var used = 0;
@@ -1662,7 +1662,7 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The element type to deserialize asynchronously.
         /// </typeparam>
-        /// <param name="utf8Xml">The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
+        /// <param name="xml">The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
         /// <param name="topLevelValues"><see langword="true"/> to read each document in the pipe as a value; <see langword="false"/> to read each child of the document element as a value.</param>
         /// <param name="options">The options that control deserialization, or <see langword="null"/> to use <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
@@ -1670,7 +1670,7 @@ namespace CloudNimble.Text.Xml
         /// An <see cref="IAsyncEnumerable{T}"/> representation of the values in the pipe.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
         /// The XML is not well formed.
@@ -1685,10 +1685,10 @@ namespace CloudNimble.Text.Xml
         /// No <see cref="XmlSerializerOptions.TypeInfoResolver"/> is set and reflection-based serialization is disabled.
         /// </exception>
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
-        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader utf8Xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            return DeserializeAsyncEnumerable<TValue>(utf8Xml.AsStream(leaveOpen: true), topLevelValues, options, cancellationToken);
+            ArgumentNullException.ThrowIfNull(xml);
+            return DeserializeAsyncEnumerable<TValue>(xml.AsStream(leaveOpen: true), topLevelValues, options, cancellationToken);
         }
 
         /// <summary>
@@ -1697,14 +1697,14 @@ namespace CloudNimble.Text.Xml
         /// <typeparam name="TValue">
         /// The element type to deserialize asynchronously.
         /// </typeparam>
-        /// <param name="utf8Xml">The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
+        /// <param name="xml">The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested.</param>
         /// <param name="xmlTypeInfo">The metadata about the element type to convert.</param>
         /// <param name="cancellationToken">A token that can be used to cancel the read operation.</param>
         /// <returns>
         /// An <see cref="IAsyncEnumerable{T}"/> representation of the children of the document element.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="utf8Xml"/> is <see langword="null"/>.
+        /// <paramref name="xml"/> is <see langword="null"/>.
         /// -or-
         /// <paramref name="xmlTypeInfo"/> is <see langword="null"/>. This exception is thrown when enumeration starts.
         /// </exception>
@@ -1714,10 +1714,10 @@ namespace CloudNimble.Text.Xml
         /// A value is not valid for <typeparamref name="TValue"/>.
         /// This exception is thrown during enumeration, when the invalid part is reached.
         /// </exception>
-        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader utf8Xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
+        public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(PipeReader xml, XmlTypeInfo<TValue> xmlTypeInfo, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            return DeserializeAsyncEnumerable(utf8Xml.AsStream(leaveOpen: true), xmlTypeInfo, topLevelValues: false, cancellationToken);
+            ArgumentNullException.ThrowIfNull(xml);
+            return DeserializeAsyncEnumerable(xml.AsStream(leaveOpen: true), xmlTypeInfo, topLevelValues: false, cancellationToken);
         }
 
         #endregion

@@ -726,14 +726,14 @@ Parses the UTF-8 encoded text representing a single XML document into an instanc
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
+public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 
 #### Returns
@@ -749,9 +749,9 @@ A *TValue* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *TValue*. |
+*xml* is not valid for *TValue*. |
 | `NotSupportedException` | No type metadata is available for *TValue*. |
 | `InvalidOperationException` | No [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) is set and reflection-based serialization is disabled. |
 
@@ -762,14 +762,14 @@ Parses the UTF-8 encoded text representing a single XML document into a *TValue*
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
+public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the type to convert. |
 
 #### Returns
@@ -786,9 +786,9 @@ A *TValue* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *TValue*. |
+*xml* is not valid for *TValue*. |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
 
@@ -797,14 +797,14 @@ Parses the UTF-8 encoded text representing a single XML document into an instanc
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
+public static TValue Deserialize<TValue>(System.ReadOnlySpan<byte> xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 
 #### Returns
@@ -821,9 +821,9 @@ A *TValue* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *TValue*. |
+*xml* is not valid for *TValue*. |
 | `NotSupportedException` | *context* has no type metadata for *TValue*. |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
@@ -833,14 +833,14 @@ Parses the UTF-8 encoded text representing a single XML document into an instanc
 #### Syntax
 
 ```csharp
-public static object Deserialize(System.ReadOnlySpan<byte> utf8Xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
+public static object Deserialize(System.ReadOnlySpan<byte> xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 
@@ -854,9 +854,9 @@ A *returnType* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *returnType* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *returnType*. |
+*xml* is not valid for *returnType*. |
 | `NotSupportedException` | No type metadata is available for *returnType*. |
 | `InvalidOperationException` | No [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) is set and reflection-based serialization is disabled. |
 
@@ -867,14 +867,14 @@ Parses the UTF-8 encoded text representing a single XML document into an instanc
 #### Syntax
 
 ```csharp
-public static object Deserialize(System.ReadOnlySpan<byte> utf8Xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
+public static object Deserialize(System.ReadOnlySpan<byte> xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 
@@ -888,9 +888,9 @@ A *returnType* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *returnType* or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *returnType*. |
+*xml* is not valid for *returnType*. |
 | `NotSupportedException` | *context* has no type metadata for *returnType*. |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
@@ -900,14 +900,14 @@ Parses the UTF-8 encoded byte sequence representing a single XML document into a
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
+public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
+| `xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 
 #### Returns
@@ -923,9 +923,9 @@ A *TValue* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *TValue*. |
+*xml* is not valid for *TValue*. |
 | `NotSupportedException` | No type metadata is available for *TValue*. |
 | `InvalidOperationException` | No [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) is set and reflection-based serialization is disabled. |
 
@@ -936,14 +936,14 @@ Parses the UTF-8 encoded byte sequence representing a single XML document into a
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
+public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
+| `xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the type to convert. |
 
 #### Returns
@@ -960,9 +960,9 @@ A *TValue* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *TValue*. |
+*xml* is not valid for *TValue*. |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
 
@@ -971,14 +971,14 @@ Parses the UTF-8 encoded byte sequence representing a single XML document into a
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> utf8Xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
+public static TValue Deserialize<TValue>(System.Buffers.ReadOnlySequence<byte> xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
+| `xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 
 #### Returns
@@ -995,9 +995,9 @@ A *TValue* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *TValue*. |
+*xml* is not valid for *TValue*. |
 | `NotSupportedException` | *context* has no type metadata for *TValue*. |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
@@ -1007,14 +1007,14 @@ Parses the UTF-8 encoded byte sequence representing a single XML document into a
 #### Syntax
 
 ```csharp
-public static object Deserialize(System.Buffers.ReadOnlySequence<byte> utf8Xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
+public static object Deserialize(System.Buffers.ReadOnlySequence<byte> xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
+| `xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 
@@ -1028,9 +1028,9 @@ A *returnType* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *returnType* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *returnType*. |
+*xml* is not valid for *returnType*. |
 | `NotSupportedException` | No type metadata is available for *returnType*. |
 | `InvalidOperationException` | No [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) is set and reflection-based serialization is disabled. |
 
@@ -1041,14 +1041,14 @@ Parses the UTF-8 encoded byte sequence representing a single XML document into a
 #### Syntax
 
 ```csharp
-public static object Deserialize(System.Buffers.ReadOnlySequence<byte> utf8Xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
+public static object Deserialize(System.Buffers.ReadOnlySequence<byte> xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
+| `xml` | `System.Buffers.ReadOnlySequence<byte>` | The sequence of UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 
@@ -1062,9 +1062,9 @@ A *returnType* representation of the XML value.
 | Exception | Description |
 |-----------|-------------|
 | `ArgumentNullException` | *returnType* or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
-| `XmlException` | *utf8Xml* is not well formed.
+| `XmlException` | *xml* is not well formed.
 -or-
-*utf8Xml* is not valid for *returnType*. |
+*xml* is not valid for *returnType*. |
 | `NotSupportedException` | *context* has no type metadata for *returnType*. |
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Deserialize
@@ -1248,14 +1248,14 @@ Reads the UTF-8 encoded text representing a single XML document from a stream in
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
+public static TValue Deserialize<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 
 #### Returns
@@ -1271,7 +1271,7 @@ A *TValue* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -1287,14 +1287,14 @@ Reads the UTF-8 encoded text representing a single XML document from a stream in
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
+public static TValue Deserialize<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the type to convert. |
 
 #### Returns
@@ -1310,7 +1310,7 @@ A *TValue* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -1324,14 +1324,14 @@ Reads the UTF-8 encoded text representing a single XML document from a stream in
 #### Syntax
 
 ```csharp
-public static TValue Deserialize<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
+public static TValue Deserialize<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 
 #### Returns
@@ -1347,7 +1347,7 @@ A *TValue* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -1362,14 +1362,14 @@ Reads the UTF-8 encoded text representing a single XML document from a stream in
 #### Syntax
 
 ```csharp
-public static object Deserialize(System.IO.Stream utf8Xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
+public static object Deserialize(System.IO.Stream xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 
@@ -1382,7 +1382,7 @@ A *returnType* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* or *returnType* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* or *returnType* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *returnType*.
@@ -1398,14 +1398,14 @@ Reads the UTF-8 encoded text representing a single XML document from a stream in
 #### Syntax
 
 ```csharp
-public static object Deserialize(System.IO.Stream utf8Xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
+public static object Deserialize(System.IO.Stream xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 
@@ -1418,7 +1418,7 @@ A *returnType* representation of the XML value.
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml*, *returnType*, or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml*, *returnType*, or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *returnType*.
@@ -1927,14 +1927,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -1951,7 +1951,7 @@ A task object that, when awaited, produces a *TValue* representation of the XML 
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -1968,14 +1968,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the type to convert. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -1994,7 +1994,7 @@ A task object that, when awaited, produces a *TValue* representation of the XML 
 |-----------|-------------|
 | `ArgumentNullException` | *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 -or-
-*utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
+*xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -2009,14 +2009,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -2035,7 +2035,7 @@ A task object that, when awaited, produces a *TValue* representation of the XML 
 |-----------|-------------|
 | `ArgumentNullException` | *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 -or-
-*utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
+*xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -2051,14 +2051,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<object> DeserializeAsync(System.IO.Stream utf8Xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<object> DeserializeAsync(System.IO.Stream xml, System.Type returnType, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
@@ -2074,7 +2074,7 @@ A task object that, when awaited, produces a *returnType* representation of the 
 |-----------|-------------|
 | `ArgumentNullException` | *returnType* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 -or-
-*utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
+*xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *returnType*.
@@ -2091,14 +2091,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<object> DeserializeAsync(System.IO.Stream utf8Xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<object> DeserializeAsync(System.IO.Stream xml, System.Type returnType, CloudNimble.Text.Xml.Serialization.XmlSerializerContext context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. |
 | `returnType` | `System.Type` | The type of the object to convert to and return. |
 | `context` | `CloudNimble.Text.Xml.Serialization.XmlSerializerContext` | A metadata provider for serializable types. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
@@ -2114,7 +2114,7 @@ A task object that, when awaited, produces a *returnType* representation of the 
 |-----------|-------------|
 | `ArgumentNullException` | *returnType* or *context* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 -or-
-*utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
+*xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is stored into the returned task. |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *returnType*.
@@ -2130,14 +2130,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Pipelines.PipeReader utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Pipelines.PipeReader xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -2154,7 +2154,7 @@ A task object that, when awaited, produces a *TValue* representation of the XML 
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -2171,14 +2171,14 @@ Asynchronously reads the UTF-8 encoded text representing a single XML document f
 #### Syntax
 
 ```csharp
-public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Pipelines.PipeReader utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Threading.Tasks.ValueTask<TValue> DeserializeAsync<TValue>(System.IO.Pipelines.PipeReader xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. |
+| `xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the type to convert. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -2195,7 +2195,7 @@ A task object that, when awaited, produces a *TValue* representation of the XML 
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 The XML is not valid for *TValue*.
@@ -2210,14 +2210,14 @@ Wraps the UTF-8 encoded text in a stream into an [IAsyncEnumerable`1](https://le
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -2234,7 +2234,7 @@ An [IAsyncEnumerable`1](https://learn.microsoft.com/dotnet/api/system.collection
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
 | `XmlException` | The XML is not well formed.
 -or-
 A value is not valid for *TValue*.
@@ -2249,14 +2249,14 @@ Wraps the UTF-8 encoded text in a stream into an [IAsyncEnumerable`1](https://le
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream utf8Xml, bool topLevelValues, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream xml, bool topLevelValues, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
 | `topLevelValues` | `bool` | [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to read each document in the stream as a value; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to read each child of the document element as a value. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
@@ -2274,7 +2274,7 @@ An [IAsyncEnumerable`1](https://learn.microsoft.com/dotnet/api/system.collection
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
 | `XmlException` | The XML is not well formed.
 -or-
 A value is not valid for *TValue*.
@@ -2289,14 +2289,14 @@ Wraps the UTF-8 encoded text in a stream into an [IAsyncEnumerable`1](https://le
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the element type to convert. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -2313,7 +2313,7 @@ An [IAsyncEnumerable`1](https://learn.microsoft.com/dotnet/api/system.collection
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
+| `ArgumentNullException` | *xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
 | `XmlException` | The XML is not well formed.
 -or-
 A value is not valid for *TValue*.
@@ -2326,14 +2326,14 @@ Wraps the UTF-8 encoded text in a stream into an [IAsyncEnumerable`1](https://le
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, bool topLevelValues, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Stream xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, bool topLevelValues, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
+| `xml` | `System.IO.Stream` | The stream of UTF-8 encoded XML text to parse. It is read as values are requested. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the element type to convert. |
 | `topLevelValues` | `bool` | [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to read each document in the stream as a value; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to read each child of the document element as a value. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
@@ -2351,7 +2351,7 @@ An [IAsyncEnumerable`1](https://learn.microsoft.com/dotnet/api/system.collection
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
+| `ArgumentNullException` | *xml* or *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
 | `XmlException` | The XML is not well formed.
 -or-
 A value is not valid for *TValue*.
@@ -2371,14 +2371,14 @@ Wraps the UTF-8 encoded text in a pipe into an [IAsyncEnumerable`1](https://lear
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Pipelines.PipeReader utf8Xml, bool topLevelValues, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Pipelines.PipeReader xml, bool topLevelValues, CloudNimble.Text.Xml.XmlSerializerOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested. |
+| `xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested. |
 | `topLevelValues` | `bool` | [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to read each document in the pipe as a value; [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to read each child of the document element as a value. |
 | `options` | `CloudNimble.Text.Xml.XmlSerializerOptions?` | The options that control deserialization, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) to use [XmlSerializerOptions.Default](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#default). |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
@@ -2396,7 +2396,7 @@ An [IAsyncEnumerable`1](https://learn.microsoft.com/dotnet/api/system.collection
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
 | `XmlException` | The XML is not well formed.
 -or-
 A value is not valid for *TValue*.
@@ -2411,14 +2411,14 @@ Wraps the UTF-8 encoded text in a pipe into an [IAsyncEnumerable`1](https://lear
 #### Syntax
 
 ```csharp
-public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Pipelines.PipeReader utf8Xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+public static System.Collections.Generic.IAsyncEnumerable<TValue> DeserializeAsyncEnumerable<TValue>(System.IO.Pipelines.PipeReader xml, CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue> xmlTypeInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested. |
+| `xml` | `System.IO.Pipelines.PipeReader` | The pipe reader of UTF-8 encoded XML text to parse. It is read as values are requested. |
 | `xmlTypeInfo` | `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<TValue>` | The metadata about the element type to convert. |
 | `cancellationToken` | `System.Threading.CancellationToken` | A token that can be used to cancel the read operation. |
 
@@ -2435,7 +2435,7 @@ An [IAsyncEnumerable`1](https://learn.microsoft.com/dotnet/api/system.collection
 
 | Exception | Description |
 |-----------|-------------|
-| `ArgumentNullException` | *utf8Xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
+| `ArgumentNullException` | *xml* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 -or-
 *xmlTypeInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). This exception is thrown when enumeration starts. |
 | `XmlException` | The XML is not well formed.

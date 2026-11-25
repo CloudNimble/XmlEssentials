@@ -100,22 +100,22 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <summary>
         /// Parses a span of UTF-8 bytes that holds a single XML document into a mutable tree.
         /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to parse.</param>
+        /// <param name="xml">The UTF-8 encoded XML text to parse.</param>
         /// <returns>
         /// An <see cref="XmlNode"/> representation of the document element.
         /// </returns>
         /// <exception cref="XmlException">
-        /// <paramref name="utf8Xml"/> is not a well-formed XML document.
+        /// <paramref name="xml"/> is not a well-formed XML document.
         /// -or-
-        /// <paramref name="utf8Xml"/> exceeds a default limit of <see cref="XmlDocumentOptions"/>.
+        /// <paramref name="xml"/> exceeds a default limit of <see cref="XmlDocumentOptions"/>.
         /// </exception>
         /// <remarks>
         /// Comments inside the document element are kept. The XML declaration and any comments or processing
         /// instructions outside the document element are not part of the returned tree.
         /// </remarks>
-        public static XmlNode Parse(ReadOnlySpan<byte> utf8Xml)
+        public static XmlNode Parse(ReadOnlySpan<byte> xml)
         {
-            var document = XmlDocument.Parse(utf8Xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+            var document = XmlDocument.Parse(xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
             return document.RootElement.ToOwnedNode();
         }
 

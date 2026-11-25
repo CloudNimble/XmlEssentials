@@ -349,14 +349,14 @@ Parses a span of UTF-8 bytes that holds a single XML document into a mutable tre
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.Nodes.XmlNode Parse(System.ReadOnlySpan<byte> utf8Xml)
+public static CloudNimble.Text.Xml.Nodes.XmlNode Parse(System.ReadOnlySpan<byte> xml)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `utf8Xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
+| `xml` | `System.ReadOnlySpan<byte>` | The UTF-8 encoded XML text to parse. |
 
 #### Returns
 
@@ -367,9 +367,9 @@ An [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) representation o
 
 | Exception | Description |
 |-----------|-------------|
-| `XmlException` | *utf8Xml* is not a well-formed XML document.
+| `XmlException` | *xml* is not a well-formed XML document.
 -or-
-*utf8Xml* exceeds a default limit of [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions). |
+*xml* exceeds a default limit of [XmlDocumentOptions](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions). |
 
 #### Remarks
 

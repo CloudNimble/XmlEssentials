@@ -144,4 +144,4 @@ Add a dated line here whenever a phase finishes or a design point changes, so th
 
 ---
 
-[Index](README.md) · [Previous: Doc findings resolution](24-doc-findings-resolution.md)
+[Index](README.md) · [Previous: Doc findings resolution](24-doc-findings-resolution.md) · [Next: Expanded encoding support](26-expanded-encoding-support.md)

@@ -235,13 +235,13 @@ namespace CloudNimble.Text.Xml
         /// Reads one document from a stream, read to its end.
         /// </summary>
         /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
-        /// <param name="utf8Xml">The stream.</param>
+        /// <param name="xml">The stream.</param>
         /// <param name="typeInfo">The type info.</param>
         /// <returns>The value.</returns>
-        internal static TValue? Read<TValue>(Stream utf8Xml, XmlTypeInfo typeInfo)
+        internal static TValue? Read<TValue>(Stream xml, XmlTypeInfo typeInfo)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            var rented = XmlStreamBuffer.ReadToEnd(utf8Xml, typeInfo.Options.MaxDocumentByteCount, out var length);
+            ArgumentNullException.ThrowIfNull(xml);
+            var rented = XmlStreamBuffer.ReadToEnd(xml,typeInfo.Options.MaxDocumentByteCount, out var length);
             try
             {
                 return Read<TValue>(rented.AsSpan(0, length), typeInfo);
@@ -299,14 +299,14 @@ namespace CloudNimble.Text.Xml
         /// Reads one document from a stream without blocking on it.
         /// </summary>
         /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
-        /// <param name="utf8Xml">The stream.</param>
+        /// <param name="xml">The stream.</param>
         /// <param name="typeInfo">The type info.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The value.</returns>
-        internal static async ValueTask<TValue?> ReadAsync<TValue>(Stream utf8Xml, XmlTypeInfo typeInfo, CancellationToken cancellationToken)
+        internal static async ValueTask<TValue?> ReadAsync<TValue>(Stream xml, XmlTypeInfo typeInfo, CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            var utf8 = await XmlStreamBuffer.ReadToEndAsync(utf8Xml, typeInfo.Options.MaxDocumentByteCount, cancellationToken).ConfigureAwait(false);
+            ArgumentNullException.ThrowIfNull(xml);
+            var utf8 = await XmlStreamBuffer.ReadToEndAsync(xml,typeInfo.Options.MaxDocumentByteCount, cancellationToken).ConfigureAwait(false);
             try
             {
                 return Read<TValue>(utf8, typeInfo);
@@ -321,14 +321,14 @@ namespace CloudNimble.Text.Xml
         /// Reads one document from a pipe without blocking on it. The pipe is read until it completes.
         /// </summary>
         /// <typeparam name="TValue">The CLR type, or <see cref="object"/> when only <paramref name="typeInfo"/> knows it.</typeparam>
-        /// <param name="utf8Xml">The pipe reader.</param>
+        /// <param name="xml">The pipe reader.</param>
         /// <param name="typeInfo">The type info.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>The value.</returns>
-        internal static ValueTask<TValue?> ReadAsync<TValue>(PipeReader utf8Xml, XmlTypeInfo typeInfo, CancellationToken cancellationToken)
+        internal static ValueTask<TValue?> ReadAsync<TValue>(PipeReader xml, XmlTypeInfo typeInfo, CancellationToken cancellationToken)
         {
-            ArgumentNullException.ThrowIfNull(utf8Xml);
-            return ReadAsync<TValue>(utf8Xml.AsStream(leaveOpen: true), typeInfo, cancellationToken);
+            ArgumentNullException.ThrowIfNull(xml);
+            return ReadAsync<TValue>(xml.AsStream(leaveOpen: true), typeInfo, cancellationToken);
         }
 
         /// <summary>
