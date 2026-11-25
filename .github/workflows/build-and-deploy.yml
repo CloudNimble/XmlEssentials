@@ -122,11 +122,11 @@ jobs:
 
     - name: Test net11.0 with coverage
       working-directory: src
-      run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output ../artifacts/coverage/coverage.cobertura.xml
+      run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
 
     - name: Coverage gate
       working-directory: src
-      run: dotnet run coverage-gate.cs -- ../artifacts/coverage/coverage.cobertura.xml
+      run: dotnet run coverage-gate.cs -- "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
 
     - name: Publish AOT CLI sample
       working-directory: src
