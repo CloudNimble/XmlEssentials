@@ -37,7 +37,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
             var publish = Run(
                 "dotnet",
-                "publish \"" + csproj + "\" -c " + configuration + " -r " + rid,
+                "publish \"" + csproj + "\" -c " + configuration + " -r " + rid + " --disable-build-servers",
                 src,
                 600000);
             publish.ExitCode.Should().Be(0, publish.StandardOutput + Environment.NewLine + publish.StandardError);

@@ -43,7 +43,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 var library = Path.Combine(src, "CloudNimble.XmlEssentials", "CloudNimble.XmlEssentials.csproj");
                 var pack = XmlAotPublishTests.Run(
                     "dotnet",
-                    "pack \"" + library + "\" -c " + configuration + " --no-build --output \"" + feed + "\" -p:PackageVersion=" + version,
+                    "pack \"" + library + "\" -c " + configuration + " --no-build --disable-build-servers --output \"" + feed + "\" -p:PackageVersion=" + version,
                     src,
                     300000);
                 pack.ExitCode.Should().Be(0, pack.StandardOutput + Environment.NewLine + pack.StandardError);
@@ -90,7 +90,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     + "{\n"
                     + "}\n");
 
-                var build = XmlAotPublishTests.Run("dotnet", "build -c Release", app, 300000);
+                var build = XmlAotPublishTests.Run("dotnet", "build -c Release --disable-build-servers", app, 300000);
                 build.ExitCode.Should().Be(0, build.StandardOutput + Environment.NewLine + build.StandardError);
 
                 var run = XmlAotPublishTests.Run("dotnet", "\"" + Path.Combine(app, "bin", "Release", "net11.0", "app.dll") + "\"", app, 60000);
