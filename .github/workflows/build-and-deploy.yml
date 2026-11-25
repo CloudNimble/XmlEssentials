@@ -7,6 +7,11 @@ on:
       - '.github/**'
       - 'src/CloudNimble.XmlEssentials.Docs/**'
       - 'spec/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.gitattributes'
   workflow_dispatch:
     inputs:
       deploy_to_nuget:
