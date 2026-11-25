@@ -38,7 +38,6 @@ XmlEssentials.{version}.nupkg
   lib/net11.0/CloudNimble.XmlEssentials.dll
   lib/net11.0/CloudNimble.XmlEssentials.xml
   analyzers/dotnet/cs/CloudNimble.XmlEssentials.SourceGeneration.dll
-  analyzers/dotnet/roslyn4.14/cs/CloudNimble.XmlEssentials.SourceGeneration.dll
   README.md
   LICENSE
 ```
@@ -50,19 +49,19 @@ Primary library csproj:
 ```xml
 <ItemGroup>
   <ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
-                    ReferenceOutputAssembly="false"
-                    OutputItemType="Analyzer"
-                    SetTargetFramework="TargetFramework=netstandard2.0" />
+                    ReferenceOutputAssembly="false" />
 </ItemGroup>
 <ItemGroup>
-  <None Include="$(OutputPath)..\..\CloudNimble.XmlEssentials.SourceGeneration\$(Configuration)\netstandard2.0\CloudNimble.XmlEssentials.SourceGeneration.dll"
+  <None Include="..\CloudNimble.XmlEssentials.SourceGeneration\bin\$(Configuration)\netstandard2.0\CloudNimble.XmlEssentials.SourceGeneration.dll"
         Pack="true"
-        PackagePath="analyzers/dotnet/cs;analyzers/dotnet/roslyn4.14/cs"
+        PackagePath="analyzers/dotnet/cs"
         Visible="false" />
 </ItemGroup>
 ```
 
-(Exact `$(OutputPath)` may use `TargetDir` of the referenced generator; the contract is both analyzer folders get the same DLL.)
+**The generator is in the package once, in `analyzers/dotnet/cs`** (2026-11-25). It was also packed into `analyzers/dotnet/roslyn4.14/cs`. The SDK loads the copy in the unversioned folder as well as the one in the versioned folder, so every context was generated twice and an application that declared one did not build (CS0102, CS0111, CS8646). No project here saw it, because each references the generator as a project. `XmlPackageTests` packs the library and builds and runs an application that has only the package.
+
+**No reference to the generator sets its target framework** (2026-11-25). The generator has one, and `SetTargetFramework` on a reference made MSBuild build it a second time beside the solution's own build of it; the two wrote the same file (CS2012).
 
 ## Generator behavior
 

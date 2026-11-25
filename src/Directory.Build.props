@@ -26,15 +26,15 @@
 		<PackageVersion>1.0.0</PackageVersion>
 		<Authors>CloudNimble, Inc.</Authors>
 		<Company>CloudNimble, Inc.</Company>
-		<Copyright>Copyright © 2026 CloudNimble, Inc. All rights reserved.</Copyright>
+		<Copyright>Copyright © 2026-2027 CloudNimble, Inc. All rights reserved.</Copyright>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile Condition="$(IncludeReadmeFile) == 'true'">README.md</PackageReadmeFile>
 		<NoWarn>$(NoWarn);NU5048;NU1608;NU1510</NoWarn>
 		<MaintainerEmail>opensource@nimbleapps.cloud</MaintainerEmail>
-		<PackageProjectUrl>https://github.com/CloudNimble/XmlEssentials</PackageProjectUrl>
+		<PackageProjectUrl>https://easyaf.nimbleapps.cloud/XmlEssentials</PackageProjectUrl>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-		<PackageTags>xml;serializer;aot;utf8;source-generator;cloudnimble;xmlessentials</PackageTags>
+    <PackageTags>xml;xml-parser;xml-serializer;xml-serialization;xmlserializer;xmlreader;xmlwriter;xdocument;dom;serialization;serializer;deserialization;parser;system-text-json;system-text-xml;utf8;utf-8;source-generator;sourcegenerator;native-aot;aot;trimming;high-performance;zero-allocation;dotnet</PackageTags>
 		<Serviceable>true</Serviceable>
 		<RepositoryRoot>$(MSBuildThisFileDirectory)</RepositoryRoot>
 		<RepositoryUrl>https://github.com/CloudNimble/XmlEssentials.git</RepositoryUrl>
