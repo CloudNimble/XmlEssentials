@@ -34,6 +34,18 @@ Each part of XmlEssentials has a System.Text.Json counterpart with the same shap
 - **Untrusted input.** A document with a `<!DOCTYPE` is rejected, so entity expansion and external entities can't happen. Depth, attribute-count, and size limits are on by default.
 - **Existing XML formats.** The `Bcl` preset of `XmlSerializerOptions` reads and writes what `System.Xml.Serialization.XmlSerializer` produces for the same types.
 
+## Built for the future
+
+XmlEssentials targets .NET 10 and .NET 11 and nothing older. That means a batter developer experience that doesn't make you luck into success.
+
+- **Generic attributes.** `[XmlSerializable<T>]`, `[XmlDerivedType<T>]`, `[XmlConverter<TConverter>]`, `[XmlElement<T>]`, and `[XmlArrayItem<T>]` take the type as a type argument. The compiler checks it, and there is no `typeof`.
+- **Closed types.** On .NET 11, `InferClosedTypePolymorphism` takes the derived types of a `closed` hierarchy from the compiler, so you register none.
+- **Modern type shapes.** Positional records, constructor parameters, and `init` and `required` members are read and written as you declare them.
+- **Async and streaming.** `Stream`, `PipeReader` and `PipeWriter`, and `IAsyncEnumerable<T>`, each with a `CancellationToken`. `Utf8XmlWriter` is `IAsyncDisposable`.
+- **Spans and buffers.** `ReadOnlySpan<byte>`, `ReadOnlySequence<byte>`, and `IBufferWriter<byte>` throughout. `Utf8XmlReader` is a `ref struct`.
+- **Today's value types.** `DateOnly`, `TimeOnly`, `Int128`, `UInt128`, and `Half` are supported without a converter.
+- **No reflection in generated code.** A generated context reaches `init`, `required`, and non-public members through `[UnsafeAccessor]`.
+
 ## Install
 
 ```bash
