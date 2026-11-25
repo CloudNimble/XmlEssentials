@@ -37,7 +37,14 @@ stream: order 1043
 sequence: order 1043
 ```
 
-The other entry points are `TryParse`, which returns `false` where `Parse` throws an `XmlException`, and `ParseValue`, which builds a document from the element a `Utf8XmlReader` is positioned on. `Declaration` is the XML declaration that was parsed, or `null`. `WriteTo` writes the document to a `Utf8XmlWriter`.
+The other entry points are:
+
+- `ParseAsync`, which reads a `Stream` without blocking and then parses it.
+- `TryParse`, which returns `false` where `Parse` throws an `XmlException`.
+- `ParseValue`, which builds a document from the element a `Utf8XmlReader` is positioned on, and `TryParseValue`, which returns `false` and leaves the reader where it was when the element isn't all in a block that isn't the last one, or when the reader is on an end tag.
+- `DiscoverNamespaces`, which returns the prefixes and namespaces a document declares without building a document. See [Take them from an existing document](/guides/namespaces#take-them-from-an-existing-document).
+
+`Declaration` is the XML declaration that was parsed, or `null`. `WriteTo` writes the document to a `Utf8XmlWriter`.
 
 A document keeps comments and the white space between elements by default, so that parsing a document and writing it back doesn't lose its comments or its indentation. Both appear among the children of an element, so check `ValueKind` when you enumerate. To leave them out, pass an [`XmlDocumentOptions`](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) with `CommentHandling = XmlCommentHandling.Skip` and `WhitespaceHandling = XmlWhitespaceHandling.Insignificant`.
 

@@ -2,7 +2,7 @@ The following example shows what the strict defaults add to the general ones.
 
 ### Compare the general and the strict defaults when reading
 
-The strict defaults change reading only. The following example reads a document with a repeated element, one with a comment, and one with an unknown element, first with the general defaults and then with the strict ones.
+The strict defaults change reading, apart from refusing to write a `null` that a nullable annotation forbids. The following example reads a document with a repeated element, one with a comment, and one with an unknown element, first with the general defaults and then with the strict ones.
 
 ```csharp
 string[] documents =
@@ -32,11 +32,11 @@ The code produces the following output:
 
 ```text
 General: MS-220
-Strict: Duplicate property 'Sku'.
+Strict: Duplicate property 'Sku'. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 36.
 General: KB-101
-Strict: Comments are not allowed.
+Strict: Comments are not allowed. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 30.
 General: KB-101
-Strict: Unknown element 'Colour'.
+Strict: Unknown element 'Colour'. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 39.
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/13_ConfigureOptions.cs)

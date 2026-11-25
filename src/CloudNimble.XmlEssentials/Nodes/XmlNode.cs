@@ -91,8 +91,8 @@ namespace CloudNimble.Text.Xml.Nodes
         public static XmlNode Parse(string xml)
         {
             ArgumentNullException.ThrowIfNull(xml);
-            using var document = XmlDocument.Parse(xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
-            return document.RootElement.CloneNode();
+            var document = XmlDocument.Parse(xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+            return document.RootElement.ToOwnedNode();
         }
 
         /// <summary>
@@ -113,8 +113,8 @@ namespace CloudNimble.Text.Xml.Nodes
         /// </remarks>
         public static XmlNode Parse(ReadOnlySpan<byte> utf8Xml)
         {
-            using var document = XmlDocument.Parse(utf8Xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
-            return document.RootElement.CloneNode();
+            var document = XmlDocument.Parse(utf8Xml, new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Allow });
+            return document.RootElement.ToOwnedNode();
         }
 
         /// <summary>
@@ -137,8 +137,8 @@ namespace CloudNimble.Text.Xml.Nodes
         /// </remarks>
         public static XmlNode ParseValue(ref Utf8XmlReader reader)
         {
-            using var document = XmlDocument.ParseValue(ref reader);
-            return document.RootElement.CloneNode();
+            var document = XmlDocument.ParseValue(ref reader);
+            return document.RootElement.ToOwnedNode();
         }
 
         /// <summary>

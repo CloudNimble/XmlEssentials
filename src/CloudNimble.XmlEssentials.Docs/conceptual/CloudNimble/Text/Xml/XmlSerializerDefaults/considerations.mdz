@@ -1,4 +1,4 @@
 - `Web` is smaller than `JsonSerializerDefaults.Web`. It doesn't make name matching case-insensitive, and it doesn't change how numbers are read. Set `PropertyNameCaseInsensitive` yourself if you need it.
 - With `Web`, the camelCase policy also applies to the document element, so a type named `InvoiceLine` is written as `<invoiceLine>`.
-- `Strict` doesn't change what is written, and it doesn't set any of the size limits. For XML from an untrusted source, also set `MaxDocumentByteCount`. See [Security](/guides/security).
+- `Strict` changes what is written in one case only: with `RespectNullableAnnotations` on, a member annotated non-nullable that holds `null` throws when it is written. It doesn't set any of the size limits. For XML from an untrusted source, also set `MaxDocumentByteCount`. See [Security](/guides/security).
 - The value is only a starting point. It isn't stored on the options, so there's no way to ask an instance which set it was created from.

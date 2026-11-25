@@ -98,8 +98,8 @@ namespace CloudNimble.Text.Xml.Serialization
         internal string? NullReadError;
 
         /// <summary>
-        /// Creates the reusable box that holds the member's value for a constructor, for a member whose facts were
-        /// generated; or null. It returns an <c>XmlHeldBox&lt;TValue&gt;</c>.
+        /// Creates the reusable box that holds the value of a value-type member for a constructor; or null. A
+        /// generated context supplies it, and the reflection resolver closes it at run time. It returns an <c>XmlHeldBox&lt;TValue&gt;</c>.
         /// </summary>
         internal Func<object>? HeldBoxFactory;
 
@@ -123,10 +123,10 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Whether the reusable box may be closed over the member's type at run time, which only the reflection
-        /// resolver may do: Native AOT cannot close a generic type over a value type that way.
+        /// Whether the member is an element that holds one built-in scalar, so that the reader can take the
+        /// whole element in one step when it is the next thing in the document. Set once, when the member is made.
         /// </summary>
-        internal bool ReflectsHeldBox;
+        internal bool ReadsWholeLeaf;
 
         /// <summary>
         /// For an element member with no namespace: the namespaces of the other element members that have its
@@ -374,6 +374,33 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="instance">The instance to set the member on, or null when values are held.</param>
         /// <param name="values">The held values, one slot per member, or null when the instance exists.</param>
         internal abstract void ReadText(ReadOnlySpan<byte> utf8, object? instance, object?[]? values);
+
+        /// <summary>
+        /// Gets whether the member's value is a built-in scalar, read from the text of its element.
+        /// </summary>
+        internal abstract bool HasValueConverter { get; }
+
+        /// <summary>
+        /// Gets the type info of the member's declared type.
+        /// </summary>
+        internal abstract XmlTypeInfo ValueTypeInfo { get; }
+
+        /// <summary>
+        /// Stores the value of an element marked <c>xsi:nil</c>: null, or the default of a value type.
+        /// </summary>
+        /// <param name="instance">The instance to set the member on, or null when values are held.</param>
+        /// <param name="values">The held values, one slot per member, or null when the instance exists.</param>
+        /// <exception cref="XmlException">The member is required or does not accept null.</exception>
+        internal abstract void ReadNil(object? instance, object?[]? values);
+
+        /// <summary>
+        /// Stores a value that was read from the member's element by something other than the member itself.
+        /// </summary>
+        /// <param name="instance">The instance to set the member on, or null when values are held.</param>
+        /// <param name="values">The held values, one slot per member, or null when the instance exists.</param>
+        /// <param name="value">The value, of the member's type.</param>
+        /// <exception cref="XmlException">The member is required or does not accept null, and the value is null.</exception>
+        internal abstract void StoreValue(object? instance, object?[]? values, object? value);
 
         /// <summary>
         /// Creates the box this member's slot holds for as long as its values array is reused.

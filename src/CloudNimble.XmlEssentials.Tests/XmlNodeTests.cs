@@ -135,6 +135,61 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void NodeLists_OfAnElementWithNothingInIt_AreEmptyAndRefuseAPosition()
+        {
+            // An element holds no array for its children or its attributes until it has one.
+            var root = new XmlElementNode("e");
+            var text = new XmlTextNode("a");
+            var attribute = new XmlAttributeNode("a", "1");
+            root.Children.Count.Should().Be(0);
+            root.Children.IndexOf(text).Should().Be(-1);
+            root.Children.Contains(text).Should().BeFalse();
+            root.Children.Remove(text).Should().BeFalse();
+            root.Children.Should().BeEmpty();
+            var nodes = new XmlNode[] { text };
+            root.Children.CopyTo(nodes, 1);
+            nodes[0].Should().BeSameAs(text);
+            root.Attributes.Count.Should().Be(0);
+            root.Attributes.IndexOf(attribute).Should().Be(-1);
+            root.Attributes.Remove(attribute).Should().BeFalse();
+            root.Attributes["a"].Should().BeNull();
+            var attributes = new[] { attribute };
+            root.Attributes.CopyTo(attributes, 1);
+            attributes[0].Should().BeSameAs(attribute);
+            root.ToString().Should().Be("<e/>");
+
+            FluentActions.Invoking(() => root.Children[0]).Should().ThrowExactly<ArgumentOutOfRangeException>();
+            FluentActions.Invoking(() => root.Children.RemoveAt(0)).Should().ThrowExactly<ArgumentOutOfRangeException>();
+            FluentActions.Invoking(() => root.Children.Insert(1, text)).Should().ThrowExactly<ArgumentOutOfRangeException>();
+            FluentActions.Invoking(() => root.Children.CopyTo(null!, 0)).Should().ThrowExactly<ArgumentNullException>();
+            FluentActions.Invoking(() => root.Attributes[0]).Should().ThrowExactly<ArgumentOutOfRangeException>();
+
+            // A node that a position refused has no parent, so it can still be added.
+            text.Parent.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void NodeList_InsertAndRemove_KeepTheOrderOfTheOthers()
+        {
+            var root = new XmlElementNode("e");
+            foreach (var name in new[] { "a", "b", "c", "d", "e" })
+            {
+                root.AddElement(name);
+            }
+
+            root.Children.Insert(2, new XmlElementNode("x"));
+            root.Children.Insert(0, new XmlElementNode("y"));
+            root.Children.Insert(root.Children.Count, new XmlElementNode("z"));
+            root.ToString().Should().Be("<e><y/><a/><b/><x/><c/><d/><e/><z/></e>");
+            root.Children.RemoveAt(3);
+            var first = root.Children[0];
+            root.Children.Remove(first).Should().BeTrue();
+            first.Parent.Should().BeNull();
+            root.Children.RemoveAt(root.Children.Count - 1);
+            root.ToString().Should().Be("<e><a/><b/><c/><d/><e/></e>");
+        }
+
+        [TestMethod]
         public void AttributeList_Indexers()
         {
             var root = new XmlElementNode("e");

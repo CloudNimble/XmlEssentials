@@ -16,6 +16,11 @@ namespace CloudNimble.Text.Xml.Serialization
         internal object?[]? Builders;
 
         /// <summary>
+        /// The member whose element is being read, or null between members. It is what an error is attributed to.
+        /// </summary>
+        internal XmlBoundProperty? Current;
+
+        /// <summary>
         /// The unmapped attributes and elements captured so far, or null.
         /// </summary>
         internal XmlExtensionData? Extra;

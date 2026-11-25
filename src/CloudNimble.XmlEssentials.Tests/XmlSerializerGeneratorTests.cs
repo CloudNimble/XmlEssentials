@@ -941,7 +941,7 @@ namespace CloudNimble.XmlEssentials.Tests
         /// <returns>What <c>Use.Run()</c> returned.</returns>
         internal static string RunGenerated(string source)
         {
-            var (compilation, diagnostics, _) = GeneratorTestHost.Run(source);
+            var (compilation, diagnostics, generated) = GeneratorTestHost.Run(source);
             diagnostics.Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.ToString()).Should().BeEmpty();
             compilation.GetDiagnostics().Where(d => d.Severity is DiagnosticSeverity.Error).Select(d => d.ToString()).Should().BeEmpty();
             using var stream = new System.IO.MemoryStream();

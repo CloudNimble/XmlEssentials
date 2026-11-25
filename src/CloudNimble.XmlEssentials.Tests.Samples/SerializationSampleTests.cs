@@ -561,8 +561,10 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "AttributeNamingPolicy = null\n" +
                 "AttributeStyle = Inline\n" +
                 "AttributesPerLine = 1\n" +
+                "CharHandling = Character\n" +
                 "Converters.Count = 0\n" +
                 "DefaultBufferSize = 0\n" +
+                "DefaultCollectionMapping = Unwrapped\n" +
                 "DefaultIgnoreCondition = Never\n" +
                 "DefaultNamespace = null\n" +
                 "DefaultPropertyMapping = Element\n" +
@@ -584,6 +586,8 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "MaxDocumentByteCount = 0\n" +
                 "MaxNameByteCount = 0\n" +
                 "MaxTextByteCount = 0\n" +
+                "MemberOrder = PropertiesFirst\n" +
+                "Namespaces = null\n" +
                 "NewLine is Environment.NewLine = True\n" +
                 "NumberHandling = AllowNamedFloatingPointLiterals\n" +
                 "OmitXmlDeclaration = False\n" +
@@ -597,6 +601,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "TypeInfoResolverChain.Count = 0\n" +
                 "UnknownTypeHandling = XmlElement\n" +
                 "UnmappedMemberHandling = Skip\n" +
+                "UtcOffsetHandling = WriteOffset\n" +
                 "WhitespaceHandling = Insignificant\n" +
                 "WriteIndented = False\n" +
                 "XmlVersion = Version10");

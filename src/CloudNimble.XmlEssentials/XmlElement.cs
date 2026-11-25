@@ -31,7 +31,7 @@ namespace CloudNimble.Text.Xml
     /// The typed getters, such as <see cref="GetInt32"/>, ignore leading and trailing white space in the value.
     /// Name lookups, enumeration, the numeric and Boolean getters, and <see cref="WriteTo"/> do not allocate.
     /// Members that return a <see cref="string"/>, a <see cref="T:byte[]"/>, or an <see cref="XmlNode"/>
-    /// allocate only that result.
+    /// allocate only that result, except <see cref="GetRawXml"/>, which also allocates the buffer and the writer it writes the markup with.
     /// </remarks>
     public readonly struct XmlElement : IEquatable<XmlElement>
     {
@@ -257,7 +257,23 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         public XmlNode CloneNode()
         {
-            return EnsureDocument().CloneRow(_index);
+            return EnsureDocument().CloneRow(_index, new string?[64], null);
+        }
+
+        /// <summary>
+        /// Makes the mutable tree of this element, which takes the document for its own.
+        /// </summary>
+        /// <returns>The node. An element under it makes its attributes and children when they are first asked for.</returns>
+        /// <remarks>
+        /// The caller parsed the document for this and does not dispose it: the tree keeps it, out of the pool,
+        /// for the nodes that have not been made yet.
+        /// </remarks>
+        internal XmlNode ToOwnedNode()
+        {
+            var document = EnsureDocument();
+            document.MoveOutOfPool();
+            var source = new XmlNodeSource(document);
+            return document.CloneRow(_index, source.Names, source);
         }
 
         /// <inheritdoc />

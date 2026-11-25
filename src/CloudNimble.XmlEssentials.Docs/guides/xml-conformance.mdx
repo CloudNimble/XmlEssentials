@@ -175,8 +175,10 @@ Whitespace inside an element that has other text is always part of the value: th
 | `XmlWhitespaceHandling` | Whitespace-only text between elements |
 | --- | --- |
 | `Significant` | Reported as a `Text` token. This is the zero value of the enumeration. |
-| `Insignificant` | Skipped. No token is reported. |
-| `None` | Rejected with `XmlException`: `Whitespace-only text is not allowed.` |
+| `Insignificant` | Skipped when it's indentation. No token is reported. |
+| `None` | Rejected, where `Insignificant` would skip it, with `XmlException`: `Whitespace-only text is not allowed.` |
+
+Whitespace-only text is indentation only when it carries no content. Under every setting it's reported as a `Text` token when it's the whole content of its element (`<item> </item>` is `" "`), when its element already has text or a CDATA section before it (the space between `</b>` and `<i>` in `<p>a <b>b</b> <i>c</i></p>`), or when `xml:space="preserve"` is in force. `xml:space="preserve"` applies to the element that has it and to everything inside, until an element sets `xml:space="default"` ([section 2.10](https://www.w3.org/TR/xml/#sec-white-space)).
 
 The default depends on the API:
 
@@ -242,7 +244,7 @@ None: XmlException at line 2, position 3: Whitespace-only text is not allowed.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/38_XmlConformance.cs)
 
-Inside an element that has `xml:space="preserve"`, whitespace-only text is reported with `Insignificant` too.
+Whitespace outside the root element is never reported, under any setting.
 
 The writer adds whitespace to content only when `Indented` is `true`, and only between elements. An element that holds text is written on one line, so indentation never changes a value. `AttributeStyle = XmlAttributeStyle.PerLine` adds line breaks inside start tags, between attributes, where whitespace isn't content.
 

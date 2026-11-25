@@ -21,11 +21,12 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true };
         private static readonly XmlSerializerOptions AttributeBare = new()
         {
             DefaultPropertyMapping = XmlPropertyMapping.Attribute,
             OmitXmlDeclaration = true,
+            TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance,
         };
 
         #endregion

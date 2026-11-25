@@ -10,7 +10,7 @@ A reader can't be stored in a field of a class, captured by a lambda, or used ac
 
 ### Allocation
 
-Reading tokens, comparing names, and parsing typed values don't allocate. `GetString`, `GetComment`, and `GetBytesFromBase64` return new objects. The reader allocates working memory, once per reader, when a value has to be decoded, when a start tag has more than eight attributes, when more than eight namespace declarations are in scope, or when elements nest more than eight deep. The constructors that take a `scratch` buffer use that buffer first. A sequence of more than one segment is copied into one array before it's read, and `CurrentState` allocates.
+Reading tokens, comparing names, and parsing typed values don't allocate. `GetString`, `GetComment`, and `GetBytesFromBase64` return new objects. The reader allocates working memory, which it keeps for the tokens that follow, when a value has to be decoded, when a start tag has more than eight attributes, when more than eight namespace declarations are in scope, or when elements nest more than eight deep. The constructors that take a `scratch` buffer use that buffer first. A sequence of more than one segment is copied into one array before it's read, and `CurrentState` allocates.
 
 ### What it checks
 

@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="long"/> as <c>xs:long</c>.
     /// </summary>
-    internal sealed class XmlInt64Converter : XmlValueConverter<long>
+    internal sealed class XmlInt64Converter : XmlFormattedValueConverter<long>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlInt64Converter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 20;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, long value, XmlSerializerOptions options)
+        internal override int Format(long value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteNumberValue(value);
+            return FormatNumber(value, destination);
         }
 
         #endregion

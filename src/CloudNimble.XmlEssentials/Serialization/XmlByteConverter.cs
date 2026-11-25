@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="byte"/> as <c>xs:unsignedByte</c>.
     /// </summary>
-    internal sealed class XmlByteConverter : XmlValueConverter<byte>
+    internal sealed class XmlByteConverter : XmlFormattedValueConverter<byte>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlByteConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 3;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, byte value, XmlSerializerOptions options)
+        internal override int Format(byte value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteNumberValue(value);
+            return FormatNumber(value, destination);
         }
 
         #endregion

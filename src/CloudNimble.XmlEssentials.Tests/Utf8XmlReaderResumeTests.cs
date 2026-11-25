@@ -235,6 +235,57 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void TrySkip_OnAPartialBlock_ACopyTakenBeforeTheRead_SkipsTheElementWholeInTheNextBlock()
+        {
+            // The way to skip an element that may not be all in the block: keep a copy of the reader from before
+            // the Read that reached the start tag, and go back to it when TrySkip returns false. The next block
+            // then starts at the start tag again, and the element is skipped whole however the blocks fall.
+            var whole = "<r><skip a=\"1\"><x>one</x><y/></skip><keep>k</keep></r>"u8.ToArray();
+            for (var split = 1; split < whole.Length; split++)
+            {
+                var tokens = new System.Collections.Generic.List<string>();
+                var state = default(XmlReaderState);
+                var start = 0;
+                foreach (var end in (int[])[split, whole.Length])
+                {
+                    var reader = new Utf8XmlReader(whole.AsSpan(start, end - start), end == whole.Length, state);
+                    while (true)
+                    {
+                        var before = reader;
+                        if (!reader.Read())
+                        {
+                            break;
+                        }
+
+                        if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("skip"))
+                        {
+                            if (!reader.TrySkip())
+                            {
+                                reader = before;
+                                break;
+                            }
+
+                            tokens.Add("Skipped to " + reader.TokenType + " " + Encoding.UTF8.GetString(reader.LocalNameSpan));
+                            continue;
+                        }
+
+                        tokens.Add(reader.TokenType is XmlTokenType.Text
+                            ? "Text " + reader.GetString()
+                            : reader.TokenType + " " + Encoding.UTF8.GetString(reader.LocalNameSpan));
+                    }
+
+                    state = reader.CurrentState;
+                    start += (int)reader.BytesConsumed;
+                }
+
+                tokens.Should().Equal(
+                    ["StartElement r", "Skipped to EndElement skip", "StartElement keep", "Text k", "EndElement keep", "EndElement r"],
+                    "the split is at byte {0}", split);
+                start.Should().Be(whole.Length);
+            }
+        }
+
+        [TestMethod]
         [DataRow("", "\u0085", "\u2028", DisplayName = "XML 1.0 keeps NEL and LS")]
         [DataRow("<?xml version=\"1.1\"?>", "\n", "\n", DisplayName = "XML 1.1 turns NEL and LS into line feeds")]
         public void CDataAndComment_KeepEveryCharacter_AroundPlainRuns(string declaration, string nel, string ls)

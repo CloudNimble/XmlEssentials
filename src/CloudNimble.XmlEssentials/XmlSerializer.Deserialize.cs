@@ -1530,7 +1530,7 @@ namespace CloudNimble.Text.Xml
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static IAsyncEnumerable<TValue?> DeserializeAsyncEnumerable<TValue>(Stream utf8Xml, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return DeserializeAsyncEnumerable(utf8Xml, (options ?? XmlSerializerOptions.Default).GetTypeInfo<TValue>(), topLevelValues, cancellationToken);
+            return DeserializeAsyncEnumerable(utf8Xml, (XmlTypeInfo<TValue>)GetTypeInfo(typeof(TValue), options), topLevelValues, cancellationToken);
         }
 
         /// <summary>
@@ -1601,6 +1601,11 @@ namespace CloudNimble.Text.Xml
             // its own, and gets its own.
             var handler = xmlTypeInfo.Options.ReferenceHandler;
             var shared = topLevelValues ? null : handler?.CreateResolver();
+
+            // An object that can be read a piece at a time keeps what it has read between blocks, as
+            // System.Text.Json keeps it. One that is tracked for references, or that cannot stop part way, is
+            // read once all of it has arrived.
+            var stack = !topLevelValues && handler is null && xmlTypeInfo.ResumableBinding is { } resumable && resumable.IsResumable() ? new XmlReadStack() : null;
             var buffer = ArrayPool<byte>.Shared.Rent(XmlLimits.Resolve(xmlTypeInfo.Options.DefaultBufferSize, XmlLimits.DefaultBufferSize));
             var length = 0;
             try
@@ -1625,7 +1630,7 @@ namespace CloudNimble.Text.Xml
                     {
                         used = topLevelValues
                             ? ReadAvailableDocuments(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, options, handler, values)
-                            : ReadAvailableChildren(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, ref state, ref scope, shared, values);
+                            : ReadAvailableChildren(buffer.AsSpan(0, length), isFinalBlock, xmlTypeInfo, ref state, ref scope, shared, stack, values);
                     }
                     catch (XmlException exception)
                     {

@@ -36,6 +36,12 @@ namespace CloudNimble.Text.Xml.Serialization
         private readonly Func<IDictionary<TKey, TValue>> _create;
         private readonly Func<IDictionary<TKey, TValue>, TDictionary> _finish;
         private readonly XmlTypeInfo<TKey> _keyInfo;
+
+        /// <summary>
+        /// The value's converter when its text has a known longest length and needs no escaping, so that an
+        /// entry is written in one reservation.
+        /// </summary>
+        private readonly XmlFormattedValueConverter<TValue>? _valueFormattedConverter;
         private readonly XmlTypeInfo<TValue> _valueInfo;
 
         /// <summary>
@@ -57,6 +63,7 @@ namespace CloudNimble.Text.Xml.Serialization
             _keyInfo = options.GetTypeInfo<TKey>();
             _valueInfo = options.GetTypeInfo<TValue>();
             _valueLeafConverter = _valueInfo.Converter as XmlValueConverter<TValue>;
+            _valueFormattedConverter = _valueLeafConverter as XmlFormattedValueConverter<TValue>;
         }
 
         #endregion
@@ -232,6 +239,11 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="options">The serializer options.</param>
         internal void WriteLeafEntry(Utf8XmlWriter writer, string name, TValue value, XmlSerializerOptions options)
         {
+            if (_valueFormattedConverter is not null && _valueFormattedConverter.TryWriteElement(writer, name, value, options))
+            {
+                return;
+            }
+
             // The buffer holds "<<name>". The start tag is everything after the first byte; changing the
             // second byte to '/' then makes the whole buffer the end tag.
             Span<byte> tags = stackalloc byte[MaxLeafKeyLength + 3];
@@ -251,7 +263,7 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Writes a value and closes the element that holds it. A null value leaves the element empty.
+        /// Writes a value and closes the element that holds it. A null value marks the element <c>xsi:nil="true"</c>.
         /// </summary>
         /// <param name="writer">The writer, inside the start tag of the element that holds the value.</param>
         /// <param name="value">The value.</param>

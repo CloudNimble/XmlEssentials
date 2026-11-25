@@ -750,7 +750,7 @@ namespace CloudNimble.Text.Xml
             var isNil = false;
             for (var i = 0; i < attributeCount; i++)
             {
-                var attribute = reader.AttributeAt(i);
+                ref readonly var attribute = ref reader.AttributeAt(i);
                 var attributeName = reader.AttributeQualifiedName(in attribute);
                 var attributeValue = reader.AttributeValue(attribute);
                 ReadOnlySpan<byte> attributeNs = [];
@@ -822,8 +822,14 @@ namespace CloudNimble.Text.Xml
         /// Deep-clones row <paramref name="index"/> into a mutable node.
         /// </summary>
         /// <param name="index">The row index.</param>
+        /// <param name="names">A table of 64 places for the name strings made so far, shared by the whole tree (<see cref="NameString"/>).</param>
+        /// <param name="source">The source of a tree that keeps this document, or null for a copy that does not depend on it.</param>
         /// <returns>The mutable node.</returns>
-        internal XmlNode CloneRow(int index)
+        /// <remarks>
+        /// With a source, an element is made with its name alone and keeps the document: its attributes and
+        /// children are made when they are first asked for. With none, everything under it is made now.
+        /// </remarks>
+        internal XmlNode CloneRow(int index, string?[] names, XmlNodeSource? source)
         {
             ref var row = ref _rows[index];
             switch (row.Kind)
@@ -836,38 +842,61 @@ namespace CloudNimble.Text.Xml
                     return new XmlCommentNode(Encoding.UTF8.GetString(Value(in row)));
                 case XmlValueKind.ProcessingInstruction:
                     return new XmlProcessingInstructionNode(
-                        Encoding.UTF8.GetString(LocalName(in row)),
+                        NameString(LocalName(in row), names),
                         Encoding.UTF8.GetString(Value(in row)));
                 case XmlValueKind.Attribute:
                     return new XmlAttributeNode(
-                        Encoding.UTF8.GetString(LocalName(in row)),
+                        NameString(LocalName(in row), names),
                         Encoding.UTF8.GetString(Value(in row)),
-                        Encoding.UTF8.GetString(NamespaceUri(in row)),
-                        Encoding.UTF8.GetString(Prefix(in row)));
+                        NameString(NamespaceUri(in row), names),
+                        NameString(Prefix(in row), names));
                 default:
+                    if (source is not null)
+                    {
+                        // The element keeps the document, and makes its attributes and children when asked.
+                        return new XmlElementNode(
+                            NameString(LocalName(in row), names),
+                            NameString(NamespaceUri(in row), names),
+                            NameString(Prefix(in row), names),
+                            row.IsEmpty,
+                            source,
+                            index);
+                    }
+
                     var element = new XmlElementNode(
-                        Encoding.UTF8.GetString(LocalName(in row)),
-                        Encoding.UTF8.GetString(NamespaceUri(in row)),
-                        Encoding.UTF8.GetString(Prefix(in row)))
+                        NameString(LocalName(in row), names),
+                        NameString(NamespaceUri(in row), names),
+                        NameString(Prefix(in row), names))
                     {
                         IsEmptyElement = row.IsEmpty,
                     };
-                    var end = row.EndIndex;
-                    var attributeEnd = index + 1 + row.AttributeCount;
-                    for (var a = index + 1; a < attributeEnd; a++)
-                    {
-                        element.Attributes.Add((XmlAttributeNode)CloneRow(a));
-                    }
-
-                    for (var c = attributeEnd; c < end; c = NextSiblingIndex(c))
-                    {
-                        element.Add(CloneRow(c));
-                    }
-
+                    FillElement(element, index, names, null);
                     return element;
             }
         }
 
+        /// <summary>
+        /// Gives an element node the attributes and the children of row <paramref name="index"/>.
+        /// </summary>
+        /// <param name="element">The element node, which has neither yet.</param>
+        /// <param name="index">The row index of the element.</param>
+        /// <param name="names">The table of name strings made so far.</param>
+        /// <param name="source">The source the child elements keep, or null to make their own content now.</param>
+        internal void FillElement(XmlElementNode element, int index, string?[] names, XmlNodeSource? source)
+        {
+            ref var row = ref _rows[index];
+            var end = row.EndIndex;
+            var attributeEnd = index + 1 + row.AttributeCount;
+            for (var a = index + 1; a < attributeEnd; a++)
+            {
+                element.Attributes.Add((XmlAttributeNode)CloneRow(a, names, null));
+            }
+
+            for (var c = attributeEnd; c < end; c = NextSiblingIndex(c))
+            {
+                element.Add(CloneRow(c, names, source));
+            }
+        }
         /// <summary>
         /// Makes room for <paramref name="count"/> more rows.
         /// </summary>
@@ -1104,6 +1133,42 @@ namespace CloudNimble.Text.Xml
             _nsCacheStart = Locate(utf8);
             _nsCacheLength = utf8.Length;
             return _nsCacheStart;
+        }
+
+        /// <summary>
+        /// Returns a name, a prefix or a namespace URI as a string, giving the same string for the same bytes.
+        /// </summary>
+        /// <param name="utf8">The UTF-8 bytes.</param>
+        /// <param name="names">The table of 64 places that holds the strings made so far.</param>
+        /// <returns>The string.</returns>
+        /// <remarks>
+        /// A document repeats a small set of names, and a tree made from it would otherwise hold one string for
+        /// every element. The strings are kept by a hash of their bytes, where a new name takes the place of the
+        /// one that was there. A name outside ASCII is not kept. The table belongs to the tree that is being
+        /// made, not to the document, so a document that no tree is made from carries nothing for it.
+        /// </remarks>
+        internal static string NameString(ReadOnlySpan<byte> utf8, string?[] names)
+        {
+            if (utf8.IsEmpty)
+            {
+                return string.Empty;
+            }
+
+            var hash = 2166136261u;
+            foreach (var value in utf8)
+            {
+                hash = (hash ^ value) * 16777619u;
+            }
+
+            ref var place = ref names[hash & 63];
+            if (place is { } kept && Ascii.Equals(utf8, kept))
+            {
+                return kept;
+            }
+
+            var name = Encoding.UTF8.GetString(utf8);
+            place = name;
+            return name;
         }
 
         /// <summary>

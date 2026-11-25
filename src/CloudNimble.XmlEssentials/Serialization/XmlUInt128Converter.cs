@@ -6,12 +6,19 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="UInt128"/>, a 128-bit unsigned integer, as decimal digits.
     /// </summary>
-    internal sealed class XmlUInt128Converter : XmlValueConverter<UInt128>
+    internal sealed class XmlUInt128Converter : XmlFormattedValueConverter<UInt128>
     {
 
         #region Fields
 
         internal static readonly XmlUInt128Converter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 39;
 
         #endregion
 
@@ -24,9 +31,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, UInt128 value, XmlSerializerOptions options)
+        internal override int Format(UInt128 value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteFormatted(value, default);
+            return FormatNumber(value, destination);
         }
 
         #endregion

@@ -24,8 +24,8 @@ The code produces the following output:
 
 There are three ways to get an instance:
 
-- `new XmlSerializerOptions()` for the general defaults, or `new XmlSerializerOptions(XmlSerializerDefaults.Web)` and `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` for the other two sets.
+- `new XmlSerializerOptions()` for the general defaults, or `new XmlSerializerOptions(XmlSerializerDefaults.Web)`, `XmlSerializerDefaults.Strict`, or `XmlSerializerDefaults.Bcl` for the other three sets.
 - `new XmlSerializerOptions(existing)` to copy an instance and change the copy.
-- The shared, read-only instances `XmlSerializerOptions.Default`, `XmlSerializerOptions.Web`, and `XmlSerializerOptions.Strict`.
+- The shared, read-only instances `XmlSerializerOptions.Default`, `XmlSerializerOptions.Web`, `XmlSerializerOptions.Strict`, and `XmlSerializerOptions.Bcl`.
 
 An instance becomes read-only the first time it is used, or when you call `MakeReadOnly`. Every option, with its default, is listed in [Configure XmlSerializerOptions](/guides/configure-options).

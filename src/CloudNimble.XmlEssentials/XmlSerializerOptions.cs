@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using CloudNimble.Text.Xml.Serialization;
 
 namespace CloudNimble.Text.Xml
@@ -14,7 +15,7 @@ namespace CloudNimble.Text.Xml
     /// <remarks>
     /// This class is the XML counterpart of <c>System.Text.Json.JsonSerializerOptions</c>.
     /// An instance becomes read-only the first time it is used to serialize or deserialize, or when
-    /// <see cref="MakeReadOnly"/> is called. Create one instance and reuse it: the converters and type info it
+    /// <see cref="MakeReadOnly()"/> is called. Create one instance and reuse it: the converters and type info it
     /// resolves are cached on the instance.
     /// </remarks>
     public sealed class XmlSerializerOptions
@@ -23,12 +24,36 @@ namespace CloudNimble.Text.Xml
         #region Fields
 
         private readonly ConcurrentDictionary<Type, XmlConverter?> _converters = new();
+
         private XmlTypeInfo? _lastTypeInfo;
+
+        private StrongBox<XmlReaderOptions>? _readerOptions;
+
         private int _resolveDepth;
+
+        /// <summary>
+        /// Whether <see cref="_typeInfoResolver"/> is the reflection-based resolver that an instance with no
+        /// resolver is given, and not one the caller set.
+        /// </summary>
+        private bool _resolverIsTheDefault;
+
+        private static XmlSerializerOptions? s_bcl;
+
+        private static XmlSerializerOptions? s_default;
+
+        private static XmlSerializerOptions? s_strict;
+
+        private static XmlSerializerOptions? s_web;
+
         private readonly object _typeInfoLock = new();
-        private XmlTypeInfoResolverChain? _typeInfoResolverChain;
+
         private IXmlTypeInfoResolver? _typeInfoResolver;
+
+        private XmlTypeInfoResolverChain? _typeInfoResolverChain;
+
         private readonly ConcurrentDictionary<Type, XmlTypeInfo?> _typeInfos = new();
+
+        private StrongBox<XmlWriterOptions>? _writerOptions;
 
         #endregion
 
@@ -75,29 +100,6 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Gets or sets a value that specifies how the attributes of a start tag are laid out.
-        /// </summary>
-        /// <value>
-        /// One of the enumeration values. The default is <see cref="XmlAttributeStyle.Inline"/>, which writes
-        /// every attribute on the line of the start tag.
-        /// </value>
-        /// <exception cref="InvalidOperationException">
-        /// The property is set after this instance has become read-only.
-        /// </exception>
-        /// <remarks>
-        /// The value is passed to the writer as <see cref="XmlWriterOptions.AttributeStyle"/>.
-        /// </remarks>
-        public XmlAttributeStyle AttributeStyle
-        {
-            get;
-            set
-            {
-                VerifyMutable();
-                field = value;
-            }
-        }
-
-        /// <summary>
         /// Gets or sets the number of attributes written to a line when <see cref="AttributeStyle"/> is
         /// <see cref="XmlAttributeStyle.PerLine"/>.
         /// </summary>
@@ -121,6 +123,69 @@ namespace CloudNimble.Text.Xml
                 field = value;
             }
         } = 1;
+
+        /// <summary>
+        /// Gets or sets a value that specifies how the attributes of a start tag are laid out.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values. The default is <see cref="XmlAttributeStyle.Inline"/>, which writes
+        /// every attribute on the line of the start tag.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// The value is passed to the writer as <see cref="XmlWriterOptions.AttributeStyle"/>.
+        /// </remarks>
+        public XmlAttributeStyle AttributeStyle
+        {
+            get;
+            set
+            {
+                VerifyMutable();
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets a read-only, singleton instance of <see cref="XmlSerializerOptions"/> that writes what
+        /// <c>System.Xml.Serialization.XmlSerializer</c> writes.
+        /// </summary>
+        /// <value>
+        /// A read-only instance created with <see cref="XmlSerializerDefaults.Bcl"/>.
+        /// </value>
+        /// <example>
+        /// <code>
+        /// string xml = XmlSerializer.Serialize(order, XmlSerializerOptions.Bcl);
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// <para>
+        /// Use it when the documents have to stay the ones the old serializer wrote, for a consumer that already
+        /// reads them. It sets:
+        /// </para>
+        /// <list type="bullet">
+        /// <item><description><see cref="CharHandling"/> to <see cref="XmlCharHandling.Number"/>.</description></item>
+        /// <item><description><see cref="DefaultCollectionMapping"/> to <see cref="XmlCollectionMapping.Wrapped"/>.</description></item>
+        /// <item><description><see cref="DefaultIgnoreCondition"/> to <see cref="XmlIgnoreCondition.WhenWritingNullReference"/>.</description></item>
+        /// <item><description><see cref="EmptyElementStyle"/> to <see cref="XmlEmptyElementStyle.SelfClosingWithSpace"/>.</description></item>
+        /// <item><description><see cref="IgnoreReadOnlyProperties"/> and <see cref="IncludeFields"/> to <see langword="true"/>.</description></item>
+        /// <item><description><see cref="MemberOrder"/> to <see cref="XmlMemberOrder.FieldsFirst"/>.</description></item>
+        /// <item><description><see cref="Namespaces"/> to the <c>xsi</c> and <c>xsd</c> prefixes, in that order.</description></item>
+        /// <item><description><see cref="PreferredObjectCreationHandling"/> to <see cref="XmlObjectCreationHandling.Populate"/>.</description></item>
+        /// <item><description><see cref="UtcOffsetHandling"/> to <see cref="XmlUtcOffsetHandling.WriteZ"/>.</description></item>
+        /// <item><description><see cref="WriteIndented"/> to <see langword="true"/>.</description></item>
+        /// </list>
+        /// <para>
+        /// To change one of them, create an instance with <see cref="XmlSerializerOptions(XmlSerializerDefaults)"/>
+        /// and <see cref="XmlSerializerDefaults.Bcl"/>, which is not read-only.
+        /// </para>
+        /// </remarks>
+        public static XmlSerializerOptions Bcl
+        {
+            [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+            get => GetShared(ref s_bcl, XmlSerializerDefaults.Bcl);
+        }
 
         /// <summary>
         /// Gets or sets a value that specifies how a <see cref="char"/> is written and read.
@@ -159,48 +224,16 @@ namespace CloudNimble.Text.Xml
         public IList<XmlConverter> Converters { get; }
 
         /// <summary>
-        /// Gets a read-only, singleton instance of <see cref="XmlSerializerOptions"/> that writes what
-        /// <c>System.Xml.Serialization.XmlSerializer</c> writes.
-        /// </summary>
-        /// <value>
-        /// A read-only instance created with <see cref="XmlSerializerDefaults.Bcl"/>.
-        /// </value>
-        /// <example>
-        /// <code>
-        /// string xml = XmlSerializer.Serialize(order, XmlSerializerOptions.Bcl);
-        /// </code>
-        /// </example>
-        /// <remarks>
-        /// <para>
-        /// Use it when the documents have to stay the ones the old serializer wrote, for a consumer that already
-        /// reads them. It sets:
-        /// </para>
-        /// <list type="bullet">
-        /// <item><description><see cref="CharHandling"/> to <see cref="XmlCharHandling.Number"/>.</description></item>
-        /// <item><description><see cref="DefaultCollectionMapping"/> to <see cref="XmlCollectionMapping.Wrapped"/>.</description></item>
-        /// <item><description><see cref="DefaultIgnoreCondition"/> to <see cref="XmlIgnoreCondition.WhenWritingNullReference"/>.</description></item>
-        /// <item><description><see cref="EmptyElementStyle"/> to <see cref="XmlEmptyElementStyle.SelfClosingWithSpace"/>.</description></item>
-        /// <item><description><see cref="IgnoreReadOnlyProperties"/> and <see cref="IncludeFields"/> to <see langword="true"/>.</description></item>
-        /// <item><description><see cref="MemberOrder"/> to <see cref="XmlMemberOrder.FieldsFirst"/>.</description></item>
-        /// <item><description><see cref="Namespaces"/> to the <c>xsi</c> and <c>xsd</c> prefixes, in that order.</description></item>
-        /// <item><description><see cref="PreferredObjectCreationHandling"/> to <see cref="XmlObjectCreationHandling.Populate"/>.</description></item>
-        /// <item><description><see cref="UtcOffsetHandling"/> to <see cref="XmlUtcOffsetHandling.WriteZ"/>.</description></item>
-        /// <item><description><see cref="WriteIndented"/> to <see langword="true"/>.</description></item>
-        /// </list>
-        /// <para>
-        /// To change one of them, create an instance with <see cref="XmlSerializerOptions(XmlSerializerDefaults)"/>
-        /// and <see cref="XmlSerializerDefaults.Bcl"/>, which is not read-only.
-        /// </para>
-        /// </remarks>
-        public static XmlSerializerOptions Bcl { get; } = CreateReadOnly(XmlSerializerDefaults.Bcl);
-
-        /// <summary>
         /// Gets a read-only, singleton instance of <see cref="XmlSerializerOptions"/> that uses the default configuration.
         /// </summary>
         /// <value>
         /// A read-only instance created with <see cref="XmlSerializerDefaults.General"/>.
         /// </value>
-        public static XmlSerializerOptions Default { get; } = CreateReadOnly(XmlSerializerDefaults.General);
+        public static XmlSerializerOptions Default
+        {
+            [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+            get => GetShared(ref s_default, XmlSerializerDefaults.General);
+        }
 
         /// <summary>
         /// Gets or sets the default buffer size, in bytes, to use when creating temporary buffers.
@@ -222,6 +255,42 @@ namespace CloudNimble.Text.Xml
             {
                 VerifyMutable();
                 ArgumentOutOfRangeException.ThrowIfNegative(value);
+                field = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value that specifies how collection members without a mapping attribute are mapped to
+        /// XML.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies whether the items of an unannotated collection member
+        /// are written as repeated elements or inside a wrapper element. The default is
+        /// <see cref="XmlCollectionMapping.Unwrapped"/>.
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The property is set after this instance has become read-only.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// With <see cref="XmlCollectionMapping.Wrapped"/>, a collection member is written as <c>[XmlArray]</c>
+        /// writes it: one element named for the member, with an element for each item named for the item's type.
+        /// An empty collection is an empty wrapper element. This is what
+        /// <c>System.Xml.Serialization.XmlSerializer</c> does by default.
+        /// </para>
+        /// <para>
+        /// <c>[XmlElement]</c> on a member writes its items with no wrapper under either value, and
+        /// <c>[XmlArray]</c> writes a wrapper under either value. <c>[XmlArrayItem]</c> names the items of a
+        /// wrapped collection, including one this property wraps. Dictionaries and <c>byte[]</c> are not
+        /// collections for this purpose. The same value is used to read.
+        /// </para>
+        /// </remarks>
+        public XmlCollectionMapping DefaultCollectionMapping
+        {
+            get;
+            set
+            {
+                VerifyMutable();
                 field = value;
             }
         }
@@ -274,42 +343,6 @@ namespace CloudNimble.Text.Xml
         /// A namespace set on the type with <see cref="XmlRootAttribute"/> takes precedence over this value.
         /// </remarks>
         public string? DefaultNamespace
-        {
-            get;
-            set
-            {
-                VerifyMutable();
-                field = value;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value that specifies how collection members without a mapping attribute are mapped to
-        /// XML.
-        /// </summary>
-        /// <value>
-        /// One of the enumeration values that specifies whether the items of an unannotated collection member
-        /// are written as repeated elements or inside a wrapper element. The default is
-        /// <see cref="XmlCollectionMapping.Unwrapped"/>.
-        /// </value>
-        /// <exception cref="InvalidOperationException">
-        /// The property is set after this instance has become read-only.
-        /// </exception>
-        /// <remarks>
-        /// <para>
-        /// With <see cref="XmlCollectionMapping.Wrapped"/>, a collection member is written as <c>[XmlArray]</c>
-        /// writes it: one element named for the member, with an element for each item named for the item's type.
-        /// An empty collection is an empty wrapper element. This is what
-        /// <c>System.Xml.Serialization.XmlSerializer</c> does by default.
-        /// </para>
-        /// <para>
-        /// <c>[XmlElement]</c> on a member writes its items with no wrapper under either value, and
-        /// <c>[XmlArray]</c> writes a wrapper under either value. <c>[XmlArrayItem]</c> names the items of a
-        /// wrapped collection, including one this property wraps. Dictionaries and <c>byte[]</c> are not
-        /// collections for this purpose. The same value is used to read.
-        /// </para>
-        /// </remarks>
-        public XmlCollectionMapping DefaultCollectionMapping
         {
             get;
             set
@@ -1057,30 +1090,36 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// A read-only instance created with <see cref="XmlSerializerDefaults.Strict"/>.
         /// </value>
-        public static XmlSerializerOptions Strict { get; } = CreateReadOnly(XmlSerializerDefaults.Strict);
+        public static XmlSerializerOptions Strict
+        {
+            [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+            get => GetShared(ref s_strict, XmlSerializerDefaults.Strict);
+        }
 
         /// <summary>
         /// Gets or sets the <see cref="XmlTypeInfo"/> contract resolver used by this instance.
         /// </summary>
         /// <value>
-        /// The resolver that supplies <see cref="XmlTypeInfo"/> metadata, or <see langword="null"/> if none is set and
-        /// reflection-based serialization is disabled.
+        /// The resolver that supplies <see cref="XmlTypeInfo"/> metadata, or <see langword="null"/> if none has been set.
         /// </value>
         /// <exception cref="InvalidOperationException">
         /// The property is set after this instance has become read-only.
         /// </exception>
         /// <remarks>
-        /// When none has been set, this is <see cref="DefaultXmlTypeInfoResolver.Instance"/> if
-        /// <see cref="XmlSerializer.IsReflectionEnabledByDefault"/> is <see langword="true"/> and
-        /// <see langword="null"/> otherwise. <see cref="TypeInfoResolverChain"/> is a view of this resolver.
+        /// An instance that has none gets <see cref="DefaultXmlTypeInfoResolver.Instance"/> when it is first used by an
+        /// <see cref="XmlSerializer"/> method that takes options, or by <see cref="MakeReadOnly(bool)"/>, if
+        /// <see cref="XmlSerializer.IsReflectionEnabledByDefault"/> is <see langword="true"/>. Those members say that
+        /// they need reflection, and this property does not, so reading it never brings the reflection resolver into a
+        /// trimmed program. <see cref="TypeInfoResolverChain"/> is a view of this resolver.
         /// </remarks>
         public IXmlTypeInfoResolver? TypeInfoResolver
         {
-            get => _typeInfoResolver ?? (XmlSerializer.IsReflectionEnabledByDefault ? DefaultXmlTypeInfoResolver.Instance : null);
+            get => _typeInfoResolver;
             set
             {
                 VerifyMutable();
                 _typeInfoResolver = value;
+                _resolverIsTheDefault = false;
                 _typeInfoResolverChain?.Reset(value);
             }
         }
@@ -1174,7 +1213,11 @@ namespace CloudNimble.Text.Xml
         /// <value>
         /// A read-only instance created with <see cref="XmlSerializerDefaults.Web"/>: camel-case names and no XML declaration.
         /// </value>
-        public static XmlSerializerOptions Web { get; } = CreateReadOnly(XmlSerializerDefaults.Web);
+        public static XmlSerializerOptions Web
+        {
+            [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+            get => GetShared(ref s_web, XmlSerializerDefaults.Web);
+        }
 
         /// <summary>
         /// Gets or sets a value that specifies how white-space-only text between elements is handled during deserialization.
@@ -1347,9 +1390,12 @@ namespace CloudNimble.Text.Xml
             WhitespaceHandling = options.WhitespaceHandling;
             WriteIndented = options.WriteIndented;
             XmlVersion = options.XmlVersion;
-            _typeInfoResolver = options._typeInfoResolver is XmlTypeInfoResolverChain chain
+            // A resolver the source was given because it had none is not copied: the copy has none either, and
+            // gets one the same way, or the context it is handed to becomes its resolver.
+            var resolver = options._resolverIsTheDefault ? null : options._typeInfoResolver;
+            _typeInfoResolver = resolver is XmlTypeInfoResolverChain chain
                 ? _typeInfoResolverChain = new XmlTypeInfoResolverChain(this, chain)
-                : options._typeInfoResolver;
+                : resolver;
         }
 
         #endregion
@@ -1376,9 +1422,11 @@ namespace CloudNimble.Text.Xml
         /// The first match wins: <see cref="Converters"/> in list order, then <see cref="XmlConverterAttribute"/>
         /// on the type, then the built-in converters.
         /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         public XmlConverter GetConverter(Type typeToConvert)
         {
             ArgumentNullException.ThrowIfNull(typeToConvert);
+            UseReflectionResolverIfMissing();
             return GetConverterOrNull(typeToConvert)
                 ?? throw new NotSupportedException($"The type '{typeToConvert}' is not supported.");
         }
@@ -1443,6 +1491,30 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
+        /// Marks the current instance as read-only to prevent any further user modification, and optionally gives
+        /// it the reflection-based resolver when it has none.
+        /// </summary>
+        /// <param name="populateMissingResolver">
+        /// <see langword="true"/> to set <see cref="TypeInfoResolver"/> to <see cref="DefaultXmlTypeInfoResolver.Instance"/>
+        /// when no resolver has been set and <see cref="XmlSerializer.IsReflectionEnabledByDefault"/> is
+        /// <see langword="true"/>; <see langword="false"/> to leave it as it is.
+        /// </param>
+        /// <remarks>
+        /// This is the counterpart of <c>JsonSerializerOptions.MakeReadOnly(bool)</c> in System.Text.Json. The
+        /// <see cref="XmlSerializer"/> methods that take options do the same on the first call.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        public void MakeReadOnly(bool populateMissingResolver)
+        {
+            if (populateMissingResolver)
+            {
+                UseReflectionResolverIfMissing();
+            }
+
+            IsReadOnly = true;
+        }
+
+        /// <summary>
         /// Tries to get the <see cref="XmlTypeInfo"/> contract metadata resolved by the current <see cref="XmlSerializerOptions"/> instance for the specified type, and makes this instance read-only.
         /// </summary>
         /// <param name="type">The type to resolve contract metadata for.</param>
@@ -1491,6 +1563,16 @@ namespace CloudNimble.Text.Xml
         #region Private Methods
 
         /// <summary>
+        /// Stores <paramref name="typeInfo"/> so a recursive request for the same type during binding
+        /// returns this instance instead of building it again.
+        /// </summary>
+        /// <param name="typeInfo">The type info being built.</param>
+        internal void CacheTypeInfo(XmlTypeInfo typeInfo)
+        {
+            _typeInfos[typeInfo.Type] = typeInfo;
+        }
+
+        /// <summary>
         /// Drops resolved converters so a changed <see cref="Converters"/> list takes effect.
         /// </summary>
         internal void ClearConverterCache()
@@ -1519,22 +1601,11 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Creates a read-only instance of a named default set.
-        /// </summary>
-        /// <param name="defaults">The default set.</param>
-        /// <returns>The options.</returns>
-        internal static XmlSerializerOptions CreateReadOnly(XmlSerializerDefaults defaults)
-        {
-            var options = new XmlSerializerOptions(defaults);
-            options.MakeReadOnly();
-            return options;
-        }
-
-        /// <summary>
         /// Returns the converter for <paramref name="type"/>, resolving it once per type.
         /// </summary>
         /// <param name="type">The CLR type.</param>
         /// <returns>The converter, or <see langword="null"/> when no converter handles the type.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         internal XmlConverter? GetConverterOrNull(Type type)
         {
             if (_converters.TryGetValue(type, out var cached))
@@ -1542,13 +1613,84 @@ namespace CloudNimble.Text.Xml
                 return cached;
             }
 
-            var converter = ResolveConverter(type);
+            var converter = ResolveDeclaredConverter(type) ?? XmlBuiltInConverters.GetReflected(type, this);
             if (converter is not null)
             {
                 _converters.TryAdd(type, converter);
             }
 
             return converter;
+        }
+
+        /// <summary>
+        /// Returns the converter for <paramref name="type"/> that needs no reflection to make: one the caller
+        /// supplied, or a ready-made built-in one. It is resolved once per type.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns>The converter, or <see langword="null"/> when the type has neither.</returns>
+        /// <remarks>
+        /// Generated metadata calls this, so it must stay free of code that reflects over members or closes a
+        /// generic type at run time. <see cref="GetConverterOrNull"/> is the reflection resolver's counterpart.
+        /// </remarks>
+        internal XmlConverter? GetDeclaredConverterOrNull(Type type)
+        {
+            if (_converters.TryGetValue(type, out var cached))
+            {
+                return cached;
+            }
+
+            var converter = ResolveDeclaredConverter(type);
+            if (converter is not null)
+            {
+                _converters.TryAdd(type, converter);
+            }
+
+            return converter;
+        }
+
+        /// <summary>
+        /// Returns the type info of the converter <see cref="GetDeclaredConverterOrNull"/> finds for <paramref name="type"/>.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns>The type info, or <see langword="null"/> when the type has no such converter.</returns>
+        /// <exception cref="InvalidOperationException">The converter is not compatible with <paramref name="type"/>.</exception>
+        internal XmlTypeInfo? GetDeclaredTypeInfoOrNull(Type type)
+        {
+            if (GetDeclaredConverterOrNull(type) is not { } converter)
+            {
+                return null;
+            }
+
+            return converter.CreateTypeInfo(type, this)
+                ?? throw new InvalidOperationException($"The converter '{converter.GetType()}' is not compatible with the type '{type}'.");
+        }
+
+        /// <summary>
+        /// Returns one of the shared read-only instances, which is created the first time it is asked for.
+        /// </summary>
+        /// <param name="shared">The field that holds the instance.</param>
+        /// <param name="defaults">The default set.</param>
+        /// <returns>The instance every caller gets.</returns>
+        /// <remarks>
+        /// A shared instance uses the reflection-based resolver, as the instances of the same names do in
+        /// System.Text.Json, so the properties that return one say that they need reflection. It is given the
+        /// resolver each time it is asked for and has none, so that an instance first asked for while reflection
+        /// was disabled is not left without one. When two threads
+        /// ask at once, the instance that is stored first is the one both get.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static XmlSerializerOptions GetShared(ref XmlSerializerOptions? shared, XmlSerializerDefaults defaults)
+        {
+            var options = shared;
+            if (options is null)
+            {
+                var created = new XmlSerializerOptions(defaults);
+                created.MakeReadOnly();
+                options = System.Threading.Interlocked.CompareExchange(ref shared, created, null) ?? created;
+            }
+
+            options.UseReflectionResolverIfMissing();
+            return options;
         }
 
         /// <summary>
@@ -1603,25 +1745,6 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Stores <paramref name="typeInfo"/> so a recursive request for the same type during binding
-        /// returns this instance instead of building it again.
-        /// </summary>
-        /// <param name="typeInfo">The type info being built.</param>
-        internal void CacheTypeInfo(XmlTypeInfo typeInfo)
-        {
-            _typeInfos[typeInfo.Type] = typeInfo;
-        }
-
-        /// <summary>
-        /// Drops a type info that failed to finish binding so a later request can throw again.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        internal void RemoveTypeInfo(Type type)
-        {
-            _typeInfos.TryRemove(type, out _);
-        }
-
-        /// <summary>
         /// Returns whether the caller supplied a converter for <paramref name="type"/>, in
         /// <see cref="Converters"/> or with <see cref="XmlConverterAttribute"/> on the type.
         /// </summary>
@@ -1641,11 +1764,22 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Finds the converter for <paramref name="type"/> without the cache.
+        /// Drops a type info that failed to finish binding so a later request can throw again.
         /// </summary>
         /// <param name="type">The CLR type.</param>
-        /// <returns>The converter, or <see langword="null"/> when no converter handles the type.</returns>
-        internal XmlConverter? ResolveConverter(Type type)
+        internal void RemoveTypeInfo(Type type)
+        {
+            _typeInfos.TryRemove(type, out _);
+        }
+
+        /// <summary>
+        /// Finds, without the cache, the converter for <paramref name="type"/> that needs no reflection to make:
+        /// one in <see cref="Converters"/>, one named by <see cref="XmlConverterAttribute"/> on the type, or a
+        /// ready-made built-in one.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns>The converter, or <see langword="null"/> when the type has none of these.</returns>
+        internal XmlConverter? ResolveDeclaredConverter(Type type)
         {
             foreach (var converter in (XmlConverterList)Converters)
             {
@@ -1657,7 +1791,7 @@ namespace CloudNimble.Text.Xml
 
             if (type.GetCustomAttribute<XmlConverterAttribute>() is not { } attribute)
             {
-                return XmlBuiltInConverters.Get(type, this);
+                return XmlBuiltInConverters.GetReadyMade(type, this);
             }
 
             return attribute.CreateConverter().Resolve(type, this);
@@ -1670,8 +1804,9 @@ namespace CloudNimble.Text.Xml
         /// <returns>The type info, or <see langword="null"/> when the resolver has none.</returns>
         internal XmlTypeInfo? ResolveTypeInfo(Type type)
         {
-            var resolver = TypeInfoResolver
-                ?? throw new InvalidOperationException("Reflection-based XML serialization is disabled. Set TypeInfoResolver, or use an overload that takes an XmlTypeInfo or XmlSerializerContext.");
+            var resolver = _typeInfoResolver ?? throw new InvalidOperationException(XmlSerializer.IsReflectionEnabledByDefault
+                ? "No TypeInfoResolver is set. Use an XmlSerializer method that takes XmlSerializerOptions, call MakeReadOnly(populateMissingResolver: true), set TypeInfoResolver, or use an overload that takes an XmlTypeInfo or XmlSerializerContext."
+                : "Reflection-based XML serialization is disabled. Set TypeInfoResolver, or use an overload that takes an XmlTypeInfo or XmlSerializerContext.");
             var typeInfo = resolver.GetTypeInfo(type, this);
             if (typeInfo is not null && typeInfo.Type != type)
             {
@@ -1688,6 +1823,7 @@ namespace CloudNimble.Text.Xml
         internal void SetTypeInfoResolverChain(XmlTypeInfoResolverChain chain)
         {
             _typeInfoResolver = chain;
+            _resolverIsTheDefault = false;
         }
 
         /// <summary>
@@ -1696,7 +1832,13 @@ namespace CloudNimble.Text.Xml
         /// <returns>Reader options.</returns>
         internal XmlReaderOptions ToReaderOptions()
         {
-            return new XmlReaderOptions
+            // Each setter of the struct checks its value, so options that can no longer change are copied once.
+            if (_readerOptions is { } cached)
+            {
+                return cached.Value;
+            }
+
+            var options = new XmlReaderOptions
             {
                 CommentHandling = ReadCommentHandling,
                 MaxAttributeCount = MaxAttributeCount,
@@ -1707,6 +1849,12 @@ namespace CloudNimble.Text.Xml
                 MaxTextByteCount = MaxTextByteCount,
                 WhitespaceHandling = WhitespaceHandling,
             };
+            if (IsReadOnly)
+            {
+                _readerOptions = new StrongBox<XmlReaderOptions>(options);
+            }
+
+            return options;
         }
 
         /// <summary>
@@ -1715,7 +1863,13 @@ namespace CloudNimble.Text.Xml
         /// <returns>Writer options.</returns>
         internal XmlWriterOptions ToWriterOptions()
         {
-            return new XmlWriterOptions
+            // Each setter of the struct checks its value, so options that can no longer change are copied once.
+            if (_writerOptions is { } cached)
+            {
+                return cached.Value;
+            }
+
+            var options = new XmlWriterOptions
             {
                 AttributeStyle = AttributeStyle,
                 AttributesPerLine = AttributesPerLine,
@@ -1731,6 +1885,30 @@ namespace CloudNimble.Text.Xml
                 OmitXmlDeclaration = OmitXmlDeclaration,
                 Version = XmlVersion,
             };
+            if (IsReadOnly)
+            {
+                _writerOptions = new StrongBox<XmlWriterOptions>(options);
+            }
+
+            return options;
+        }
+
+        /// <summary>
+        /// Gives this instance the reflection-based resolver when it has no resolver and reflection is enabled.
+        /// </summary>
+        /// <remarks>
+        /// Only members that say they need reflection call this. An instance that is read-only still gets the
+        /// resolver, because the shared instances are read-only from the start and are used this way.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal void UseReflectionResolverIfMissing()
+        {
+            if (_typeInfoResolver is null && XmlSerializer.IsReflectionEnabledByDefault)
+            {
+                _typeInfoResolver = DefaultXmlTypeInfoResolver.Instance;
+                _resolverIsTheDefault = true;
+                _typeInfoResolverChain?.Reset(_typeInfoResolver);
+            }
         }
 
         /// <summary>

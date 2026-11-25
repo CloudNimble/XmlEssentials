@@ -34,7 +34,7 @@ The code produces the following output:
 ```
 
 <Warning>
-Don't create an `XmlSerializerOptions` instance inside a method that runs often. In the library's benchmark of a customer object with two addresses and 20 line items, writing with a cached instance takes 1,710 ns and allocates nothing, and writing with a new instance each time takes 612,933 ns and allocates 75,440 bytes. Reading shows the same gap: 3,358 ns against 594,483 ns. See [Benchmarks](/benchmarks).
+Don't create an `XmlSerializerOptions` instance inside a method that runs often. A new instance works out the mapping of every type it meets again, so each call pays the first-use cost, which is many times the cost of the call itself. See [Benchmarks](/benchmarks).
 </Warning>
 
 When you pass no options, the serializer uses `XmlSerializerOptions.Default`, which is a shared instance, so calls without options are cached too.
@@ -72,7 +72,7 @@ The code produces the following output:
 `XmlSerializerDefaults.Web` is smaller than `JsonSerializerDefaults.Web`. It doesn't turn on case-insensitive name matching, and it doesn't change how numbers are read.
 </Note>
 
-The strict defaults change reading only, which is why the third line matches the first. The following example reads three documents with the general defaults and then with the strict ones.
+The strict defaults change reading, which is why the third line matches the first. The one exception for writing is `RespectNullableAnnotations`: a member annotated non-nullable that holds `null` throws when it is written. The following example reads three documents with the general defaults and then with the strict ones.
 
 ```csharp Program.cs
 string[] documents =
@@ -102,11 +102,11 @@ The code produces the following output:
 
 ```text
 General: MS-220
-Strict: Duplicate property 'Sku'.
+Strict: Duplicate property 'Sku'. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 36.
 General: KB-101
-Strict: Comments are not allowed.
+Strict: Comments are not allowed. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 30.
 General: KB-101
-Strict: Unknown element 'Colour'.
+Strict: Unknown element 'Colour'. Path: /InvoiceLine | LineNumber: 1 | BytePositionInLine: 39.
 ```
 
 With the general defaults, a repeated element overwrites the earlier value, a comment is skipped, and an unknown element is skipped. Use the strict defaults when the XML comes from outside your control and a surprise should be an error.
@@ -183,7 +183,7 @@ A read-only instance is meant to be shared. See [Thread safety](/guides/thread-s
 
 ## Default values
 
-The following sample prints the value of every option on a new instance. The test for the sample compares the whole output, so this list can't drift from the code.
+The following sample prints the value of each option on a new instance. The test for the sample compares the whole output, so this list can't drift from the code.
 
 ```csharp Program.cs
 var options = new XmlSerializerOptions();
@@ -192,8 +192,10 @@ output.WriteLine($"AllowDuplicateProperties = {options.AllowDuplicateProperties}
 output.WriteLine($"AttributeNamingPolicy = {options.AttributeNamingPolicy?.ToString() ?? "null"}");
 output.WriteLine($"AttributeStyle = {options.AttributeStyle}");
 output.WriteLine($"AttributesPerLine = {options.AttributesPerLine}");
+output.WriteLine($"CharHandling = {options.CharHandling}");
 output.WriteLine($"Converters.Count = {options.Converters.Count}");
 output.WriteLine($"DefaultBufferSize = {options.DefaultBufferSize}");
+output.WriteLine($"DefaultCollectionMapping = {options.DefaultCollectionMapping}");
 output.WriteLine($"DefaultIgnoreCondition = {options.DefaultIgnoreCondition}");
 output.WriteLine($"DefaultNamespace = {options.DefaultNamespace ?? "null"}");
 output.WriteLine($"DefaultPropertyMapping = {options.DefaultPropertyMapping}");
@@ -215,6 +217,8 @@ output.WriteLine($"MaxDepth = {options.MaxDepth}");
 output.WriteLine($"MaxDocumentByteCount = {options.MaxDocumentByteCount}");
 output.WriteLine($"MaxNameByteCount = {options.MaxNameByteCount}");
 output.WriteLine($"MaxTextByteCount = {options.MaxTextByteCount}");
+output.WriteLine($"MemberOrder = {options.MemberOrder}");
+output.WriteLine($"Namespaces = {options.Namespaces?.Count.ToString() ?? "null"}");
 output.WriteLine($"NewLine is Environment.NewLine = {options.NewLine == Environment.NewLine}");
 output.WriteLine($"NumberHandling = {options.NumberHandling}");
 output.WriteLine($"OmitXmlDeclaration = {options.OmitXmlDeclaration}");
@@ -228,6 +232,7 @@ output.WriteLine($"RespectRequiredConstructorParameters = {options.RespectRequir
 output.WriteLine($"TypeInfoResolverChain.Count = {options.TypeInfoResolverChain.Count}");
 output.WriteLine($"UnknownTypeHandling = {options.UnknownTypeHandling}");
 output.WriteLine($"UnmappedMemberHandling = {options.UnmappedMemberHandling}");
+output.WriteLine($"UtcOffsetHandling = {options.UtcOffsetHandling}");
 output.WriteLine($"WhitespaceHandling = {options.WhitespaceHandling}");
 output.WriteLine($"WriteIndented = {options.WriteIndented}");
 output.WriteLine($"XmlVersion = {options.XmlVersion}");
@@ -240,8 +245,10 @@ AllowDuplicateProperties = True
 AttributeNamingPolicy = null
 AttributeStyle = Inline
 AttributesPerLine = 1
+CharHandling = Character
 Converters.Count = 0
 DefaultBufferSize = 0
+DefaultCollectionMapping = Unwrapped
 DefaultIgnoreCondition = Never
 DefaultNamespace = null
 DefaultPropertyMapping = Element
@@ -263,6 +270,8 @@ MaxDepth = 0
 MaxDocumentByteCount = 0
 MaxNameByteCount = 0
 MaxTextByteCount = 0
+MemberOrder = PropertiesFirst
+Namespaces = null
 NewLine is Environment.NewLine = True
 NumberHandling = AllowNamedFloatingPointLiterals
 OmitXmlDeclaration = False
@@ -276,6 +285,7 @@ RespectRequiredConstructorParameters = True
 TypeInfoResolverChain.Count = 0
 UnknownTypeHandling = XmlElement
 UnmappedMemberHandling = Skip
+UtcOffsetHandling = WriteOffset
 WhitespaceHandling = Insignificant
 WriteIndented = False
 XmlVersion = Version10
@@ -318,6 +328,7 @@ These options decide how members map to XML. They apply to writing and reading a
 | `DefaultPropertyMapping` | `XmlPropertyMapping.Element` | Whether a simple member with no mapping attribute is a child element or an XML attribute. |
 | `DefaultCollectionMapping` | `XmlCollectionMapping.Unwrapped` | Whether a collection member with no mapping attribute is repeated elements, or one wrapper element with an element for each item. See [Collections](/guides/collections). |
 | `DefaultNamespace` | `null` | The namespace of the document element when `[XmlRoot]` doesn't set one. See [Namespaces](/guides/namespaces). |
+| `Namespaces` | `null` | Prefixes and the namespaces they are bound to, declared on the document element and used everywhere below it. Affects writing only. Takes precedence over `[XmlNamespaceDeclaration]` on the type. See [Namespaces](/guides/namespaces). |
 | `EnumHandling` | `XmlEnumHandling.Name` | Whether an enumeration value is written as its name or its number. |
 
 ### Which members are included
@@ -326,9 +337,9 @@ See [Ignore properties](/guides/ignore-properties) and [Handle null values](/gui
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `DefaultIgnoreCondition` | `XmlIgnoreCondition.Never` | Leaves members out when writing, if they are `null` (`WhenWritingNull`) or have their default value (`WhenWritingDefault`). `WhenWriting` and `WhenReading` have no effect as the default, as in System.Text.Json; use them on `[XmlIgnore]`. `[XmlIgnore]` on a member takes precedence. |
+| `DefaultIgnoreCondition` | `XmlIgnoreCondition.Never` | Leaves members out when writing, if they are `null` (`WhenWritingNull`), a `null` reference (`WhenWritingNullReference`), or have their default value (`WhenWritingDefault`). `WhenWriting` and `WhenReading` have no effect as the default, as in System.Text.Json; use them on `[XmlIgnore]`. `[XmlIgnore]` on a member takes precedence. |
 | `IncludeFields` | `false` | Serializes public fields as well as properties. |
-| `MemberOrder` | `XmlMemberOrder.PropertiesFirst` | Whether the fields of a class come after its properties or before them. Only matters when `IncludeFields` is `true`. |
+| `MemberOrder` | `XmlMemberOrder.PropertiesFirst` | Whether the fields of a class come after its properties or before them. Only matters for a type that has both, when `IncludeFields` is `true` or a field is included with `[XmlInclude]`. An explicit `[XmlPropertyOrder]` takes precedence. |
 | `IgnoreReadOnlyProperties` | `false` | Leaves out properties that have no setter. A collection or a dictionary is not left out. |
 | `IgnoreReadOnlyFields` | `false` | Leaves out `readonly` fields. Only matters when `IncludeFields` is `true`. |
 | `RespectNullableAnnotations` | `false` | Refuses a `null` for a member or constructor parameter annotated non-nullable, when reading and when writing. See [Handle null values](/guides/null-and-nil#respect-nullable-annotations). |
@@ -376,7 +387,7 @@ The limits protect against oversized or hostile input. See [Security](/guides/se
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `TypeInfoResolver` | The reflection resolver, or `null` when reflection is turned off | Supplies the XML mapping for each type. Set it to a source-generated context to avoid reflection. See [Use source generation](/guides/source-generation). |
+| `TypeInfoResolver` | `null` | Supplies the XML mapping for each type. Set it to a source-generated context to avoid reflection. Options that have none get the reflection resolver the first time an `XmlSerializer` method that takes options uses them, or when you call `MakeReadOnly(populateMissingResolver: true)`. See [Use source generation](/guides/source-generation). |
 | `TypeInfoResolverChain` | Empty | The same resolver as a list, for combining several contexts. |
 | `IsReadOnly` | `false` | Read-only. Tells you whether the instance can still be changed. |
 

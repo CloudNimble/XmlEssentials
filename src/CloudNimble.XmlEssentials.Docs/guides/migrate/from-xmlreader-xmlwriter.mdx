@@ -160,6 +160,8 @@ The loop has the same shape in both. Three things are different:
 
 - Names are compared with `LocalNameEquals` and `NamespaceUriEquals`, against UTF-8 literals (`"Item"u8`). No string is created for a name.
 - A value is read with a typed method, `GetBoolean` or `TryGetDecimal`, that parses the XSD lexical form. You don't call `XmlConvert`.
+- The input is UTF-8 bytes in a span, not a `TextReader`. See [Read from a stream](#read-from-a-stream).
+
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/41_MigrateFromXmlReader.cs)
 
 ## Reader members

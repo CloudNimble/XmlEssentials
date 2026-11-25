@@ -1,6 +1,6 @@
 `DefaultXmlTypeInfoResolver` is the resolver behind every `XmlSerializer` call that passes only a value, or a value and options. It finds the converter for a type and wraps it in type info. For a class or struct, that converter is built by inspecting the type's members and attributes with reflection.
 
-You rarely name the class. An `XmlSerializerOptions` instance with no `TypeInfoResolver` uses the shared `DefaultXmlTypeInfoResolver.Instance`:
+You rarely name the class. An `XmlSerializerOptions` instance with no `TypeInfoResolver` is given the shared `DefaultXmlTypeInfoResolver.Instance` the first time an `XmlSerializer` method that takes options uses it:
 
 ```csharp
 var receipt = new Receipt { Number = 77, Paid = 129.90m };

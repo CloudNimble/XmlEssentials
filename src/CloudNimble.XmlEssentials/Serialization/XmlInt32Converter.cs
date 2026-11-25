@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="int"/> as <c>xs:int</c>.
     /// </summary>
-    internal sealed class XmlInt32Converter : XmlValueConverter<int>
+    internal sealed class XmlInt32Converter : XmlFormattedValueConverter<int>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlInt32Converter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 11;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, int value, XmlSerializerOptions options)
+        internal override int Format(int value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteNumberValue(value);
+            return FormatNumber(value, destination);
         }
 
         #endregion

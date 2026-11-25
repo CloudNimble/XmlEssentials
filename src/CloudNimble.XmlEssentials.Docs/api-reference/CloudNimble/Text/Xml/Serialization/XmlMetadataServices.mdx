@@ -166,6 +166,44 @@ the constructors and methods of the collection type for the trimmer, and those o
 be kept under Native AOT. An array needs none of them: it is made from the items that were read. This
 method is for source-generated contexts only.
 
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateBuiltInInfo
+
+Creates type info for a type the serializer has a ready-made converter for, or that the caller supplied a
+converter for. Source-generated code calls this method.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T> CreateBuiltInInfo<T>(CloudNimble.Text.Xml.XmlSerializerOptions options)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `options` | `CloudNimble.Text.Xml.XmlSerializerOptions` | The options the type info is bound to. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo<T>`
+The type info.
+
+#### Type Parameters
+
+- `T` - The type: a built-in value such as [Int32](https://learn.microsoft.com/dotnet/api/system.int32) or [String](https://learn.microsoft.com/dotnet/api/system.string), or one a converter of the caller's reads and writes.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *options* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+| `NotSupportedException` | *T* has neither a ready-made converter nor one the caller supplied. |
+
+#### Remarks
+
+Nothing is looked up by reflection and no generic type is closed at run time, so the call is safe under
+trimming and Native AOT.
+
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateCollectionInfo
 
 Creates metadata for a collection type whose item type is named at compile time.
@@ -579,6 +617,72 @@ not a built-in scalar, and a type mapped member by member. Making a converter fo
 or closes a generic type at run time, which Native AOT cannot do. The next resolver in
 [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) is then asked, and a type nobody lists is reported as
 not supported.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RegisterClosedDerivedType
+
+Tells the serializer that a generic derived type of a closed type takes the type arguments of that closed
+type. Source-generated code calls this method.
+
+#### Syntax
+
+```csharp
+public static void RegisterClosedDerivedType<TClosed, TDerived>() where TDerived : TClosed
+```
+
+#### Type Parameters
+
+- `TClosed` - The closed type, with its type arguments.
+- `TDerived` - The derived type, with the same type arguments.
+
+#### Remarks
+
+The compiler lists a generic derived type of a closed type without its type arguments. A generic type
+cannot be given its arguments at run time under Native AOT, so the context names the constructed type.
+A closed type needs .NET 11, so the method exists only there.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RegisterCollection
+
+Tells the serializer that *TCollection* is a collection of *TElement*.
+Source-generated code calls this method.
+
+#### Syntax
+
+```csharp
+public static void RegisterCollection<TCollection, TElement>()
+```
+
+#### Type Parameters
+
+- `TCollection` - The collection type.
+- `TElement` - The type of its items.
+
+#### Remarks
+
+The reflection resolver finds the item type through the interfaces of the collection type, which may
+be trimmed away. A context names both types when it is created, so they are known before any type that
+has such a member is bound.
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RegisterDictionary
+
+Tells the serializer that *TDictionary* is a dictionary of *TKey*
+and *TValue*. Source-generated code calls this method.
+
+#### Syntax
+
+```csharp
+public static void RegisterDictionary<TDictionary, TKey, TValue>()
+```
+
+#### Type Parameters
+
+- `TDictionary` - The dictionary type.
+- `TKey` - The type of its keys.
+- `TValue` - The type of its values.
+
+#### Remarks
+
+The reflection resolver finds the key and value types through the interfaces of the dictionary type,
+which may be trimmed away. A context names the types when it is created.
 
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Write
 

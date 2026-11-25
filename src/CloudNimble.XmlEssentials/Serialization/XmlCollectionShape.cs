@@ -15,85 +15,133 @@ namespace CloudNimble.Text.Xml.Serialization
     internal static class XmlCollectionShape
     {
 
-        #region Public Methods
+        #region Fields
 
         /// <summary>
-        /// Returns whether <paramref name="type"/> is a dictionary map.
+        /// What is known about the types that were asked about or named: the item type of a collection, the key
+        /// and value types of a dictionary, or neither for a type that is no collection.
         /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <param name="keyType">The key type.</param>
-        /// <param name="valueType">The value type.</param>
-        /// <returns><see langword="true"/> for a type that is or implements <see cref="IDictionary{TKey,TValue}"/> or <see cref="IReadOnlyDictionary{TKey,TValue}"/>.</returns>
-        internal static bool IsDictionary(Type type, out Type keyType, out Type valueType)
+        private static readonly ConcurrentDictionary<Type, XmlCollectionShapeInfo> s_known = new();
+
+        /// <summary>
+        /// Looks at the interfaces of a type to find its shape, or <see langword="null"/> when nothing in the
+        /// program reflects.
+        /// </summary>
+        /// <remarks>
+        /// The reflection resolver sets it when it is created. The interfaces of a type may be trimmed away, so a
+        /// program that has only generated contexts never looks at them: a context names the collections and
+        /// dictionaries it holds with <see cref="Register"/> and <see cref="RegisterDictionary"/>.
+        /// </remarks>
+        private static Func<Type, XmlCollectionShapeInfo>? s_reflect;
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Adds items to a collection that already exists.
+        /// </summary>
+        /// <typeparam name="T">The item type.</typeparam>
+        /// <param name="items">The items, in document order.</param>
+        /// <param name="target">The collection to add to.</param>
+        /// <returns>
+        /// <see langword="true"/> when the items were added; <see langword="false"/> when the collection cannot take
+        /// items, as with an array or a read-only collection.
+        /// </returns>
+        /// <remarks>
+        /// A stack is written from its top down, so the items are pushed last to first: the first item of the
+        /// document ends on top, as it does when a stack is read whole.
+        /// </remarks>
+        internal static bool AddItems<T>(List<T> items, object target)
         {
-            keyType = typeof(object);
-            valueType = typeof(object);
-            if (type == typeof(string) || type.IsArray)
+            switch (target)
             {
-                return false;
-            }
+                case ICollection<T> { IsReadOnly: false } collection:
+                    foreach (var item in items)
+                    {
+                        collection.Add(item);
+                    }
 
-            foreach (var implemented in EnumerateTypes(type))
-            {
-                if (implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IDictionary<,>))
-                {
-                    var args = implemented.GetGenericArguments();
-                    keyType = args[0];
-                    valueType = args[1];
                     return true;
-                }
-            }
+                case Stack<T> stack:
+                    for (var i = items.Count - 1; i >= 0; i--)
+                    {
+                        stack.Push(items[i]);
+                    }
 
-            foreach (var implemented in EnumerateTypes(type))
-            {
-                if (implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))
-                {
-                    var args = implemented.GetGenericArguments();
-                    keyType = args[0];
-                    valueType = args[1];
                     return true;
-                }
-            }
+                case Queue<T> queue:
+                    foreach (var item in items)
+                    {
+                        queue.Enqueue(item);
+                    }
 
-            return false;
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>
-        /// Returns whether <paramref name="type"/> is a collection of items (not a dictionary, string, or byte array).
+        /// Creates the error for a collection type that can be written and cannot be created.
         /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <param name="elementType">The item type.</param>
-        /// <returns><see langword="true"/> for arrays and <see cref="IEnumerable{T}"/> collections.</returns>
-        internal static bool IsCollection(Type type, out Type elementType)
+        /// <param name="collectionType">The declared collection type.</param>
+        /// <returns>The exception to throw.</returns>
+        internal static NotSupportedException CannotCreate(Type collectionType)
         {
-            elementType = typeof(object);
-            // An element node enumerates its children, and it is written as the element it is, not as a list of them.
-            if (type == typeof(string) || type == typeof(byte[]) || type == typeof(XmlElementNode) || IsDictionary(type, out _, out _))
+            return new NotSupportedException(
+                $"The collection type '{collectionType}' cannot be created. It needs a public parameterless constructor and ICollection<T> or a public Add method, or a public constructor that takes IEnumerable<T> or IList<T>.");
+        }
+
+        /// <summary>
+        /// Returns whether a member declared as <paramref name="collectionType"/> can have items added to the
+        /// collection it holds.
+        /// </summary>
+        /// <typeparam name="T">The item type.</typeparam>
+        /// <param name="collectionType">The declared collection type.</param>
+        /// <returns>
+        /// <see langword="true"/> for <see cref="ICollection{T}"/> and the interfaces that extend it, for a class that
+        /// implements it and has a public parameterless constructor, and for <see cref="Stack{T}"/> and
+        /// <see cref="Queue{T}"/>. <see langword="false"/> for an array, a value type, an immutable or frozen
+        /// collection, and an interface that only reads, such as <see cref="IEnumerable{T}"/>.
+        /// </returns>
+        /// <remarks>
+        /// The declared type decides, as it does in System.Text.Json. A member declared as <see cref="IList{T}"/> that
+        /// holds an array passes this test and fails when the items are added.
+        /// </remarks>
+        internal static bool CanPopulate<T>([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type collectionType)
+        {
+            if (collectionType.IsValueType || collectionType.IsArray)
             {
                 return false;
             }
 
-            if (type.IsArray)
+            if (collectionType == typeof(Stack<T>) || collectionType == typeof(Queue<T>))
             {
-                if (type.GetArrayRank() != 1)
-                {
-                    return false;
-                }
-
-                elementType = type.GetElementType()!;
                 return true;
             }
 
-            foreach (var implemented in EnumerateTypes(type))
-            {
-                if (implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                {
-                    elementType = implemented.GetGenericArguments()[0];
-                    return true;
-                }
-            }
+            return typeof(ICollection<T>).IsAssignableFrom(collectionType)
+                && (collectionType.IsInterface || collectionType.GetConstructor(Type.EmptyTypes) is not null);
+        }
 
-            return false;
+        /// <summary>
+        /// Returns whether a member declared as <typeparamref name="TDictionary"/> can have entries added to the
+        /// dictionary it holds.
+        /// </summary>
+        /// <typeparam name="TDictionary">The declared dictionary type.</typeparam>
+        /// <typeparam name="TKey">The key type.</typeparam>
+        /// <typeparam name="TValue">The value type.</typeparam>
+        /// <returns>
+        /// <see langword="true"/> for <see cref="IDictionary{TKey, TValue}"/> and for a class that implements it and
+        /// has a public parameterless constructor; <see langword="false"/> for an immutable, frozen or read-only one.
+        /// </returns>
+        internal static bool CanPopulateDictionary<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] TDictionary, TKey, TValue>()
+        {
+            var type = typeof(TDictionary);
+            return !type.IsValueType
+                && typeof(IDictionary<TKey, TValue>).IsAssignableFrom(type)
+                && (type.IsInterface || type.GetConstructor(Type.EmptyTypes) is not null);
         }
 
         /// <summary>
@@ -106,11 +154,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// A type that cannot be created still gets a function, which throws <see cref="NotSupportedException"/>:
         /// such a type can be written, so the failure belongs to the read.
         /// </remarks>
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067")]
-        [UnconditionalSuppressMessage("Trimming", "IL2070")]
-        [UnconditionalSuppressMessage("Trimming", "IL2072")]
-        internal static Func<List<T>, object> CreateCollectionFactory<T>(Type collectionType)
+        internal static Func<List<T>, object> CreateCollectionFactory<T>([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type collectionType)
         {
             if (collectionType == typeof(ImmutableArray<T>))
             {
@@ -214,14 +258,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// A type that cannot be created still gets functions, and <paramref name="finish"/> throws
         /// <see cref="NotSupportedException"/>: such a type can be written, so the failure belongs to the read.
         /// </remarks>
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067")]
-        [UnconditionalSuppressMessage("Trimming", "IL2070")]
-        [UnconditionalSuppressMessage("Trimming", "IL2072")]
-        [UnconditionalSuppressMessage("Trimming", "IL2087")]
-        [UnconditionalSuppressMessage("Trimming", "IL2090")]
-        [UnconditionalSuppressMessage("Trimming", "IL2091")]
-        internal static Func<IDictionary<TKey, TValue>> CreateDictionaryFactory<TDictionary, TKey, TValue>(out Func<IDictionary<TKey, TValue>, TDictionary> finish)
+        internal static Func<IDictionary<TKey, TValue>> CreateDictionaryFactory<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDictionary, TKey, TValue>(out Func<IDictionary<TKey, TValue>, TDictionary> finish)
             where TKey : notnull
         {
             var type = typeof(TDictionary);
@@ -263,6 +300,83 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Walks <paramref name="type"/> and its interfaces.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns>The type then each interface.</returns>
+        internal static IEnumerable<Type> EnumerateTypes([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type)
+        {
+            yield return type;
+            foreach (var implemented in type.GetInterfaces())
+            {
+                yield return implemented;
+            }
+        }
+
+        /// <summary>
+        /// Returns what is known about <paramref name="type"/>.
+        /// </summary>
+        /// <param name="type">The CLR type, which is not an array.</param>
+        /// <returns>The shape. It is neither a collection nor a dictionary when nothing named the type and nothing reflects.</returns>
+        internal static XmlCollectionShapeInfo Find(Type type)
+        {
+            return Find(type, s_reflect);
+        }
+
+        /// <summary>
+        /// Returns what is known about <paramref name="type"/>, looking at its interfaces with <paramref name="reflect"/> when nothing named it.
+        /// </summary>
+        /// <param name="type">The CLR type, which is not an array.</param>
+        /// <param name="reflect">Looks at the interfaces of a type, or <see langword="null"/> in a program that does not reflect.</param>
+        /// <returns>The shape. It is neither a collection nor a dictionary when nothing named the type and nothing reflects.</returns>
+        internal static XmlCollectionShapeInfo Find(Type type, Func<Type, XmlCollectionShapeInfo>? reflect)
+        {
+            if (s_known.TryGetValue(type, out var known))
+            {
+                return known;
+            }
+
+            return reflect is null ? default : s_known.GetOrAdd(type, reflect);
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a non-dictionary collection.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <param name="elementType">The element type.</param>
+        /// <returns><see langword="true"/> for an array of one dimension and for a type that implements <see cref="IEnumerable{T}"/>, other than a string, a byte array, an element node and a dictionary.</returns>
+        internal static bool IsCollection(Type type, out Type elementType)
+        {
+            if (type.IsArray)
+            {
+                // The item type of an array is part of the array type, so nothing has to be looked up. A byte
+                // array is one base64 value, and an array of more than one dimension is not a sequence.
+                var isSequence = type.GetArrayRank() == 1 && type != typeof(byte[]);
+                elementType = isSequence ? type.GetElementType()! : typeof(object);
+                return isSequence;
+            }
+
+            var shape = Find(type);
+            elementType = shape.ElementType ?? typeof(object);
+            return shape.ElementType is not null;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a dictionary map.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <param name="keyType">The key type.</param>
+        /// <param name="valueType">The value type.</param>
+        /// <returns><see langword="true"/> for a type that is or implements <see cref="IDictionary{TKey,TValue}"/> or <see cref="IReadOnlyDictionary{TKey,TValue}"/>.</returns>
+        internal static bool IsDictionary(Type type, out Type keyType, out Type valueType)
+        {
+            var shape = Find(type);
+            keyType = shape.KeyType ?? typeof(object);
+            valueType = shape.ValueType ?? typeof(object);
+            return shape.KeyType is not null;
+        }
+
+        /// <summary>
         /// Returns whether <paramref name="key"/> is an XML NCName made of ASCII characters only.
         /// </summary>
         /// <param name="key">The dictionary key after the naming policy.</param>
@@ -285,132 +399,80 @@ namespace CloudNimble.Text.Xml.Serialization
             return true;
         }
 
-        #endregion
+        /// <summary>
+        /// Finds the shape of <paramref name="type"/> through its interfaces.
+        /// </summary>
+        /// <param name="type">The CLR type, which is not an array.</param>
+        /// <returns>The shape.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg)]
+        internal static XmlCollectionShapeInfo Reflect(Type type)
+        {
+            if (type == typeof(string))
+            {
+                return default;
+            }
 
-        #region Private Methods
+            Type? element = null;
+            Type? readOnlyKey = null;
+            Type? readOnlyValue = null;
+            foreach (var implemented in EnumerateTypes(type))
+            {
+                if (!implemented.IsGenericType)
+                {
+                    continue;
+                }
+
+                var definition = implemented.GetGenericTypeDefinition();
+                if (definition == typeof(IDictionary<,>))
+                {
+                    var args = implemented.GetGenericArguments();
+                    return new XmlCollectionShapeInfo(null, args[0], args[1]);
+                }
+
+                if (definition == typeof(IReadOnlyDictionary<,>) && readOnlyKey is null)
+                {
+                    var args = implemented.GetGenericArguments();
+                    readOnlyKey = args[0];
+                    readOnlyValue = args[1];
+                }
+                else if (definition == typeof(IEnumerable<>))
+                {
+                    element ??= implemented.GetGenericArguments()[0];
+                }
+            }
+
+            if (readOnlyKey is not null)
+            {
+                return new XmlCollectionShapeInfo(null, readOnlyKey, readOnlyValue);
+            }
+
+            // An element node enumerates its children, and it is written as the element it is, not as a list of them.
+            return type == typeof(XmlElementNode) ? default : new XmlCollectionShapeInfo(element, null, null);
+        }
 
         /// <summary>
-        /// Adds items to a collection that already exists.
+        /// Records that <paramref name="collectionType"/> is a collection of <paramref name="elementType"/>.
         /// </summary>
-        /// <typeparam name="T">The item type.</typeparam>
-        /// <param name="items">The items, in document order.</param>
-        /// <param name="target">The collection to add to.</param>
-        /// <returns>
-        /// <see langword="true"/> when the items were added; <see langword="false"/> when the collection cannot take
-        /// items, as with an array or a read-only collection.
-        /// </returns>
+        /// <param name="collectionType">The collection type.</param>
+        /// <param name="elementType">The type of its items.</param>
         /// <remarks>
-        /// A stack is written from its top down, so the items are pushed last to first: the first item of the
-        /// document ends on top, as it does when a stack is read whole.
+        /// Generated metadata names both types where it is compiled, so the interfaces of the collection type are
+        /// never read.
         /// </remarks>
-        internal static bool AddItems<T>(List<T> items, object target)
+        internal static void Register(Type collectionType, Type elementType)
         {
-            switch (target)
-            {
-                case ICollection<T> { IsReadOnly: false } collection:
-                    foreach (var item in items)
-                    {
-                        collection.Add(item);
-                    }
-
-                    return true;
-                case Stack<T> stack:
-                    for (var i = items.Count - 1; i >= 0; i--)
-                    {
-                        stack.Push(items[i]);
-                    }
-
-                    return true;
-                case Queue<T> queue:
-                    foreach (var item in items)
-                    {
-                        queue.Enqueue(item);
-                    }
-
-                    return true;
-                default:
-                    return false;
-            }
+            s_known[collectionType] = new XmlCollectionShapeInfo(elementType, null, null);
         }
 
         /// <summary>
-        /// Returns whether a member declared as <paramref name="collectionType"/> can have items added to the
-        /// collection it holds.
+        /// Records that <paramref name="dictionaryType"/> is a dictionary.
         /// </summary>
-        /// <typeparam name="T">The item type.</typeparam>
-        /// <param name="collectionType">The declared collection type.</param>
-        /// <returns>
-        /// <see langword="true"/> for <see cref="ICollection{T}"/> and the interfaces that extend it, for a class that
-        /// implements it and has a public parameterless constructor, and for <see cref="Stack{T}"/> and
-        /// <see cref="Queue{T}"/>. <see langword="false"/> for an array, a value type, an immutable or frozen
-        /// collection, and an interface that only reads, such as <see cref="IEnumerable{T}"/>.
-        /// </returns>
-        /// <remarks>
-        /// The declared type decides, as it does in System.Text.Json. A member declared as <see cref="IList{T}"/> that
-        /// holds an array passes this test and fails when the items are added.
-        /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Only the presence of the parameterless constructor is tested; the collection is never created here.")]
-        internal static bool CanPopulate<T>(Type collectionType)
+        /// <param name="dictionaryType">The dictionary type.</param>
+        /// <param name="keyType">The type of its keys.</param>
+        /// <param name="valueType">The type of its values.</param>
+        internal static void RegisterDictionary(Type dictionaryType, Type keyType, Type valueType)
         {
-            if (collectionType.IsValueType || collectionType.IsArray)
-            {
-                return false;
-            }
-
-            if (collectionType == typeof(Stack<T>) || collectionType == typeof(Queue<T>))
-            {
-                return true;
-            }
-
-            return typeof(ICollection<T>).IsAssignableFrom(collectionType)
-                && (collectionType.IsInterface || collectionType.GetConstructor(Type.EmptyTypes) is not null);
-        }
-
-        /// <summary>
-        /// Returns whether a member declared as <typeparamref name="TDictionary"/> can have entries added to the
-        /// dictionary it holds.
-        /// </summary>
-        /// <typeparam name="TDictionary">The declared dictionary type.</typeparam>
-        /// <typeparam name="TKey">The key type.</typeparam>
-        /// <typeparam name="TValue">The value type.</typeparam>
-        /// <returns>
-        /// <see langword="true"/> for <see cref="IDictionary{TKey, TValue}"/> and for a class that implements it and
-        /// has a public parameterless constructor; <see langword="false"/> for an immutable, frozen or read-only one.
-        /// </returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2090", Justification = "Only the presence of the parameterless constructor is tested; the dictionary is never created here.")]
-        internal static bool CanPopulateDictionary<TDictionary, TKey, TValue>()
-        {
-            var type = typeof(TDictionary);
-            return !type.IsValueType
-                && typeof(IDictionary<TKey, TValue>).IsAssignableFrom(type)
-                && (type.IsInterface || type.GetConstructor(Type.EmptyTypes) is not null);
-        }
-
-
-        /// <summary>
-        /// Creates the error for a collection type that can be written and cannot be created.
-        /// </summary>
-        /// <param name="collectionType">The declared collection type.</param>
-        /// <returns>The exception to throw.</returns>
-        internal static NotSupportedException CannotCreate(Type collectionType)
-        {
-            return new NotSupportedException(
-                $"The collection type '{collectionType}' cannot be created. It needs a public parameterless constructor and ICollection<T> or a public Add method, or a public constructor that takes IEnumerable<T> or IList<T>.");
-        }
-
-        /// <summary>
-        /// Walks <paramref name="type"/> and its interfaces.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <returns>The type then each interface.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2070")]
-        internal static IEnumerable<Type> EnumerateTypes(Type type)
-        {
-            yield return type;
-            foreach (var implemented in type.GetInterfaces())
-            {
-                yield return implemented;
-            }
+            s_known[dictionaryType] = new XmlCollectionShapeInfo(null, keyType, valueType);
         }
 
         /// <summary>
@@ -424,6 +486,19 @@ namespace CloudNimble.Text.Xml.Serialization
             var reversed = new List<T>(list);
             reversed.Reverse();
             return reversed;
+        }
+
+        /// <summary>
+        /// Lets the shape of a type that nothing has named be found through its interfaces.
+        /// </summary>
+        /// <remarks>
+        /// Only the reflection resolver calls this, so the code that reads interfaces is in the program only when
+        /// that resolver is.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg)]
+        internal static void UseReflection()
+        {
+            s_reflect ??= Reflect;
         }
 
         #endregion

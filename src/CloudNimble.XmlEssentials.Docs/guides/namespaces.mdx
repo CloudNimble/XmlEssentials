@@ -363,7 +363,9 @@ How strictly a name is matched depends on whether the type gives it a namespace.
 | Attribute with a namespace | Local name and namespace URI. |
 | Attribute with no namespace | Local name. The attribute must have no prefix. |
 
-Two members can map to the same local name when their namespaces differ, as `link` and `atom:link` do in an RSS feed. Each element goes to the member that names its namespace, and the member with no namespace takes the rest. Two members with the same local name and the same namespace are an `InvalidOperationException` when the type is first used.
+Two element members can map to the same local name when their namespaces differ, as `link` and `atom:link` do in an RSS feed. Each element goes to the member that names its namespace, and the member with no namespace takes the rest. Two element members with the same local name and the same namespace are an `InvalidOperationException` when the type is first used.
+
+Attribute members follow the same rule: two can share a local name when their namespaces differ, as `href` and `xlink:href` do on a link, and two with the same local name and the same namespace are an `InvalidOperationException`. An attribute with no prefix is in no namespace, so an attribute member with no namespace takes only the unprefixed attribute. An attribute of that local name in a namespace no member names is unmapped.
 
 A document element in the wrong namespace is an error:
 
@@ -383,7 +385,7 @@ catch (XmlException ex)
 The code produces the following output:
 
 ```text
-The root element is not in namespace 'urn:example:billing'.
+The root element is not in namespace 'urn:example:billing'. Path: /Invoice | LineNumber: 1 | BytePositionInLine: 48.
 ```
 
 A child element or attribute whose namespace doesn't match is not an error by default. The serializer treats it as content the type doesn't map, and skips it. To reject it or to keep it, see [Handle content that no member maps](/guides/mixed-content#keep-content-that-no-member-maps).
@@ -392,7 +394,7 @@ A child element or attribute whose namespace doesn't match is not an error by de
 
 ## Namespaces the serializer writes for you
 
-Some features add an attribute in a namespace of their own. The serializer declares the namespace on the element that carries the attribute.
+Some features add an attribute in a namespace of their own. The serializer declares the namespace on the element that carries the attribute, unless a declaration of it is already in scope: an element inside one that declared it reuses that declaration, and a namespace declared with `XmlSerializerOptions.Namespaces` is declared once, on the document element.
 
 | Feature | Attribute | Namespace | Constant |
 | --- | --- | --- | --- |

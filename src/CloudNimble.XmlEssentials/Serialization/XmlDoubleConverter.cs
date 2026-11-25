@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="double"/> as <c>xs:double</c>.
     /// </summary>
-    internal sealed class XmlDoubleConverter : XmlValueConverter<double>
+    internal sealed class XmlDoubleConverter : XmlFormattedValueConverter<double>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlDoubleConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 32;
 
         #endregion
 
@@ -33,14 +40,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, double value, XmlSerializerOptions options)
+        internal override int Format(double value, Span<byte> destination, XmlSerializerOptions options)
         {
-            if (options.NumberHandling is XmlNumberHandling.Strict && !double.IsFinite(value))
-            {
-                throw XmlException.Create("Named floating-point literals are not allowed when NumberHandling is Strict.");
-            }
-
-            writer.WriteNumberValue(value);
+            return FormatFloat(value, destination, options);
         }
 
         #endregion

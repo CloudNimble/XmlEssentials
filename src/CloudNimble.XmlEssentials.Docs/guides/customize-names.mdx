@@ -399,7 +399,7 @@ For each member, the serializer takes the first of these that is set:
 
 For the document element, it's the name in `[XmlRoot]`, or else the type name converted by the element policy. The type name of a built-in type is its XML Schema name (`int`, `string`, `dateTime`). A collection is `ArrayOf` followed by the name of its items, so a `List<InvoiceLine>` at the root is `ArrayOfInvoiceLine` and an `int[]` is `ArrayOfInt`. Any other generic type has its name spelled out with the .NET names of its arguments, such as `DictionaryOfStringInt32`.
 
-Two members of one type can't have the same element name or the same attribute name. The serializer throws an `InvalidOperationException` when it first uses such a type.
+Two members of one type can't have the same attribute name in the same namespace, or the same element name in the same namespace. The serializer throws an `InvalidOperationException` when it first uses such a type, with a message such as `The type maps more than one member to the element name 'Name'.`
 
 To put names in an XML namespace, see [Namespaces](/guides/namespaces).
 

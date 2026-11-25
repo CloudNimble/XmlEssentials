@@ -19,7 +19,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true };
         private const string Xsi = " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"";
 
         #endregion

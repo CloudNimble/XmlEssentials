@@ -93,7 +93,7 @@ boiler: 73
 
 Know the following about the wrapped form:
 
-- The document element is named `ArrayOf` followed by the root name of `T` with a capital first letter, which is the name a `List<T>` or a `T[]` has at the root. Each value is written under the root name of `T`. You can't change the wrapper's name. The wrapper is in the same namespace as the values, so `XmlSerializerOptions.DefaultNamespace` is declared once, on the wrapper.
+- The document element is named `ArrayOf` followed by the root name of `T` with a capital first letter, which is the name a `List<T>` or a `T[]` has at the root. The whole name then goes through the element naming policy, so under `CamelCase` it starts with `arrayOf`. Each value is written under the root name of `T`. You can't change the wrapper's name. The wrapper is in the same namespace as the values, so `XmlSerializerOptions.DefaultNamespace` is declared once, on the wrapper.
 - With a `ReferenceHandler`, the values of the document share one set of references: an object that two values hold is written once, and it is read back as one object. With `topLevelValues` each value is a document of its own, with references of its own.
 - `DeserializeAsyncEnumerable` reads every child of the document element as a `T`. It doesn't check the name of the document element or the names of its children, so it can read a sequence that another system wrapped in an element of its own, such as `<Feed>`.
 - `Deserialize<List<T>>` and `Deserialize<T[]>` read this document, and `DeserializeAsyncEnumerable` reads what `Serialize` writes for a `List<T>` or a `T[]`: the three write the same thing.
@@ -139,7 +139,7 @@ Compare the two forms:
 | Readable by any XML parser | Yes | No |
 | Name check when reading | None. | Each document element must match the root name of `T`. |
 | Between values when reading | Anything that is well formed inside an element. | White space is allowed between documents. The writer adds none. |
-| When the stream is written | Between values, once more than half a buffer of output is pending, and at the end. | After every value. |
+| When the stream is written | Between values, once more than 8,192 bytes of output are pending, and at the end. | After every value. |
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/19_Streaming.cs)
 
@@ -229,25 +229,19 @@ When a write is canceled, or fails for any other reason, the bytes that were alr
 
 ## Memory behavior
 
-- **Reading a sequence.** After each read from the stream, `DeserializeAsyncEnumerable` returns every value that is now complete and keeps only the unfinished tail. The buffer holds one read plus at most one partial value. It starts at `XmlSerializerOptions.DefaultBufferSize` and doubles only when a single value is larger than the buffer. The buffer comes from the shared array pool and goes back when the enumeration ends, so dispose the enumerator if you stop early. `await foreach` does that for you.
+- **Reading a sequence.** After each read from the stream, `DeserializeAsyncEnumerable` returns every value that is now complete. A value is returned only once all of it has been read; your loop never sees a value that is still being filled. The buffer starts at `XmlSerializerOptions.DefaultBufferSize` (0, which means 16,384 bytes) and comes from the shared array pool. It goes back when the enumeration ends, so dispose the enumerator if you stop early. `await foreach` does that for you.
+- **Values that span reads.** In the wrapped form, an object whose members are built-in simple values, other such objects, or collections of either is read a piece at a time: what it has read so far is kept between reads, the bytes it has used are released, and nothing is read twice. So the buffer doesn't have to hold a whole value, and it grows only when it fills with bytes that can't be used yet. Any other value is read once all of it is in the buffer, which then doubles as often as the value needs. That applies with `topLevelValues: true`, with a `ReferenceHandler`, to a value that isn't an object, and to an object with polymorphism, text or mixed content, extension data, a member that is populated, or a member whose type is read some other way, such as a dictionary or a type with a converter of your own.
 - **Writing a sequence.** Each value is written into the writer's buffer and passed to the stream between values, never in the middle of one, unless a single value is larger than the buffer.
 - **Malformed input.** A value that can't be read throws `XmlException` when the reader reaches it. The values before it have already been returned to your loop.
 - **Reference handling.** The sequence methods apply [`XmlReferenceHandler`](/guides/preserve-references). In the wrapped form the values share one set of references, so a value may hold a `ref` to an object that an earlier value defined. Read the values in order and keep them if you rely on that. With `topLevelValues`, each value has its own references.
 
 ## Performance
 
-In the library's benchmark of 1,000 integers moved through a `MemoryStream`, the sequence methods are faster than `System.Xml.Serialization.XmlSerializer` reading and writing an `int[]`, and slower than the same methods in System.Text.Json.
-
-| Operation | `System.Xml` (`int[]`) | System.Text.Json | XmlEssentials |
-| --- | --- | --- | --- |
-| Read 1,000 values | 41,532 ns / 61,152 B | 28,113 ns / 8,968 B | 31,877 ns / 9,552 B |
-| Write 1,000 values | 33,014 ns / 30,408 B | 13,899 ns / 376 B | 21,519 ns / 928 B |
-
-`System.Xml` has no streaming call for a sequence, so its numbers are for an array that is read and written whole. See [Benchmarks](/benchmarks) for the method and the other results.
+The library's benchmarks move a sequence of 1,000 values through a `MemoryStream` with these methods and with the same methods in System.Text.Json. `System.Xml` has no streaming call for a sequence, so it is measured reading and writing an array whole. See [Benchmarks](/benchmarks) for the method and the results.
 
 ## Use source generation
 
-The stream overloads of every method on this page, and the `PipeReader` overloads, also come in a form that takes an `XmlTypeInfo<T>` from a generated context instead of `XmlSerializerOptions`. Use that form in trimmed and Native AOT applications. The two `PipeWriter` overloads take options only. To write to a pipe with generated metadata, pass the `PipeWriter` to `Serialize(IBufferWriter<byte>, value, xmlTypeInfo)` and flush it yourself. See [Source generation](/guides/source-generation).
+The stream overloads of every method on this page, and the `PipeReader` overloads, also come in a form that takes an `XmlTypeInfo<T>` from a generated context instead of `XmlSerializerOptions`. The `PipeReader` form of `DeserializeAsyncEnumerable` that takes an `XmlTypeInfo<T>` reads the wrapped form only; to read top-level values from a pipe with generated metadata, pass `pipeReader.AsStream()` to the `Stream` overload. Use that form in trimmed and Native AOT applications. The two `PipeWriter` overloads take options only. To write to a pipe with generated metadata, pass the `PipeWriter` to `Serialize(IBufferWriter<byte>, value, xmlTypeInfo)` and flush it yourself. See [Source generation](/guides/source-generation).
 
 ## See also
 

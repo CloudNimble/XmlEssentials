@@ -45,12 +45,15 @@ The members you use most:
 | Open and close an element | `WriteStartElement`, `WriteEndElement`, `WriteFullEndElement` |
 | Write an attribute | `WriteAttributeString`, `WriteAttributeNumber`, or `WriteStartAttribute` and `WriteEndAttribute` around a value |
 | Write a value | `WriteStringValue`, `WriteNumberValue`, `WriteBooleanValue`, `WriteBase64StringValue` |
+| Write a value from several buffers | `WriteStringValueSegment`, `WriteBase64StringSegment` |
 | Write a complete element | `WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, `WriteElementBase64String`, `WriteEmptyElement`, `WriteNilElement` |
+| Mark the open element nil | `WriteNilValue` |
 | Declare a namespace yourself | `WriteNamespaceDeclaration`, `WriteDefaultNamespace` |
 | Write other markup | `WriteComment`, `WriteCData`, `WriteProcessingInstruction`, `WriteXmlDeclaration`, `WriteRawValue` |
 | Send output on its way | `Flush`, `FlushAsync`, `Dispose`, `DisposeAsync` |
+| See where the writer is | `BytesPending`, `BytesCommitted`, `CurrentDepth` |
 | Write another document | `Reset` |
 
-Names and values can be a `string`, a `ReadOnlySpan<char>`, or UTF-8 in a `ReadOnlySpan<byte>`. Pass an [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) to the constructor to indent, to leave out the declaration, or to change a limit.
+Most methods take names and values as a `string`, a `ReadOnlySpan<char>`, or UTF-8 in a `ReadOnlySpan<byte>`, and element names also as an [`XmlEncodedText`](/api-reference/CloudNimble/Text/Xml/XmlEncodedText). Pass an [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) to the constructor to indent, to leave out the declaration, or to change a limit.
 
 For a walk through every feature, see [How to write XML with Utf8XmlWriter](/guides/use-utf8xmlwriter).

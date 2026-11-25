@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="decimal"/> as <c>xs:decimal</c>.
     /// </summary>
-    internal sealed class XmlDecimalConverter : XmlValueConverter<decimal>
+    internal sealed class XmlDecimalConverter : XmlFormattedValueConverter<decimal>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlDecimalConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 32;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, decimal value, XmlSerializerOptions options)
+        internal override int Format(decimal value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteNumberValue(value);
+            return FormatNumber(value, destination);
         }
 
         #endregion

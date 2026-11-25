@@ -176,23 +176,18 @@ The code produces the following output:
 
 `Line` keeps its capital because `[XmlElement("Line")]` names it explicitly. A naming policy changes only the names it derives from member and type names.
 
-The generator applies the following properties of the attribute:
+`GenerationMode` chooses what the generator writes. See [Source-generation modes](/guides/source-generation-modes). Every other property of the attribute sets the `XmlSerializerOptions` property of the same name on the default options:
 
-| Property | Effect |
+| Properties | Also used for |
 | --- | --- |
-| `GenerationMode` | Chooses what the generator writes. See [Source-generation modes](/guides/source-generation-modes). |
-| `WriteIndented` | Sets `XmlSerializerOptions.WriteIndented` on the default options. |
-| `OmitXmlDeclaration` | Sets `XmlSerializerOptions.OmitXmlDeclaration` on the default options. |
-| `DefaultNamespace` | Sets `XmlSerializerOptions.DefaultNamespace` on the default options. |
-| `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy` | Set the same options on the default options, and are the names the write fast path is compiled with. |
-| `DefaultPropertyMapping` | Sets `XmlSerializerOptions.DefaultPropertyMapping` on the default options, and decides which members the write fast path writes as attributes. |
-| `DefaultIgnoreCondition` | Sets `XmlSerializerOptions.DefaultIgnoreCondition` on the default options. |
-| `RespectNullableAnnotations`, `PreferredObjectCreationHandling`, `UnknownTypeHandling` | Set the same options on the default options. |
-| `IncludeFields` | Sets `XmlSerializerOptions.IncludeFields` on the default options, and includes public fields in the write fast path. |
+| `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy` | The element and attribute names the write fast path is compiled with. |
+| `DefaultPropertyMapping` | Which members the write fast path writes as attributes. |
+| `DefaultCollectionMapping` | Whether the write fast path wraps collections. |
+| `IncludeFields` | Whether the write fast path writes public fields. |
+| `IgnoreReadOnlyProperties` and `IgnoreReadOnlyFields` set to `true`; `MemberOrder`, `CharHandling`, and `UtcOffsetHandling` set to a value other than the default; `DefaultIgnoreCondition` set to `WhenWritingNullReference` | Each turns the write fast path off, so the context writes from the metadata. See [When the fast path writes](/guides/source-generation-modes#when-the-fast-path-writes). |
+| `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, the other `DefaultIgnoreCondition` values, `RespectNullableAnnotations`, `PreferredObjectCreationHandling`, `UnknownTypeHandling`, `EnumHandling`, `MaxDepth`, `EmitByteOrderMark`, `XmlVersion`, `PropertyNameCaseInsensitive` | Nothing else. |
 
-<Note>
-The attribute has more properties, among them `EnumHandling`, `MaxDepth`, `EmitByteOrderMark`, and `XmlVersion`. The generator doesn't copy these to the default options. Pass your own `XmlSerializerOptions` to the context's constructor when you need them.
-</Note>
+The naming policies are the `XmlKnownNamingPolicy` values. For any other setting, such as `NewLine`, `Converters`, or `ReferenceHandler`, pass your own `XmlSerializerOptions` to the context's constructor.
 
 ### At run time
 
@@ -227,7 +222,7 @@ The code produces the following output:
 </Order>
 ```
 
-Create the context once and keep it, as you would an options instance. The constructor throws `InvalidOperationException` when the options are read-only, which includes `XmlSerializerOptions.Default`, `Web`, and `Strict`.
+Create the context once and keep it, as you would an options instance. The constructor throws `InvalidOperationException` when the options are read-only, which includes `XmlSerializerOptions.Default`, `Web`, `Strict`, and `Bcl`.
 
 ### How a context applies your options
 
@@ -277,7 +272,7 @@ The generator reports problems as compiler diagnostics in the `XmlEssentials` ca
 | ID | Message | Cause and fix |
 | --- | --- | --- |
 | `XMLESS001` | '*type*' must be a partial class that inherits XmlSerializerContext | A class has `[XmlSerializable]` but isn't `partial` or doesn't derive from `XmlSerializerContext`. Add the modifier or the base class. |
-| `XMLESS002` | The type '*type*' cannot be serialized by XmlEssentials | The type is a pointer, `IntPtr`, `UIntPtr`, or an open generic type, or the generator can't call a constructor: a constructor parameter that no member fills has no default value, or a class has neither a parameterless constructor nor one whose parameters all match members. |
+| `XMLESS002` | The type '*type*' cannot be serialized by XmlEssentials | The type is a pointer, `IntPtr`, `UIntPtr`, or an open generic type, or the generator can't call a constructor: a parameter of the chosen constructor that no member fills has no default value, or a class has no `[XmlConstructor]`, no public constructor, and no parameterless constructor that is public or internal. |
 | `XMLESS003` | Member '*type*.*member*' is mapped as an XML attribute | A member with `[XmlAttribute]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
 | `XMLESS004` | The type '*type*' has more than one [XmlText] or [XmlCData] | An element has one text content. Keep the attribute on one member. |
 | `XMLESS005` | The type '*type*' has more than one constructor that can bind its members | Two constructors are marked `[XmlConstructor]`, or none is marked and the type has more than one public constructor with parameters and no public parameterless one. Mark one. |
@@ -288,10 +283,8 @@ The generator reports problems as compiler diagnostics in the `XmlEssentials` ca
 | `XMLESS012` | The generated C# name '*name*' is used more than once | Two schema components produce the same class or enumeration name. |
 | `XMLESS013` | The XML name '*name*' is not a valid XML Name | A schema names an element or attribute with a name that isn't a valid XML name. |
 | `XMLESS015` | Member '*type*.*member*' is mapped as XML text, and its type is not a single value | A member with `[XmlText]` or `[XmlCData]` has a type that isn't a simple value and has no `[XmlConverter]`. Map it as an element, or give the type a converter. |
-| `XMLESS018` | Varies | Warning. A schema allows a document that the generated classes can't read or write as the schema describes it. See [Generate types from an XSD](/guides/xsd-source-generation#limitations). |
 | `XMLESS017` | '*member*' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read | A required member is marked `[XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]`. Remove one of the two. |
-
-The IDs `XMLESS008`, `XMLESS009`, `XMLESS014`, and `XMLESS016` aren't used.
+| `XMLESS018` | Varies | Warning. A schema allows a document that the generated classes can't read or write as the schema describes it. See [Generate types from an XSD](/guides/xsd-source-generation#limitations). |
 
 ## See also
 

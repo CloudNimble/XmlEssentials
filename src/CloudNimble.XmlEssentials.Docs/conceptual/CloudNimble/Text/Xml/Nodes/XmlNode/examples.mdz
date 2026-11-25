@@ -10,7 +10,7 @@ while (reader.Read())
 {
     if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
     {
-        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader)!;
+        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader);
         entry.SetAttribute("read", "true");
         output.WriteLine(entry.ToString());
     }
@@ -27,7 +27,7 @@ The code produces the following output:
 ### Copy a node with DeepClone
 
 ```csharp
-var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""")!;
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""");
 XmlElementNode item = order["Item"]!;
 var backorder = new XmlElementNode("Backorder");
 

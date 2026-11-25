@@ -321,7 +321,7 @@ The code produces the following output:
 North: 47.61, -122.33
 ```
 
-The converter is the type argument of the attribute. It must derive from `XmlConverter` and have a public parameterless constructor, and the compiler checks both. The serializer creates one instance for each options instance.
+The converter is the type argument of the attribute. It must derive from `XmlConverter` and have a public parameterless constructor, and the compiler checks both. The serializer creates one instance for each options instance when the attribute is on a type, and one for each member when it is on a property or field.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)
 
@@ -395,7 +395,7 @@ In the invoice output above, `Issued="20261123"` came from `WriteAsAttribute` an
 [View the converter on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/Models/Advanced/CompactDateConverter.cs)
 
 <Note>
-A type that has a converter can be an attribute or the text of an element, whether the converter is in `Converters` or named by `[XmlConverter]`. The serializer then calls the converter's `WriteAsAttribute`, `ReadAsAttribute`, and `ReadLexical` methods, so override them. A converter that overrides only `Read` and `Write` throws `InvalidOperationException` with the message "Converter '...' does not support attributes." when it is asked for an attribute. A type with no converter that isn't a simple value still can't be an attribute: the serializer throws `NotSupportedException` with the message "Complex types cannot be attributes."
+A type that has a converter can be an attribute or the text of an element, whether the converter is in `Converters` or named by `[XmlConverter]`. The serializer then calls the converter's `WriteAsAttribute`, `ReadAsAttribute`, and `ReadLexical` methods, so override them. A converter that overrides only `Read` and `Write` throws `InvalidOperationException` with the message "Converter '...' does not support attributes." when it is asked for an attribute. A type with no converter that isn't a simple value still can't be an attribute: the serializer throws `NotSupportedException` with the message "Member '...' is mapped as an XML attribute. Complex types cannot be attributes."
 </Note>
 
 ## Write a converter factory
@@ -495,7 +495,7 @@ One factory served two enumerations, `OrderStatus` and `Priority`.
 Rules for a factory:
 
 - `CreateConverter` must return an `XmlConverter<T>` whose `T` is exactly the requested type. The serializer throws `InvalidOperationException` when it returns `null` or a converter for another type.
-- The serializer calls `CreateConverter` once for each type and options instance, and keeps the result.
+- The serializer calls `CreateConverter` once for each type and options instance, and keeps the result. A factory named by `[XmlConverter]` on a property or field is asked once for that member.
 - A factory that uses `MakeGenericType`, as this one does, isn't safe for Native AOT. In an AOT application, return converters you construct directly, for example from a `switch` on the type.
 
 <Tip>
@@ -542,7 +542,7 @@ The context here is in the default generation mode, and the `Metadata` mode work
 
 ## Keep converters safe to share
 
-The serializer keeps one converter instance for each type and options instance and calls it from every thread that uses those options. Don't store state from one call in a field. Keep a converter immutable after you construct it.
+The serializer keeps one converter instance for each type and options instance, and one for each member that names a converter with `[XmlConverter]`, and calls it from every thread that uses those options. Don't store state from one call in a field. Keep a converter immutable after you construct it.
 
 ## See also
 

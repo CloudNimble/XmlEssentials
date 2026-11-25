@@ -5,11 +5,11 @@ description: "How XmlEssentials compares with System.Xml and System.Text.Json fo
 icon: "gauge-high"
 ---
 
-XmlEssentials is faster than `System.Xml` on every benchmark in its suite, and it allocates a small fraction of the memory. This page shows the numbers, explains what each one measures, and tells you where XmlEssentials is still behind System.Text.Json.
+XmlEssentials is faster than `System.Xml` on every row of the tables on this page, and it allocates a small fraction of the memory. This page shows the numbers, explains what each one measures, and tells you where XmlEssentials is still behind System.Text.Json.
 
 <Columns cols={3}>
   <Card title="1.3× to 19× faster" icon="bolt">
-    Than `System.Xml` across all 49 comparisons in the suite. No row is slower.
+    Than `System.Xml`, on every row of the tables on this page.
   </Card>
   <Card title="0 bytes" icon="memory">
     Allocated when you write a document or an object into a buffer you own.
@@ -87,7 +87,7 @@ Small payloads show the fixed cost of each API: what you pay before the first by
 
 ### Single values
 
-One value as a whole document, such as `<Int32>12345</Int32>`.
+One value as a whole document, such as `<int>12345</int>`.
 
 | Operation | System.Xml | System.Text.Json | XmlEssentials | Faster than System.Xml |
 | --- | --- | --- | --- | --- |
@@ -127,22 +127,21 @@ A [source-generated context](/guides/source-generation) needs no reflection, whi
 | Read a customer | 8.9 µs / 16,496 B | 3.3 µs / 3,168 B | 3.1 µs / 3,104 B |
 | Write a customer | 4.2 µs / 8,648 B | 1.7 µs / 0 B | 1.3 µs / 0 B |
 
-The first call for a type through reflection costs about 0.6 ms while the serializer builds its plan for that type. Every later call uses the cached plan.
+The first call for a type through reflection costs about 0.6 ms while the serializer builds the type info for that type and options instance. Every later call with the same options uses the cached type info. See [Reflection vs. source generation](/guides/reflection-vs-source-generation#what-each-approach-costs).
 
 ## How XmlEssentials compares with System.Text.Json
 
-XmlEssentials has the same API shape as System.Text.Json, so it's fair to ask whether it has the same speed. It's close, and it isn't equal:
+XmlEssentials has the same API shape as System.Text.Json, so it's fair to ask whether it has the same speed. It's close, and it isn't equal. In the tables above:
 
-- **Ahead** on polymorphic objects (read 113 µs against 146 µs, write 73 µs against 82 µs) and on writing a customer with source generation (1.3 µs against 1.5 µs).
-- **Level**, within a few percent, on reading a customer and on reading objects created through constructors.
-- **Behind by 1.2× to 2.2×** on most other rows. The widest gaps are single values: 55 ns against 25 ns to read an `int`.
+- **Ahead** on the objects of three derived types (read 113 µs against 146 µs, write 73 µs against 82 µs). Each library writes them in its default shape: XmlEssentials names each element for its type, and System.Text.Json writes a `$type` property.
+- **Behind** on the other rows, by 1.07× to 2.2×. The widest gaps are single values: 55 ns against 25 ns to read an `int`.
 - **Equal or lower in memory** on most rows.
 
-XML asks more of a parser than JSON does. `<Int32>1</Int32>` is three tokens, and the name has to match at both ends; in JSON, `1` is one token. The XmlEssentials tokenizer alone takes about 42 ns on that element, so System.Text.Json's 25 ns isn't reachable for XML. What you get instead is XML at a cost close to JSON's.
+XML asks more of a parser than JSON does. `<int>1</int>` is three tokens, and the name has to match at both ends; in JSON, `1` is one token. Reading those three tokens takes the XmlEssentials reader alone longer than System.Text.Json takes for the whole value, so a single XML value can't be read as fast as a JSON one. What you get instead is XML at a cost close to JSON's.
 
 ## How the benchmarks are run
 
-- [BenchmarkDotNet](https://benchmarkdotnet.org) 0.15.8, `ShortRun` job, .NET 11.0 on x64, Windows 11 on an Intel Core Ultra 9 285K (run under Hyper-V on 2026-11-23).
+- [BenchmarkDotNet](https://benchmarkdotnet.org) 0.15.8, `ShortRun` job with the in-process toolchain, .NET 11.0 on x64, Windows 11 on an Intel Core Ultra 9 285K (run under Hyper-V on 2026-11-23).
 - Each library reads the document it wrote itself, and each side keeps the same whitespace and comments.
 - The `System.Xml` serializer and its reader and writer settings are created once and reused, which is the fastest way to use them. XmlEssentials writers are reused with `Reset`.
 - The 0 B results are also enforced by unit tests that measure allocated bytes, so they can't drift without a test failing.
@@ -166,14 +165,13 @@ XML asks more of a parser than JSON does. `<Int32>1</Int32>` is three tokens, an
     dotnet run -c Release --project CloudNimble.XmlEssentials.Performance -f net11.0 -- --filter "*"
     ```
 
-    The full suite takes about 15 minutes.
   </Step>
   <Step title="Or run one group">
     ```bash
     dotnet run -c Release --project CloudNimble.XmlEssentials.Performance -f net11.0 -- --filter "*RealDocumentBenchmarks*"
     ```
 
-    The groups are `Utf8XmlReaderBenchmarks`, `Utf8XmlWriterBenchmarks`, `XmlDocumentBenchmarks`, `RealDocumentBenchmarks`, `XmlSerializerBenchmarks`, `XmlSerializerObjectBenchmarks`, `XmlSerializerGraphBenchmarks`, and `XmlSerializerSequenceBenchmarks`.
+    The groups are `RealDocumentBenchmarks`, `Utf8XmlReaderBenchmarks`, `Utf8XmlReaderFlowBenchmarks`, `Utf8XmlWriterBenchmarks`, `Utf8XmlWriterStyleBenchmarks`, `XmlDocumentBenchmarks`, `XmlNodeBenchmarks`, `XmlSerializerBenchmarks`, `XmlSerializerFeatureBenchmarks`, `XmlSerializerGraphBenchmarks`, `XmlSerializerObjectBenchmarks`, `XmlSerializerObjectSequenceBenchmarks`, `XmlSerializerSequenceBenchmarks`, and `XmlSerializerSourceGenBenchmarks`. The tables on this page come from `RealDocumentBenchmarks`, `Utf8XmlReaderBenchmarks`, `Utf8XmlWriterBenchmarks`, `XmlDocumentBenchmarks`, `XmlSerializerBenchmarks`, `XmlSerializerObjectBenchmarks`, and `XmlSerializerGraphBenchmarks`.
   </Step>
   <Step title="Read the results">
     BenchmarkDotNet writes a Markdown table for each group to `BenchmarkDotNet.Artifacts/results`.

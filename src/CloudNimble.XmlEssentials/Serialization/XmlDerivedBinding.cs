@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// One derived type that can appear where a base member is expected.
     /// </summary>
-    internal readonly struct XmlDerivedBinding
+    internal sealed class XmlDerivedBinding
     {
 
         #region Public Properties
@@ -15,6 +15,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets the type info of <see cref="Type"/>.
         /// </summary>
         internal XmlTypeInfo Info { get; }
+
+        /// <summary>
+        /// Gets whether <see cref="Type"/> is the declared type of the member or item, or derives from it. It is
+        /// asked of the type system once, when the binding is made, and not for every value that is read.
+        /// </summary>
+        internal bool IsOfDeclaredType { get; init; }
 
         /// <summary>
         /// Gets the namespace the element was declared with, when this is an alternative of a choice of elements
@@ -44,6 +50,11 @@ namespace CloudNimble.Text.Xml.Serialization
         internal byte[] Utf8Name { get; }
 
         /// <summary>
+        /// Gets <see cref="Discriminator"/> as UTF-8, which is what the value of an attribute is compared with.
+        /// </summary>
+        internal byte[] Utf8Discriminator { get; }
+
+        /// <summary>
         /// Gets the UTF-8 namespace of the element named for the derived type, or null when none was given and the
         /// element is written under its name alone.
         /// </summary>
@@ -68,6 +79,7 @@ namespace CloudNimble.Text.Xml.Serialization
             Type = type;
             Info = info;
             Discriminator = discriminator;
+            Utf8Discriminator = System.Text.Encoding.UTF8.GetBytes(discriminator);
         }
 
         #endregion

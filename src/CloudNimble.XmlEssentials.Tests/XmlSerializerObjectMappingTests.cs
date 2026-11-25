@@ -24,7 +24,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         private const string RefsNamespace = "urn:CloudNimble.Text.Xml:refs";
         private const string XsiNamespace = "http://www.w3.org/2001/XMLSchema-instance";
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true };
         private static readonly XmlSerializerOptions Preserve = new() { OmitXmlDeclaration = true, ReferenceHandler = XmlReferenceHandler.Preserve };
 
         [TestMethod]
@@ -268,6 +268,20 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Dictionary_KeyLongerThanTheNameLimit_IsRejected()
+        {
+            // The longest element name here that is not a key is DictionaryOfStringString, 24 bytes.
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, MaxNameByteCount = 24 };
+            XmlSerializer.Serialize(new Dictionary<string, int> { ["abcd"] = 1 }, options)
+                .Should().Be("<DictionaryOfStringInt32><abcd>1</abcd></DictionaryOfStringInt32>");
+            var longer = new string('k', 25);
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new Dictionary<string, int> { [longer] = 1 }, options))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxNameByteCount exceeded (24). Path: /DictionaryOfStringInt32.");
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new Dictionary<string, string> { [longer] = "v" }, options))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("MaxNameByteCount exceeded (24). Path: /DictionaryOfStringString.");
+        }
+
+        [TestMethod]
         public void Person_DeeperThanTheDepthLimit_IsRejected()
         {
             var options = new XmlSerializerOptions { OmitXmlDeclaration = true, MaxDepth = 1 };
@@ -488,6 +502,38 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void AttributeNamesInOneNamespace_AreOneName_AndAreRefused()
+        {
+            FluentActions.Invoking(() => XmlSerializer.Serialize(new QualifiedAttributeTwins(), Bare))
+                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The type maps more than one member to the attribute name 'href'.");
+        }
+
+        [TestMethod]
+        [DataRow("<HrefPair href=\"p\" xmlns:ns1=\"urn:a\" ns1:href=\"q\"/>", false)]
+        [DataRow("<HrefPair xmlns:x=\"urn:a\" x:href=\"q\" href=\"p\"/>", false)]
+        [DataRow("<HrefPair xmlns:x=\"urn:a\" x:HREF=\"q\" HREF=\"p\"/>", true)]
+        public void AttributeNamesInTwoNamespaces_AreTwoNames_AndEachAttributeGoesToTheMemberOfItsNamespace(string xml, bool ignoreCase)
+        {
+            var read = XmlSerializer.Deserialize<HrefPair>(xml, new XmlSerializerOptions { PropertyNameCaseInsensitive = ignoreCase })!;
+
+            read.Plain.Should().Be("p");
+            read.Qualified.Should().Be("q");
+            XmlSerializer.Serialize(read, Bare).Should().Be("<HrefPair href=\"p\" xmlns:ns1=\"urn:a\" ns1:href=\"q\"/>");
+        }
+
+        [TestMethod]
+        public void AttributeNamesInTwoNamespaces_LeaveAnAttributeOfAThirdNamespace_Unmapped()
+        {
+            // An attribute with no prefix is in no namespace, so the member with no namespace takes that one only.
+            var read = XmlSerializer.Deserialize<HrefPair>("<HrefPair xmlns:b=\"urn:b\" b:href=\"o\"/>")!;
+
+            read.Plain.Should().BeNull();
+            read.Qualified.Should().BeNull();
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<HrefPair>("<HrefPair xmlns:b=\"urn:b\" b:href=\"o\"/>", XmlSerializerOptions.Strict))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown attribute 'href'. Path: /HrefPair | LineNumber: 1 | BytePositionInLine: 39.");
+        }
+
+        [TestMethod]
         public void ElementNamesInOneNamespace_AreOneName_AndAreRefused()
         {
             FluentActions.Invoking(() => XmlSerializer.Serialize(new QualifiedTwins(), Bare))
@@ -525,6 +571,29 @@ namespace CloudNimble.XmlEssentials.Tests
 
             read.Plain.Should().Be("p");
             read.Qualified.Should().Be("q");
+        }
+
+        [TestMethod]
+        public void DerivedElementNames_AreMatchedAsPropertyNameCaseInsensitiveSays()
+        {
+            // An element named for a derived type is matched by the rule every member's element is matched by.
+            const string exact = "<Shelf><Book><Title>t</Title><Author>a</Author></Book></Shelf>";
+            const string lower = "<Shelf><book><Title>t</Title><Author>a</Author></book></Shelf>";
+            var ignoreCase = new XmlSerializerOptions { PropertyNameCaseInsensitive = true };
+            XmlSerializer.Deserialize<Shelf>(exact)!.Item.Should().BeOfType<Book>().Which.Author.Should().Be("a");
+            XmlSerializer.Deserialize<Shelf>(exact, ignoreCase)!.Item.Should().BeOfType<Book>().Which.Author.Should().Be("a");
+            XmlSerializer.Deserialize<Shelf>(lower, ignoreCase)!.Item.Should().BeOfType<Book>().Which.Author.Should().Be("a");
+
+            // With case respected, <book> is not the element of Book: no member takes it.
+            XmlSerializer.Deserialize<Shelf>(lower)!.Item.Should().BeNull();
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<Shelf>(lower, XmlSerializerOptions.Strict))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("Unknown element 'book'. Path: /Shelf | LineNumber: 1 | BytePositionInLine: 14.");
+
+            // The document element follows the same rule.
+            const string lowerRoot = "<book><Title>t</Title><Author>a</Author></book>";
+            XmlSerializer.Deserialize<Product>(lowerRoot, ignoreCase).Should().BeOfType<Book>().Which.Author.Should().Be("a");
+            FluentActions.Invoking(() => XmlSerializer.Deserialize<Product>(lowerRoot))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The root element does not match 'Product'. Path: /Product | LineNumber: 1 | BytePositionInLine: 7.");
         }
 
         [TestMethod]

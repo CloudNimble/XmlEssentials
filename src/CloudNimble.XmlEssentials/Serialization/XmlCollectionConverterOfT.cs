@@ -24,6 +24,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         /// <param name="options">The serializer options.</param>
         /// <param name="elementType">The CLR type the collection holds.</param>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         public XmlCollectionConverter(XmlSerializerOptions options, Type elementType)
         {
             _items = XmlCollectionBinding.Create(typeof(TCollection), elementType, wrapped: true, [], options.GetTypeInfo(elementType), mixed: false);
@@ -54,9 +55,12 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 try
                 {
-                    while (reader.Read())
+                    var openTag = _items.ItemTypeInfo.RootLeafOpenTag;
+                    var closeTag = _items.ItemTypeInfo.RootLeafCloseTag;
+                    while (true)
                     {
-                        if (reader.TokenType is XmlTokenType.EndElement)
+                        _items.ReadWholeItems(ref reader, builder, openTag, closeTag);
+                        if (!reader.Read() || reader.TokenType is XmlTokenType.EndElement)
                         {
                             break;
                         }

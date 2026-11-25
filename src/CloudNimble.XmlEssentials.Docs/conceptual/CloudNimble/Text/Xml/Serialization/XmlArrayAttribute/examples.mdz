@@ -2,7 +2,7 @@ The following examples show the names and the shapes that a wrapped collection p
 
 ### Default item names
 
-Without `[XmlArrayItem]`, each item of a wrapped collection is named after its .NET type.
+Without `[XmlArrayItem]`, each item of a wrapped collection is named after its type. A built-in type has its XML Schema name, so an `int` item is `<int>`.
 
 ```csharp
 public sealed class Scoreboard

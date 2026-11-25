@@ -22,7 +22,7 @@ public sealed class DateRange
 ```
 
 ```csharp
-var options = new XmlSerializerOptions { OmitXmlDeclaration = true, PropertyNameCaseInsensitive = true };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
 var week = new DateRange(new DateOnly(2026, 3, 9), days: 7);
 
 string xml = XmlSerializer.Serialize(week, options);

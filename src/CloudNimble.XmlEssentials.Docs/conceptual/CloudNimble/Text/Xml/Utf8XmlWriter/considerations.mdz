@@ -14,7 +14,7 @@ A writer isn't thread safe. Use each instance from one thread at a time. See [Th
 
 ### Allocation
 
-A writer that's reused with `Reset` allocates nothing per document. In the library's benchmarks, a small document takes 55 ns and 0 B with a reused writer, against 325 ns and 7,328 B for `System.Xml.XmlWriter`. See [Benchmarks](/benchmarks).
+A writer that's reused with `Reset` allocates nothing per document. `Reset` discards bytes that are still pending, so call `Flush` first to keep them. See [Benchmarks](/benchmarks) for the measurements.
 
 ### Namespaces
 
@@ -22,7 +22,7 @@ The writer tracks the namespaces in scope and declares what's missing: a default
 
 ### Indentation
 
-With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text is written on one line, with everything in it.
+With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text, a CDATA section, or raw XML from `WriteRawValue` is written on one line, with everything in it.
 
 ### Layout
 
@@ -31,11 +31,12 @@ Every line break the writer writes is the `NewLine` of its options, including a 
 ### What isn't checked
 
 - `WriteRawValue` copies its input without escaping it. It checks that the input is well formed where it is written only when `skipInputValidation` is `false` and the writer does not have `SkipValidation` set.
+- With `SkipValidation` set, names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, and unclosed elements at `Dispose` aren't checked. Values are still escaped, and the single root, `MaxDepth`, and `MaxAttributeCount` are still enforced.
 
 ### Differences from Utf8JsonWriter
 
 - There's no property-name step. Structure comes from `WriteStartElement` and `WriteEndElement`, and attributes are written on the open start tag.
-- Validation is on by default and also covers names and namespaces. `SkipValidation` doesn't turn off the single-root check or the limits.
+- Validation is on by default and also covers names and namespaces. `SkipValidation` doesn't turn off the single-root check, `MaxDepth`, or `MaxAttributeCount`.
 - `Dispose` throws when the document is incomplete.
 
 ### Differences from System.Xml.XmlWriter

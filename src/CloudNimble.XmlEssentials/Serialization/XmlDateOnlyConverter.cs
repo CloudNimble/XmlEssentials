@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="DateOnly"/> as <c>xs:date</c>.
     /// </summary>
-    internal sealed class XmlDateOnlyConverter : XmlValueConverter<DateOnly>
+    internal sealed class XmlDateOnlyConverter : XmlFormattedValueConverter<DateOnly>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlDateOnlyConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 10;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, DateOnly value, XmlSerializerOptions options)
+        internal override int Format(DateOnly value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteStringValue(value);
+            return XmlLexical.FormatDate(value.Year, value.Month, value.Day, destination);
         }
 
         #endregion

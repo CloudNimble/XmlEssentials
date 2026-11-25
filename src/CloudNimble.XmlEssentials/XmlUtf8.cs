@@ -46,6 +46,17 @@ namespace CloudNimble.Text.Xml
         #region Public Methods
 
         /// <summary>
+        /// Returns an array that holds <paramref name="utf8"/> and does not depend on the buffer it is in:
+        /// a shared array for nothing and for a well-known namespace, and otherwise a copy.
+        /// </summary>
+        /// <param name="utf8">The bytes, which may be in a buffer that is about to be replaced.</param>
+        /// <returns>The array.</returns>
+        public static byte[] Owned(ReadOnlySpan<byte> utf8)
+        {
+            return TryInternKnown(utf8) ?? utf8.ToArray();
+        }
+
+        /// <summary>
         /// Returns a well-known interned URI array when <paramref name="uri"/> matches, otherwise null.
         /// </summary>
         /// <param name="uri">The URI bytes.</param>

@@ -38,8 +38,8 @@ The code produces the following output:
 
 ```text
 ada@contoso.example chose pro
-The required member 'Email' is missing.
-The required member 'Plan' is missing.
+The required member 'Email' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 46.
+The required member 'Plan' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 64.
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)

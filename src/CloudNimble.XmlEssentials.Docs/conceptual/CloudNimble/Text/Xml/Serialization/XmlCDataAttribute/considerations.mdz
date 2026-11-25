@@ -1,6 +1,6 @@
 - `[XmlCData]` follows the rules of `[XmlText]`. A type can have one member with either attribute, and it can't also have members mapped to child elements. The serializer throws `NotSupportedException` otherwise.
 - The member must have a simple type: a type with a built-in value converter, an enumeration, or the nullable form of either.
 - The attribute affects writing only. When reading, escaped text and CDATA sections are accepted alike, so `<Script>a &lt; b</Script>` gives the same value as the CDATA form.
-- A value that contains `]]>` can't be written. The serializer throws `XmlException` with the message `CDATA must not contain ']]>'.` The value is not split into several sections. Use `[XmlText]` when the value can contain that sequence.
+- A value that contains `]]>` is split at each `]]>` and written as several sections: `a]]>b` is written as `<![CDATA[a]]]]><![CDATA[>b]]>`. A reader joins them again, and the value reads back as it was.
 - A `null` value writes no content, which leaves the element empty.
 - CDATA is a way of writing text, not a different kind of data. A consumer that parses the document sees the same characters either way.

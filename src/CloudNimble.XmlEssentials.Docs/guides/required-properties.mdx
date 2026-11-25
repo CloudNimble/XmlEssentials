@@ -54,8 +54,8 @@ The code produces the following output:
 
 ```text
 ada@contoso.example chose pro
-The required member 'Email' is missing.
-The required member 'Plan' is missing.
+The required member 'Email' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 46.
+The required member 'Plan' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 64.
 ```
 
 A missing required member throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). The message names the member by its XML name, so a member renamed with `[XmlPropertyName("email")]` is reported as `email`. `Referrer` isn't required, so the first document is accepted without it.
@@ -96,7 +96,7 @@ output.WriteLine($"Email is empty: {empty!.Email.Length == 0}");
 The code produces the following output:
 
 ```text
-The required member 'Email' cannot be nil.
+The required member 'Email' cannot be nil. Path: /Registration/Email | LineNumber: 2 | BytePositionInLine: 27.
 Email is empty: True
 ```
 
@@ -132,7 +132,7 @@ The code produces the following output:
 
 ```text
 SPRING: 10% off
-The required constructor parameter 'Code' is missing.
+The required constructor parameter 'Code' is missing. Path: /Coupon | LineNumber: 1 | BytePositionInLine: 45.
 (null): 25% off
 ```
 
@@ -177,9 +177,9 @@ The code produces the following output:
 
 ```text
 Skip: ada@contoso.example chose pro
-Disallow: Unknown element 'Coupon'.
+Disallow: Unknown element 'Coupon'. Path: /Registration | LineNumber: 1 | BytePositionInLine: 73.
 Skip: ada@contoso.example chose pro
-Disallow: Unknown attribute 'source'.
+Disallow: Unknown attribute 'source'. Path: /Registration | LineNumber: 1 | BytePositionInLine: 28.
 ```
 
 Keep these details in mind:
@@ -189,7 +189,7 @@ Keep these details in mind:
 - A member marked `[XmlIgnore]` isn't mapped. With `Disallow`, an element for it is an error.
 - When the type has a member marked with [`[XmlExtensionData]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlExtensionDataAttribute), unmapped elements and attributes are collected there instead, and `Disallow` doesn't reject them.
 
-[`XmlSerializerOptions.Strict`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) turns on `Disallow` together with two other checks. See [Configure XmlSerializerOptions](/guides/configure-options).
+[`XmlSerializerOptions.Strict`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) turns on `Disallow` together with three other checks: duplicate elements, comments, and nullable annotations. See [Configure XmlSerializerOptions](/guides/configure-options).
 
 ## See also
 

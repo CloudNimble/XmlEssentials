@@ -160,11 +160,11 @@ Know the following about the defaults and what each group of options does.
 
 ### Limits
 
-A limit of 0 selects its default. There's no value that turns a limit off. `MaxAttributeCount` includes namespace declarations, including the ones the writer adds. `MaxNameByteCount` applies to element names, attribute names, and prefixes. The writer has no limit on text or on the size of the document.
+A limit of 0 selects its default. There's no value that turns a limit off, but `SkipValidation` skips the `MaxNameByteCount` check along with the name checks. `MaxAttributeCount` includes namespace declarations, including the ones the writer adds. `MaxNameByteCount` applies to element names, attribute names, and prefixes. The writer has no limit on text or on the size of the document.
 
 ### What indentation does
 
-`Indented` adds a line break and indentation before elements, comments, and processing instructions. An element that holds text is written on one line, with any child elements, so that no value changes.
+`Indented` adds a line break and indentation before elements, comments, and processing instructions. An element that holds text, a CDATA section, or raw XML is written on one line, with any child elements, so that no value changes. `IndentCharacter` accepts a space or a tab; any other character throws `ArgumentOutOfRangeException`.
 
 ### What the layout options do
 
@@ -174,7 +174,7 @@ A limit of 0 selects its default. There's no value that turns a limit off. `MaxA
 
 ### What SkipValidation skips
 
-With `SkipValidation` set, the writer doesn't check names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, or that every element is closed when the writer is disposed. It still escapes values, allows only one root element, and enforces `MaxDepth` and `MaxAttributeCount`.
+With `SkipValidation` set, the writer doesn't check names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, or that every element is closed when the writer is disposed. It also doesn't check `WriteRawValue` input. It still escapes values and rejects characters XML doesn't allow in them, allows only one root element, rejects text and CDATA sections at the document level, rejects `--` in a comment, `]]>` in a CDATA section, and `?>` in processing instruction data, and enforces `MaxDepth` and `MaxAttributeCount`.
 
 ## Constructors
 

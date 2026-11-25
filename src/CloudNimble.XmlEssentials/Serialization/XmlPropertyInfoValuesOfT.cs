@@ -23,7 +23,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Creates the mapping of a collection member, closed over its item type; or null when the member is not a collection.
         /// </summary>
-        internal Func<Type, bool, byte[], XmlTypeInfo, bool, XmlCollectionBinding>? CreateCollectionBinding;
+        internal Func<bool, byte[], XmlTypeInfo, bool, XmlCollectionBinding>? CreateCollectionBinding;
 
         /// <summary>
         /// The item type of a collection member, or null.

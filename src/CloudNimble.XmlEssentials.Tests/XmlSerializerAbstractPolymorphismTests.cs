@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CloudNimble.Text.Xml;
+using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Tests.POCOs;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -20,7 +21,7 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Fields
 
         private const string Xsi = "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"";
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true };
 
         #endregion
 

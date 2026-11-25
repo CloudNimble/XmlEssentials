@@ -80,7 +80,7 @@ Monitor: 249.00
 
 ### Read here, edit there
 
-The document can't be changed. Call `XmlElement.CloneNode` on the element you need to edit, change the copy in the mutable tree, and write the copy. See [How to build and change XML with XmlNode](/guides/use-xmlnode).
+The document can't be changed. Call `XmlElement.CloneNode` on the element you need to edit, change the copy in the mutable tree, and write the copy. `CloneNode` copies everything under the element at once, so the copy stays valid after the document is disposed. When you parse only to edit, `XmlNode.Parse` gives you the tree directly. See [How to build and change XML with XmlNode](/guides/use-xmlnode).
 
 ### Copy part of a document into new output
 

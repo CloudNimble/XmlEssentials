@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="ulong"/> as <c>xs:unsignedLong</c>.
     /// </summary>
-    internal sealed class XmlUInt64Converter : XmlValueConverter<ulong>
+    internal sealed class XmlUInt64Converter : XmlFormattedValueConverter<ulong>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlUInt64Converter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 20;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, ulong value, XmlSerializerOptions options)
+        internal override int Format(ulong value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteNumberValue(value);
+            return FormatNumber(value, destination);
         }
 
         #endregion

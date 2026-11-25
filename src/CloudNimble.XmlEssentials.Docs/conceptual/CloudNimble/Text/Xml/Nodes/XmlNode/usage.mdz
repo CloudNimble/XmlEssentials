@@ -17,8 +17,8 @@ const string xml = """
     </Order>
     """;
 
-XmlNode? order = XmlNode.Parse(xml);
-output.WriteLine(order!.ToString());
+XmlNode order = XmlNode.Parse(xml);
+output.WriteLine(order.ToString());
 
 try
 {

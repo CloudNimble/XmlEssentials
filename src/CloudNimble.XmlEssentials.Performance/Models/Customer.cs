@@ -22,6 +22,7 @@ namespace CloudNimble.XmlEssentials.Performance.Models
         /// Gets or sets the order lines, one <c>Lines</c> element each.
         /// </summary>
         [Bcl.XmlElement("Lines")]
+        [Xe.XmlElement("Lines")]
         public List<OrderLine>? Lines { get; set; }
 
         /// <summary>

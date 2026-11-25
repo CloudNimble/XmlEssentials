@@ -1,5 +1,5 @@
 - **`Encode` doesn't check the name.** It only converts to UTF-8. The writer checks that the bytes are a valid XML name each time it writes them, unless `XmlWriterOptions.SkipValidation` is set. This is unlike `JsonEncodedText`, which escapes when it encodes.
 - **`Encode` allocates one array** and copies its input into it, including the overload that takes UTF-8 bytes.
-- **The writer methods that take it write an element in no namespace:** `WriteStartElement`, `WriteEmptyElement`, `WriteNilElement`, and the `WriteElement*` methods. They write an element with no prefix and no namespace argument. For attribute names, prefixed names, and names in a namespace, use the `string` or UTF-8 overloads.
-- **The default value is an empty name.** `default(XmlEncodedText)` has an empty `EncodedUtf8Bytes`, and the writer rejects an empty name.
+- **The writer methods that take it write an element with no prefix and no namespace argument:** `WriteStartElement`, `WriteEmptyElement`, `WriteNilElement`, and the `WriteElement*` methods. Like `WriteStartElement(string)`, they declare no namespace for the element, so under a default namespace the element is in that namespace. For attribute names, prefixed names, and names with a namespace argument, use the `string` or UTF-8 overloads.
+- **The default value is an empty name.** `default(XmlEncodedText)` has an empty `EncodedUtf8Bytes`, and the writer rejects an empty name unless `SkipValidation` is set.
 - **Equality is by bytes.** Two values are equal when their UTF-8 bytes are the same, with no Unicode normalization.

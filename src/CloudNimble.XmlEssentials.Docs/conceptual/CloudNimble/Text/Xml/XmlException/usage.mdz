@@ -30,7 +30,7 @@ Path: (not set)
 
 | Property | Value |
 | --- | --- |
-| `Message` | What's wrong. It doesn't include the position. |
+| `Message` | What's wrong. From `Utf8XmlReader`, it doesn't include the position. When the library sets `Path`, the path, the line, and the position in the line follow the message. |
 | `LineNumber` | The line, counting from 1, or `null`. |
 | `LinePosition` | The position in the line, counting from 1, in UTF-8 bytes, or `null`. |
 | `BytePosition` | The offset from the start of the document, counting from 0, or `null`. |

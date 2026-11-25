@@ -149,6 +149,46 @@ The code produces the following output:
 
 An item is named for its type: the XML Schema name for a built-in type, such as `int` or `string`, and the class name otherwise. These are the names `System.Xml.Serialization` writes. An element naming policy on the options applies to default wrapper and item names, and doesn't change names you set in the attributes.
 
+### Wrap every collection
+
+To wrap every collection without marking each member, set `XmlSerializerOptions.DefaultCollectionMapping` to `XmlCollectionMapping.Wrapped`. A collection member with no mapping attribute then gets a wrapper named after the member and items named for their type, as if it had `[XmlArray]`.
+
+```csharp Album.cs
+public class Album
+{
+    public string? Title { get; set; }
+    public List<string> Tracks { get; set; } = [];
+    public int[] Ratings { get; set; } = [];
+    public Dictionary<string, int> Plays { get; set; } = [];
+}
+```
+
+```csharp Program.cs
+var album = new Album { Title = "T", Tracks = { "a", "b" }, Ratings = [5, 4], Plays = { ["x"] = 1 } };
+
+var unwrapped = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(album, unwrapped));
+
+var wrapped = new XmlSerializerOptions
+{
+    OmitXmlDeclaration = true,
+    DefaultCollectionMapping = XmlCollectionMapping.Wrapped,
+};
+output.WriteLine(XmlSerializer.Serialize(album, wrapped));
+```
+
+The code produces the following output:
+
+```xml
+<Album><Title>T</Title><Tracks>a</Tracks><Tracks>b</Tracks><Ratings>5</Ratings><Ratings>4</Ratings><Plays><x>1</x></Plays></Album>
+<Album><Title>T</Title><Tracks><string>a</string><string>b</string></Tracks><Ratings><int>5</int><int>4</int></Ratings><Plays><x>1</x></Plays></Album>
+```
+
+- The setting applies to members with no mapping attribute. A member with `[XmlElement]` stays unwrapped, and a member with `[XmlArray]` or `[XmlArrayItem]` keeps the names you gave it.
+- A dictionary is written the same way under either value: it always has an element of its own.
+- Read the document with the options that wrote it. The setting decides where the serializer looks for the items.
+- `XmlSerializerOptions.Bcl` sets `Wrapped`, along with the other settings that match `System.Xml.Serialization.XmlSerializer`. See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer#keep-the-old-defaults).
+
 ## Empty and null collections
 
 The two shapes differ in what they can express. Without a wrapper there is no element to carry "empty" or "null", so both write nothing. A wrapper can show the difference.
@@ -187,7 +227,7 @@ When the XML has no element for a collection member, the serializer doesn't touc
 
 One option changes the `null` row for a wrapped collection:
 
-- With an ignore condition of `WhenWritingNull` or `WhenWritingDefault`, on the member or as `DefaultIgnoreCondition`, a `null` wrapped collection is left out.
+- With an ignore condition of `WhenWritingNull`, `WhenWritingNullReference`, or `WhenWritingDefault`, on the member or as `DefaultIgnoreCondition`, a `null` wrapped collection is left out.
 
 A `null` item inside a collection is written as an element marked `xsi:nil="true"` and reads back as `null`.
 
@@ -250,7 +290,7 @@ The rules for the two forms are:
 
 - The element form is used for a `string` key made of ASCII letters, digits, `.`, `-`, and `_` that starts with a letter or `_`.
 - The pair form is used for every other string key, for the key `Key` itself (an element named `Key` starts a pair when reading), and for every key that isn't a string, such as an `int` or a `Guid`.
-- A `null` value is written as an empty element. For a `string` value, that reads back as the empty string, not as `null`.
+- A `null` value is written as an element marked `xsi:nil="true"`, whatever the ignore condition, and reads back as `null`. In the pair form the mark is on `<Value>`.
 - If the same key appears twice when reading, the last entry wins.
 
 ### Dictionary key policy
@@ -382,6 +422,8 @@ When a member is populated:
 The following can't be populated. `PreferredObjectCreationHandling` leaves them as they are under `Replace`, and `[XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]` on such a member throws an `InvalidOperationException` the first time the type is used:
 
 - An array, an immutable or frozen collection, a collection or dictionary that is a value type, and a collection declared as a read-only interface such as `IEnumerable<T>` or `IReadOnlyList<T>`.
+- A collection or dictionary class with no public parameterless constructor, such as `ReadOnlyCollection<T>`, and a collection class that doesn't implement `ICollection<T>`, other than `Stack<T>` and `Queue<T>`.
+- A member marked `[XmlIgnore(Condition = XmlIgnoreCondition.WhenReading)]`, which is never read.
 - A single value such as a `string` or a number.
 - A value that has a custom converter, and mixed content.
 - A polymorphic type.

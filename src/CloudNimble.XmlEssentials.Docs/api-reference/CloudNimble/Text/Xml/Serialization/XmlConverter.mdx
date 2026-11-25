@@ -258,7 +258,8 @@ The default is [`false`](https://learn.microsoft.com/dotnet/csharp/language-refe
 
 #### Remarks
 
-When the value is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the serializer returns `default` for a nil element without calling [XmlConverter`1.Read](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter#read).
+When the value is [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool), the serializer returns [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) for a nil element without calling [XmlConverter`1.Read](/api-reference/CloudNimble/Text/Xml/Serialization/XmlConverter#read),
+and throws an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException) when *T* is a value type that cannot be [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null).
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsValueConverter <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

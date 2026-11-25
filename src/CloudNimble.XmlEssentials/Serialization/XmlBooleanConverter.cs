@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="bool"/> as <c>xs:boolean</c>.
     /// </summary>
-    internal sealed class XmlBooleanConverter : XmlValueConverter<bool>
+    internal sealed class XmlBooleanConverter : XmlFormattedValueConverter<bool>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlBooleanConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 5;
 
         #endregion
 
@@ -27,9 +34,11 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, bool value, XmlSerializerOptions options)
+        internal override int Format(bool value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteBooleanValue(value);
+            var text = value ? "true"u8 : "false"u8;
+            text.CopyTo(destination);
+            return text.Length;
         }
 
         #endregion

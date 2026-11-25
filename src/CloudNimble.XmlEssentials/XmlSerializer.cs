@@ -86,9 +86,16 @@ namespace CloudNimble.Text.Xml
         /// <param name="type">The CLR type.</param>
         /// <param name="options">The options, or <see langword="null"/> for <see cref="XmlSerializerOptions.Default"/>.</param>
         /// <returns>The type info.</returns>
+        /// <remarks>
+        /// Options that have no resolver are given the reflection-based one here, on their first use by a method
+        /// that takes options. Every such method says that it needs reflection.
+        /// </remarks>
+        [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         internal static XmlTypeInfo GetTypeInfo(Type type, XmlSerializerOptions? options)
         {
-            return (options ?? XmlSerializerOptions.Default).GetTypeInfo(type);
+            options ??= XmlSerializerOptions.Default;
+            options.UseReflectionResolverIfMissing();
+            return options.GetTypeInfo(type);
         }
 
         /// <summary>
@@ -412,6 +419,7 @@ namespace CloudNimble.Text.Xml
         /// tag has been read. Every child value starts in this scope.
         /// </param>
         /// <param name="resolver">The reference resolver shared by the values of this document, or null when references are not tracked.</param>
+        /// <param name="stack">What has been read of a value the last block ended in the middle of, when the type can be read a piece at a time; otherwise null, and a value is read once all of it has arrived.</param>
         /// <param name="values">Receives the values, in order.</param>
         /// <returns>The number of bytes used. Bytes after it belong to a value or token that is not complete yet.</returns>
         /// <remarks>
@@ -420,14 +428,36 @@ namespace CloudNimble.Text.Xml
         /// moved to where the last complete value ended. Tracking that costs three numbers per value; no
         /// reader is copied and no snapshot is captured per value.
         /// </remarks>
-        internal static int ReadAvailableChildren<TValue>(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlTypeInfo<TValue> typeInfo, ref XmlReaderState state, ref XmlReaderState scope, XmlReferenceResolver? resolver, List<TValue?> values)
+        internal static int ReadAvailableChildren<TValue>(ReadOnlySpan<byte> utf8Xml, bool isFinalBlock, XmlTypeInfo<TValue> typeInfo, ref XmlReaderState state, ref XmlReaderState scope, XmlReferenceResolver? resolver, XmlReadStack? stack, List<TValue?> values)
         {
             var reader = new Utf8XmlReader(utf8Xml, isFinalBlock, state);
             reader.GetResumePoint(out var start, out var lineNumber, out var lineStart);
             var end = start;
             var valueIsPartial = false;
-            while (!valueIsPartial && reader.Read())
+            if (stack is { Count: > 0 })
             {
+                // The last block ended in the middle of a value. It goes on from where it stopped.
+                valueIsPartial = !TryReadResumableValue(ref reader, typeInfo, stack, out var value);
+                if (!valueIsPartial)
+                {
+                    values.Add(value);
+                    reader.GetResumePoint(out end, out lineNumber, out lineStart);
+                }
+            }
+
+            while (!valueIsPartial)
+            {
+                // Inside the document element, a run of scalar values is read an element at a time in one step.
+                if (scope.Snapshot is not null && resolver is null && typeInfo.ReadWholeElements(ref reader, values) > 0)
+                {
+                    reader.GetResumePoint(out end, out lineNumber, out lineStart);
+                }
+
+                if (!reader.Read())
+                {
+                    break;
+                }
+
                 if (reader.TokenType is not XmlTokenType.StartElement)
                 {
                     continue;
@@ -439,7 +469,11 @@ namespace CloudNimble.Text.Xml
                 }
                 else
                 {
-                    valueIsPartial = !TryReadStreamedValue(ref reader, typeInfo, resolver, out var value);
+                    // A value that can be read a piece at a time is read as far as the block goes. Any other, and
+                    // one marked nil, is read once all of it has arrived.
+                    valueIsPartial = stack is null || typeInfo.IsNil(ref reader)
+                        ? !TryReadStreamedValue(ref reader, typeInfo, resolver, out var value)
+                        : !TryReadResumableValue(ref reader, typeInfo, stack, out value);
                     if (valueIsPartial)
                     {
                         continue;
@@ -449,6 +483,15 @@ namespace CloudNimble.Text.Xml
                 }
 
                 reader.GetResumePoint(out end, out lineNumber, out lineStart);
+            }
+
+            if (stack is { Count: > 0 })
+            {
+                // The block ended inside a value, and the next one starts there: the elements that are open and
+                // the namespaces in scope are those of the middle of the value, so the state is the reader's own.
+                reader.GetResumePoint(out end, out _, out _);
+                state = end > start ? reader.CurrentState : state;
+                return (int)(end - start);
             }
 
             if (scope.Snapshot is null)
@@ -463,6 +506,33 @@ namespace CloudNimble.Text.Xml
             }
 
             return (int)(end - start);
+        }
+
+        /// <summary>
+        /// Reads one value of an asynchronous sequence as far as the block goes, or goes on with the one
+        /// <paramref name="stack"/> holds.
+        /// </summary>
+        /// <typeparam name="TValue">The CLR type.</typeparam>
+        /// <param name="reader">The reader: on the start tag of the value, or where the last block ended inside it.</param>
+        /// <param name="typeInfo">The type info, whose object can be read a piece at a time.</param>
+        /// <param name="stack">What has been read of the value so far.</param>
+        /// <param name="value">When this method returns true, the value.</param>
+        /// <returns><see langword="false"/> if the end of the value is not in the block. The stack keeps what was read.</returns>
+        internal static bool TryReadResumableValue<TValue>(ref Utf8XmlReader reader, XmlTypeInfo<TValue> typeInfo, XmlReadStack stack, out TValue? value)
+        {
+            try
+            {
+                var complete = XmlResumableReader.TryRead(ref reader, stack, typeInfo.ResumableBinding!, typeInfo.Type, typeInfo.Options, out var read);
+                value = complete ? (TValue?)read : default;
+                return complete;
+            }
+            catch (XmlException ex)
+            {
+                // The path of an error in a value that is read from a stream starts at the element of the value.
+                reader.Locate(ex);
+                ex.AddElement(typeInfo.RootName.LocalName);
+                throw;
+            }
         }
 
         /// <summary>
@@ -520,8 +590,15 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         internal static bool TryReadStreamedValue<TValue>(ref Utf8XmlReader reader, XmlTypeInfo<TValue> typeInfo, XmlReferenceResolver? resolver, out TValue? value)
         {
+            // With no reference handler
+            // the resolver is the null the scope holds already, so nothing is set for each value.
             var previous = XmlReferenceScope.Current;
-            XmlReferenceScope.Current = resolver;
+            var scoped = !ReferenceEquals(previous, resolver);
+            if (scoped)
+            {
+                XmlReferenceScope.Current = resolver;
+            }
+
             try
             {
                 return typeInfo.TryReadElement(ref reader, out value);
@@ -535,7 +612,10 @@ namespace CloudNimble.Text.Xml
             }
             finally
             {
-                XmlReferenceScope.Current = previous;
+                if (scoped)
+                {
+                    XmlReferenceScope.Current = previous;
+                }
             }
         }
 
@@ -716,24 +796,19 @@ namespace CloudNimble.Text.Xml
         /// <param name="writer">The writer.</param>
         /// <param name="value">The value.</param>
         /// <param name="typeInfo">The type info.</param>
-        /// <param name="resolver">The resolver for the document the value belongs to, or null when references are not tracked.</param>
+        /// <param name="resolver">The resolver for the document the value belongs to.</param>
         /// <remarks>
         /// The resolver is current only while the value is written. Nothing is awaited in between, so it is
-        /// not seen by the code that produces the next value or by the stream.
+        /// not seen by the code that produces the next value or by the stream. With no reference handler nothing
+        /// that is written asks for a resolver, and the caller writes the value directly.
         /// </remarks>
-        internal static void WriteStreamedValue<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo<TValue> typeInfo, XmlReferenceResolver? resolver)
+        internal static void WriteStreamedValue<TValue>(Utf8XmlWriter writer, TValue value, XmlTypeInfo<TValue> typeInfo, XmlReferenceResolver resolver)
         {
             var previous = XmlReferenceScope.Current;
             XmlReferenceScope.Current = resolver;
             try
             {
                 typeInfo.WriteRoot(writer, value);
-            }
-            catch (XmlException ex)
-            {
-                // The path of an error is the elements the writer has open.
-                ex.SetPathIfMissing(writer.CurrentPath());
-                throw;
             }
             finally
             {

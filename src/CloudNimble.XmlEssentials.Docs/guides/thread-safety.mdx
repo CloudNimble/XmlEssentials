@@ -13,7 +13,7 @@ The serializer is built to be called from many threads with shared options, as `
 | --- | --- | --- |
 | `XmlSerializer` (static methods) | Yes | Each call has its own reader, writer, and buffers. |
 | `XmlSerializerOptions` | Yes, after it is read-only | Configure it on one thread. It becomes read-only on first use. |
-| `XmlSerializerOptions.Default`, `.Web`, `.Strict` | Yes | Read-only from the start. |
+| `XmlSerializerOptions.Default`, `.Web`, `.Strict`, `.Bcl` | Yes | Read-only from the start. |
 | `XmlSerializerContext` (source-generated) | Yes | Share `MyContext.Default`, or one instance you create. |
 | `XmlTypeInfo`, `XmlTypeInfo<T>`, `XmlPropertyInfo` | Yes | Their public properties can't be changed. |
 | `XmlName`, `XmlEncodedText`, `XmlReaderState` | Yes | Immutable values. |
@@ -57,7 +57,7 @@ The code produces the following output:
 What makes this safe:
 
 - The options keep resolved converters and type metadata in concurrent dictionaries, and the metadata for a type is built under a lock, so two threads that ask for the same type for the first time get the same instance.
-- The serializer reuses one `Utf8XmlWriter` and one buffer for each thread. They are held in thread-static fields and are never visible to another thread.
+- For a synchronous call, the serializer reuses one `Utf8XmlWriter` and one buffer for each thread, held in thread-static fields that no other thread sees. A call that crosses an `await`, such as `SerializeAsyncEnumerable`, takes a spare writer with an atomic exchange, so no two calls hold the same writer.
 - The state that reading an object needs is taken with an atomic exchange. A second thread that reads the same type at the same moment gets its own.
 
 ### Options become read-only on first use
@@ -155,9 +155,9 @@ See [Use XmlDocument](/guides/use-xmldocument).
 
 ## XmlNode
 
-The node types in `CloudNimble.Text.Xml.Nodes` (`XmlNode`, `XmlElementNode`, `XmlAttributeNode`, and the others) form a mutable tree backed by ordinary lists, with no locking. Treat a tree like a `List<T>`:
+The node types in `CloudNimble.Text.Xml.Nodes` (`XmlNode`, `XmlElementNode`, `XmlAttributeNode`, and the others) form a mutable tree with no locking. Treat a tree like a `List<T>`:
 
-- A tree that no thread is changing can be read from several threads.
+- A tree that no thread is changing can be read from several threads, once every node has been built. A tree from `XmlNode.Parse` builds each element's attributes and children the first time they are read, which writes to the tree, so two threads reading a part of a parsed tree that hasn't been read yet can race. Walk the whole tree once on one thread, reading each element's `Attributes` and `Children`, before you share it. Writing a tree out doesn't build it, so it isn't enough.
 - While any thread adds, removes, or changes a node, no other thread can use that tree, not even to read it. Use your own lock.
 
 See [Use XmlNode](/guides/use-xmlnode).

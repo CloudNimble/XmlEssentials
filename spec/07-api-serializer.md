@@ -174,6 +174,7 @@ public sealed class XmlSerializerOptions
 
     public bool IsReadOnly { get; }
     public void MakeReadOnly();
+    [RequiresUnreferencedCode, RequiresDynamicCode] public void MakeReadOnly(bool populateMissingResolver);   // as STJ
     public XmlTypeInfo GetTypeInfo(Type type);
     public XmlTypeInfo<T> GetTypeInfo<T>();
     public bool TryGetTypeInfo(Type type, [NotNullWhen(true)] out XmlTypeInfo? typeInfo);
@@ -229,7 +230,7 @@ Defaults (when unset / `0` on max-* except `MaxDocumentByteCount`):
 | `PreferredObjectCreationHandling` | `Replace`, as in System.Text.Json. A member with no setter is not read. See [object mapping](09-object-mapping.md#object-creation-handling). |
 | `RespectRequiredConstructorParameters` | `true` ([K37](01-identity-and-decisions.md#key-decisions)) |
 | `DefaultPropertyMapping` | `Element` ([K7](01-identity-and-decisions.md#key-decisions)). `Attribute` writes unannotated simple members as XML attributes; nested objects and collections stay elements. `[XmlElement]` / `[XmlAttribute]` / `[XmlText]` override per member. |
-| `TypeInfoResolver` | `DefaultXmlTypeInfoResolver.Instance` when reflection is enabled |
+| `TypeInfoResolver` | `null`. The members that say they need reflection give it `DefaultXmlTypeInfoResolver.Instance` when reflection is enabled ([AOT and trimming](12-aot-and-trimming.md)) |
 | `WhitespaceHandling` | forwarded to `Utf8XmlReader` on deserialize only ([K38](01-identity-and-decisions.md#key-decisions)) |
 | `General` / `Default` | identity names, write declaration, xsi:nil for null |
 | `Web` | CamelCase, `OmitXmlDeclaration = true` |
@@ -446,7 +447,7 @@ All reading goes through `Utf8XmlReader` and all writing through `Utf8XmlWriter`
 | A context in a chain | Asked by options that are not its own, a generated context creates type info for those options, so the options that hold the chain decide the declaration, the indentation, the limits and every setting a converter reads. Options that contradict a setting compiled into the context are refused. A hand-written context answers through `XmlSerializerContext`: a built-in scalar, an XML value, or `object` for the options that ask, and `GetTypeInfo(Type)` for anything else. |
 | Misconfigured converter | `InvalidOperationException`: a factory that returns `null` or another factory, a converter whose `T` is not the requested type, a resolver that answers with another type. These are never reported as "not supported". |
 | Read-only | Options become read-only on first `GetTypeInfo` / `TryGetTypeInfo` or first serializer call (not on `GetConverter`). Every setter and both lists then throw `InvalidOperationException`. |
-| `TypeInfoResolver` | Unset: `DefaultXmlTypeInfoResolver.Instance` when `IsReflectionEnabledByDefault`, else `null` (and using the options throws `InvalidOperationException`). An explicitly set resolver, the default one included, works with the switch off. |
+| `TypeInfoResolver` | Unset: `null`. The reflection overloads of `XmlSerializer`, `GetConverter`, `MakeReadOnly(populateMissingResolver: true)` and the shared `Default`/`Web`/`Strict`/`Bcl` instances set it to `DefaultXmlTypeInfoResolver.Instance` when `IsReflectionEnabledByDefault`; all of them carry `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. `GetTypeInfo` on options with no resolver throws `InvalidOperationException` (decision 85). An explicitly set resolver, the default one included, works with the switch off. |
 | `TypeInfoResolverChain` | A view of `TypeInfoResolver`, as STJ: empty until a resolver is set, the single resolver or the items of a chain afterwards. Changing the list makes it the resolver; setting the resolver replaces the list's content. It is not a second list searched before the resolver. |
 | `XmlSerializerContext` | The constructor makes the context the `TypeInfoResolver` of its options (new options when `null`), as STJ. Read-only options are rejected. |
 | Root name | Must match on read: local name, and namespace when `DefaultNamespace` is set. |
@@ -459,7 +460,7 @@ All reading goes through `Utf8XmlReader` and all writing through `Utf8XmlWriter`
 | Stream and pipe sources | Read to the end into a pooled buffer; `MaxDocumentByteCount` stops the read as soon as it is exceeded. `DeserializeAsync` does not block on the stream. A pipe is consumed as it is read, so a bounded pipe cannot stall. |
 | Failure while writing | What the writer still holds is dropped. A document that fits the writer buffer (16 KB by default) never reaches the destination half written; a longer one may have been passed on in part. |
 | DOM sources | The element or node is written to a pooled buffer as XML 1.1, with the namespace declarations it inherits, and read back. Content from a 1.0 or 1.1 document is unchanged. |
-| Async sequences | `SerializeAsyncEnumerable` writes each value as it arrives and flushes between values. `DeserializeAsyncEnumerable` returns each value as soon as the stream has delivered all of it: after every read it yields the values that are complete and keeps only the unfinished tail, so memory is one read plus at most one value, not the stream. A malformed part throws when it is reached; earlier values have already been returned. |
+| Async sequences | `SerializeAsyncEnumerable` writes each value as it arrives and flushes between values. `DeserializeAsyncEnumerable` returns each value as soon as the stream has delivered all of it: after every read it yields the values that are complete and keeps only the unfinished tail, so memory is one read plus at most one value, not the stream. A malformed part throws when it is reached; earlier values have already been returned. An object whose members are scalars, such objects, or collections of either keeps what it has read when a read ends inside it and goes on from there (decision 82 of the [doc findings](24-doc-findings-resolution.md)); any other value is read once all of it has arrived. |
 
 ```csharp
 namespace CloudNimble.Text.Xml.Serialization;

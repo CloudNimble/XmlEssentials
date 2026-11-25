@@ -3,4 +3,4 @@
 - The list doesn't check for duplicate names. Two attributes with the same name throw "Duplicate attribute." when the element is written. `XmlElementNode.SetAttribute` updates an existing attribute instead of adding a second one.
 - The list of a parsed element includes its namespace declarations (`xmlns` and `xmlns:prefix`), so `Count` can be larger than the number of attributes you think of as data.
 - The name indexers search the list from the start each time. That's the right trade for the handful of attributes a typical element has.
-- Changing the list while a `foreach` loop enumerates it throws `InvalidOperationException`.
+- Don't change the list while a `foreach` loop enumerates it. Collect the attributes to remove first, or loop by index from the end.

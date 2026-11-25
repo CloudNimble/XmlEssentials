@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="float"/> as <c>xs:float</c>.
     /// </summary>
-    internal sealed class XmlSingleConverter : XmlValueConverter<float>
+    internal sealed class XmlSingleConverter : XmlFormattedValueConverter<float>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlSingleConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 24;
 
         #endregion
 
@@ -33,14 +40,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, float value, XmlSerializerOptions options)
+        internal override int Format(float value, Span<byte> destination, XmlSerializerOptions options)
         {
-            if (options.NumberHandling is XmlNumberHandling.Strict && !float.IsFinite(value))
-            {
-                throw XmlException.Create("Named floating-point literals are not allowed when NumberHandling is Strict.");
-            }
-
-            writer.WriteNumberValue(value);
+            return FormatFloat(value, destination, options);
         }
 
         #endregion

@@ -123,7 +123,7 @@ namespace CloudNimble.XmlEssentials.Samples
 
             foreach (XmlElement shelf in library.EnumerateChildren())
             {
-                if (shelf.ValueKind is not XmlValueKind.Element || shelf.LocalName != "Shelf")
+                if (shelf.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil) || shelf.LocalName != "Shelf")
                 {
                     continue;
                 }
@@ -132,7 +132,7 @@ namespace CloudNimble.XmlEssentials.Samples
 
                 foreach (XmlElement book in shelf.EnumerateChildren())
                 {
-                    if (book.ValueKind is not XmlValueKind.Element || book.LocalName != "Book")
+                    if (book.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil) || book.LocalName != "Book")
                     {
                         continue;
                     }
@@ -184,7 +184,7 @@ namespace CloudNimble.XmlEssentials.Samples
         {
             foreach (XmlElement child in element.EnumerateChildren())
             {
-                if (child.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement))
+                if (child.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil))
                 {
                     continue;
                 }

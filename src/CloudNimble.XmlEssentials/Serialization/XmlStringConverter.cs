@@ -28,6 +28,24 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
+        internal override void WriteAttribute(Utf8XmlWriter writer, ReadOnlySpan<byte> local, ReadOnlySpan<byte> head, string value, XmlSerializerOptions options)
+        {
+            if (!writer.TryWritePlainAttribute(local, head, value))
+            {
+                base.WriteAttribute(writer, local, head, value, options);
+            }
+        }
+
+        /// <inheritdoc />
+        internal override void WriteLeaf(Utf8XmlWriter writer, ReadOnlySpan<byte> openTag, ReadOnlySpan<byte> closeTag, string value, XmlSerializerOptions options)
+        {
+            if (!writer.TryWritePlainLeaf(openTag, closeTag, value))
+            {
+                base.WriteLeaf(writer, openTag, closeTag, value, options);
+            }
+        }
+
+        /// <inheritdoc />
         internal override void WriteValue(Utf8XmlWriter writer, string value, XmlSerializerOptions options)
         {
             writer.WriteStringValue(value);

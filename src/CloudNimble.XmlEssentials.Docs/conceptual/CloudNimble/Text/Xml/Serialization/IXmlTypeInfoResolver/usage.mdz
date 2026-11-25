@@ -3,7 +3,7 @@ A resolver answers one question for the serializer: what is the contract for thi
 - `DefaultXmlTypeInfoResolver`, which builds contracts with reflection at run time.
 - Every source-generated `XmlSerializerContext`, which builds type info from the metadata the generator wrote.
 
-When you don't set a resolver, the options use `DefaultXmlTypeInfoResolver.Instance`. The following example prints the resolver that built the contract for a type no context lists:
+When you don't set a resolver, the first `XmlSerializer` call that takes the options gives them `DefaultXmlTypeInfoResolver.Instance`. The following example prints the resolver that built the contract for a type no context lists:
 
 ```csharp
 var receipt = new Receipt { Number = 77, Paid = 129.90m };

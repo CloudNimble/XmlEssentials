@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="TimeSpan"/> as <c>xs:duration</c>.
     /// </summary>
-    internal sealed class XmlTimeSpanConverter : XmlValueConverter<TimeSpan>
+    internal sealed class XmlTimeSpanConverter : XmlFormattedValueConverter<TimeSpan>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlTimeSpanConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 32;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, TimeSpan value, XmlSerializerOptions options)
+        internal override int Format(TimeSpan value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteStringValue(value);
+            return XmlLexical.FormatDuration(value, destination);
         }
 
         #endregion

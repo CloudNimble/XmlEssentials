@@ -30,6 +30,12 @@ namespace CloudNimble.Text.Xml.Serialization
         private readonly XmlTypeInfo _typeInfo;
         private readonly XmlValueConverter<TValue>? _valueConverter;
 
+        /// <summary>
+        /// The type of the member. A converter is handed it for every value it reads, and in code that is shared
+        /// between reference types <c>typeof</c> is a lookup at run time where this is a field.
+        /// </summary>
+        private readonly Type _valueType = typeof(TValue);
+
         #endregion
 
         #region Constructors
@@ -72,6 +78,7 @@ namespace CloudNimble.Text.Xml.Serialization
             _set = set;
             _ignore = ignore;
             _isScalar = XmlBuiltInConverters.IsScalar(typeof(TValue));
+            ReadsWholeLeaf = _valueConverter is not null && LeafOpenTag is not null && collection is null;
         }
 
         #endregion
@@ -93,7 +100,7 @@ namespace CloudNimble.Text.Xml.Serialization
             if (_valueConverter is not null && !reader.HasAttributes)
             {
                 // A built-in scalar with no attributes cannot be nil and has no derived types: read it directly.
-                Store(instance, values, _valueConverter.Read(ref reader, typeof(TValue), _typeInfo.Options));
+                Store(instance, values, _valueConverter.Read(ref reader, _valueType, _typeInfo.Options));
                 return;
             }
 
@@ -112,9 +119,12 @@ namespace CloudNimble.Text.Xml.Serialization
                     {
                         try
                         {
-                            while (reader.Read())
+                            // An item of a derived type is told apart by its element, so every item is looked at.
+                            var openTag = Polymorphism.IsActive ? null : collection.ItemLeafOpenTag;
+                            while (true)
                             {
-                                if (reader.TokenType is XmlTokenType.EndElement)
+                                collection.ReadWholeItems(ref reader, builder, openTag, collection.ItemLeafCloseTag);
+                                if (!reader.Read() || reader.TokenType is XmlTokenType.EndElement)
                                 {
                                     break;
                                 }
@@ -168,6 +178,37 @@ namespace CloudNimble.Text.Xml.Serialization
                 value = (TValue?)_typeInfo.ReadElementAsObject(ref reader);
             }
 
+            StoreChecked(instance, values, value);
+        }
+
+        /// <inheritdoc />
+        internal override bool HasValueConverter => _valueConverter is not null;
+
+        /// <inheritdoc />
+        internal override XmlTypeInfo ValueTypeInfo => _typeInfo;
+
+        /// <inheritdoc />
+        internal override void ReadNil(object? instance, object?[]? values)
+        {
+            StoreChecked(instance, values, default);
+        }
+
+        /// <inheritdoc />
+        internal override void StoreValue(object? instance, object?[]? values, object? value)
+        {
+            StoreChecked(instance, values, (TValue?)value);
+        }
+
+        /// <summary>
+        /// Stores a value that was read from the member's element, after the checks a null has to pass.
+        /// </summary>
+        /// <param name="instance">The instance to set the member on, or null when values are held.</param>
+        /// <param name="values">The held values, or null when the instance exists.</param>
+        /// <param name="value">The value, which is null for an element marked nil.</param>
+        /// <exception cref="XmlException">The member is required, or does not accept null, and the value is null.</exception>
+        /// <exception cref="InvalidOperationException">The member is populated, has no setter, and the value is null.</exception>
+        internal void StoreChecked(object? instance, object?[]? values, TValue? value)
+        {
             if (IsRequired && XmlConverterHelpers.IsNull(value))
             {
                 throw XmlException.Create($"The required member '{Info.Name.LocalName}' cannot be nil.");
@@ -195,7 +236,11 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            Store(instance, values, _converter!.ReadAsAttribute(ref reader, typeof(TValue), _typeInfo.Options));
+            // A built-in scalar is read from the bytes of the value. That is what its converter does with the
+            // reader, one call further in.
+            Store(instance, values, _valueConverter is not null
+                ? _valueConverter.Parse(reader.ValueSpan, _typeInfo.Options)
+                : _converter!.ReadAsAttribute(ref reader, _valueType, _typeInfo.Options));
         }
 
         /// <inheritdoc />
@@ -229,9 +274,6 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "The held box has one constructor and no members found by name.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "A value type always has its parameterless constructor.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The reflection resolver already closes this member's own generic type over the same value type. A generated context supplies the box through XmlMetadataServices.CreateValuePropertyInfo, so this is not reached under Native AOT.")]
         internal override void UseHeldBox(ReadOnlySpan<Type> parameterTypes)
         {
             // A box is written again for the next object, so it may only ever be handed to something that
@@ -240,7 +282,7 @@ namespace CloudNimble.Text.Xml.Serialization
             // T or as null, so it has no box of its own to reuse, and a collection member's slot holds its
             // builder while the element is read.
             var type = typeof(TValue);
-            if (!type.IsValueType || Nullable.GetUnderlyingType(type) is not null || Collection is not null || (HeldBoxFactory is null && !ReflectsHeldBox))
+            if (!type.IsValueType || Nullable.GetUnderlyingType(type) is not null || Collection is not null || HeldBoxFactory is null)
             {
                 return;
             }
@@ -253,9 +295,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
-            _held = HeldBoxFactory is not null
-                ? (XmlHeldBox<TValue>)HeldBoxFactory()
-                : (XmlHeldBox<TValue>)Activator.CreateInstance(typeof(XmlStructHeldBox<>).MakeGenericType(type))!;
+            _held = (XmlHeldBox<TValue>)HeldBoxFactory();
         }
 
         /// <inheritdoc />
@@ -302,7 +342,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (Collection is { } collection)
             {
-                return collection.CanPopulate(typeof(TValue)) ? null : cannot;
+                return collection.CanPopulate() ? null : cannot;
             }
 
             if (Polymorphism.IsActive)
@@ -395,13 +435,11 @@ namespace CloudNimble.Text.Xml.Serialization
                 {
                     if (AttributeHead is not null)
                     {
-                        writer.WriteStartAttributeTrusted(Utf8LocalName, AttributeHead);
-                    }
-                    else
-                    {
-                        writer.WriteStartAttributeUtf8(Utf8LocalName, [], Utf8NamespaceUri);
+                        _valueConverter.WriteAttribute(writer, Utf8LocalName, AttributeHead, value, options);
+                        return;
                     }
 
+                    writer.WriteStartAttributeUtf8(Utf8LocalName, [], Utf8NamespaceUri);
                     _valueConverter.WriteValue(writer, value, options);
                     writer.WriteEndAttribute();
                     return;
@@ -425,28 +463,35 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (_valueConverter is not null && LeafOpenTag is not null && writer.CurrentDepth > 0)
             {
-                writer.WriteLeafStart(LeafOpenTag);
-                _valueConverter.WriteValue(writer, value, options);
-                writer.WriteLeafEnd(LeafCloseTag);
+                _valueConverter.WriteLeaf(writer, LeafOpenTag, LeafCloseTag, value, options);
                 return;
             }
 
-            object? content = Polymorphism.Derived.Length > 0 ? value : null;
-            if (content is not null && Polymorphism.ResolveWrite(ref content) is { } derived)
+            if (Polymorphism.Derived.Length > 0 && !XmlConverterHelpers.IsNull(value))
             {
-                if (Polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
+                if (Polymorphism.IsNamed)
                 {
-                    derived.WriteStart(writer);
-                }
-                else
-                {
-                    WriteStart(writer);
-                    XmlConverterHelpers.WriteDiscriminator(writer, Polymorphism.Placement, Polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
+                    // The value names its element. Every other value finds its element by its type.
+                    Polymorphism.WriteNamed(writer, (XmlNamedValue)(object)value);
+                    return;
                 }
 
-                derived.WriteContent(writer, content);
-                writer.WriteEndElement();
-                return;
+                if (Polymorphism.TryGetDerivedWrite(value.GetType()) is { } derived)
+                {
+                    if (Polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
+                    {
+                        derived.WriteStart(writer);
+                    }
+                    else
+                    {
+                        WriteStart(writer);
+                        XmlConverterHelpers.WriteDiscriminator(writer, Polymorphism.Placement, Polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
+                    }
+
+                    derived.WriteContent(writer, value);
+                    writer.WriteEndElement();
+                    return;
+                }
             }
 
             WriteStart(writer);

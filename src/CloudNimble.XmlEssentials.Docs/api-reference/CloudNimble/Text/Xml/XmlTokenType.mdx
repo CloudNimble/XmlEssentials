@@ -92,7 +92,7 @@ EndElement Order (depth 0)
 | `Text`, `CData` | `ValueSpan`, `GetString`, `Get*`, `TryGet*`, `ValueIsEscaped` |
 | `Comment` | `GetComment`, `ValueSpan` |
 | `ProcessingInstruction` | `LocalNameSpan` (the target), `ValueSpan` (the data) |
-| `XmlDeclaration` | `Utf8XmlReader.Version` |
+| `XmlDeclaration` | `Version`, `ValueSpan` (the pseudo-attributes as written) |
 
 ## Remarks
 
@@ -106,11 +106,11 @@ before expecting a matching end tag.
 - **`StartElement` covers `<e>` and `<e/>`.** For an empty element, `Utf8XmlReader.IsEmptyElement` is `true` and no `EndElement` token follows. Check it wherever you count depth or wait for an end tag.
 - **`Attribute` never comes from `Read`.** `TokenType` is `Attribute` only between a call to `MoveToNextAttribute` that returns `true` and the next call to `MoveToElement` or `Read`.
 - **`Comment` is reported by default.** Set `XmlReaderOptions.CommentHandling` to `XmlCommentHandling.Skip` when you don't want comments.
-- **White space between elements is a `Text` token by default.** Set `XmlReaderOptions.WhitespaceHandling` to `XmlWhitespaceHandling.Insignificant` when you don't want it. The example in the usage section does both.
+- **White space between elements is a `Text` token by default.** Set `XmlReaderOptions.WhitespaceHandling` to `XmlWhitespaceHandling.Insignificant` when you don't want it. The example in the usage section does both. White-space-only text that is content, such as the whole of `<e> </e>`, is a `Text` token under every setting.
 - **`Text` and `CData` carry the same kind of value.** They differ only in how the document wrote it. Handle them together unless you need to know which form was used.
 - **`XmlDeclaration` can only be the first token.** A document doesn't have to have one.
 - **`None` means there's no current token:** before the first `Read`, and after `Read` returns `false` at the end of the document.
-- **There's no token for a document type declaration.** The reader rejects one with an `XmlException`.
+- **A document type declaration throws.** The reader rejects `<!DOCTYPE` with an `XmlException` (`DTD is not allowed.`) instead of reporting it.
 
 ## Values
 

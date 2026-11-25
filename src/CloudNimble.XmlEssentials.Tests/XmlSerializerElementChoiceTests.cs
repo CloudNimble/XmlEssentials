@@ -21,7 +21,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         private const string Types = "CloudNimble.XmlEssentials.Tests.POCOs.Choices.";
 
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true, DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true, DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
 
         #endregion
 

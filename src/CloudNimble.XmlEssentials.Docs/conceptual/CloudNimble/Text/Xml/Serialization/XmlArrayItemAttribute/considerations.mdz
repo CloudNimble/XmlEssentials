@@ -1,5 +1,5 @@
-- The attribute has an effect only on a collection that also has `[XmlArray]`. On a collection with no wrapper, the repeated elements keep the member's name. To rename those, use `[XmlElement("Name")]` or `[XmlPropertyName("Name")]` on the member.
-- Without the attribute, each item of a wrapped collection is named after its .NET type, converted by the element naming policy.
+- The attribute has an effect only on a wrapped collection: one with `[XmlArray]`, or one that `DefaultCollectionMapping = XmlCollectionMapping.Wrapped` wraps. On a collection with no wrapper, the repeated elements keep the member's name. To rename those, use `[XmlElement("Name")]` or `[XmlPropertyName("Name")]` on the member.
+- Without the attribute, each item of a wrapped collection is named after its type: `int`, `string`, and the other XML Schema names for built-in types, and the type's name, converted by the element naming policy, otherwise.
 - A name set here isn't converted by a naming policy.
 - `Namespace` is the namespace of the items of a collection in a wrapper, which is a member with `[XmlArray]`. Left `null`, an item is written under its name alone, so it is in the namespace of its wrapper when the wrapper has one. An empty string puts the items in no namespace (`xmlns=""`). This is what `System.Xml.Serialization` writes.
 - With no wrapper the item is the element of the member, so `Namespace` names nothing: the item has the namespace of the member.

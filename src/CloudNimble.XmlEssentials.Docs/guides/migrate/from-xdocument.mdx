@@ -74,7 +74,7 @@ XmlElement library = document.RootElement;
 
 foreach (XmlElement shelf in library.EnumerateChildren())
 {
-    if (shelf.ValueKind is not XmlValueKind.Element || shelf.LocalName != "Shelf")
+    if (shelf.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil) || shelf.LocalName != "Shelf")
     {
         continue;
     }
@@ -83,7 +83,7 @@ foreach (XmlElement shelf in library.EnumerateChildren())
 
     foreach (XmlElement book in shelf.EnumerateChildren())
     {
-        if (book.ValueKind is not XmlValueKind.Element || book.LocalName != "Book")
+        if (book.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil) || book.LocalName != "Book")
         {
             continue;
         }
@@ -143,7 +143,7 @@ The table lists the LINQ to XML member, the `System.Xml.XmlDocument` member that
 | LINQ to XML | `System.Xml.XmlDocument` | Read-only (`XmlDocument`, `XmlElement`) | Mutable (`XmlNode`, `XmlElementNode`) |
 | --- | --- | --- | --- |
 | `XDocument.Parse(text)` | `LoadXml(text)` | `XmlDocument.Parse(text)` | `XmlNode.Parse(text)` |
-| `XDocument.Load(stream)` | `Load(stream)` | `XmlDocument.Parse(stream)`, and overloads for UTF-8 spans and sequences | `XmlNode.Parse(utf8Xml)` for UTF-8 bytes. No `Stream` overload |
+| `XDocument.Load(stream)` | `Load(stream)` | `XmlDocument.Parse(stream)`, and overloads for UTF-8 spans and sequences | `XmlNode.Parse(utf8Xml)` for UTF-8 bytes. No `Stream` overload: call `XmlDocument.Parse(stream)`, then `RootElement.CloneNode()` |
 | `Root` | `DocumentElement` | `RootElement` | `XmlNode.Parse` returns the root element. Cast it to `XmlElementNode` |
 | `Declaration` | First child, an `XmlDeclaration` | `Declaration` | Not kept by `XmlNode.Parse` |
 | `Element(name)` | `element[name]` | `GetChild(localName)`, `TryGetChild(localName, out child)` | `element[localName]` |
@@ -257,7 +257,7 @@ private static void CollectTitles(XmlElement element, List<string> titles)
 {
     foreach (XmlElement child in element.EnumerateChildren())
     {
-        if (child.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement))
+        if (child.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil))
         {
             continue;
         }
@@ -280,7 +280,7 @@ Both produce the following output:
 Dune, Neuromancer, A Brief History of Time
 ```
 
-An element that has content has the `ValueKind` `Element`, and an element with none (`<Item/>`) has `EmptyElement`. Test for both when either can occur.
+An element has one of three kinds: `Element` when it has a start tag and an end tag, `EmptyElement` when it's written as one tag (`<Item/>`), and `Nil` when it carries `xsi:nil="true"`. Test for every kind that can occur in your documents. `GetString` returns `null` for a nil element.
 
 In the mutable tree, `XmlElementNode.Children` is an `IList<XmlNode>`, so LINQ to Objects works on one level at a time. The next section uses `OfType<XmlElementNode>()` and `First` that way.
 
@@ -344,6 +344,7 @@ What changed:
 - Attribute values and text are strings. LINQ to XML converts `4` and `1951` for you; here you write `"4"` and `"1951"`.
 - A node is removed through its parent's `Children` list. A node has no `Remove` method of its own.
 - `ToString` writes the element without a declaration and without adding indentation. `XElement.ToString()` indents unless you pass `SaveOptions.DisableFormatting`.
+- `XDocument.Parse` builds every node before it returns. `XmlNode.Parse` keeps the parsed input and makes the nodes under an element when you first reach into it, and an element that nothing reaches into is written straight from the input. See [How a parsed tree is built](/guides/use-xmlnode#how-a-parsed-tree-is-built).
 
 The input in this sample is on one line. `XmlNode.Parse` keeps white space between elements, so in an indented document the new `Book` element would follow the old indentation text without any of its own.
 

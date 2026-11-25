@@ -23,7 +23,8 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="XmlElementAttribute{T}"/> class that uses the member name as the element name.
+        /// Initializes a new instance of the <see cref="XmlElementAttribute{T}"/> class that uses the default element name:
+        /// the member name, or the element name of <typeparamref name="T"/> when the member has more than one of these attributes.
         /// </summary>
         public XmlElementAttribute()
         {

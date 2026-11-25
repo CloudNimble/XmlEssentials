@@ -266,8 +266,8 @@ Unknown type discriminator 'System.Diagnostics.Process, System'.
 
 Two more facts keep the set of types closed:
 
-- A property of type `object` isn't supported. The serializer throws `NotSupportedException` instead of choosing a type from the document.
-- If you set `UnknownDerivedTypeHandling` to a fallback value, an unknown discriminator produces the declared base type. It still doesn't produce a type that the document chose.
+- A property of type `object` is read as XML: an `XmlElement`, or an `XmlNode` when `XmlSerializerOptions.UnknownTypeHandling` is `XmlUnknownTypeHandling.XmlNode`. The serializer doesn't choose a type from the document.
+- If you set `[XmlPolymorphic(UnknownDerivedTypeHandling = ...)]` to a fallback value, an unknown discriminator produces the declared base type. It still doesn't produce a type that the document chose.
 
 This design matches System.Text.Json, which also requires derived types to be declared. For the attributes and options, see [Polymorphism](/guides/polymorphism).
 

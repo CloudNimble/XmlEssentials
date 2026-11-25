@@ -20,7 +20,7 @@ namespace CloudNimble.Text.Xml
         /// Stored separately from the element stack because an end tag pops its scope
         /// before the caller inspects <see cref="Utf8XmlReader.NamespaceUriSpan"/>.
         /// </remarks>
-        public required string CurrentNamespaceUri { get; init; }
+        public required byte[] CurrentNamespaceUri { get; init; }
 
         /// <summary>
         /// Gets the element depth.
@@ -35,12 +35,12 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Gets the element local-name stack.
         /// </summary>
-        public required string[] ElementLocalNames { get; init; }
+        public required byte[][] ElementLocalNames { get; init; }
 
         /// <summary>
-        /// Gets the prefix each open element was started with, or an empty string. An end tag must repeat it.
+        /// Gets the prefix each open element was started with, or an empty array. An end tag must repeat it.
         /// </summary>
-        public required string[] ElementPrefixes { get; init; }
+        public required byte[][] ElementPrefixes { get; init; }
 
         /// <summary>
         /// Gets, per open element, whether it has reported character data, has a child element,
@@ -51,7 +51,7 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Gets the element namespace-URI stack.
         /// </summary>
-        public required string[] ElementNamespaceUris { get; init; }
+        public required byte[][] ElementNamespaceUris { get; init; }
 
         /// <summary>
         /// Gets whether the document is finished.
@@ -82,12 +82,12 @@ namespace CloudNimble.Text.Xml
         /// <summary>
         /// Gets the prefix of each namespace binding. Empty is the default xmlns.
         /// </summary>
-        public required string[] NamespacePrefixes { get; init; }
+        public required byte[][] NamespacePrefixes { get; init; }
 
         /// <summary>
         /// Gets the URI of each namespace binding. Empty is unbound.
         /// </summary>
-        public required string[] NamespaceUris { get; init; }
+        public required byte[][] NamespaceUris { get; init; }
 
         /// <summary>
         /// Gets the byte offset of the start of the current line, counted from the point the snapshot was

@@ -4,7 +4,8 @@
 | --- | --- | --- |
 | `General` | None. Names are unchanged, the XML declaration is written, and `null` is written as `xsi:nil="true"`. | `XmlSerializerOptions.Default` |
 | `Web` | `PropertyNamingPolicy` is `XmlNamingPolicy.CamelCase` and `OmitXmlDeclaration` is `true`. | `XmlSerializerOptions.Web` |
-| `Strict` | `AllowDuplicateProperties` is `false`, `ReadCommentHandling` is `XmlCommentHandling.Disallow`, and `UnmappedMemberHandling` is `XmlUnmappedMemberHandling.Disallow`. | `XmlSerializerOptions.Strict` |
+| `Strict` | `AllowDuplicateProperties` is `false`, `RespectNullableAnnotations` is `true`, `ReadCommentHandling` is `XmlCommentHandling.Disallow`, and `UnmappedMemberHandling` is `XmlUnmappedMemberHandling.Disallow`. | `XmlSerializerOptions.Strict` |
+| `Bcl` | The settings that write what `System.Xml.Serialization.XmlSerializer` writes: `CharHandling` is `Number`, `DefaultCollectionMapping` is `Wrapped`, `DefaultIgnoreCondition` is `WhenWritingNullReference`, `EmptyElementStyle` is `SelfClosingWithSpace`, `IgnoreReadOnlyProperties` and `IncludeFields` are `true`, `MemberOrder` is `FieldsFirst`, `Namespaces` declares the `xsi` and `xsd` prefixes, `PreferredObjectCreationHandling` is `Populate`, `UtcOffsetHandling` is `WriteZ`, and `WriteIndented` is `true`. | `XmlSerializerOptions.Bcl` |
 
 ```csharp
 var web = new XmlSerializerOptions(XmlSerializerDefaults.Web)

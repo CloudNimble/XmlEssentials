@@ -98,48 +98,49 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Private Methods
 
         /// <summary>
-        /// Returns whether the built-in converter for <paramref name="type"/> exists already, so that getting it
-        /// closes no generic type at run time.
+        /// Returns the ready-made converter for <paramref name="type"/>: one that exists already, so that no
+        /// generic type is closed and no member is looked up to make it.
         /// </summary>
         /// <param name="type">The CLR type.</param>
-        /// <returns>
-        /// <see langword="true"/> for the built-in scalars and their nullable forms, the XML values, and
-        /// <see cref="object"/>. <see langword="false"/> for enumerations, collections, dictionaries, the
-        /// nullable form of any other value type, and types mapped member by member: each of those needs a
-        /// converter made for it.
-        /// </returns>
-        internal static bool IsReadyMade(Type type)
+        /// <param name="options">The options, which say whether the caller replaced the converter of a <see cref="Nullable{T}"/>'s underlying type.</param>
+        /// <returns>The converter, or <see langword="null"/> when the type has no ready-made converter.</returns>
+        /// <remarks>
+        /// A <see cref="Nullable{T}"/> has one when its underlying type has one and the caller has not replaced
+        /// it. Generated metadata uses this method, so it must stay free of reflection; <see cref="GetReflected"/>
+        /// makes every other built-in converter.
+        /// </remarks>
+        internal static XmlConverter? GetReadyMade(Type type, XmlSerializerOptions options)
         {
-            return s_converters.ContainsKey(type) || s_contentConverters.ContainsKey(type);
+            if (Nullable.GetUnderlyingType(type) is { } underlying)
+            {
+                return s_converters.TryGetValue(type, out var nullable)
+                    && ReferenceEquals(options.GetDeclaredConverterOrNull(underlying), s_converters[underlying])
+                    ? nullable
+                    : null;
+            }
+
+            if (s_converters.TryGetValue(type, out var converter))
+            {
+                return converter;
+            }
+
+            return s_contentConverters.TryGetValue(type, out var content) ? content : null;
         }
 
         /// <summary>
-        /// Returns whether <paramref name="type"/> is a built-in scalar (or nullable scalar or enum) that can be
-        /// an XML attribute.
+        /// Makes the built-in converter for a type that has no ready-made one, by closing a generic converter over
+        /// the type at run time.
         /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <returns><see langword="true"/> for primitives, enums, strings, and the other built-in value converters.</returns>
-        internal static bool IsScalar(Type type)
-        {
-            var root = Nullable.GetUnderlyingType(type) ?? type;
-            return s_converters.ContainsKey(root) || root.IsEnum;
-        }
-
-        /// <summary>
-        /// Returns the built-in converter for <paramref name="type"/>.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <param name="options">The options a <see cref="Nullable{T}"/> uses to find the converter for its underlying type.</param>
+        /// <param name="type">The CLR type, for which <see cref="GetReadyMade"/> returned <see langword="null"/>.</param>
+        /// <param name="options">The serializer options.</param>
         /// <returns>The converter, or <see langword="null"/> when the type has no built-in converter.</returns>
         /// <remarks>
-        /// A <see cref="Nullable{T}"/> wraps whatever converter the options have for <c>T</c>. When that is the
-        /// built-in one, the wrapper comes from the table, which is built without reflection. Generic converters
-        /// are closed at run time only for enums and for a <see cref="Nullable{T}"/> whose <c>T</c> is an enum,
-        /// has a caller-supplied converter, or is not in the table.
+        /// These are an enumeration, a <see cref="Nullable{T}"/> whose underlying type is an enumeration, has a
+        /// caller-supplied converter or is not in the table, a collection, a dictionary, and an object. Only the
+        /// reflection resolver comes here. A generated context names each of these types where it is compiled.
         /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2071", Justification = "Both generic converters have one public constructor, and the type argument is a type the caller already holds.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Built-in types and their nullable forms come from the table. Closing a generic converter at run time is needed only for enums and caller-defined value types, which Native AOT callers supply through a context.")]
-        internal static XmlConverter? Get(Type type, XmlSerializerOptions options)
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static XmlConverter? GetReflected(Type type, XmlSerializerOptions options)
         {
             if (Nullable.GetUnderlyingType(type) is { } underlying)
             {
@@ -148,19 +149,9 @@ namespace CloudNimble.Text.Xml.Serialization
                     return null;
                 }
 
-                if (s_converters.TryGetValue(type, out var nullable) && ReferenceEquals(inner, s_converters[underlying]))
-                {
-                    return nullable;
-                }
-
                 return inner.IsValueConverter
                     ? (XmlConverter)Activator.CreateInstance(typeof(XmlNullableValueConverter<>).MakeGenericType(underlying), inner)!
                     : (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(underlying), inner)!;
-            }
-
-            if (s_converters.TryGetValue(type, out var converter))
-            {
-                return converter;
             }
 
             if (type.IsEnum)
@@ -178,11 +169,6 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
-            if (s_contentConverters.TryGetValue(type, out var content))
-            {
-                return content;
-            }
-
             if (XmlCollectionConverterFactory.Instance.CanConvert(type))
             {
                 return XmlCollectionConverterFactory.Instance.CreateConverter(type, options);
@@ -191,6 +177,18 @@ namespace CloudNimble.Text.Xml.Serialization
             return XmlObjectBinder.IsObjectType(type, options)
                 ? XmlObjectConverterFactory.Instance.CreateConverter(type, options)
                 : null;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a built-in scalar (or nullable scalar or enum) that can be
+        /// an XML attribute.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns><see langword="true"/> for primitives, enums, strings, and the other built-in value converters.</returns>
+        internal static bool IsScalar(Type type)
+        {
+            var root = Nullable.GetUnderlyingType(type) ?? type;
+            return s_converters.ContainsKey(root) || root.IsEnum;
         }
 
         #endregion

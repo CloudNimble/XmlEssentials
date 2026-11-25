@@ -45,8 +45,8 @@ const string xml = """
     </Order>
     """;
 
-XmlNode? order = XmlNode.Parse(xml);
-output.WriteLine(order!.ToString());
+XmlNode order = XmlNode.Parse(xml);
+output.WriteLine(order.ToString());
 
 try
 {
@@ -92,7 +92,7 @@ while (reader.Read())
 {
     if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
     {
-        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader)!;
+        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader);
         entry.SetAttribute("read", "true");
         output.WriteLine(entry.ToString());
     }
@@ -109,7 +109,7 @@ The code produces the following output:
 ### Copy a node with DeepClone
 
 ```csharp
-var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""")!;
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""");
 XmlElementNode item = order["Item"]!;
 var backorder = new XmlElementNode("Backorder");
 
@@ -181,7 +181,7 @@ Attribute: Attributes must be written on an open start tag.
 ## Best Practices
 
 - **Cast the result of `Parse` to `XmlElementNode`.** `Parse` and `ParseValue` return the base type, and the element members (`Children`, `Attributes`, the indexers) are on `XmlElementNode`.
-- **Catch `XmlException` around `Parse` for input you don't control.** There is no `TryParse` on `XmlNode`. `XmlDocument.TryParse` followed by `CloneNode` gives you a Boolean result instead.
+- **Catch `XmlException` around `Parse` for input you don't control.** For a Boolean result instead, call `XmlDocument.TryParse` and then `CloneNode`.
 - **Use a type pattern to tell nodes apart.** `child is XmlElementNode element` tests and casts in one step. `ValueKind` gives the same answer without the cast.
 - **Parse through `XmlDocument` when you need options.** `XmlNode.Parse` takes none. `XmlDocument.Parse` with an `XmlDocumentOptions`, followed by `RootElement.CloneNode()`, gives you limits, a tree without white space, and stream input.
 - **Read `Value` to inspect a text node or an attribute.** `ToString` throws for a node that can't stand alone as markup.
@@ -190,7 +190,7 @@ Attribute: Attributes must be written on an open start tag.
 
 ### Read, then edit
 
-Use `XmlNode.Parse` when you intend to change the document throughout. Use `XmlDocument.Parse` and `XmlElement.CloneNode` when you read most of the document and change a small part.
+Use `XmlNode.Parse` when you intend to change the document, in one place or throughout: the tree makes nodes only for the elements you reach into. Use `XmlDocument.Parse` and `XmlElement.CloneNode` when you read the document with the typed getters of `XmlElement` and change a small part, or when you need `XmlDocumentOptions` or a `Stream`.
 
 ### Edit one record at a time
 
@@ -214,13 +214,14 @@ This loop is part of the first example for the `CloudNimble.Text.Xml.Nodes` name
 
 - `Parse` returns the root element of the document. It doesn't return `null`; input with no root element throws an `XmlException`.
 - `Parse` keeps comments and the white space between elements inside the root, and it records whether an element with no content was written as `<e/>` or `<e></e>` in `XmlElementNode.IsEmptyElement`. It drops the XML declaration and everything outside the root element.
-- `Parse` takes no options, so the default limits of `XmlDocumentOptions` apply (for example, a depth of 64) and the document size isn't limited. It has no `Stream` overload.
-- `Parse` builds an `XmlDocument` and copies its root into the tree. That costs more time and memory than `XmlDocument.Parse` alone, and the cost grows with the number of nodes.
+- `Parse` takes a `string` or UTF-8 bytes and no options, so the default limits of `XmlDocumentOptions` apply (for example, a depth of 64) and the document size isn't limited. For a `Stream` or other options, parse with `XmlDocument` and call `XmlElement.CloneNode`.
+- `Parse` and `ParseValue` keep the parsed input with the tree. An element makes its attributes and child nodes the first time you reach into it, for example through `Children`, `Attributes`, or `InnerText`, and an element nothing has reached into is written and copied from the parsed input. What the tree reads and writes doesn't depend on how much of it has been reached. The parsed input stays in memory while such an element is reachable, and it doesn't depend on your string, bytes, or reader after the call returns.
 - `ParseValue` uses the options of the reader you pass. By default a reader reports comments and white-space-only text between elements, so the tree keeps both.
 - `Parent` is `null` until the node is added to an element's `Children` or `Attributes`, and `null` again after it's removed.
 - `NamespaceUri` is `null` on nodes that have no name (text, CDATA, comments, processing instructions, and the declaration). On an element or an attribute, it's an empty string when the name is in no namespace.
 - `ToString` writes with a `Utf8XmlWriter` that omits the XML declaration, doesn't indent, writes every line end as a line feed on every operating system, and writes by the rules of XML 1.1, because a node doesn't know which version it was parsed from. A character that only XML 1.1 allows, or that XML 1.1 would normalize, is written as a character reference. It throws an `XmlException` when the node can't be written as it stands: a text node or an attribute on its own, an invalid name, or a prefix with no namespace.
-- `WriteTo` and `ToString` are where the tree is validated. Building the tree doesn't check names or values.
+- `WriteTo` and `ToString` are where the tree is validated. Building the tree checks only that a name or a processing instruction target isn't `null`, empty, or white space.
+- `DeepClone` of an element that nothing has reached into shares the parsed input with the original, but the two are separate trees: a change to one doesn't show in the other.
 
 ## Constructors
 

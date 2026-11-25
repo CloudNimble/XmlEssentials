@@ -70,7 +70,7 @@ What **did** work:
 
 | Technique | Where BCL / STJ does it | What we did |
 | --- | --- | --- |
-| Interned string names on the element stack | `ElementScope` keeps `localName`/`prefix` strings; end tag re-`RawText`s them | `XmlWriterFrame.LocalChars` / `PrefixChars` |
+| Names of open elements kept for the end tag | `ElementScope` keeps `localName`/`prefix` strings; end tag re-`RawText`s them | Every name, however it was given, is kept as UTF-8 in the writer's name buffer (`XmlWriterFrame.Local` / `Prefix`), and let go when the element ends |
 | Complete leaf elements | (we went further than BCL) | `WriteElementString` / `WriteElementNumber` write `<n>v</n>` without a frame |
 | ASCII names as bytes | `XmlUtf8RawTextWriter.RawText` | `Ascii.FromUtf16`, `WriteRawByte` for markup |
 | Direct `IBufferWriter` | `Utf8JsonWriter` `GetMemory`/`Advance` | No 16 KB staging copy on the `IBufferWriter` ctor |
@@ -463,7 +463,7 @@ None of these touch the namespace-binding representation, so the interned-prefix
 
 ## Shipped with PRs 2–3
 
-- Writer: interned string names on frames, complete leaf elements, `Ascii.FromUtf16` / `WriteRawByte`, `IBufferWriter.GetMemory`/`Advance`, `TryFormat` numbers, static newlines, `Reset` → 0 B, catalog write 0.76× BCL.
+- Writer: names of open elements on frames (as strings then; as UTF-8 in the name buffer since the final pass), complete leaf elements, `Ascii.FromUtf16` / `WriteRawByte`, `IBufferWriter.GetMemory`/`Advance`, `TryFormat` numbers, static newlines, `Reset` → 0 B, catalog write 0.76× BCL.
 - Reader: binding-slot URI copy, 1-byte prefix lookup + last-prefix cache, matching end tags skip URI re-resolve. Namespaced drain 1.57× → 1.15× BCL, still 0 B.
 - Coverage 100% line. Writer/reader conceptual docs and tokenizer benches.
 
@@ -538,9 +538,9 @@ Closed by the end-tag and text work in "Shipped after PR 4". Remaining candidate
 
 ### 3. Writer: interned NCNames for UTF-8 / span APIs
 
-String start tags already keep interned `string` on `XmlWriterFrame`. UTF-8 `WriteStartElement(ReadOnlySpan<byte>)` still `AppendName`s into the name store. A small intern table of recently written names would shrink deep documents. Not on the catalog bench (string API + `Reset`).
+**Closed by the final pass, another way.** Every start tag puts its name in the name buffer, and the buffer goes back to where it was when the element ends, so it holds the names of the open elements and nothing else. An intern table is not needed.
 
-### 4. Writer: `XmlEncodedText` in a dedicated bench
+### 4. Writer: `XmlEncodedText` in a dedicated bench (done: `EncodedNames` 19.3 µs against 20.8 µs for string names)
 
 STJ benches often use `JsonEncodedText` for repeated property names. Add a category that writes the catalog with `XmlEncodedText.Encode("item")` etc., **in addition to** the string catalog. Do not replace the string catalog; that is the BCL-fair column.
 
@@ -552,7 +552,7 @@ STJ benches often use `JsonEncodedText` for repeated property names. Add a categ
 
 ### 6. DOM and serializer
 
-**DOM shipped in PR 4** (`XmlDocumentBenchmarks`, table above). DOM parse time is now mostly the tokenizer (about 21 of 31 µs on the catalog), so any further reader work is also the next DOM parse win. The mutable `Nodes` tree has no bench yet; `XmlNode.Parse` goes through `XmlDocument` and then allocates one object per node by design.
+**DOM shipped in PR 4** (`XmlDocumentBenchmarks`, table above). DOM parse time is now mostly the tokenizer (about 21 of 31 µs on the catalog), so any further reader work is also the next DOM parse win. The mutable `Nodes` tree has a bench that has not been run (`XmlNodeBenchmarks`); `XmlNode.Parse` goes through `XmlDocument`, keeps the parsed rows, and makes the objects of an element when it is first reached into (see "What was changed for the new rows").
 
 **Scalar serializer benches shipped with PR 5** (`XmlSerializerBenchmarks`, table above): 0.05 to 0.25 of BCL. Open there:
 
@@ -580,7 +580,7 @@ The remaining object-graph columns (first call, source-generated context) come w
 | DOM hot path | `XmlDocument.cs`, `XmlElement.cs`, `XmlDbRow.cs` |
 | Typed values | `XmlLexical.cs`, `XmlDeclarationSyntax.cs` |
 | Serializer hot path | `XmlSerializer.cs`, `Serialization/XmlTypeInfoOfT.cs`, `Serialization/XmlValueConverterOfT.cs`, `Serialization/XmlConverterHelpers.cs`, `Serialization/XmlWriterCache.cs`, `Serialization/XmlEnumConverterOfT.cs`, `XmlStreamBuffer.cs`, `Serialization/XmlObjectConverterOfT.cs`, `Serialization/XmlBoundPropertyOfT.cs`, `Serialization/XmlCollectionBindingOfT.cs`, `Serialization/XmlDictionaryConverterOfT.cs`, `Serialization/XmlPolymorphism.cs` |
-| Benches | `Utf8XmlWriterBenchmarks.cs`, `Utf8XmlReaderBenchmarks.cs`, `XmlDocumentBenchmarks.cs`, `RealDocumentBenchmarks.cs`, `XmlSerializerBenchmarks.cs`, `XmlSerializerSequenceBenchmarks.cs`, `XmlSerializerObjectBenchmarks.cs`, `Models/`, `Program.cs` |
+| Benches | `Utf8XmlWriterBenchmarks.cs`, `Utf8XmlReaderBenchmarks.cs`, `XmlDocumentBenchmarks.cs`, `RealDocumentBenchmarks.cs`, `XmlSerializerBenchmarks.cs`, `XmlSerializerSequenceBenchmarks.cs`, `XmlSerializerObjectBenchmarks.cs`, `XmlSerializerGraphBenchmarks.cs`, `Utf8XmlWriterStyleBenchmarks.cs`, `Utf8XmlReaderFlowBenchmarks.cs`, `XmlNodeBenchmarks.cs`, `XmlSerializerFeatureBenchmarks.cs`, `XmlSerializerSourceGenBenchmarks.cs`, `XmlSerializerObjectSequenceBenchmarks.cs`, `Models/`, `Program.cs` |
 | Allocations | `Utf8XmlWriterAllocationTests.cs`, `Utf8XmlReaderAllocationTests.cs`, `XmlDocumentAllocationTests.cs`, `XmlSerializerAllocationTests.cs` |
 | Coverage | `src/coverage-gate.cs`, `artifacts/coverage/coverage.cobertura.xml` |
 
@@ -594,11 +594,235 @@ The remaining object-graph columns (first call, source-generated context) come w
 - Reporting benches as `~30µs / 0.76×`. Use the table.
 - Decompiling `System.Private.Xml`. Use the GitHub tag.
 
-## Not yet measured
+## After the doc findings (2026-11-24, net11.0 ShortRun, Hyper-V)
 
-The tables on this page are from before the [doc findings resolution](24-doc-findings-resolution.md). Slices 1 and 2 of that task changed hot paths in the reader, the writer, and both serializer paths, and no benchmark was run for either. The paths are listed there under "Hot paths changed", with the checks that decisions 45 to 48 added to every member read and write. Run the benchmarks and regenerate the tables before any number here is quoted, and before the next optimization pass uses them as a baseline.
+The tables above are from before the [doc findings resolution](24-doc-findings-resolution.md). The first full run after it showed the serializer's write side 10 to 30% slower, and six new benchmark classes showed problems the old rows never reached. This section records what was found, what was changed, and the numbers of the last run. Cells are time / allocated bytes for XmlEssentials; the last column is the ratio to the BCL in the last run. A ShortRun moves by a few percent from run to run, and so do the BCL rows.
 
-**Wide elements.** The reader checks a start tag for duplicate attribute names by comparing every pair (`CheckDuplicateNamespacedAttributes`), so that check grows with the square of the attribute count: about half a million comparisons at the default limit of 1,000 attributes, and 12.5 million at 5,000. `XmlLargeDocumentTests` reads such elements correctly; nothing has measured what they cost, and no benchmark has an element wider than a real document's. Measure before changing it.
+### What had slowed down, and why
+
+| Cause (found with `dotnet-trace` against the commit before the work) | Fix |
+| --- | --- |
+| The writer's set of plain text characters became a field, chosen from `NewLine`. A `SearchValues` in a field is searched through a virtual call; a static one is inlined. Every run of element text paid it. | `IndexOfEscapedText` branches on `_newLineIsCrLf` and searches a static set in each branch. |
+| `XmlSerializerOptions.ToWriterOptions` and `ToReaderOptions` built a struct through setters that now validate, on every call. | Both are copied once, when the options are read-only. |
+| `SerializeAsyncEnumerable` found the name of the array element through attribute reflection on every call, and each value went through a reference scope held in an `AsyncLocal`. | The name is kept on the type info. The scope is a thread-static, and is not touched at all with no reference handler. |
+| A polymorphic item went through `ResolveWrite(ref object)`, and `XmlDerivedBinding` was a struct copied for each item. | A value that names its element has a path of its own (`WriteNamed`); the binding is a class. |
+| On Windows every line break in text is now written as CR LF (decision 54), which took the escaping path. | Text whose only special characters are line breaks is copied run by run (`TryWriteLinesAsCrLf`). What is left of this cost is the work the setting asks for. |
+
+### Rows that existed before
+
+| Test | Before (2026-11-23) | First run after | Last run | XE ÷ BCL |
+| --- | --- | --- | --- | --- |
+| CatalogWrite | 23,343 ns / 0 B | 22,753 ns / 0 B | 22,279 ns / 0 B | 0.68 |
+| TinyWrite | 55 ns / 0 B | 59 ns / 0 B | 59 ns / 0 B | 0.18 |
+| CatalogDrain | 18,737 ns / 0 B | 20,826 ns / 0 B | 20,510 ns / 0 B | 0.79 |
+| CatalogGetInt32 | 19,168 ns / 0 B | 19,881 ns / 0 B | 20,696 ns / 0 B | 0.69 |
+| NamespacedDrain | 15,507 ns / 0 B | 16,539 ns / 0 B | 15,644 ns / 0 B | 0.75 |
+| TinyDrain | 69 ns / 0 B | 67 ns / 0 B | 71 ns / 0 B | 0.23 |
+| RealDrain, document.xml | 14,700 ns / 944 B | 14,450 ns / 944 B | 14,600 ns / 944 B | 0.78 |
+| RealDrain, .fodt | 50,830 ns / 6,952 B | 49,140 ns / 6,952 B | 49,520 ns / 6,952 B | 0.63 |
+| RealDrain, rpm_primary.xml | 20,790 ns / 80 B | 17,370 ns / 80 B | 17,500 ns / 80 B | 0.57 |
+| RealDrain, sample_rss.xml | 83,850 ns / 1,441 B | 81,850 ns / 1,441 B | 82,200 ns / 1,441 B | 0.45 |
+| RealDomParse, document.xml | 21,180 ns / 104 B | 25,380 ns / 104 B | 21,580 ns / 104 B | 0.45 |
+| RealDomParse, .fodt | 68,560 ns / 105 B | 66,700 ns / 105 B | 70,260 ns / 104 B | 0.39 |
+| RealDomParse, rpm_primary.xml | 25,310 ns / 104 B | 27,780 ns / 104 B | 25,290 ns / 104 B | 0.37 |
+| RealDomParse, sample_rss.xml | 112,880 ns / 105 B | 114,440 ns / 105 B | 114,210 ns / 105 B | 0.36 |
+| RealDomWrite, document.xml | 22,200 ns / 0 B | 21,950 ns / 0 B | 21,770 ns / 0 B | 0.76 |
+| RealDomWrite, .fodt | 71,450 ns / 0 B | 73,430 ns / 0 B | 72,440 ns / 0 B | 0.76 |
+| RealDomWrite, rpm_primary.xml | 21,270 ns / 0 B | 24,060 ns / 0 B | 23,920 ns / 0 B | 0.75 |
+| RealDomWrite, sample_rss.xml | 80,340 ns / 0 B | 91,780 ns / 0 B | 93,240 ns / 0 B | 0.64 |
+| DomNavigate | 2,801 ns / 0 B | 2,817 ns / 0 B | 2,894 ns / 0 B | 0.83 |
+| DomParseCatalog | 26,826 ns / 104 B | 28,466 ns / 104 B | 28,912 ns / 104 B | 0.55 |
+| DomParseNamespaced | 21,709 ns / 104 B | 22,059 ns / 104 B | 22,110 ns / 104 B | 0.53 |
+| DomParseTiny | 120 ns / 104 B | 124 ns / 104 B | 117 ns / 104 B | 0.19 |
+| DomWrite | 15,628 ns / 0 B | 16,196 ns / 0 B | 16,044 ns / 0 B | 0.58 |
+| WriteDateTime | 68 ns / 104 B | 78 ns / 104 B | 72 ns / 104 B | 0.21 |
+| WriteEnum | 64 ns / 96 B | 77 ns / 96 B | 66 ns / 96 B | 0.18 |
+| WriteInt32 | 56 ns / 88 B | 69 ns / 80 B | 62 ns / 80 B | 0.19 |
+| WriteInt32Buffer | 48 ns / 0 B | 52 ns / 0 B | 49 ns / 0 B | 0.15 |
+| WriteInt32String | 65 ns / 144 B | 91 ns / 136 B | 68 ns / 136 B | 0.20 |
+| WriteNullable | 78 ns / 144 B | 103 ns / 144 B | 82 ns / 144 B | 0.14 |
+| WriteString | 90 ns / 128 B | 114 ns / 128 B | 95 ns / 128 B | 0.28 |
+| ReadDateTime | 71 ns / 0 B | 66 ns / 0 B | 65 ns / 0 B | 0.06 |
+| ReadEnum | 59 ns / 0 B | 62 ns / 0 B | 62 ns / 0 B | 0.08 |
+| ReadInt32 | 55 ns / 0 B | 56 ns / 0 B | 55 ns / 0 B | 0.05 |
+| ReadInt32Stream | 68 ns / 0 B | 78 ns / 0 B | 73 ns / 0 B | 0.07 |
+| ReadString | 122 ns / 96 B | 124 ns / 96 B | 123 ns / 96 B | 0.10 |
+| ReadSequence | 31,877 ns / 9,552 B | 40,144 ns / 9,432 B | 36,324 ns / 9,440 B | 0.87 |
+| WriteSequence | 21,519 ns / 928 B | 28,309 ns / 1,432 B | 21,344 ns / 936 B | 0.66 |
+| ReadCustomer | 3,368 ns / 3,168 B | 3,622 ns / 3,168 B | 3,597 ns / 3,168 B | 0.42 |
+| ReadDictionary | 4,053 ns / 13,392 B | 4,444 ns / 13,392 B | 4,184 ns / 13,392 B | |
+| ReadDrawing | 114,728 ns / 90,793 B | 138,864 ns / 90,794 B | 123,837 ns / 90,794 B | 0.58 |
+| ReadMembers | 170,462 ns / 143,802 B | 186,086 ns / 143,802 B | 183,875 ns / 143,802 B | |
+| ReadMoney | 91,606 ns / 88,601 B | 102,031 ns / 88,601 B | 98,102 ns / 88,601 B | 0.37 |
+| ReadOrder | 457 ns / 232 B | 468 ns / 232 B | 484 ns / 232 B | 0.23 |
+| ReadOrders | 433,455 ns / 248,603 B | 438,252 ns / 248,604 B | 426,870 ns / 248,600 B | 0.56 |
+| ReadReadings | 201,662 ns / 104,602 B | 192,565 ns / 104,602 B | 189,728 ns / 104,602 B | 0.55 |
+| WriteCustomer | 1,681 ns / 0 B | 1,874 ns / 0 B | 1,725 ns / 0 B | 0.41 |
+| WriteDictionary | 1,658 ns / 0 B | 1,720 ns / 0 B | 1,662 ns / 0 B | |
+| WriteDrawing | 69,506 ns / 0 B | 90,589 ns / 0 B | 69,309 ns / 0 B | 0.53 |
+| WriteMembers | 68,674 ns / 0 B | 73,971 ns / 0 B | 66,431 ns / 0 B | |
+| WriteMoney | 63,553 ns / 0 B | 61,166 ns / 0 B | 59,243 ns / 0 B | 0.72 |
+| WriteOrder | 266 ns / 0 B | 302 ns / 0 B | 268 ns / 0 B | 0.26 |
+| WriteOrders | 234,705 ns / 0 B | 256,569 ns / 0 B | 246,862 ns / 0 B | 0.59 |
+| WriteReadings | 132,853 ns / 0 B | 144,602 ns / 0 B | 135,312 ns / 0 B | 0.66 |
+
+Every row is under the BCL, and every allocation is at or under what it was. Still above the 2026-11-23 time by more than a ShortRun moves:
+
+- **RealDomWrite of `sample_rss.xml` (+16%) and `rpm_primary.xml` (+12%).** Both hold many text nodes with line breaks, which are now written as CR LF on Windows. Against the commit before the work, on the same day, the rest of the DOM write is level.
+- **The object reads `ReadDrawing`, `ReadMembers`, `ReadMoney`, `ReadCustomer` (+5 to +8%) and `ReadSequence` (+14%).** The read loops now keep the member being read for the path of an error (decision 61). `ReadChildren` was split so that the loop itself has no handler in it, which got part of it back. Not profiled further.
+- **`CatalogDrain` and `DomParseCatalog` (+8 to +9%).** Run against the commit before the work on the same day, both are level (17.1 against 17.3 µs, 25.6 against 25.4 µs), so this is the machine and not the code.
+
+### Rows that are new
+
+| Test | First run | Last run | BCL | STJ |
+| --- | --- | --- | --- | --- |
+| WideElement1000 | 758,910 ns / 73,327 B | 24,360 ns / 73,320 B | 67,470 ns / 344,281 B | |
+| WideElement5000 | 21,432,310 ns / 590,174 B | 152,030 ns / 590,000 B | 1,669,610 ns / 1,755,817 B | |
+| ResumedDrain | 218,210 ns / 31,138 B | 222,190 ns / 31,138 B | 264,430 ns / 27,604 B | |
+| Skip | 183,830 ns / 42 B | 183,120 ns / 42 B | 198,010 ns / 27,738 B | |
+| TrySkip, resumed | 201,140 ns / 17,466 B | 201,330 ns / 17,466 B | 198,010 ns / 27,738 B | |
+| IndentedWrite | 34,276 ns / 0 B | 31,572 ns / 0 B | 44,457 ns / 13,784 B | 14,239 ns / 0 B |
+| NewLineText, CR LF | 129,174 ns / 753,602 B | 101,933 ns / 0 B | 308,617 ns / 7,332 B | |
+| NewLineText, CR LF, XML 1.1 | 130,697 ns / 753,602 B | 104,294 ns / 0 B | 308,617 ns / 7,332 B | |
+| NewLineText, LF | 25,879 ns / 0 B | 25,503 ns / 0 B | | |
+| AttributesPerLine | 25,958 ns / 0 B | 27,921 ns / 0 B | 26,634 ns / 7,384 B | |
+| RawValue, checked | 22,476 ns / 14,784 B | 20,291 ns / 0 B | 6,639 ns / 7,328 B | 9,443 ns / 0 B |
+| RawValue, not checked | 90 ns / 0 B | 89 ns / 0 B | 6,639 ns / 7,328 B | 53 ns / 0 B |
+| StringSegments | 8,530 ns / 0 B | 7,712 ns / 0 B | 30,569 ns / 7,328 B | 54,883 ns / 0 B |
+| Base64Segments | 1,805 ns / 0 B | 1,815 ns / 0 B | 27,264 ns / 9,448 B | 1,786 ns / 0 B |
+| EncodedNames | 25,994 ns / 0 B | 19,316 ns / 0 B | 32,085 ns / 13,728 B | 11,771 ns / 0 B |
+| StringNames | 21,004 ns / 0 B | 20,838 ns / 0 B | 32,085 ns / 13,728 B | |
+| ParseTree | 97,630 ns / 310,016 B | 38,140 ns / 87,542 B | 53,100 ns / 135,301 B | 17,700 ns / 48,937 B |
+| ChangeTree | 172,530 ns / 458,895 B | 113,960 ns / 257,198 B | 117,090 ns / 195,727 B | 70,050 ns / 226,540 B |
+| ReadFeed | 124,840 ns / 153,585 B | 118,934 ns / 153,584 B | 167,477 ns / 197,882 B | |
+| WriteFeed | 72,915 ns / 0 B | 66,849 ns / 0 B | 84,445 ns / 15,009 B | |
+| ReadCustomers | 260,137 ns / 266,668 B | 252,588 ns / 266,668 B | | 209,794 ns / 254,338 B |
+| ReadCustomers, Preserve | 493,807 ns / 494,468 B | 462,219 ns / 494,396 B | | 353,439 ns / 385,516 B |
+| WriteCustomers | 121,642 ns / 0 B | 114,994 ns / 0 B | | 106,568 ns / 313 B |
+| WriteCustomers, IgnoreCycles | 150,556 ns / 434 B | 134,923 ns / 362 B | | 116,365 ns / 425 B |
+| WriteCustomers, Preserve | 291,195 ns / 148,652 B | 239,599 ns / 148,578 B | | 165,221 ns / 150,666 B |
+| ReadTaggedDrawing | 206,891 ns / 117,474 B | 184,018 ns / 90,794 B | | 144,870 ns / 117,914 B |
+| WriteTaggedDrawing | 102,255 ns / 0 B | 89,730 ns / 0 B | | 81,183 ns / 313 B |
+| ReadTypedDrawing | 280,776 ns / 122,818 B | 261,165 ns / 90,800 B | 236,895 ns / 228,570 B | |
+| WriteTypedDrawing | 147,488 ns / 0 B | 117,460 ns / 0 B | 161,822 ns / 30,506 B | |
+| ReadCustomer, Bcl preset | 2,415 ns / 1,320 B | 2,402 ns / 1,320 B | 4,632 ns / 10,704 B | |
+| WriteCustomer, Bcl preset | 1,031 ns / 0 B | 972 ns / 0 B | 2,103 ns / 8,224 B | |
+| ReadOrderSequence | 822,700 ns / 240,440 B | 482,400 ns / 246,620 B | | 445,100 ns / 235,220 B |
+| WriteOrderSequence | 277,200 ns / 1,540 B | 254,100 ns / 940 B | | 233,600 ns / 690 B |
+| Source generation, read (default) | 3,970 ns / 3,168 B | 3,458 ns / 3,168 B | | 2,874 ns / 3,576 B |
+| Source generation, write (default) | 1,422 ns / 0 B | 1,450 ns / 0 B | | 852 ns / 0 B |
+
+### What was changed for the new rows
+
+- **Wide elements.** `CheckDuplicateNamespacedAttributes` compared every pair. A start tag with more than 16 attributes now puts each in a hash table by its local name (`CheckDuplicateAttributesByName`), on the stack up to 128 attributes and rented beyond.
+- **Long escaped text.** `WriteStringValue` transcoded a whole string into an array before escaping it. It is now transcoded a part at a time into 1,024 bytes of stack (`WriteEscapedChars`), which never cuts a surrogate pair. `Reset_WriteLongEscapedText_DoesNotAllocate` pins 0 B.
+- **Raw values.** The document a raw value is read in to check it is built in a pooled buffer the writer keeps. `Reset_WriteValidatedRawValue_DoesNotAllocate` pins 0 B. The time that is left is one pass of the reader over the value.
+- **Encoded names.** The `XmlEncodedText` overloads of `WriteElementNumber` and `WriteElementString` write the element whole, as the string overloads do, and copy the name where a string name is transcoded.
+- **Discriminators** are compared as the bytes the attribute holds, with bytes each derived binding keeps, as System.Text.Json compares `$type`. A known discriminator is never made into a string.
+- **`id`, `ref` and `xsi:type`** are written from UTF-8 literals; the string overloads no longer clear 576 bytes of stack for each name; `XmlPreserveReferenceResolver.GetReference` is one look in its table.
+- **Streamed objects are resumable**, the design System.Text.Json has ([serializer](07-api-serializer.md)). `XmlResumableReader` reads an object into the frames of an `XmlReadStack`, and when a block ends inside a value the frames stay and the read goes on in the next block: nothing is read twice, and no setter or constructor runs twice. It reads what `XmlObjectBinding.IsResumable` allows: objects of the built-in converter whose members are built-in scalars, such objects, or collections of either. Anything else (a polymorphic or populated member, mixed content, text, extension data, a dictionary, a converter of the caller's, a reference handler, top-level values) is read once all of it has arrived, which `Utf8XmlReader.IsElementInBlock` now finds out by counting tags where it read the value twice.
+- **The mutable tree is made on demand**, as `JsonNode.Parse` makes it ([DOM](06-api-dom.md)). `XmlNode.Parse` and `ParseValue` keep the parsed document, out of the pool, and an element makes its attributes and children when they are first asked for. An element nothing has looked at is written and copied from the parsed rows. `XmlElement.CloneNode()` on a document the caller owns still copies everything, because that document may be disposed. Besides that: the node lists hold an array and not a `List<T>`, the attribute list is made when it is first asked for, and the names of a tree share their strings.
+
+### What is still behind
+
+- **`RawValue`, checked** is three times the BCL, which does not check, and twice System.Text.Json. Checking is reading; only a faster reader changes it.
+- **`ChangeTree` allocates more than the BCL** (257 KB against 196 KB) while taking about the same time.
+- **`Preserve`** writes at 2.1 times a plain write, where System.Text.Json pays 1.55 times. An id is a string for each object in both.
+- **`ReadTypedDrawing`** is 1.10 times the BCL. The serializer declares the `xsi` prefix on every element that has `xsi:type`, where the BCL declares it once on the document element, so the document it reads is half as long again. Declaring it once is a change to what is written, and is not made here.
+- **`ReadOrderSequence`** is 1.08 times System.Text.Json.
+
+## Final pass (2026-11-25, net11.0, Hyper-V)
+
+The goal of this pass was every row under the BCL and under System.Text.Json. The numbers below are from a direct loop over the benchmark methods (each method warmed, then five interleaved rounds, minimum taken), not from BenchmarkDotNet: the full suite was not run, and **the tables above have not been regenerated**. A direct loop moves by about 5% between runs, so a row within 5% of its target is not settled until BenchmarkDotNet says so. Two rows were confirmed with a filtered BenchmarkDotNet run: `AttributesPerLine` 12,568 ns against 24,321 (0.52), and `RawValue` checked 18,784 ns against 12,438 for the BCL and 9,432 for System.Text.Json.
+
+### What was found
+
+A hand-written loop over each writer, producing the same documents the serializers produce, split the cost. `Utf8XmlWriter` took 12 ns for a small element where `Utf8JsonWriter` took 4 ns for a property, and the serializer on top of it added 20 ns per object where System.Text.Json's adds 58. The same split for reading put the two serializer layers level and the tokenizer at 240 ns per order against 144. So the work went into the writer and the reader, and into letting the serializer ask each of them for a whole element at once.
+
+| Finding | What replaced it |
+| --- | --- |
+| The state of the element being written (start tag open, has content, has text, attribute count) was in its frame, looked up on every call | Four fields of the writer. Only the innermost element has such state. A frame keeps the name for the end tag and what to go back to |
+| **The name buffer was never given back.** Every start tag and every attribute added its name for the life of the document, so a writer's memory grew with what it wrote | A frame records the length of the buffer when its element starts, and the buffer goes back to it when the element ends. `NameBuffer_HoldsOnlyTheNamesOfOpenElements` pins it |
+| A name given as a string was read three or four times: checked, copied to the name buffer, compared, transcoded to the output | Checked as it is copied (`XmlChars.TryCopyShortAsciiNcName`), to the output and the name buffer in one pass. A frame holds no string, so no reference is stored for a start tag |
+| Copying bytes into one buffer and reading them straight back out stalls: the first attempt at the row above made byte names 2.5 ns slower | The output and the name buffer are each written from the caller's name, never from each other |
+| An element with one value was `<name>`, the value, `</name>` in three reservations, and a number was formatted on the stack and copied | One reservation (`BeginElementValue` / `EndElementValue`), formatted in place. All 28 `WriteElementNumber` overloads are one line each over `WriteElementFormatted` |
+| A scalar member was three writer calls and three virtual calls | `XmlFormattedValueConverter<T>` (21 built-in converters): a longest length and a `Format` into a span. A member, a collection item, a root value, a dictionary entry and an attribute are each one reservation (`BeginLeaf` / `EndLeaf`, `BeginAttribute` / `EndAttribute`). Plain ASCII strings take the same path |
+| Dates were formatted a digit at a time, with a division for each | Two digits from a table (`XmlLexical.WriteTwoDigits`): a `DateTime` element went from 15.2 to 10.4 ns, against 13.6 for System.Text.Json |
+| A root call reset the cached writer twice and gave its name buffer back to the pool and rented it again | `Detach` resets once and keeps the name buffer; the declaration is written in one reservation. `WriteOrder` 245 to 195 ns, `WriteInt32Buffer` 49 to 32 ns |
+| An asynchronous sequence allocated a writer per call | One spare writer for calls that cross an `await` (`XmlWriterCache.RentSpare`): 856 B to 184 B per call. The loop does not await a value that is ready |
+| A member that holds one scalar was three tokens, with the element pushed, its namespace worked out, and all of it taken back two tokens later | `Utf8XmlReader.TryReadExpectedLeaf`: the serializer knows which member comes next, so two comparisons and one search read `<Id>42</Id>`. Used for members, collection items, streamed values and the resumable reader. It reads nothing when the input is any other shape |
+| The usual start tag and the usual attribute paid for the unusual one: a helper call per blank, a stack buffer for references in every text node and attribute | A plain `<name>` is found with one loop; the reference buffer is in a method of its own; attribute records are passed by reference |
+| A reader state turned every open element name and namespace into a string, and a resumed reader turned them back into bytes | The state holds UTF-8, a resumed reader uses its arrays as they are, and a state taken with the same elements open reuses them. `ResumedDrain` 31,136 B to 17,040 B; `TrySkip`, resumed, 17,464 B to 6,504 B |
+
+The hot paths no longer depend on profile-guided inlining to be joined up: the small helpers are marked for inlining and their rare paths are methods of their own. With `DOTNET_TieredPGO=0` an element still costs about 17 ns to write against 10 with it, and a read of the orders is about 45% slower. That is what a Native AOT caller sees, and it is the largest thing left.
+
+### Where each row stands
+
+Time / allocated bytes for XmlEssentials; the ratio is to the target named.
+
+| Test | Before | After | Target | Ratio |
+| --- | --- | --- | --- | --- |
+| CatalogWrite | 22,279 ns / 0 B | 15,132 ns / 0 B | BCL 27,247 | 0.56 |
+| TinyWrite | 59 ns / 0 B | 33 ns / 0 B | BCL 286 | 0.12 |
+| AttributesPerLine | 27,921 ns / 0 B | 12,071 ns / 0 B | BCL 19,976 | 0.60 |
+| EncodedNames | 19,316 ns / 0 B | 13,809 ns / 0 B | STJ 10,890 | 1.27 |
+| IndentedWrite | 31,572 ns / 0 B | 20,687 ns / 0 B | STJ 13,065 | 1.58 |
+| RawValue, checked | 20,291 ns / 0 B | 16,028 ns / 0 B | STJ 11,136 | 1.44 |
+| RawValue, not checked | 89 ns / 0 B | 86 ns / 0 B | STJ 56 | 1.54 |
+| CatalogDrain | 20,510 ns / 0 B | 15,070 ns / 0 B | BCL 21,380 | 0.70 |
+| ResumedDrain | 222,190 ns / 31,138 B | 175,174 ns / 17,040 B | BCL 233,407 / 27,600 B | 0.75 |
+| TrySkip, resumed | 201,330 ns / 17,466 B | 167,427 ns / 6,504 B | BCL 173,651 | 0.96 |
+| DomParseCatalog | 28,912 ns / 104 B | 23,983 ns / 104 B | BCL 47,914 | 0.50 |
+| DomWrite | 16,044 ns / 0 B | 13,676 ns / 0 B | BCL 23,117 | 0.59 |
+| ParseTree | 38,140 ns / 87,542 B | 29,215 ns / 87,544 B | STJ 17,134 / 48,936 B | 1.71 |
+| ChangeTree | 113,960 ns / 257,198 B | 90,423 ns / 257,192 B | BCL 99,097 / 195,728 B | 0.91 time, 1.31 bytes |
+| WriteInt32 | 62 ns / 80 B | 41 ns / 80 B | STJ 24 / 32 B | 1.71 |
+| WriteString | 95 ns / 128 B | 72 ns / 128 B | STJ 56 / 80 B | 1.29 |
+| ReadInt32 | 55 ns / 0 B | 53 ns / 0 B | STJ 24 | 2.21 |
+| ReadString | 123 ns / 96 B | 115 ns / 96 B | STJ 74 | 1.55 |
+| WriteOrder | 268 ns / 0 B | 195 ns / 0 B | STJ 160 | 1.22 |
+| WriteOrders | 246,862 ns / 0 B | 185,336 ns / 0 B | STJ 186,791 | 0.99 |
+| WriteCustomer | 1,725 ns / 0 B | 1,161 ns / 0 B | STJ 1,284 | 0.90 |
+| WriteDrawing | 69,309 ns / 0 B | 54,350 ns / 0 B | STJ 70,970 | 0.77 |
+| WriteMembers | 66,431 ns / 0 B | 44,680 ns / 0 B | STJ 47,762 | 0.94 |
+| WriteMoney | 59,243 ns / 0 B | 43,952 ns / 0 B | STJ 44,664 | 0.98 |
+| WriteReadings | 135,312 ns / 0 B | 119,475 ns / 0 B | STJ 95,922 | 1.25 |
+| WriteDictionary | 1,662 ns / 0 B | 1,390 ns / 0 B | STJ 933 | 1.49 |
+| ReadOrder | 484 ns / 232 B | 299 ns / 232 B | STJ 283 | 1.06 |
+| ReadOrders | 426,870 ns / 248,600 B | 267,337 ns / 248,600 B | STJ 298,753 | 0.89 |
+| ReadCustomer | 3,597 ns / 3,168 B | 2,112 ns / 3,168 B | STJ 2,573 | 0.82 |
+| ReadDrawing | 123,837 ns / 90,794 B | 82,705 ns / 90,792 B | STJ 119,381 | 0.69 |
+| ReadMembers | 183,875 ns / 143,802 B | 111,082 ns / 143,800 B | STJ 150,554 | 0.74 |
+| ReadMoney | 98,102 ns / 88,601 B | 78,956 ns / 88,600 B | STJ 74,421 | 1.06 |
+| ReadReadings | 189,728 ns / 104,602 B | 142,828 ns / 104,600 B | STJ 127,215 | 1.12 |
+| ReadDictionary | 4,184 ns / 13,392 B | 3,566 ns / 13,392 B | STJ 3,191 | 1.12 |
+| ReadCustomers | 252,588 ns / 266,668 B | 159,526 ns / 266,664 B | STJ 185,934 / 254,336 B | 0.86 time, 1.05 bytes |
+| ReadCustomers, Preserve | 462,219 ns / 494,396 B | 328,259 ns / 494,392 B | STJ 318,220 / 385,512 B | 1.03 time, 1.28 bytes |
+| WriteCustomers | 114,994 ns / 0 B | 91,506 ns / 0 B | STJ 92,866 | 0.99 |
+| WriteCustomers, IgnoreCycles | 134,923 ns / 362 B | 110,352 ns / 360 B | STJ 100,847 | 1.09 |
+| WriteCustomers, Preserve | 239,599 ns / 148,578 B | 194,098 ns / 148,576 B | STJ 152,228 | 1.28 |
+| ReadTaggedDrawing | 184,018 ns / 90,794 B | 118,398 ns / 90,792 B | STJ 132,937 | 0.89 |
+| WriteTaggedDrawing | 89,730 ns / 0 B | 73,899 ns / 0 B | STJ 71,840 | 1.03 |
+| ReadTypedDrawing | 261,165 ns / 90,800 B | 172,592 ns / 90,792 B | BCL 209,855 | 0.82 |
+| Source generation, read | 3,458 ns / 3,168 B | 1,959 ns / 3,168 B | STJ 2,447 | 0.80 |
+| Source generation, write | 1,450 ns / 0 B | 1,008 ns / 0 B | STJ 776 | 1.30 |
+| ReadSequence | 36,324 ns / 9,440 B | 20,017 ns / 9,224 B | STJ 24,916 / 8,968 B | 0.80 time, 1.03 bytes |
+| WriteSequence | 21,344 ns / 936 B | 13,849 ns / 184 B | STJ 12,856 / 376 B | 1.08 time, 0.49 bytes |
+| ReadOrderSequence | 482,400 ns / 246,620 B | 304,221 ns / 240,888 B | STJ 362,648 / 235,216 B | 0.84 time, 1.02 bytes |
+| WriteOrderSequence | 254,100 ns / 940 B | 195,655 ns / 184 B | STJ 200,070 / 688 B | 0.98 |
+
+**Every row with a BCL baseline is under it on time.** `ReadTypedDrawing` (1.10) and `AttributesPerLine` (1.05) were the two that were over, and `ResumedDrain` now allocates less than the BCL. One BCL comparison is still over: `ChangeTree` allocates 257 KB against 196 KB.
+
+### What is still over System.Text.Json, and why
+
+- **Rows where the document is the cost.** `<int>42</int>` after a declaration is 55 bytes where JSON writes `42`. `WriteInt32` is 0.7 ns per byte written against 12 for System.Text.Json, and it allocates more because what it returns is longer. The scalar root rows, `EncodedNames` (13.8 µs for about 14 KB against 10.9 µs for about 10 KB, so about 1.0 against 1.1 ns per byte), `WriteSequence` and `WriteDictionary` are of this kind. They can be brought closer and not under.
+- **`IndentedWrite` was not a like-for-like row.** The XML side wrote a comment before each item and the JSON side wrote none. Since 2026-11-25 the JSON side writes the same comment (`Utf8JsonWriter.WriteCommentValue`); the row above was measured before that, so its System.Text.Json figure is too low until the table is regenerated. A direct-loop run after the change: 14,096 ns for System.Text.Json and 19,404 ns for XmlEssentials.
+- **The object rows gave System.Text.Json a writer the benchmark reuses**, and gave XmlEssentials the overload that takes a buffer writer and rents a writer for each call. That was the 35 ns between `WriteOrder` and one order of `WriteOrders`. Since 2026-11-25 `XmlSerializerObjectBenchmarks` writes through a reused `Utf8XmlWriter` (`Reset`, `Serialize(writer, value)`, `Flush`), as the JSON side does; the two shapes write the same bytes. The rows above were measured before that.
+- **Attributes.** `WriteReadings` and `ReadReadings` are four attributes per element. A third of the write is formatting a `double`, which is the same code in both libraries. What is left is that each attribute is recorded and compared with the others on the element, which JSON has no need to do for a property.
+- **`RawValue`, checked** is one pass of the reader over the fragment, so it is as fast as the reader is.
+- **`Preserve`** is as it was: an id string and a table entry for each object.
+- **`ParseTree` and `ChangeTree`** were not worked on in this pass beyond what the reader and writer gave them.
+- **Source generation, write.** Generated code writes a scalar member as three calls (`WriteLeafStart`, the value, `WriteLeafEnd`). The one-call form needs no new public member: `Utf8XmlWriter.WriteElementNumber`, `WriteElementString` and `WriteElementBoolean` take a UTF-8 name. It was tried on 2026-11-25 and taken out again. `Write_Default` went from 1,003 ns to about 970 ns in the direct loop, which is inside the noise of that harness, and the path of an error changed: a value with an illegal character was reported at `/Order/Lines/Line/Label` by the generated fast path and at `/Order/Lines/Line` by the metadata and reflection paths (`ExceptionPaths_AreTheSameFromAGeneratedContext`). So no helper was added to `XmlMetadataServices`. What the fast path still pays for is elsewhere: an object member is written with a name given as a string (`WriteStartElement("Billing")`), and a nested object goes through its type info and converter (`XmlMetadataServices.Write<T>`) before it reaches its own generated method.
 
 ---
 

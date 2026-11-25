@@ -33,7 +33,7 @@ namespace CloudNimble.XmlEssentials.Samples
                 </Order>
                 """;
 
-            var order = (XmlElementNode)XmlNode.Parse(xml)!;
+            var order = (XmlElementNode)XmlNode.Parse(xml);
 
             output.WriteLine($"Customer: {order["Customer"]!.InnerText}");
             output.WriteLine($"Status: {order.Attributes["status"]!.Value}");
@@ -58,7 +58,7 @@ namespace CloudNimble.XmlEssentials.Samples
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void AddAndInsert(TextWriter output)
         {
-            var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item></Order>""")!;
+            var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item></Order>""");
 
             order.AddElement("Item").InnerText = "Mouse";
 
@@ -77,7 +77,7 @@ namespace CloudNimble.XmlEssentials.Samples
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void Attributes(TextWriter output)
         {
-            var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""")!;
+            var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""");
 
             order.SetAttribute("status", "shipped");
             order.SetAttribute("carrier", "Contoso Freight");
@@ -106,7 +106,7 @@ namespace CloudNimble.XmlEssentials.Samples
                 "  </ItemGroup>\n" +
                 "</Project>";
 
-            var root = (XmlElementNode)XmlNode.Parse(project)!;
+            var root = (XmlElementNode)XmlNode.Parse(project);
             root["ItemGroup"]!["PackageReference"]!.SetAttribute("Version", "8.1.0");
 
             var options = new XmlWriterOptions
@@ -131,7 +131,7 @@ namespace CloudNimble.XmlEssentials.Samples
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void DeepClone(TextWriter output)
         {
-            var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""")!;
+            var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""");
             XmlElementNode item = order["Item"]!;
             var backorder = new XmlElementNode("Backorder");
 
@@ -164,7 +164,7 @@ namespace CloudNimble.XmlEssentials.Samples
                 </Order>
                 """;
 
-            var indented = (XmlElementNode)XmlNode.Parse(xml)!;
+            var indented = (XmlElementNode)XmlNode.Parse(xml);
             indented.AddElement("Item").InnerText = "Mouse";
             output.WriteLine(indented.ToString());
 
@@ -200,8 +200,8 @@ namespace CloudNimble.XmlEssentials.Samples
                 </Order>
                 """;
 
-            XmlNode? order = XmlNode.Parse(xml);
-            output.WriteLine(order!.ToString());
+            XmlNode order = XmlNode.Parse(xml);
+            output.WriteLine(order.ToString());
 
             try
             {
@@ -226,7 +226,7 @@ namespace CloudNimble.XmlEssentials.Samples
             {
                 if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
                 {
-                    var entry = (XmlElementNode)XmlNode.ParseValue(ref reader)!;
+                    var entry = (XmlElementNode)XmlNode.ParseValue(ref reader);
                     entry.SetAttribute("read", "true");
                     output.WriteLine(entry.ToString());
                 }
@@ -239,7 +239,7 @@ namespace CloudNimble.XmlEssentials.Samples
         /// <param name="output">The writer that receives what the sample prints.</param>
         public static void RemoveAndReplace(TextWriter output)
         {
-            var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item><Item>Mouse</Item><Item>Monitor</Item><Note>Gift</Note></Order>""")!;
+            var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item><Item>Mouse</Item><Item>Monitor</Item><Note>Gift</Note></Order>""");
 
             order.Children.RemoveAt(0);
 

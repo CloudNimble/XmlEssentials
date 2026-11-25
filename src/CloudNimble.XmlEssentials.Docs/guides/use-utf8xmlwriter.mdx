@@ -63,7 +63,7 @@ What to notice:
 - **Disposing the writer finishes the document.** It flushes the output. If an element is still open, it throws instead. See [Validation](#validation).
 - **The output is bytes.** The sample decodes them to print them. In an application, send `buffer.WrittenSpan` or `buffer.WrittenMemory` where the XML is going.
 
-Names and values can be passed as a `string`, as a `ReadOnlySpan<char>`, or as UTF-8 in a `ReadOnlySpan<byte>`, such as a `u8` literal. The UTF-8 overloads skip the transcoding step.
+Most methods take names and values as a `string`, as a `ReadOnlySpan<char>`, or as UTF-8 in a `ReadOnlySpan<byte>`, such as a `u8` literal, and element names also as an [`XmlEncodedText`](#encode-names-you-write-often). The UTF-8 overloads skip the transcoding step. A few methods, such as `WriteAttributeNumber` and `WriteProcessingInstruction`, take only `string`.
 
 ## Write to a stream
 
@@ -184,14 +184,16 @@ The code produces the following output:
 
 The typed methods of [`Utf8XmlReader`](/guides/use-utf8xmlreader#read-text-and-typed-values) read every one of these forms back.
 
+`WriteAttributeNumber` takes an `int`, a `long`, or a `double`. For an attribute of any other type, do as the sample does for `insured`: open the attribute with `WriteStartAttribute`, call a value method, and close it with `WriteEndAttribute`.
+
 Call a value method more than once in the same element and the values are written one after the other, as one run of text.
 
-To write one value from several buffers, use `WriteStringValueSegment` or `WriteBase64StringSegment` and pass `isFinalSegment: true` with the last buffer. The segments are written as one call with the whole value writes them, wherever you cut:
+To write one value from several buffers, use `WriteStringValueSegment` or `WriteBase64StringSegment` and pass `isFinalSegment: true` with the last buffer. The output is the same as one call with the whole value, wherever you cut:
 
 - A text segment can end in the middle of a multi-byte UTF-8 character, or between the two halves of a surrogate pair. The writer keeps the incomplete character and writes it when the next segment completes it.
 - A binary segment can be any length. The writer pads the Base64 text only at the end of the value, so two segments of one byte each produce `AQI=`.
 
-After a segment that isn't final, the next call must be the next segment of the same kind. You can call `Flush` or `FlushAsync` between segments. Any other call throws `XmlException`.
+After a segment that isn't final, the next write must be the next segment of the same kind. You can call `Flush` or `FlushAsync` between segments. Any other `Write*` call throws `XmlException`.
 
 ## Write a complete element in one call
 
@@ -437,7 +439,7 @@ A declaration ends with the element it's on. That's why `s` had to be generated 
 An element that you write without a namespace argument, such as `WriteStartElement("title")`, gets no prefix and no declaration. Under a default namespace, a reader therefore puts it in that default namespace. A `null` namespace argument means the same. To take an element out of the default namespace, pass an empty string as its namespace: `WriteStartElement("title", "")` writes `<title xmlns="">`.
 </Note>
 
-The writer rejects declarations that Namespaces in XML forbids: binding the `xmlns` prefix, binding `xml` to any namespace but its own, binding another prefix to either reserved namespace, and, in XML 1.0, `xmlns:p=""`. For namespaces in the serializer, see [Namespaces](/guides/namespaces).
+The writer rejects declarations that Namespaces in XML forbids: binding the `xmlns` prefix, binding `xml` to any namespace but its own, binding another prefix to either reserved namespace or making one of them the default namespace, and, in XML 1.0, `xmlns:p=""`. For namespaces in the serializer, see [Namespaces](/guides/namespaces).
 
 ## The XML declaration
 
@@ -741,6 +743,7 @@ output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
 
 The code produces the following output:
 
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <?xml-stylesheet href="order.xsl" type="text/xsl"?>
 <!-- Exported by the order service -->
@@ -757,13 +760,14 @@ The code produces the following output:
 | --- | --- | --- |
 | `WriteComment` | `<!--value-->`, inside an element or at the document level. | A value that contains `--` or ends with `-`. |
 | `WriteCData` | `<![CDATA[text]]>`, inside an element. | A value that contains `]]>`, and a CDATA section at the document level. |
-| `WriteProcessingInstruction` | `<?target data?>`, inside an element or at the document level. | The target `xml` in any letter case, and data that contains `?>`. |
+| `WriteProcessingInstruction` | `<?target data?>`, inside an element or at the document level. | A target that isn't a name without a colon, the target `xml` in any letter case, and data that contains `?>`. |
 | `WriteRawValue` | The bytes or characters you pass, as they are. | Input that isn't well formed where it's written, unless you pass `skipInputValidation: true`. |
 
 What to notice:
 
 - **Comments and processing instructions are indented like elements.** With `Indented` set, each gets a line of its own, unless the element it's in holds text.
 - **A CDATA section isn't escaped.** That's its purpose. Like text, it keeps its element on one line.
+- **Raw XML inside an element counts as text of that element.** The writer doesn't indent inside it, so `Address` stays on one line. At the document level, raw XML doesn't make the writer write the XML declaration first.
 - **The text of a comment isn't padded.** Include the spaces you want inside the delimiters.
 
 <Warning>
@@ -855,8 +859,8 @@ Item is 4 bytes
 What to know:
 
 - `Encode` takes a `string`, a `ReadOnlySpan<char>`, or UTF-8 bytes, and copies them.
-- Encoding doesn't check the name. The writer checks it each time it writes it, unless validation is off.
-- `XmlEncodedText` is for element names in no namespace: `WriteStartElement`, `WriteEmptyElement`, `WriteNilElement` and every `WriteElement*` method have an overload for it. For other names, a `u8` literal (as `"Items"u8` in the sample) gives the same benefit with no field.
+- Encoding doesn't check the name. The writer checks it each time it writes it, unless validation is off, and an element written with an `XmlEncodedText` name is the same element as one written with the name as a `string`.
+- `XmlEncodedText` is for element names with no prefix and no namespace argument: `WriteStartElement`, `WriteEmptyElement`, `WriteNilElement` and every `WriteElement*` method have an overload for it. Like `WriteStartElement("Item")`, they declare no namespace for the element, so under a default namespace the element is in that namespace. For attribute names, and for an element with a prefix or a namespace argument, pass a `u8` literal (as `"Items"u8` in the sample): it's UTF-8 already, so it needs no conversion and no field.
 - It's for names only. A name is never escaped, so don't use it to carry text.
 
 ## Flush and dispose
@@ -995,13 +999,12 @@ Second buffer: <Done/>
 
 What `Reset` does and doesn't do:
 
-- It commits pending bytes to the current output first. Nothing you wrote is lost.
-- It sets `BytesCommitted` and the depth to 0 and forgets the namespaces in scope. The next document gets its own declaration.
+- It sets `BytesCommitted` and the depth to 0 and forgets the namespaces in scope. The next document gets its own XML declaration, unless `OmitXmlDeclaration` is set.
 - It keeps the options. To write with different options, create another writer.
 - It doesn't clear your output. The sample resets the `ArrayBufferWriter<byte>` itself.
 - It doesn't check that the previous document was complete. That check belongs to `Dispose`.
 
-A reused writer allocates nothing per document. In the library's benchmarks, writing a small document with a reused writer takes 55 ns and allocates 0 B, where `System.Xml.XmlWriter`, which has no reset, takes 325 ns and allocates 7,328 B. For a catalog of 200 items, the numbers are 23,343 ns and 0 B against 33,137 ns and 13,728 B. An allocation test in the library's test suite holds the 0 B result in place. See [Benchmarks](/benchmarks).
+A reused writer allocates nothing per document, and an allocation test in the library's test suite holds that in place. `System.Xml.XmlWriter` has no reset, so each document needs a new one. See [Benchmarks](/benchmarks) for the measurements.
 
 <Warning>
 A writer isn't thread safe. Reuse one from a single thread at a time, for example one writer per thread or per pooled worker. See [Thread safety](/guides/thread-safety).
@@ -1135,7 +1138,7 @@ Caught: The document has unclosed elements.
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
 
 <Warning>
-The message you catch is from `Dispose`, not from the call that failed (`Invalid XML name.`). The same happens when your own code throws between two writer calls. When you debug a writer, look for the first exception, or catch inside the `using` block. Nothing is flushed in this case, but bytes that the writer committed earlier are already in your output, so discard the output when writing fails.
+The message you catch is from `Dispose`, not from the call that failed (`Invalid XML name.`). The same happens when your own code throws between two writer calls. When you debug a writer, look for the first exception, or catch inside the `using` block. `Dispose` flushes before it throws, so the output holds the part of the document written before the failure. Discard the output when writing fails.
 </Warning>
 
 ### Skip validation
@@ -1183,11 +1186,12 @@ The writer accepted a duplicate attribute and a name that isn't a name, and prod
 
 | With `SkipValidation`, the writer doesn't check | It still does |
 | --- | --- |
-| That names are valid XML names and fit in `MaxNameByteCount`. | Escape text and attribute values. |
-| That prefixes and namespace declarations follow Namespaces in XML. | Allow only one root element. |
+| That names are valid XML names and fit in `MaxNameByteCount`. | Escape text and attribute values, and reject characters XML doesn't allow in them. |
+| That prefixes and namespace declarations follow Namespaces in XML. | Allow only one root element, and no text or CDATA section at the document level. |
 | That an element has no duplicate attribute. | Enforce `MaxDepth` and `MaxAttributeCount`. |
-| The characters of a comment, a CDATA section, or a processing instruction. | |
+| The characters of a comment, a CDATA section, or a processing instruction, and a processing instruction target of `xml`. | Reject `--` in a comment, `]]>` in a CDATA section, and `?>` in processing instruction data. |
 | That every element is closed when the writer is disposed. | |
+| That `WriteRawValue` input is well formed. | |
 
 Leave validation on unless a measurement shows that you need it off.
 
@@ -1235,7 +1239,7 @@ XmlException: MaxNameByteCount exceeded (4).
 | `MaxAttributeCount` | Attributes on one element, including namespace declarations. | 1,000 |
 | `MaxNameByteCount` | The length of an element name, an attribute name, or a prefix, in UTF-8 bytes. | 1,024 |
 
-A value of 0 selects the default. There's no way to turn a limit off, only to raise it. The defaults match those of [`Utf8XmlReader`](/guides/use-utf8xmlreader#set-limits), so a document the writer produces with default options is one the reader accepts with default options. The writer has no limit on the length of text or of the document, because you supply both.
+A value of 0 selects the default. No value turns a limit off; you can only raise it. `SkipValidation` skips the `MaxNameByteCount` check along with the name checks, and leaves the other two in force. The defaults match those of [`Utf8XmlReader`](/guides/use-utf8xmlreader#set-limits), so a document the writer produces with default options is one the reader accepts with default options. The writer has no limit on the length of text or of the document, because you supply both.
 
 ## What the writer doesn't support
 
@@ -1243,7 +1247,7 @@ A value of 0 selects the default. There's no way to turn a limit off, only to ra
 - **Document type declarations and entity references.** There's no method for either. `WriteRawValue` can write them, unchecked, but `Utf8XmlReader` doesn't read a document that has a DTD.
 - **Asynchronous `Write*` methods.** Writing fills a buffer, and only `FlushAsync` and `DisposeAsync` do I/O.
 - **Closing elements for you.** There's no method that ends every open element, and `Dispose` doesn't.
-- **Namespaced attributes from UTF-8 names.** `WriteAttributeString(ReadOnlySpan<byte>, ReadOnlySpan<byte>)` writes an attribute in no namespace. For a prefix or a namespace, use the `string` overloads.
+- **Namespaced attributes from span names.** `WriteAttributeString(ReadOnlySpan<byte>, ReadOnlySpan<byte>)`, `WriteAttributeString(ReadOnlySpan<char>, ReadOnlySpan<char>)`, and `WriteStartAttribute(ReadOnlySpan<char>)` write an attribute in no namespace. For a prefix or a namespace, use the `string` overloads.
 - **Single-quoted attribute values and a choice of how to escape.** The output form is fixed.
 
 ## See also

@@ -104,8 +104,8 @@ Every XmlEssentials type in these tables exists. The types are in `CloudNimble.T
 | --- | --- | --- |
 | `JsonSerializer` | [`XmlSerializer`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) | `Serialize`, `SerializeToUtf8Bytes`, `SerializeAsync`, `SerializeToDocument`, `SerializeToElement`, `SerializeToNode`, `SerializeAsyncEnumerable`, `Deserialize`, `DeserializeAsync`, `DeserializeAsyncEnumerable`. See [Serialize](/guides/serialize) and [Deserialize](/guides/deserialize). |
 | `JsonSerializerOptions` | [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) | Same lifecycle: mutable until first use, then read-only. See [Configure options](/guides/configure-options). |
-| `JsonSerializerOptions.Default`, `Web`, `Strict` | `XmlSerializerOptions.Default`, `Web`, `Strict` | `Web` uses camel-case names and omits the XML declaration. |
-| `JsonSerializerDefaults` | `XmlSerializerDefaults` | `General`, `Web`, `Strict`. |
+| `JsonSerializerOptions.Default`, `Web`, `Strict` | `XmlSerializerOptions.Default`, `Web`, `Strict`, `Bcl` | `Web` uses camel-case names and omits the XML declaration. `Bcl` writes what `System.Xml.Serialization.XmlSerializer` writes. See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer#keep-the-old-defaults). |
+| `JsonSerializerDefaults` | `XmlSerializerDefaults` | `General`, `Web`, `Strict`, and `Bcl`. |
 | `JsonNamingPolicy` | [`XmlNamingPolicy`](/api-reference/CloudNimble/Text/Xml/XmlNamingPolicy) | `CamelCase`, `SnakeCaseLower`, `SnakeCaseUpper`, `KebabCaseLower`, `KebabCaseUpper`, and also `PascalCase`. See [Customize names](/guides/customize-names). |
 | `JsonSerializerOptions.PropertyNamingPolicy` | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy` | XML has two kinds of names, so you can set a policy for each. |
 | `JsonIgnoreCondition` | `XmlIgnoreCondition` | `Never`, `Always`, `WhenWritingDefault`, `WhenWritingNull`, `WhenWriting`, `WhenReading`, with the same values and meaning. `WhenWritingNullReference` is an addition: it leaves out a `null` reference and still writes `xsi:nil` for a nullable value type. |
@@ -391,7 +391,7 @@ A few things you may reach for don't apply:
 - **DTDs and custom entities.** XmlEssentials rejects a document that has a `<!DOCTYPE`. See [Security](/guides/security).
 
 <Note>
-XmlEssentials is faster than `System.Xml` on every row of the [benchmarks](/benchmarks). It isn't faster than System.Text.Json on most rows: XML takes more work to parse and write than JSON does. Choose the format for what's on the wire, not for speed.
+XmlEssentials is faster than `System.Xml` on every row of the [benchmark tables](/benchmarks). It isn't faster than System.Text.Json on most rows: XML takes more work to parse and write than JSON does. Choose the format for what's on the wire, not for speed.
 </Note>
 
 ## See also

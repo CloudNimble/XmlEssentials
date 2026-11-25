@@ -674,6 +674,223 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void SkipValidation_WritesAnAttributeNameThatIsNotAName_AsItIsGiven()
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true };
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("e");
+                writer.WriteAttributeString("1 a", "v");
+                writer.WriteAttributeNumber("2 b", 7);
+                writer.WriteEndElement();
+            }, options).Should().Be("<e 1 a=\"v\" 2 b=\"7\"/>");
+            XmlWriterHarness.ThrownMessage(writer =>
+            {
+                writer.WriteStartElement("e");
+                writer.WriteAttributeString("1 a", "v");
+            }).Should().Be("Invalid XML name.");
+        }
+
+        [TestMethod]
+        public void SkipValidation_StillEscapesValues_AndKeepsTheChecksThatAreNotAboutNames()
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true };
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteAttributeString("a", "<\"&");
+                writer.WriteStringValue("a<b&c");
+                writer.WriteEndElement();
+            }, options).Should().Be("<r a=\"&lt;&quot;&amp;\">a&lt;b&amp;c</r>");
+
+            static void InRoot(Utf8XmlWriter writer, Action<Utf8XmlWriter> write)
+            {
+                writer.WriteStartElement("r");
+                write(writer);
+            }
+
+            XmlWriterHarness.ThrownMessage(writer => InRoot(writer, w => w.WriteStringValue("a\u0001b")), options)
+                .Should().Be("Illegal character in XML value.");
+            XmlWriterHarness.ThrownMessage(writer => InRoot(writer, w => w.WriteAttributeString("a", "a\u0001b")), options)
+                .Should().Be("Illegal character in XML value.");
+            XmlWriterHarness.ThrownMessage(writer => InRoot(writer, w => w.WriteComment("a--b")), options)
+                .Should().Be("Comments must not contain '--' or end with '-'.");
+            XmlWriterHarness.ThrownMessage(writer => InRoot(writer, w => w.WriteCData("a]]>b")), options)
+                .Should().Be("CDATA must not contain ']]>'.");
+            XmlWriterHarness.ThrownMessage(writer => InRoot(writer, w => w.WriteProcessingInstruction("t", "a?>b")), options)
+                .Should().Be("Processing instruction data must not contain '?>'.");
+
+            XmlWriterHarness.ThrownMessage(writer =>
+            {
+                writer.WriteEmptyElement("a");
+                writer.WriteEmptyElement("b");
+            }, options).Should().Be("Multiple root elements are not allowed.");
+            XmlWriterHarness.ThrownMessage(writer => writer.WriteStringValue("x"), options)
+                .Should().Be("Text is not allowed at the document level.");
+            XmlWriterHarness.ThrownMessage(writer => writer.WriteCData("x"), options)
+                .Should().Be("CDATA is not allowed at the document level.");
+
+            XmlWriterHarness.ThrownMessage(writer =>
+            {
+                writer.WriteStartElement("a");
+                writer.WriteStartElement("a");
+                writer.WriteStartElement("a");
+            }, options with { MaxDepth = 2 }).Should().Be("MaxDepth exceeded (2).");
+            XmlWriterHarness.ThrownMessage(writer =>
+            {
+                writer.WriteStartElement("a");
+                writer.WriteAttributeString("x", "1");
+                writer.WriteAttributeString("y", "1");
+                writer.WriteAttributeString("z", "1");
+            }, options with { MaxAttributeCount = 2 }).Should().Be("MaxAttributeCount exceeded (2).");
+        }
+
+        [TestMethod]
+        public void SkipValidation_WritesWhatTheOtherChecksWouldRefuse_AsItIsGiven()
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, SkipValidation = true };
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteAttributeString("a", "1");
+                writer.WriteAttributeString("a", "2");
+                writer.WriteComment("a\u0001b");
+                writer.WriteCData("c\u0001d");
+                writer.WriteProcessingInstruction("xml", "e\u0001f");
+                writer.WriteRawValue("<open>");
+                writer.WriteEndElement();
+            }, options).Should().Be("<r a=\"1\" a=\"2\"><!--a\u0001b--><![CDATA[c\u0001d]]><?xml e\u0001f?><open></r>");
+            XmlWriterHarness.ToXml(writer => writer.WriteEmptyElement(new string('a', 40)), options with { MaxNameByteCount = 8 })
+                .Should().Be("<" + new string('a', 40) + "/>");
+            XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteStartElement("open");
+            }, options).Should().Be("<r><open");
+        }
+
+        [TestMethod]
+        [DataRow(XmlVersion.Version10)]
+        [DataRow(XmlVersion.Version11)]
+        public void Names_OfAnyLength_AreWrittenTheSameByEveryOverload(XmlVersion version)
+        {
+            // A short ASCII name is checked as it is copied, and a longer one is checked on its own first.
+            // The lengths here are on both sides of where one way gives over to the other.
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, Version = version };
+            foreach (var length in (int[])[1, 2, 15, 16, 17, 31, 32, 33, 64, 300])
+            {
+                var name = "n" + new string('a', length - 1);
+                var utf8Name = Encoding.UTF8.GetBytes(name);
+                var encodedName = XmlEncodedText.Encode(name);
+                var element = "<" + name + "/>";
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement(name);
+                    writer.WriteEndElement();
+                }, options).Should().Be(element);
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement(name.AsSpan());
+                    writer.WriteEndElement();
+                }, options).Should().Be(element);
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement(utf8Name);
+                    writer.WriteEndElement();
+                }, options).Should().Be(element);
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement(encodedName);
+                    writer.WriteEndElement();
+                }, options).Should().Be(element);
+                XmlWriterHarness.ToXml(writer => writer.WriteEmptyElement(name), options).Should().Be(element);
+                var number = "<r><" + name + ">7</" + name + "></r>";
+                XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(name, 7)), options).Should().Be(number);
+                XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(name.AsSpan(), 7)), options).Should().Be(number);
+                XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(utf8Name, 7)), options).Should().Be(number);
+                XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(encodedName, 7)), options).Should().Be(number);
+                var text = "<r><" + name + ">v</" + name + "></r>";
+                XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementString(name, "v")), options).Should().Be(text);
+                XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementString(encodedName, "v")), options).Should().Be(text);
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement(name);
+                    writer.WriteStartElement(name);
+                    writer.WriteStringValue("v");
+                    writer.WriteEndElement();
+                    writer.WriteEndElement();
+                }, options).Should().Be("<" + name + "><" + name + ">v</" + name + "></" + name + ">");
+                XmlWriterHarness.ToXml(writer =>
+                {
+                    writer.WriteStartElement("e");
+                    writer.WriteAttributeString(name, "v");
+                    writer.WriteAttributeNumber(name + "b", 7);
+                    writer.WriteStartAttribute(name + "c");
+                    writer.WriteStringValue("w");
+                    writer.WriteEndAttribute();
+                    writer.WriteEndElement();
+                }, options).Should().Be("<e " + name + "=\"v\" " + name + "b=\"7\" " + name + "c=\"w\"/>");
+                XmlWriterHarness.ThrownMessage(writer =>
+                {
+                    writer.WriteStartElement("e");
+                    writer.WriteAttributeString(name, "v");
+                    writer.WriteAttributeNumber(name, 7);
+                }, options).Should().Be("Duplicate attribute.");
+                XmlWriterHarness.ThrownMessage(writer =>
+                {
+                    writer.WriteStartElement("e");
+                    writer.WriteAttributeString(name + " ", "v");
+                }, options).Should().Be("Invalid XML name.");
+                XmlWriterHarness.ThrownMessage(writer => writer.WriteStartElement(name + " "), options).Should().Be("Invalid XML name.");
+            }
+        }
+
+        [TestMethod]
+        [DataRow(XmlVersion.Version10)]
+        [DataRow(XmlVersion.Version11)]
+        public void ElementsWrittenWhole_TakeANameOutsideAscii_InEveryNameForm(XmlVersion version)
+        {
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true, Version = version };
+            const string name = "café";
+            var utf8Name = Encoding.UTF8.GetBytes(name);
+            var encodedName = XmlEncodedText.Encode(name);
+            const string number = "<r><café>7</café></r>";
+            XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(name, 7)), options).Should().Be(number);
+            XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(name.AsSpan(), 7)), options).Should().Be(number);
+            XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(utf8Name, 7)), options).Should().Be(number);
+            XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementNumber(encodedName, 7)), options).Should().Be(number);
+            const string text = "<r><café>v</café></r>";
+            XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementString(name, "v")), options).Should().Be(text);
+            XmlWriterHarness.ToXml(writer => WriteInRoot(writer, w => w.WriteElementString(encodedName, "v")), options).Should().Be(text);
+            XmlWriterHarness.ThrownMessage(writer => WriteInRoot(writer, w => w.WriteElementNumber("café "u8, 7)), options).Should().Be("Invalid XML name.");
+            XmlWriterHarness.ThrownMessage(writer => WriteInRoot(writer, w => w.WriteElementString(XmlEncodedText.Encode("café "), "v")), options).Should().Be("Invalid XML name.");
+        }
+
+        [TestMethod]
+        public void NameBuffer_HoldsOnlyTheNamesOfOpenElements()
+        {
+            // A name is kept from the start tag to the end tag and then let go. A writer that kept every name
+            // it was given would grow with the document.
+            using var writer = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), new XmlWriterOptions { OmitXmlDeclaration = true });
+            writer.WriteStartElement("root");
+            writer.NameBytes.Should().Be(4);
+            for (var i = 0; i < 1_000; i++)
+            {
+                writer.WriteStartElement("item"u8);
+                writer.WriteAttributeString("name", "v");
+                writer.WriteAttributeNumber("count", i);
+                writer.NameBytes.Should().Be(4 + 4 + 4 + 5);
+                writer.WriteStartElement("child");
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+                writer.NameBytes.Should().Be(4);
+            }
+
+            writer.WriteEndElement();
+            writer.NameBytes.Should().Be(0);
+        }
+
+        [TestMethod]
         public void Attribute_AfterDispose_IsRejected()
         {
             // The start tag is still open when the writer is disposed, so only the disposed check stands
@@ -927,6 +1144,68 @@ namespace CloudNimble.XmlEssentials.Tests
             FluentActions.Invoking(() => writer.WriteBase64StringSegment([1], true)).Should().ThrowExactly<ObjectDisposedException>();
         }
 
+        [TestMethod]
+        [DataRow(false, DisplayName = "to a buffer writer")]
+        [DataRow(true, DisplayName = "to a stream")]
+        public void StringValue_LongerThanTheBuffer_IsWrittenWhole(bool toStream)
+        {
+            // Text that is copied as it is, text outside ASCII, and text that is escaped each take their own way
+            // into the output, and each is longer than the writer's buffer here.
+            var plain = new string('a', 100_000);
+            var accented = string.Concat(Enumerable.Repeat("é", 50_000));
+            var escaped = string.Concat(Enumerable.Repeat("a&b<", 25_000));
+            var escapedAs = string.Concat(Enumerable.Repeat("a&amp;b&lt;", 25_000));
+            var options = new XmlWriterOptions { OmitXmlDeclaration = true };
+
+            using var stream = new MemoryStream();
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = toStream ? new Utf8XmlWriter(stream, options) : new Utf8XmlWriter(buffer, options))
+            {
+                writer.WriteStartElement("e");
+                writer.WriteAttributeString("a", escaped);
+                writer.WriteStartElement("plain");
+                writer.WriteStringValue(plain);
+                writer.WriteEndElement();
+                writer.WriteStartElement("accented");
+                writer.WriteStringValue(accented.AsSpan());
+                writer.WriteEndElement();
+                writer.WriteStartElement("escaped");
+                writer.WriteStringValue(escaped);
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+            }
+
+            var written = Encoding.UTF8.GetString(toStream ? stream.ToArray() : buffer.WrittenSpan);
+            written.Should().Be($"<e a=\"{escapedAs}\"><plain>{plain}</plain><accented>{accented}</accented><escaped>{escapedAs}</escaped></e>");
+        }
+
+        [TestMethod]
+        public void StringValue_WithASurrogatePairWhereAPartEnds_KeepsThePair()
+        {
+            // Escaped text is transcoded a part at a time. A pair is never cut in two, wherever it falls.
+            for (var before = 330; before <= 350; before++)
+            {
+                var text = new string('a', before) + "\U0001F600&z";
+                var buffer = new ArrayBufferWriter<byte>();
+                using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+                {
+                    writer.WriteStartElement("e");
+                    writer.WriteAttributeString("a", text);
+                    writer.WriteStringValue(text);
+                    writer.WriteEndElement();
+                }
+
+                var expected = new string('a', before) + "\U0001F600&amp;z";
+                Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be($"<e a=\"{expected}\">{expected}</e>", "{0} characters come before the pair", before);
+            }
+
+            var half = new string('a', 340) + "\uD83D&z";
+            var broken = new Utf8XmlWriter(new ArrayBufferWriter<byte>(), new XmlWriterOptions { OmitXmlDeclaration = true });
+            broken.WriteStartElement("e");
+            FluentActions.Invoking(() => broken.WriteStringValue(half))
+                .Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The text contains half of a surrogate pair.");
+        }
+
         #endregion
 
         #region Private Methods
@@ -944,6 +1223,18 @@ namespace CloudNimble.XmlEssentials.Tests
                 write(w);
                 w.WriteEndElement();
             });
+        }
+
+        /// <summary>
+        /// Writes an <c>r</c> element around what <paramref name="write"/> writes.
+        /// </summary>
+        /// <param name="writer">The writer.</param>
+        /// <param name="write">Writes the content.</param>
+        private static void WriteInRoot(Utf8XmlWriter writer, Action<Utf8XmlWriter> write)
+        {
+            writer.WriteStartElement("r");
+            write(writer);
+            writer.WriteEndElement();
         }
 
         #endregion

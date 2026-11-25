@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="Guid"/> in the hyphenated form.
     /// </summary>
-    internal sealed class XmlGuidConverter : XmlValueConverter<Guid>
+    internal sealed class XmlGuidConverter : XmlFormattedValueConverter<Guid>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlGuidConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 36;
 
         #endregion
 
@@ -27,9 +34,10 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, Guid value, XmlSerializerOptions options)
+        internal override int Format(Guid value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteStringValue(value);
+            value.TryFormat(destination, out var written, "D");
+            return written;
         }
 
         #endregion

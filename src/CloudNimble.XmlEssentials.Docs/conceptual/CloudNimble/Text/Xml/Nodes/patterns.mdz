@@ -1,10 +1,10 @@
 ### Parse, change, write
 
-Parse with `XmlNode.Parse`, change the tree, and write it with `ToString` or `WriteTo`. Comments and indentation inside the root element survive.
+Parse with `XmlNode.Parse`, change the tree, and write it with `ToString` or `WriteTo`. Comments and indentation inside the root element survive, and the elements you didn't reach into are written from the parsed input.
 
 ### Read with the document, edit a copy
 
-Parse with `XmlDocument`, find the element to change with `GetChild`, and call `CloneNode`. The copy outlives the document.
+Parse with `XmlDocument` when you need `XmlDocumentOptions`, a `Stream`, or the typed getters to find what to change. Find the element with `GetChild` and call `CloneNode`. The copy holds everything under the element and outlives the document.
 
 ```csharp
 XmlElementNode product;

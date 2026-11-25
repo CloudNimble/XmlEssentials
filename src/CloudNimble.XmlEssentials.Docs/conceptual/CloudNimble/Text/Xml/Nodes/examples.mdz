@@ -9,7 +9,7 @@ const string xml = """
     </Order>
     """;
 
-var order = (XmlElementNode)XmlNode.Parse(xml)!;
+var order = (XmlElementNode)XmlNode.Parse(xml);
 
 output.WriteLine($"Customer: {order["Customer"]!.InnerText}");
 output.WriteLine($"Status: {order.Attributes["status"]!.Value}");

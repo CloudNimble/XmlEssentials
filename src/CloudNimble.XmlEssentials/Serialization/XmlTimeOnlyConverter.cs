@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="TimeOnly"/> as <c>xs:time</c>.
     /// </summary>
-    internal sealed class XmlTimeOnlyConverter : XmlValueConverter<TimeOnly>
+    internal sealed class XmlTimeOnlyConverter : XmlFormattedValueConverter<TimeOnly>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlTimeOnlyConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 16;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, TimeOnly value, XmlSerializerOptions options)
+        internal override int Format(TimeOnly value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteStringValue(value);
+            return XmlLexical.FormatTime(value.Ticks, destination);
         }
 
         #endregion

@@ -125,7 +125,7 @@ Things to notice:
 | .NET type | XSD type | Written as | Accepted on read |
 | --- | --- | --- | --- |
 | `DateTime` | `dateTime` | `yyyy-MM-ddTHH:mm:ss` and a fraction when there is one. A `Utc` value ends with `Z`, a `Local` value ends with the local offset (`+02:00`), and an `Unspecified` value has no time zone. | `YYYY-MM-DDThh:mm:ss`, an optional fraction, and an optional `Z` or `+hh:mm` / `-hh:mm`. |
-| `DateTimeOffset` | `dateTime` | The same, always followed by the offset. A zero offset is written as `+00:00`. | The same form as `DateTime`. |
+| `DateTimeOffset` | `dateTime` | The same, always followed by the offset. A zero offset is written as `+00:00`, or as `Z` when `UtcOffsetHandling` is `WriteZ`. | The same form as `DateTime`. |
 | `DateOnly` | `date` | `yyyy-MM-dd` | `YYYY-MM-DD` with an optional time zone, which is checked and then dropped. |
 | `TimeOnly` | `time` | `HH:mm:ss` and a fraction when there is one | `hh:mm:ss`, an optional fraction, and an optional time zone, which is checked and then dropped. |
 | `TimeSpan` | `duration` | `PnDTnHnMnS`. Parts that are zero are left out, so 90 minutes is `PT1H30M`. Zero is `PT0S`. A negative value starts with `-`. | `[-]P[nD][T[nH][nM][n[.n]S]]` with at least one part. |
@@ -154,7 +154,7 @@ Rules that hold for all date and time types:
 | .NET type | Written as | Accepted on read |
 | --- | --- | --- |
 | `string` | The text, with `&`, `<`, and other characters escaped as [XML requires](/guides/xml-conformance#what-the-writer-escapes). An empty string is written as an element with no content. | The text of the element, with its whitespace kept. `<string> a </string>` is `" a "`. An empty element is an empty string, not `null`. |
-| `char` | The character. A tab, line feed, or carriage return in an attribute is written as a character reference, so that it isn't normalized to a space. | Exactly one UTF-16 code unit. Whitespace around a character that isn't whitespace is removed; a value that is one whitespace character is that character. A character outside the Basic Multilingual Plane is rejected, because it doesn't fit in one `char`. |
+| `char` | The character, or the number of its UTF-16 code unit when `CharHandling` is `Number`, which reads only a number from 0 to 65535. A tab, line feed, or carriage return in an attribute is written as a character reference, so that it isn't normalized to a space. | Exactly one UTF-16 code unit. Whitespace around a character that isn't whitespace is removed; a value that is one whitespace character is that character. A character outside the Basic Multilingual Plane is rejected, because it doesn't fit in one `char`. |
 | `Guid` | The .NET `D` format: 32 lowercase hexadecimal digits in five groups | The `D`, `N`, `B`, and `P` formats, in either letter case |
 | `byte[]`, `Memory<byte>`, `ReadOnlyMemory<byte>` | Base64 (`base64Binary`). An empty value is written as an element with no content. | Base64. Whitespace inside the value is allowed. An empty element is an empty value. |
 | `Uri` | `Uri.OriginalString`, for a relative or an absolute URI | Any text that `Uri.TryCreate` accepts with `UriKind.RelativeOrAbsolute` |
@@ -197,7 +197,7 @@ Utc
 01:30:00
 0102030405
 Delivered
-The value is not a valid decimal.
+The value is not a valid decimal. Path: /decimal | LineNumber: 1 | BytePositionInLine: 24.
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/37_SupportedTypes.cs)
@@ -208,7 +208,7 @@ A value that can't be read throws an [`XmlException`](/api-reference/CloudNimble
 | --- | --- |
 | `bool` | `The value is not a boolean.` |
 | Every integer type | `The value is not a valid integer.` |
-| `float` | `The value is not a valid float.` |
+| `float`, `Half` | `The value is not a valid float.` |
 | `double` | `The value is not a valid double.` |
 | `decimal` | `The value is not a valid decimal.` |
 | `DateTime`, `DateTimeOffset` | `The value is not a valid dateTime.` |
@@ -216,8 +216,9 @@ A value that can't be read throws an [`XmlException`](/api-reference/CloudNimble
 | `TimeOnly` | `The value is not a valid time.` |
 | `TimeSpan` | `The value is not a valid duration.` |
 | `Guid` | `The value is not a valid GUID.` |
-| `byte[]` | `The value is not valid base64.` |
+| `byte[]`, `Memory<byte>`, `ReadOnlyMemory<byte>` | `The value is not valid base64.` |
 | `char` | `The value is not a single character.` |
+| `char` when `CharHandling` is `Number` | `The value is not the number of a character.` |
 | `Uri` | `The value is not a valid URI.` |
 | `Version` | `The value is not a valid version.` |
 | Every enum | `The value is not a valid enum member.` |
@@ -277,7 +278,7 @@ True
 | Enum | The member name, or the name `[XmlPropertyName]` gives the member. A value that has no member is written as its number. | A member name in any case, or the number of a declared member. Reading accepts both whatever `EnumHandling` is. A name given with `[XmlPropertyName]` is matched exactly. See [Enumeration values](/guides/customize-names#enumeration-values). |
 | `[Flags]` enum | Member names separated by one space. A value with a bit that belongs to no member is written as its number. | Member names separated by whitespace, or any number that fits the underlying type. |
 
-Names are case-sensitive: `shipped` is rejected. A comma isn't a separator: `Gift, Insured`, the form `Enum.ToString` produces, is rejected. For an enum without `[Flags]`, a number that isn't a declared member, such as `7` for `OrderStatus`, is rejected.
+Names are matched in any case, so `shipped` reads as `Shipped`; an exact match is tried first, and a name given with `[XmlPropertyName]` must match exactly. A comma isn't a separator: `Gift, Insured`, the form `Enum.ToString` produces, is rejected. For an enum without `[Flags]`, a number that isn't a declared member, such as `7` for `OrderStatus`, is rejected.
 
 System.Text.Json writes enums as numbers by default. XmlEssentials writes names by default.
 
@@ -401,7 +402,7 @@ The type 'System.Int32[,]' is not supported.
 | --- | --- |
 | `nint`, `nuint`, `System.Type`, delegates | `NotSupportedException`. |
 | Multidimensional arrays | `NotSupportedException`. Use an array of arrays. |
-| An abstract class or an interface with no `[XmlDerivedType]` | `NotSupportedException`. See [Polymorphism](/guides/polymorphism). |
+| An abstract class or an interface with no `[XmlDerivedType]`, unless it is a closed type whose derived types `InferClosedTypePolymorphism` infers | `NotSupportedException`. See [Polymorphism](/guides/polymorphism). |
 | A collection type that the serializer can't create | It is written. Reading it throws `NotSupportedException`. See [Collections and dictionaries](#collections-and-dictionaries). |
 
 <Note>

@@ -62,7 +62,7 @@ The value is immutable. Mutable trees use `CloudNimble.Text.Xml.Nodes.XmlDeclara
 - **The values are normalized, not copied from the source.** For a parsed document, `Version` is `1.0` or `1.1`, and `Encoding` is always `utf-8`, however the document spelled it. In the example, the source says `UTF-8`.
 - **`Standalone` has three states:** `true` for `standalone="yes"`, `false` for `standalone="no"`, and `null` when the declaration doesn't say.
 - **A missing declaration isn't an error.** `XmlDocument.Declaration` is `null`, and the document is XML 1.0.
-- **`Utf8XmlReader` doesn't produce this type.** The reader reports the declaration as an `XmlTokenType.XmlDeclaration` token and exposes only the version, as `Utf8XmlReader.Version`.
+- **`XmlDocument` produces this type; `Utf8XmlReader` reports a token.** The reader reports the declaration as an `XmlTokenType.XmlDeclaration` token, with the version in `Utf8XmlReader.Version` and the pseudo-attributes, as written, in `ValueSpan`.
 - **It's an immutable value.** In the tree that you can change, the declaration is a `CloudNimble.Text.Xml.Nodes.XmlDeclarationNode`.
 
 ## Constructors

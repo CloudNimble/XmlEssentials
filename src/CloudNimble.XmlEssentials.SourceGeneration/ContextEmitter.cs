@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace CloudNimble.XmlEssentials.SourceGeneration
@@ -76,6 +78,31 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             builder.AppendLine();
+            var registrations = new List<string>();
+            foreach (var type in context.Types)
+            {
+                if (ShapeRegistration(type) is { } registration)
+                {
+                    registrations.Add(registration);
+                }
+            }
+
+            if (registrations.Count > 0)
+            {
+                // The runtime library asks whether a member's type is a collection or a dictionary while it binds
+                // the type that has the member, before it has asked for the type info of the member's type. The
+                // context names those types here, so the answer is known without reading their interfaces.
+                builder.Append(indent).Append("    static ").Append(context.Name).AppendLine("()");
+                builder.Append(indent).AppendLine("    {");
+                foreach (var registration in registrations)
+                {
+                    builder.Append(indent).Append("        ").AppendLine(registration);
+                }
+
+                builder.Append(indent).AppendLine("    }");
+                builder.AppendLine();
+            }
+
             builder.Append(indent).Append("    /// <summary>").AppendLine();
             builder.Append(indent).Append("    /// Creates a context seeded from [XmlSourceGenerationOptions].").AppendLine();
             builder.Append(indent).Append("    /// </summary>").AppendLine();
@@ -508,8 +535,37 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 return "XmlMetadataServices.CreateEnumInfo<" + type.ClrTypeName + ">(" + options + ")";
             }
 
-            return "(XmlTypeInfo<" + type.ClrTypeName + ">)(DefaultXmlTypeInfoResolver.Instance.GetTypeInfo(typeof(" + type.ClrTypeName + "), " + options + ")"
-                + " ?? throw new NotSupportedException(\"The type '" + type.ClrTypeName + "' is not supported.\"))";
+            // A built-in value, such as an integer or a string: the runtime library has its converter ready, and
+            // a converter of the caller's for the type comes before it.
+            return "XmlMetadataServices.CreateBuiltInInfo<" + type.ClrTypeName + ">(" + options + ")";
+        }
+
+        /// <summary>
+        /// Returns the statement that tells the runtime library what <paramref name="type"/> holds, when it is a
+        /// collection or a dictionary.
+        /// </summary>
+        /// <param name="type">The type spec.</param>
+        /// <returns>The statement, or null for a type that is neither, and for an array, whose item type is part of the type.</returns>
+        internal static string? ShapeRegistration(TypeSpec type)
+        {
+            const string collection = "XmlMetadataServices.CreateCollectionInfo<";
+            const string dictionary = "XmlMetadataServices.CreateDictionaryInfo<";
+            const string options = "(Options)";
+            var factory = type.Factory;
+            if (!factory.EndsWith(options, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var arguments = factory.Substring(0, factory.Length - options.Length);
+            if (arguments.StartsWith(collection, StringComparison.Ordinal))
+            {
+                return "XmlMetadataServices.RegisterCollection<" + arguments.Substring(collection.Length) + "();";
+            }
+
+            return arguments.StartsWith(dictionary, StringComparison.Ordinal)
+                ? "XmlMetadataServices.RegisterDictionary<" + arguments.Substring(dictionary.Length) + "();"
+                : null;
         }
 
         /// <summary>

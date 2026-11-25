@@ -134,8 +134,10 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine($"AttributeNamingPolicy = {options.AttributeNamingPolicy?.ToString() ?? "null"}");
             output.WriteLine($"AttributeStyle = {options.AttributeStyle}");
             output.WriteLine($"AttributesPerLine = {options.AttributesPerLine}");
+            output.WriteLine($"CharHandling = {options.CharHandling}");
             output.WriteLine($"Converters.Count = {options.Converters.Count}");
             output.WriteLine($"DefaultBufferSize = {options.DefaultBufferSize}");
+            output.WriteLine($"DefaultCollectionMapping = {options.DefaultCollectionMapping}");
             output.WriteLine($"DefaultIgnoreCondition = {options.DefaultIgnoreCondition}");
             output.WriteLine($"DefaultNamespace = {options.DefaultNamespace ?? "null"}");
             output.WriteLine($"DefaultPropertyMapping = {options.DefaultPropertyMapping}");
@@ -157,6 +159,8 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine($"MaxDocumentByteCount = {options.MaxDocumentByteCount}");
             output.WriteLine($"MaxNameByteCount = {options.MaxNameByteCount}");
             output.WriteLine($"MaxTextByteCount = {options.MaxTextByteCount}");
+            output.WriteLine($"MemberOrder = {options.MemberOrder}");
+            output.WriteLine($"Namespaces = {options.Namespaces?.Count.ToString() ?? "null"}");
             output.WriteLine($"NewLine is Environment.NewLine = {options.NewLine == Environment.NewLine}");
             output.WriteLine($"NumberHandling = {options.NumberHandling}");
             output.WriteLine($"OmitXmlDeclaration = {options.OmitXmlDeclaration}");
@@ -170,6 +174,7 @@ namespace CloudNimble.XmlEssentials.Samples
             output.WriteLine($"TypeInfoResolverChain.Count = {options.TypeInfoResolverChain.Count}");
             output.WriteLine($"UnknownTypeHandling = {options.UnknownTypeHandling}");
             output.WriteLine($"UnmappedMemberHandling = {options.UnmappedMemberHandling}");
+            output.WriteLine($"UtcOffsetHandling = {options.UtcOffsetHandling}");
             output.WriteLine($"WhitespaceHandling = {options.WhitespaceHandling}");
             output.WriteLine($"WriteIndented = {options.WriteIndented}");
             output.WriteLine($"XmlVersion = {options.XmlVersion}");

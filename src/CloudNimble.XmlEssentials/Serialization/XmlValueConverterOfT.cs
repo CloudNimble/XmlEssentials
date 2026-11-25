@@ -99,6 +99,37 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Writes <paramref name="value"/> as an attribute in no namespace whose name was built ahead of time.
+        /// </summary>
+        /// <param name="writer">The writer, which has a start tag open.</param>
+        /// <param name="local">The attribute name, an NCName that was checked when <paramref name="head"/> was built.</param>
+        /// <param name="head">Everything up to the value: a space, the name, <c>="</c>.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="options">The serializer options.</param>
+        internal virtual void WriteAttribute(Utf8XmlWriter writer, ReadOnlySpan<byte> local, ReadOnlySpan<byte> head, T value, XmlSerializerOptions options)
+        {
+            writer.WriteStartAttributeTrusted(local, head);
+            WriteValue(writer, value, options);
+            writer.WriteEndAttribute();
+        }
+
+        /// <summary>
+        /// Writes <paramref name="value"/> as the only content of an element whose tags were built ahead of
+        /// time, with no element frame.
+        /// </summary>
+        /// <param name="writer">The writer, which is inside an element.</param>
+        /// <param name="openTag">The whole start tag, <c>&lt;name&gt;</c>.</param>
+        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="options">The serializer options.</param>
+        internal virtual void WriteLeaf(Utf8XmlWriter writer, ReadOnlySpan<byte> openTag, ReadOnlySpan<byte> closeTag, T value, XmlSerializerOptions options)
+        {
+            writer.WriteLeafStart(openTag);
+            WriteValue(writer, value, options);
+            writer.WriteLeafEnd(closeTag);
+        }
+
+        /// <summary>
         /// Writes <paramref name="value"/> as element or attribute content.
         /// </summary>
         /// <param name="writer">The writer.</param>

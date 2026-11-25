@@ -34,11 +34,11 @@ namespace CloudNimble.Text.Xml.Serialization
         internal Func<XmlMemberModel, XmlSerializerOptions, int, int, XmlBoundProperty> CreateBound = null!;
 
         /// <summary>
-        /// Creates the mapping of a collection member, closed over its item type; or null when the reflection
-        /// resolver is to close it at run time. The arguments are the declared collection type, whether a wrapper
+        /// Creates the mapping of a collection member, closed over its collection type and its item type; or null
+        /// when the member is not a collection. The arguments are whether a wrapper
         /// surrounds the items, the UTF-8 item name, the type info of an item, and whether the content is mixed.
         /// </summary>
-        internal Func<Type, bool, byte[], XmlTypeInfo, bool, XmlCollectionBinding>? CreateCollectionBinding;
+        internal Func<bool, byte[], XmlTypeInfo, bool, XmlCollectionBinding>? CreateCollectionBinding;
 
         /// <summary>
         /// The type that declares the member.

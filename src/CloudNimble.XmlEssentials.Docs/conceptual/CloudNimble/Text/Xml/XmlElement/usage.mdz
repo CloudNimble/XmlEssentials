@@ -63,7 +63,7 @@ The members fall into these groups:
 | Identify the node | `ValueKind`, `TokenType`, `LocalName`, `Prefix`, `NamespaceUri`, `IsEmptyElement`, `IsNil` |
 | Find a node by name | `GetChild`, `TryGetChild`, `GetAttribute`, `TryGetAttribute` |
 | Visit every node | `EnumerateChildren`, `EnumerateAttributes`, `AttributeCount` |
-| Read a value | `GetString`, `GetBoolean`, `GetInt32`, `GetInt64`, `GetDecimal`, `GetDouble`, `GetDateTime`, `GetDateTimeOffset`, `GetGuid`, `GetBytesFromBase64` |
+| Read a value | `GetString`, `GetBoolean`, `GetInt32`, `GetInt64`, `GetDecimal`, `GetDouble`, `GetDateTime`, `GetDateTimeOffset`, `GetGuid`, `GetBytesFromBase64`, the other integer and floating-point getters, and a `TryGet` method for each typed getter except `GetBoolean` |
 | Read text or markup | `GetInnerText`, `GetRawXml` |
 | Write or copy the node | `WriteTo`, `CloneNode` |
 

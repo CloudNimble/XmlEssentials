@@ -9,6 +9,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Creates collection and dictionary converters.
     /// </summary>
+    [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
     internal sealed class XmlCollectionConverterFactory : XmlConverterFactory
     {
 
@@ -32,11 +33,6 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        [UnconditionalSuppressMessage("Trimming", "IL2026")]
-        [UnconditionalSuppressMessage("Trimming", "IL2055")]
-        [UnconditionalSuppressMessage("Trimming", "IL2066")]
-        [UnconditionalSuppressMessage("Trimming", "IL2071")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
         public override XmlConverter? CreateConverter(Type typeToConvert, XmlSerializerOptions options)
         {
             ArgumentNullException.ThrowIfNull(typeToConvert);

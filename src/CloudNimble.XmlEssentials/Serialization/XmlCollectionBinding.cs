@@ -90,10 +90,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="itemTypeInfo">The type info used for each item.</param>
         /// <param name="mixed">Whether the collection holds mixed text and child elements.</param>
         /// <returns>The mapping.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2055")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067")]
-        [UnconditionalSuppressMessage("Trimming", "IL2072")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         internal static XmlCollectionBinding Create(Type collectionType, Type elementType, bool wrapped, byte[] utf8ItemName, XmlTypeInfo itemTypeInfo, bool mixed)
         {
             var bindingType = typeof(XmlCollectionBinding<>).MakeGenericType(elementType);
@@ -124,11 +121,10 @@ namespace CloudNimble.Text.Xml.Serialization
         internal abstract bool AddItemsTo(object builder, object target);
 
         /// <summary>
-        /// Returns whether a member declared as <paramref name="collectionType"/> can have items added to the collection it holds.
+        /// Returns whether a member declared as the collection type this binding was made for can have items added to the collection it holds.
         /// </summary>
-        /// <param name="collectionType">The declared collection type.</param>
         /// <returns><see langword="true"/> when the declared type takes items.</returns>
-        internal abstract bool CanPopulate(Type collectionType);
+        internal abstract bool CanPopulate();
 
         /// <summary>
         /// Adds <paramref name="item"/> to a builder.
@@ -136,6 +132,24 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>
         /// <param name="item">The item.</param>
         internal abstract void AddItem(object builder, object? item);
+
+        /// <summary>
+        /// Adds an item of a built-in scalar type, parsed from the text of its element.
+        /// </summary>
+        /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>
+        /// <param name="utf8">The text of the item's element.</param>
+        internal abstract void AddLexicalItem(object builder, ReadOnlySpan<byte> utf8);
+
+        /// <summary>
+        /// Adds the item an element marked <c>xsi:nil</c> stands for: null, or the default of a value type.
+        /// </summary>
+        /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>
+        internal abstract void AddNilItem(object builder);
+
+        /// <summary>
+        /// Gets whether an item is a built-in scalar, read from the text of its element.
+        /// </summary>
+        internal abstract bool HasItemValueConverter { get; }
 
         /// <summary>
         /// Creates an empty builder that items are added to while the collection is read.
@@ -156,6 +170,20 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="reader">The reader, on the item start tag.</param>
         /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>
         internal abstract void ReadItem(ref Utf8XmlReader reader, object builder);
+
+        /// <summary>
+        /// Reads every item that comes next and is a start tag with no attributes, plain text, and an end tag,
+        /// each in one step, and adds them to a builder. It stops at the first thing that is anything else.
+        /// </summary>
+        /// <param name="reader">The reader, inside the element that holds the items.</param>
+        /// <param name="builder">The builder from <see cref="CreateBuilder"/>.</param>
+        /// <param name="openTag">The whole start tag of an item, <c>&lt;name&gt;</c>, or null when the items are not written that way.</param>
+        /// <param name="closeTag">The whole end tag of an item, <c>&lt;/name&gt;</c>.</param>
+        /// <remarks>
+        /// Nothing is read unless the items are of a built-in scalar type and the collection is not mixed
+        /// content, where the white space between elements belongs to the collection.
+        /// </remarks>
+        internal abstract void ReadWholeItems(ref Utf8XmlReader reader, object builder, byte[]? openTag, byte[]? closeTag);
 
         /// <summary>
         /// Reads the element the reader is on as a document element of the item type and adds it to a builder.

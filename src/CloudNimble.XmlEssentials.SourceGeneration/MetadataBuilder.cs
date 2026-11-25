@@ -47,6 +47,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var typeName = SymbolHelpers.FullName(type);
             var key = Identifier(typeName);
             var body = new StringBuilder();
+            // A closed type names the generic derived types it has, constructed, before it is bound.
+            var closedPairs = new List<(string Closed, string Derived)>();
+            TypeGraphWalker.AddClosedDerivedPairs(type, closedPairs);
+            foreach (var (closed, derived) in closedPairs)
+            {
+                body.Append("XmlMetadataServices.RegisterClosedDerivedType<").Append(closed).Append(", ").Append(derived).AppendLine(">();");
+            }
+
             body.Append("var objectInfo = new XmlObjectInfoValues<").Append(typeName).AppendLine(">");
             body.AppendLine("{");
 

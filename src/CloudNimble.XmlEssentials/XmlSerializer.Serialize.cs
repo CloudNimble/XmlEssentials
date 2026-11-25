@@ -1105,7 +1105,7 @@ namespace CloudNimble.Text.Xml
         [RequiresUnreferencedCode(RefMsg), RequiresDynamicCode(DynMsg)]
         public static Task SerializeAsyncEnumerable<TValue>(Stream utf8Xml, IAsyncEnumerable<TValue> values, bool topLevelValues, XmlSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return SerializeAsyncEnumerable(utf8Xml, values, (options ?? XmlSerializerOptions.Default).GetTypeInfo<TValue>(), topLevelValues, cancellationToken);
+            return SerializeAsyncEnumerable(utf8Xml, values, (XmlTypeInfo<TValue>)GetTypeInfo(typeof(TValue), options), topLevelValues, cancellationToken);
         }
 
         /// <summary>
@@ -1139,7 +1139,7 @@ namespace CloudNimble.Text.Xml
             ArgumentNullException.ThrowIfNull(utf8Xml);
             ArgumentNullException.ThrowIfNull(values);
             ArgumentNullException.ThrowIfNull(xmlTypeInfo);
-            var writer = new Utf8XmlWriter(utf8Xml, xmlTypeInfo.Options.ToWriterOptions());
+            var writer = XmlWriterCache.RentSpare(xmlTypeInfo.Options.ToWriterOptions(), utf8Xml);
             try
             {
                 // The values of one document share one set of references, so an object that two values hold is
@@ -1149,22 +1149,47 @@ namespace CloudNimble.Text.Xml
                 if (!topLevelValues)
                 {
                     // The array element is in the namespace of its items, so they do not each declare it again.
-                    xmlTypeInfo.WriteStartRoot(writer, Encoding.UTF8.GetBytes(XmlTypeNames.SequenceElementName(typeof(TValue), xmlTypeInfo.Options)));
+                    xmlTypeInfo.WriteStartRoot(writer, xmlTypeInfo.SequenceElementName);
                 }
 
-                await foreach (var value in values.WithCancellation(cancellationToken).ConfigureAwait(false))
+                var enumerator = values.GetAsyncEnumerator(cancellationToken);
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    WriteStreamedValue(writer, value, xmlTypeInfo, shared ?? handler?.CreateResolver());
-                    if (topLevelValues)
+                    while (true)
                     {
-                        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-                        writer.Reset();
+                        // A sequence that has its next value ready is not awaited, so a run of ready values
+                        // is written in a plain loop.
+                        var next = enumerator.MoveNextAsync();
+                        if (!(next.IsCompletedSuccessfully ? next.Result : await next.ConfigureAwait(false)))
+                        {
+                            break;
+                        }
+
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var value = enumerator.Current;
+                        if (handler is null)
+                        {
+                            xmlTypeInfo.WriteRoot(writer, value);
+                        }
+                        else
+                        {
+                            WriteStreamedValue(writer, value, xmlTypeInfo, shared ?? handler.CreateResolver());
+                        }
+
+                        if (topLevelValues)
+                        {
+                            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                            writer.Reset();
+                        }
+                        else if (writer.BytesPending > XmlLimits.DefaultBufferSize / 2)
+                        {
+                            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                        }
                     }
-                    else if (writer.BytesPending > XmlLimits.DefaultBufferSize / 2)
-                    {
-                        await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-                    }
+                }
+                finally
+                {
+                    await enumerator.DisposeAsync().ConfigureAwait(false);
                 }
 
                 if (!topLevelValues)
@@ -1172,14 +1197,24 @@ namespace CloudNimble.Text.Xml
                     writer.WriteEndElement();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // The path of an error is the elements the writer has open.
+                (ex as XmlException)?.SetPathIfMissing(writer.CurrentPath());
                 writer.Detach();
                 throw;
             }
             finally
             {
-                await writer.DisposeAsync().ConfigureAwait(false);
+                // What is left in the buffer goes out, and the writer is kept for the next call.
+                try
+                {
+                    await writer.FlushAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                finally
+                {
+                    XmlWriterCache.ReturnSpare(writer);
+                }
             }
         }
 

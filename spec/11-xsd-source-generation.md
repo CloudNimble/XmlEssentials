@@ -96,6 +96,38 @@ Hand-written contexts that reference generated types still go through Serializer
 
 Not mapped, and reported: a choice that holds a sequence, a group or an element that repeats, which one value cannot hold (an optional member each, XMLESS011; no document is lost); a repeating group that holds `xs:any` or one element name with two types (a list each, which loses the order between them, XMLESS018); a `ref`, group or base type that is not in the schema (XMLESS018); `xs:restriction` of a named complex type, which is a derived class with no members (XMLESS011); `default` and `fixed` on an element that may be absent or of a type with no C# constant (XMLESS011). Members keep the order of the schema: the generator does not sort them with an unstable sort.
 A type has no write fast path when it is abstract or has derived types, or a member holds one of those, a choice of elements, mixed content, extension data, or an element or item that names its own empty or other namespace through the form rules.
+## Preview status and open problems
+
+The XSD generator ships as a **preview** (2026-11-25, the owner's decision), and no work is done on it until after the first release. The guide says so, and the feature leaves preview when every problem in this list is closed by a test that fails first. The list was made by reading `XsdParser`, `XsdGenerator` and `SerializerGenerator`, not by running schemas: each item starts with a failing test that proves it, and an item that the test disproves is struck with the test named.
+
+**Wrong output for a valid schema**
+
+1. **`xs:import` is treated as `xs:include`.** `XsdParser.ResolveIncludes` appends the children of the imported schema to the importing root, so components of another namespace are generated as if they were in the importing schema's `targetNamespace`. An imported element is written in the wrong namespace.
+2. **Components are found by local name alone.** The bind context keys types, elements, attributes, groups and attribute groups by local name (`XsdParser.LocalName` drops the prefix). Two components with one local name in two namespaces collide or bind to the wrong one.
+3. **A schema file is found by file name alone.** Two `.xsd` items with one file name in different folders cannot both be included.
+4. **The document element depends on the options.** The target namespace reaches the document element through `DefaultNamespace` on the generated context's own options. A context created from the caller's options writes the document element unqualified, which the schema does not allow. The namespace belongs on the class.
+5. **`xs:integer` is `int`.** The schema type is unbounded and the library reads and writes `BigInteger`. A value over `int.MaxValue` that the schema allows is refused. `xs:nonNegativeInteger`, `xs:positiveInteger`, `xs:nonPositiveInteger` and `xs:negativeInteger` are `string`.
+6. **`xs:hexBinary` is `string`,** and so is a simple type that is a list. A list has a member type and should be a collection of it written as one value.
+7. **A type named `guid` in any namespace is `Guid`.** The match is by local name, so it is not limited to the namespace that defines such a type.
+8. **Several global elements of one type have one root name** (XMLESS018). A document whose root is any but the first cannot be written.
+9. **A repeating group that holds `xs:any`, or one element name with two types, loses the order between its elements** (XMLESS018).
+10. **A global element of a simple type generates nothing,** so a document whose root is that element has no type info.
+
+**Not acted on, documents unchanged (XMLESS011)**
+
+11. A choice that holds a sequence, a group or a repeating element becomes optional members; that one alternative is present is not kept.
+12. `default` and `fixed` are not applied to an element that may be absent, or to a type with no C# constant.
+13. `xs:redefine` and `xs:notation` are ignored.
+14. `xs:documentation` on a child element or an attribute is not copied to its property.
+
+**Generators**
+
+15. **A hand-written context that lists a schema-generated type is untested.** `SerializerGenerator` does not see the output of `XsdGenerator`, so the type is unresolved where the context is collected. The paragraph above that says this works is unproven.
+16. **A call that passes no context is not intercepted for a schema-generated type,** for the same reason. Under the Native AOT contract in [12](12-aot-and-trimming.md) a context-free call is not the AOT path for any type, so this is a convenience gap, not an AOT one.
+17. **Schemas that span files have no sample and no Native AOT check.**
+
+**Not problems: non-goals that stay.** Facets other than `enumeration`, identity constraints (`xs:key`, `xs:keyref`, `xs:unique`), run-time validation, WSDL, and downloading schemas.
+
 ## Diagnostics
 
 - XMLESS010: include/import not in AdditionalFiles, or DTD in a schema document

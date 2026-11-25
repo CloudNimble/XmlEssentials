@@ -18,9 +18,13 @@ namespace CloudNimble.Text.Xml.Nodes
 
         #region Fields
 
+        private XmlAttributeNodeList? _attributes;
+        private XmlNodeList? _children;
         private string _localName;
         private string _namespaceUri;
         private string _prefix;
+        private XmlNodeSource? _source;
+        private int _sourceIndex;
 
         #endregion
 
@@ -32,7 +36,14 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <value>
         /// The list of attributes of this element, in the order they are written. The list can be changed.
         /// </value>
-        public XmlAttributeNodeList Attributes { get; }
+        public XmlAttributeNodeList Attributes
+        {
+            get
+            {
+                Materialize();
+                return _attributes ??= new XmlAttributeNodeList(this);
+            }
+        }
 
         /// <summary>
         /// Gets the child nodes of this element.
@@ -40,7 +51,14 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <value>
         /// The list of child nodes of this element, in document order. The list can be changed.
         /// </value>
-        public XmlNodeList Children { get; }
+        public XmlNodeList Children
+        {
+            get
+            {
+                Materialize();
+                return _children ??= new XmlNodeList(this);
+            }
+        }
 
         /// <summary>
         /// Gets or sets a value that indicates whether this element is written as one tag when it has no children.
@@ -56,7 +74,15 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <c>&lt;e /&gt;</c>, and whether every element with no content is written with an end tag, is set by
         /// <see cref="XmlWriterOptions.EmptyElementStyle"/>.
         /// </remarks>
-        public bool IsEmptyElement { get; set; } = true;
+        public bool IsEmptyElement
+        {
+            get;
+            set
+            {
+                Materialize();
+                field = value;
+            }
+        } = true;
 
         /// <summary>
         /// Gets or sets the text content of this element.
@@ -102,6 +128,7 @@ namespace CloudNimble.Text.Xml.Nodes
             set
             {
                 ArgumentException.ThrowIfNullOrWhiteSpace(value);
+                Materialize();
                 _localName = value;
             }
         }
@@ -116,7 +143,11 @@ namespace CloudNimble.Text.Xml.Nodes
         public override string? NamespaceUri
         {
             get => _namespaceUri;
-            set => _namespaceUri = value ?? string.Empty;
+            set
+            {
+                Materialize();
+                _namespaceUri = value ?? string.Empty;
+            }
         }
 
         /// <summary>
@@ -129,7 +160,11 @@ namespace CloudNimble.Text.Xml.Nodes
         public string Prefix
         {
             get => _prefix;
-            set => _prefix = value ?? string.Empty;
+            set
+            {
+                Materialize();
+                _prefix = value ?? string.Empty;
+            }
         }
 
         /// <inheritdoc />
@@ -153,7 +188,7 @@ namespace CloudNimble.Text.Xml.Nodes
             get
             {
                 ArgumentNullException.ThrowIfNull(localName);
-                foreach (var child in Children)
+                foreach (var child in Children.AsSpan())
                 {
                     if (child is XmlElementNode element && element.LocalName == localName)
                     {
@@ -186,7 +221,7 @@ namespace CloudNimble.Text.Xml.Nodes
             {
                 ArgumentNullException.ThrowIfNull(localName);
                 ArgumentNullException.ThrowIfNull(namespaceUri);
-                foreach (var child in Children)
+                foreach (var child in Children.AsSpan())
                 {
                     if (child is XmlElementNode element
                         && element.LocalName == localName
@@ -225,8 +260,26 @@ namespace CloudNimble.Text.Xml.Nodes
             _localName = localName;
             _namespaceUri = namespaceUri ?? string.Empty;
             _prefix = prefix ?? string.Empty;
-            Attributes = new XmlAttributeNodeList(this);
-            Children = new XmlNodeList(this);
+        }
+
+        /// <summary>
+        /// Creates an element of a parsed document, which makes its attributes and children when they are first
+        /// asked for.
+        /// </summary>
+        /// <param name="localName">The local name.</param>
+        /// <param name="namespaceUri">The namespace URI, or empty.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="isEmptyElement">Whether the element was written with no end tag.</param>
+        /// <param name="source">The document the element is in.</param>
+        /// <param name="sourceIndex">The row of the element in the document.</param>
+        internal XmlElementNode(string localName, string namespaceUri, string prefix, bool isEmptyElement, XmlNodeSource source, int sourceIndex)
+        {
+            _localName = localName;
+            _namespaceUri = namespaceUri;
+            _prefix = prefix;
+            IsEmptyElement = isEmptyElement;
+            _source = source;
+            _sourceIndex = sourceIndex;
         }
 
         #endregion
@@ -272,13 +325,19 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <inheritdoc />
         public override XmlNode DeepClone()
         {
+            if (_source is { } unread)
+            {
+                // Nothing under this element has been made yet, and the copy need not make it either.
+                return new XmlElementNode(_localName, _namespaceUri, _prefix, IsEmptyElement, unread, _sourceIndex);
+            }
+
             var clone = new XmlElementNode(_localName, _namespaceUri, _prefix) { IsEmptyElement = IsEmptyElement };
-            foreach (var attribute in Attributes)
+            foreach (var attribute in AttributeSpan())
             {
                 clone.Attributes.Add((XmlAttributeNode)attribute.DeepClone());
             }
 
-            foreach (var child in Children)
+            foreach (var child in Children.AsSpan())
             {
                 clone.Add(child.DeepClone());
             }
@@ -316,7 +375,8 @@ namespace CloudNimble.Text.Xml.Nodes
         {
             // To set an attribute is to name it exactly. With no namespace given, that is the attribute in no
             // namespace, not the first one in any namespace that happens to share the local name.
-            var existing = Attributes[localName, namespaceUri ?? string.Empty];
+            Materialize();
+            var existing = _attributes?[localName, namespaceUri ?? string.Empty];
             if (existing is not null)
             {
                 existing.Value = value ?? string.Empty;
@@ -332,13 +392,20 @@ namespace CloudNimble.Text.Xml.Nodes
         public override void WriteTo(Utf8XmlWriter writer)
         {
             ArgumentNullException.ThrowIfNull(writer);
+            if (_source is { } source)
+            {
+                // Nothing under this element has been looked at or changed, so it is written as it was parsed.
+                source.Document.WriteRow(_sourceIndex, writer);
+                return;
+            }
+
             var prefix = Utf8XmlWriter.EncodeUtf8(_prefix, stackalloc byte[64], out _);
             var ns = Utf8XmlWriter.EncodeUtf8(_namespaceUri, stackalloc byte[128], out _);
             writer.WriteStartElementDeferred(Utf8XmlWriter.EncodeUtf8(_localName, stackalloc byte[64], out _), prefix);
             var declared = false;
             Span<byte> prefixScratch = stackalloc byte[64];
             Span<byte> uriScratch = stackalloc byte[128];
-            foreach (var attribute in Attributes)
+            foreach (var attribute in AttributeSpan())
             {
                 if (!IsNamespaceDeclaration(attribute, out var declaredPrefix))
                 {
@@ -400,7 +467,7 @@ namespace CloudNimble.Text.Xml.Nodes
         {
             Span<byte> prefixScratch = stackalloc byte[64];
             Span<byte> uriScratch = stackalloc byte[128];
-            foreach (var attribute in Attributes)
+            foreach (var attribute in AttributeSpan())
             {
                 if (IsNamespaceDeclaration(attribute, out var declaredPrefix) && declaredPrefix.Length != 0)
                 {
@@ -415,6 +482,39 @@ namespace CloudNimble.Text.Xml.Nodes
             {
                 writer.WriteEmptyText();
             }
+        }
+
+        /// <summary>
+        /// Makes the attributes and the children of an element that still has them only in the parsed document.
+        /// </summary>
+        /// <remarks>
+        /// Everything that looks at or changes what is under the element, or changes its name, comes here first.
+        /// The child elements that are made keep the document in their turn, so only the part of a tree that
+        /// is looked at is ever made.
+        /// </remarks>
+        private void Materialize()
+        {
+            if (_source is not { } source)
+            {
+                return;
+            }
+
+            // The source is let go of first: filling the element goes through its lists, which come back here.
+            _source = null;
+            source.Document.FillElement(this, _sourceIndex, source.Names, source);
+        }
+
+        /// <summary>
+        /// Returns the attributes in order, without creating the list for an element that has none.
+        /// </summary>
+        /// <returns>The attributes.</returns>
+        /// <remarks>
+        /// Most elements of a document have no attributes, so the list is made when it is first asked for.
+        /// </remarks>
+        private ReadOnlySpan<XmlAttributeNode> AttributeSpan()
+        {
+            Materialize();
+            return _attributes is null ? default : _attributes.AsSpan();
         }
 
         /// <summary>
@@ -440,7 +540,7 @@ namespace CloudNimble.Text.Xml.Nodes
         {
             Span<byte> prefixScratch = stackalloc byte[64];
             Span<byte> uriScratch = stackalloc byte[128];
-            foreach (var attribute in Attributes)
+            foreach (var attribute in AttributeSpan())
             {
                 if (!IsNamespaceDeclaration(attribute, out var declaredPrefix))
                 {
@@ -456,7 +556,7 @@ namespace CloudNimble.Text.Xml.Nodes
                 }
             }
 
-            foreach (var child in Children)
+            foreach (var child in Children.AsSpan())
             {
                 child.WriteTo(writer);
             }
@@ -501,7 +601,7 @@ namespace CloudNimble.Text.Xml.Nodes
 
             if (node is XmlElementNode element)
             {
-                foreach (var child in element.Children)
+                foreach (var child in element.Children.AsSpan())
                 {
                     AppendText(child, builder);
                 }

@@ -68,6 +68,7 @@ Use `XmlDerivedTypeAttribute`1` to declare a derived type.
 
 - This attribute is not the `XmlIncludeAttribute` of `System.Xml.Serialization`, which declares a known derived type. To declare derived types, use `[XmlDerivedType<T>]`.
 - The attribute can be applied to properties and fields only.
+- A public property whose `set` or `init` accessor isn't public is written, but isn't set when a document is read, as a property with no setter isn't. Mark it with `[XmlInclude]` to have the accessor used. This is the rule of `[JsonInclude]`.
 - An included member is named, ordered, and mapped like a public one, and the other mapping attributes can be combined with it.
 
 ## Constructors

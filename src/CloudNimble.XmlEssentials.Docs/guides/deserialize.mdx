@@ -240,7 +240,7 @@ catch (XmlException ex)
 The code produces the following output:
 
 ```text
-Unknown element 'Warehouse'.
+Unknown element 'Warehouse'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 40.
 ```
 
 Both are covered in [Require properties](/guides/required-properties).
@@ -297,9 +297,9 @@ foreach (string xml in documents)
 The code produces the following output:
 
 ```text
-The root element does not match 'PurchaseOrder'.
-End tag does not match start tag.
-The value is not a valid integer.
+The root element does not match 'PurchaseOrder'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 8.
+End tag does not match start tag. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 40.
+The value is not a valid integer. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 28.
 ```
 
 A document that isn't well formed is never partly accepted: the serializer reads to the end of the document, so content after the document element is checked too.

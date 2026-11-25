@@ -3,6 +3,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -40,6 +41,13 @@ namespace CloudNimble.XmlEssentials.Tests
                 src,
                 600000);
             publish.ExitCode.Should().Be(0, publish.StandardOutput + Environment.NewLine + publish.StandardError);
+
+            // The compiler and the native compiler report what is unsafe to trim or to compile ahead of time as
+            // IL warnings. The build treats warnings as errors, and this says the same thing in the open: none.
+            (publish.StandardOutput + Environment.NewLine + publish.StandardError)
+                .Split('\n')
+                .Where(static line => line.Contains(" IL2", StringComparison.Ordinal) || line.Contains(" IL3", StringComparison.Ordinal))
+                .Should().BeEmpty();
 
             var exe = Path.Combine(
                 src,

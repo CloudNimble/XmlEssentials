@@ -1,4 +1,4 @@
-Apply `[XmlPropertyName]` to a property or field to set its XML name. It is the counterpart of `[JsonPropertyName]`, and it works whether the member is written as an element or as an XML attribute.
+Apply `[XmlPropertyName]` to a property or field to set its XML name. It is the counterpart of `[JsonPropertyName]`, and it works whether the member is written as an element or as an XML attribute. On an enumeration member, it sets the name the value is written as.
 
 ```csharp
 [XmlPropertyName("title")]

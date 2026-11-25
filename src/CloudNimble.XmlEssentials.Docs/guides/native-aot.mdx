@@ -115,7 +115,7 @@ Every `XmlSerializer` method comes in up to three forms. The form that takes `Xm
 The overloads that take a `Type` and a context, such as `Serialize(object? value, Type inputType, XmlSerializerContext context)`, are safe too.
 
 <Note>
-There is no safe way to write to a `PipeWriter` through the serializer. Serialize to the pipe's stream with `pipeWriter.AsStream()` and a type info overload instead.
+To write to a `PipeWriter` in a trimmed or Native AOT application, serialize to the pipe's stream, `pipeWriter.AsStream()`, with a type info overload.
 </Note>
 
 The context overloads work with any destination that has one. The following example writes to a stream and reads it back:
@@ -145,11 +145,11 @@ Order 7 for Grace
 
 [`XmlSerializer.IsReflectionEnabledByDefault`](/api-reference/CloudNimble/Text/Xml/XmlSerializer) is a feature switch named `CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault`. It's `true` unless you set it to `false`.
 
-When it's `true`, an `XmlSerializerOptions` instance with no `TypeInfoResolver` uses `DefaultXmlTypeInfoResolver`, the reflection resolver.
+When it's `true`, an `XmlSerializerOptions` instance with no `TypeInfoResolver` is given `DefaultXmlTypeInfoResolver`, the reflection resolver, by the members that need reflection: the `XmlSerializer` methods that take options, `XmlSerializerOptions.GetConverter`, `MakeReadOnly(populateMissingResolver: true)`, and the shared instances `Default`, `Web`, `Strict`, and `Bcl`. Each of them carries the trimming and Native AOT warnings. `TypeInfoResolver` itself, `GetTypeInfo`, the overloads that take type info or a context, and everything a generated context calls carry none, and they never bring the reflection resolver in.
 
 When it's `false`:
 
-- `XmlSerializerOptions.TypeInfoResolver` is `null` until you set it.
+- `XmlSerializerOptions.TypeInfoResolver` stays `null` until you set it.
 - A reflection overload called with such options throws `InvalidOperationException` with the message "Reflection-based XML serialization is disabled. Set TypeInfoResolver, or use an overload that takes an XmlTypeInfo or XmlSerializerContext."
 - The overloads that take type info or a context work as before.
 
@@ -177,13 +177,13 @@ A generated context applies every option and supports derived types, reference h
 
 - **A context in the `Serialization` mode only writes.** A read through it throws `InvalidOperationException`. Use the `Default` or `Metadata` mode for a context that reads. See [Source-generation modes](/guides/source-generation-modes).
 - **Custom converter factories often need reflection themselves.** A factory that calls `MakeGenericType` isn't safe. See [Custom converters](/guides/custom-converters#write-a-converter-factory).
-- **Schemas stay at build time.** Types generated from an `.xsd` file come with their own context, and the schema isn't read at run time. See [Generate types from an XSD](/guides/xsd-source-generation).
+- **Schemas stay at build time.** Types generated from an `.xsd` file come with their own context, and the schema isn't read at run time. Pass that context's type info: calls for those types aren't redirected by interceptors. See [Generate types from an XSD](/guides/xsd-source-generation).
 
 ## Working examples
 
 The repository has two projects that publish with Native AOT:
 
-- [`CloudNimble.XmlEssentials.Tests.Aot`](https://github.com/CloudNimble/XmlEssentials/tree/main/src/CloudNimble.XmlEssentials.Tests.Aot) round-trips a type through a generated context and a type generated from a schema, and walks a document with `Utf8XmlReader`, with the reflection switch off.
+- [`CloudNimble.XmlEssentials.Tests.Aot`](https://github.com/CloudNimble/XmlEssentials/tree/main/src/CloudNimble.XmlEssentials.Tests.Aot) runs with the reflection switch off. It round-trips types through a generated context and types generated from schemas, walks a document with `Utf8XmlReader`, and exercises derived types, reference handling, populating, the naming policies, and the `Bcl` defaults through generated metadata. It also checks that a reflection call throws.
 - [`CloudNimble.XmlEssentials.Samples.Cli`](https://github.com/CloudNimble/XmlEssentials/tree/main/src/CloudNimble.XmlEssentials.Samples.Cli) is a command-line tool that parses and serializes XML.
 
 ## See also
@@ -195,8 +195,8 @@ The repository has two projects that publish with Native AOT:
   <Card title="Reflection vs. source generation" icon="scale-balanced" href="/guides/reflection-vs-source-generation">
     What each approach does and costs.
   </Card>
-  <Card title="Generate types from an XSD" icon="file-code" href="/guides/xsd-source-generation">
-    Classes and a context from a schema, with no reflection.
+  <Card title="Generate types from an XSD (preview)" icon="file-code" href="/guides/xsd-source-generation">
+    Classes and a context from a schema, with no reflection. In preview.
   </Card>
   <Card title="Security" icon="shield-halved" href="/guides/security">
     Limits and defaults for reading untrusted XML.

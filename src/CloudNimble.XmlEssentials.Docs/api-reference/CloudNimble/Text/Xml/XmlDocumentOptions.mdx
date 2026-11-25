@@ -27,7 +27,7 @@ Provides the ability for the user to define custom behavior when parsing XML to 
 
 ## Usage
 
-Pass an `XmlDocumentOptions` to `XmlDocument.Parse` or `XmlDocument.TryParse` to choose what the parser keeps and what it rejects. `default`, `new XmlDocumentOptions()`, and a call to `Parse` without options all mean the same options.
+Pass an `XmlDocumentOptions` to `XmlDocument.Parse`, `ParseAsync`, `TryParse`, or `DiscoverNamespaces` to choose what the parser keeps and what it rejects. `default`, `new XmlDocumentOptions()`, and a call to `Parse` without options all mean the same options.
 
 The defaults are chosen so that there are no surprises on a round trip: a document that is parsed and written back with `XmlDocument.WriteTo` keeps its comments and the white space between its elements. When you only read values and don't want either in the document:
 
@@ -82,7 +82,7 @@ The options are:
 | `MaxDepth` | How deeply elements nest | 0, which means 64 |
 | `MaxAttributeCount` | Attributes on one element, namespace declarations included | 0, which means 1,000 |
 | `MaxNameByteCount` | One element or attribute name, in UTF-8 bytes | 0, which means 1,024 |
-| `MaxTextByteCount` | One text node or CDATA section, in UTF-8 bytes | 0, which means 16,777,216 |
+| `MaxTextByteCount` | One text node, CDATA section, attribute value, or processing instruction's data, in UTF-8 bytes | 0, which means 16,777,216 |
 | `MaxCommentByteCount` | One comment, in UTF-8 bytes | 0, which means 1,048,576 |
 | `MaxDocumentByteCount` | The whole document, in UTF-8 bytes | 0, which means no limit |
 

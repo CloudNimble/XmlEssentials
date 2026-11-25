@@ -62,7 +62,7 @@ const string xml = """
     </Order>
     """;
 
-var order = (XmlElementNode)XmlNode.Parse(xml)!;
+var order = (XmlElementNode)XmlNode.Parse(xml);
 
 output.WriteLine($"Customer: {order["Customer"]!.InnerText}");
 output.WriteLine($"Status: {order.Attributes["status"]!.Value}");
@@ -131,8 +131,9 @@ InnerText: Use ** & ** for bold. **Raw** & unescaped
 
 ## Best Practices
 
-- **Use the tree to change or build XML, and `XmlDocument` to read it.** The tree allocates an object for every node and a string for every name and value. The document doesn't.
-- **Clone only what you edit.** For one change in a large document, parse with `XmlDocument` and call `XmlElement.CloneNode` on the element that changes.
+- **Use the tree to change or build XML, and `XmlDocument` to read it.** The tree has an object for every node it makes and a string for every name and value in it. The document doesn't.
+- **Reach into only what you edit.** A tree from `XmlNode.Parse` makes the nodes under an element when you first reach into it, through `Children`, `Attributes`, `InnerText`, an indexer, or a change. An element you never reach into is written from the parsed input.
+- **Clone the element you edit when you parse with `XmlDocument`.** `XmlElement.CloneNode` copies everything under the element at once, so clone the smallest element that changes.
 - **Find elements by name or type, not by position.** A tree parsed from an indented document has a text node for each run of indentation, so `Children[0]` is often white space.
 - **Use `SetAttribute` to add or change an attribute.** It updates an attribute that exists. `Attributes.Add` doesn't check for a duplicate, and a duplicate fails when the tree is written.
 - **Give every namespaced element its namespace.** A child doesn't inherit the namespace of its parent.
@@ -143,11 +144,11 @@ InnerText: Use ** & ** for bold. **Raw** & unescaped
 
 ### Parse, change, write
 
-Parse with `XmlNode.Parse`, change the tree, and write it with `ToString` or `WriteTo`. Comments and indentation inside the root element survive.
+Parse with `XmlNode.Parse`, change the tree, and write it with `ToString` or `WriteTo`. Comments and indentation inside the root element survive, and the elements you didn't reach into are written from the parsed input.
 
 ### Read with the document, edit a copy
 
-Parse with `XmlDocument`, find the element to change with `GetChild`, and call `CloneNode`. The copy outlives the document.
+Parse with `XmlDocument` when you need `XmlDocumentOptions`, a `Stream`, or the typed getters to find what to change. Find the element with `GetChild` and call `CloneNode`. The copy holds everything under the element and outlives the document.
 
 ```csharp
 XmlElementNode product;
@@ -194,13 +195,13 @@ Keyboard: 44.90
 
 ## Considerations
 
-- **XML isn't a property bag.** An element's children are an ordered list that can mix elements, text, comments, and more, and names can repeat. There is no equivalent of `JsonObject`.
+- **XML isn't a property bag.** An element's children are an ordered list that can mix elements, text, comments, and more, and names can repeat. An element holds that list and a separate list of attributes, where a `JsonObject` holds one value per name.
 - **What `XmlNode.Parse` keeps.** The root element and everything inside it, including comments, the white space between elements, and whether an element with no content was `<e/>` or `<e></e>`. The XML declaration and anything outside the root element aren't part of the tree.
-- **Nothing is validated until the tree is written.** An invalid name, a duplicate attribute, a prefix without a namespace, a comment that contains `--`, or a CDATA section that contains `]]>` throws an `XmlException` from `ToString` or `WriteTo`.
-- **Values are strings.** The tree has no typed getters such as `GetInt32`.
+- **A parsed tree is made as you reach into it.** `XmlNode.Parse` and `ParseValue` keep the parsed input, and an element makes its attributes and child nodes the first time you reach into it. What the tree reads, copies, and writes is the same either way. The parsed input stays in memory while an element that nothing has reached into is reachable.
+- **Little is validated until the tree is written.** The constructors and name setters reject a `null`, empty, or white-space name. An invalid name, a duplicate attribute, a prefix without a namespace, a comment that contains `--`, or a CDATA section that contains `]]>` throws an `XmlException` from `ToString` or `WriteTo`.
+- **Values are strings.** Convert them yourself, or read the XML with `XmlDocument`, whose `XmlElement` has typed getters such as `GetInt32`.
 - **Nodes are ordinary objects.** There is nothing to dispose, and a tree stays valid after the `XmlDocument` it was cloned from is disposed.
-- **No synchronization.** Don't change a tree on one thread while another thread reads or writes it.
-- **No benchmark covers the tree.** The numbers on the [Benchmarks](/benchmarks) page are for `XmlDocument`, the reader, the writer, and the serializer.
+- **No synchronization.** Reading a parsed tree can change it, because an element makes its nodes when it's first reached. Don't use a parsed tree, or the pieces and `DeepClone` copies taken from it, from more than one thread at a time, even when every thread only reads.
 
 ## Related APIs
 

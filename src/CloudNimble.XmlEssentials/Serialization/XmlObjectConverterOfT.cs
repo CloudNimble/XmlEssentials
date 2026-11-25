@@ -22,6 +22,11 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #region Fields
 
+        /// <summary>
+        /// Whether the type is abstract or an interface. It is asked for every object that is read, and asking
+        /// the type itself each time is a call into the runtime.
+        /// </summary>
+        private readonly bool _isAbstract = typeof(T).IsAbstract;
         private readonly Action<Utf8XmlWriter, T, XmlSerializerOptions>? _serializeHandler;
         private readonly XmlObjectTypeInfo<T> _typeInfo;
 
@@ -33,7 +38,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Creates the converter and binds the members of <typeparamref name="T"/> by reflection.
         /// </summary>
         /// <param name="options">The serializer options.</param>
-        [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "The reflection resolver is not used in a trimmed application; a source-generated context supplies the binding instead.")]
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         public XmlObjectConverter(XmlSerializerOptions options)
             : this(options, XmlObjectBinder.Bind<T>)
         {
@@ -58,7 +63,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         public override T? Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
         {
-            if (typeof(T).IsAbstract)
+            if (_isAbstract)
             {
                 // The element was read as the declared type because nothing in it named a derived type.
                 throw XmlException.Create($"The type '{typeof(T)}' is abstract or an interface, so the element must identify one of its derived types.");
@@ -105,7 +110,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (id.Length > 0)
             {
-                writer.WriteStartAttribute(null, "id", XmlNamespaces.Refs);
+                writer.WriteStartAttributeUtf8("id"u8, [], "urn:CloudNimble.Text.Xml:refs"u8);
                 writer.WriteStringValue(id);
                 writer.WriteEndAttribute();
             }
@@ -140,7 +145,7 @@ namespace CloudNimble.Text.Xml.Serialization
         internal object ReadInto(ref Utf8XmlReader reader, object? existing, XmlSerializerOptions options)
         {
             var binding = _typeInfo.Binding;
-            binding.ThrowIfNoMetadata(typeof(T));
+            binding.ThrowIfNoMetadata(_typeInfo.Type);
             Span<bool> seen = stackalloc bool[binding.SlotCount];
             XmlObjectReadState state = default;
             state.Instance = existing ?? binding.CreateObject?.Invoke();
@@ -245,7 +250,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            writer.WriteStartAttribute(null, "ref", XmlNamespaces.Refs);
+            writer.WriteStartAttributeUtf8("ref"u8, [], "urn:CloudNimble.Text.Xml:refs"u8);
             writer.WriteStringValue(id);
             writer.WriteEndAttribute();
         }
@@ -265,7 +270,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            _typeInfo.Binding.ThrowIfNoMetadata(typeof(T));
+            _typeInfo.Binding.ThrowIfNoMetadata(_typeInfo.Type);
             var instance = (object)value!;
             var binding = _typeInfo.Binding;
             var extra = binding.ExtensionData?.GetValue(instance);
@@ -530,58 +535,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </remarks>
         internal static void ReadAttributes(ref Utf8XmlReader reader, XmlObjectBinding binding, XmlSerializerOptions options, ref XmlObjectReadState state, scoped Span<bool> seen, out string? referenceId, out string? referenceRef)
         {
-            referenceId = null;
-            referenceRef = null;
-            var attributes = binding.Attributes;
-            var caseInsensitive = options.PropertyNameCaseInsensitive;
-            var next = 0;
+            // The loop is a method of its own, with no handler in it: a method that catches keeps its locals in
+            // memory, and this loop runs for every attribute of every object.
             XmlBoundProperty? current = null;
             try
             {
-                while (reader.MoveToNextAttribute())
-                {
-                    if (FindAttribute(attributes, ref reader, caseInsensitive, ref next) is { } property)
-                    {
-                        current = property;
-                        property.ReadAttribute(ref reader, state.Instance, state.Values);
-                        current = null;
-                        seen[property.Index] = true;
-                        continue;
-                    }
-
-                    if (IsNamespaceDeclaration(ref reader))
-                    {
-                        continue;
-                    }
-
-                    if (reader.NamespaceUriEquals(XmlNamespaces.Refs))
-                    {
-                        if (reader.LocalNameEquals("id"u8))
-                        {
-                            referenceId = reader.GetString();
-                        }
-                        else if (reader.LocalNameEquals("ref"u8))
-                        {
-                            referenceRef = reader.GetString();
-                        }
-
-                        continue;
-                    }
-
-                    if ((reader.LocalNameEquals(XmlAttributes.Nil) || reader.LocalNameEquals(XmlAttributes.Type)) && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
-                    {
-                        continue;
-                    }
-
-                    if (binding.Polymorphism.Placement is XmlDiscriminatorPlacement.Attribute
-                        && reader.LocalNameEquals(binding.Polymorphism.Utf8DiscriminatorAttributeName)
-                        && reader.PrefixSpan.IsEmpty)
-                    {
-                        continue;
-                    }
-
-                    CaptureAttribute(ref reader, binding, options, ref state);
-                }
+                ReadAttributeValues(ref reader, binding, options, ref state, seen, ref current, out referenceId, out referenceRef);
             }
             catch (XmlException ex)
             {
@@ -599,6 +558,70 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Reads each attribute of the start tag the reader is on into the member it belongs to.
+        /// </summary>
+        /// <param name="reader">The reader, on the object's start tag.</param>
+        /// <param name="binding">The object binding.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <param name="state">The object being read.</param>
+        /// <param name="seen">Whether each member has appeared, one slot per member.</param>
+        /// <param name="current">The member whose attribute is being read, for the path of an error; null between attributes.</param>
+        /// <param name="referenceId">When this method returns, the Preserve <c>id</c>, or null.</param>
+        /// <param name="referenceRef">When this method returns, the Preserve <c>ref</c>, or null.</param>
+        internal static void ReadAttributeValues(ref Utf8XmlReader reader, XmlObjectBinding binding, XmlSerializerOptions options, ref XmlObjectReadState state, scoped Span<bool> seen, ref XmlBoundProperty? current, out string? referenceId, out string? referenceRef)
+        {
+            referenceId = null;
+            referenceRef = null;
+            var attributes = binding.Attributes;
+            var caseInsensitive = options.PropertyNameCaseInsensitive;
+            var next = 0;
+            while (reader.MoveToNextAttribute())
+            {
+                if (FindAttribute(attributes, ref reader, caseInsensitive, ref next) is { } property)
+                {
+                    current = property;
+                    property.ReadAttribute(ref reader, state.Instance, state.Values);
+                    current = null;
+                    seen[property.Index] = true;
+                    continue;
+                }
+
+                if (IsNamespaceDeclaration(ref reader))
+                {
+                    continue;
+                }
+
+                if (reader.NamespaceUriEquals(XmlNamespaces.Refs))
+                {
+                    if (reader.LocalNameEquals("id"u8))
+                    {
+                        referenceId = reader.GetString();
+                    }
+                    else if (reader.LocalNameEquals("ref"u8))
+                    {
+                        referenceRef = reader.GetString();
+                    }
+
+                    continue;
+                }
+
+                if ((reader.LocalNameEquals(XmlAttributes.Nil) || reader.LocalNameEquals(XmlAttributes.Type)) && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
+                {
+                    continue;
+                }
+
+                if (binding.Polymorphism.Placement is XmlDiscriminatorPlacement.Attribute
+                    && reader.LocalNameEquals(binding.Polymorphism.Utf8DiscriminatorAttributeName)
+                    && reader.PrefixSpan.IsEmpty)
+                {
+                    continue;
+                }
+
+                CaptureAttribute(ref reader, binding, options, ref state);
+            }
+        }
+
+        /// <summary>
         /// Reads the content of an element whose members are child elements or mixed content.
         /// </summary>
         /// <param name="reader">The reader, on the object's start tag.</param>
@@ -609,18 +632,81 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <exception cref="XmlException">A member appears twice, a CDATA section has no member to hold it, or the element is not closed.</exception>
         internal static void ReadChildren(ref Utf8XmlReader reader, XmlObjectBinding binding, XmlSerializerOptions options, ref XmlObjectReadState state, scoped Span<bool> seen)
         {
+            // The loop is a method of its own, with no handler in it: a method that catches keeps its locals in
+            // memory, and this loop runs for every element of every object.
+            bool closed;
+            try
+            {
+                closed = ReadChildElements(ref reader, binding, options, ref state, seen);
+            }
+            catch (XmlException ex)
+            {
+                // A member could not be read from its element. An item of a collection with no wrapper is an
+                // element of its own, and its position is the number of items read before it.
+                reader.Locate(ex);
+                if (state.Current is { IsUnwrappedCollection: true } item)
+                {
+                    ex.AddItem(item.Info.Name.LocalName, ((System.Collections.ICollection)GetBuilder(binding, item, ref state)).Count);
+                }
+                else if (state.Current is { } member)
+                {
+                    ex.AddElement(member.Info.Name.LocalName);
+                }
+
+                throw;
+            }
+
+            if (!closed)
+            {
+                throw XmlException.Create("The element was not closed.");
+            }
+        }
+
+        /// <summary>
+        /// Reads the child elements and the text of an object until its end tag.
+        /// </summary>
+        /// <param name="reader">The reader, on the object's start tag.</param>
+        /// <param name="binding">The object binding.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <param name="state">The object being read. Its <see cref="XmlObjectReadState.Current"/> is the member whose element is being read, for the path of an error.</param>
+        /// <param name="seen">Whether each member has appeared, one slot per member.</param>
+        /// <returns><see langword="true"/> when the end tag was read; <see langword="false"/> when the input ended first.</returns>
+        /// <exception cref="XmlException">A member appears twice, or a CDATA section has no member to hold it.</exception>
+        internal static bool ReadChildElements(ref Utf8XmlReader reader, XmlObjectBinding binding, XmlSerializerOptions options, ref XmlObjectReadState state, scoped Span<bool> seen)
+        {
             var elements = binding.Elements;
             var caseInsensitive = options.PropertyNameCaseInsensitive;
             var next = 0;
-            XmlBoundProperty? current = null;
-            try
+
+            // Text between elements belongs to a member only when the content is mixed. Otherwise an element
+            // that holds one scalar, and is the member expected next, is read whole.
+            var wholeLeaves = binding.Mixed is null;
             {
-                while (reader.Read())
+                while (true)
                 {
+                    if (wholeLeaves
+                        && (uint)next < (uint)elements.Length
+                        && elements[next] is { ReadsWholeLeaf: true, NeverStored: false, SiblingNamespaces: null, LeafOpenTag: { } openTag } expected
+                        && !seen[expected.Index]
+                        && reader.TryReadExpectedLeaf(openTag, expected.LeafCloseTag, out var content))
+                    {
+                        state.Current = expected;
+                        expected.ReadText(content, state.Instance, state.Values);
+                        state.Current = null;
+                        seen[expected.Index] = true;
+                        next++;
+                        continue;
+                    }
+
+                    if (!reader.Read())
+                    {
+                        break;
+                    }
+
                     switch (reader.TokenType)
                     {
                         case XmlTokenType.EndElement:
-                            return;
+                            return true;
                         case XmlTokenType.StartElement:
                             if (FindElement(elements, ref reader, caseInsensitive, ref next) is not { } property)
                             {
@@ -638,9 +724,9 @@ namespace CloudNimble.Text.Xml.Serialization
                                     break;
                                 }
 
-                                current = property;
+                                state.Current = property;
                                 property.ReadItem(ref reader, GetBuilder(binding, property, ref state));
-                                current = null;
+                                state.Current = null;
                                 seen[property.Index] = true;
                                 break;
                             }
@@ -650,9 +736,9 @@ namespace CloudNimble.Text.Xml.Serialization
                                 throw XmlException.Create($"Duplicate property '{property.Info.Name.LocalName}'.");
                             }
 
-                            current = property;
+                            state.Current = property;
                             property.Read(ref reader, state.Instance, state.Values);
-                            current = null;
+                            state.Current = null;
                             seen[property.Index] = true;
                             break;
                         case XmlTokenType.Text:
@@ -671,24 +757,8 @@ namespace CloudNimble.Text.Xml.Serialization
                     }
                 }
             }
-            catch (XmlException ex)
-            {
-                // A member could not be read from its element. An item of a collection with no wrapper is an
-                // element of its own, and its position is the number of items read before it.
-                reader.Locate(ex);
-                if (current is { IsUnwrappedCollection: true })
-                {
-                    ex.AddItem(current.Info.Name.LocalName, ((System.Collections.ICollection)GetBuilder(binding, current, ref state)).Count);
-                }
-                else if (current is not null)
-                {
-                    ex.AddElement(current.Info.Name.LocalName);
-                }
 
-                throw;
-            }
-
-            throw XmlException.Create("The element was not closed.");
+            return false;
         }
 
         /// <summary>

@@ -33,5 +33,5 @@ A document doesn't change after it's parsed, so several threads can read it at t
 
 ### Differences from other APIs
 
-- Unlike `System.Xml.XmlDocument` and `XDocument`, this type is read-only and has no XPath, no LINQ, and no node objects. For a tree you can change, see `CloudNimble.Text.Xml.Nodes.XmlNode`.
+- Unlike `System.Xml.XmlDocument` and `XDocument`, this type is read-only, and its nodes are `XmlElement` cursors into the document's buffers rather than objects. You query it with the `XmlElement` lookups and enumerators. For a tree you can change, see `CloudNimble.Text.Xml.Nodes.XmlNode`, and for the full comparison, [Migrate from XDocument and System.Xml.XmlDocument](/guides/migrate/from-xdocument).
 - Unlike `JsonDocument`, the root can be preceded by a declaration, comments, and processing instructions, which the document keeps for writing.

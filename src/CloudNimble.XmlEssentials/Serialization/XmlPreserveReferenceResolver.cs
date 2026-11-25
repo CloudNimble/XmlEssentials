@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -34,17 +35,15 @@ namespace CloudNimble.Text.Xml.Serialization
         public override string GetReference(object value, out bool alreadyExists)
         {
             ArgumentNullException.ThrowIfNull(value);
-            if (_ids.TryGetValue(value, out var id))
+            // One look in the table answers whether the object is known and gives the place for its id.
+            ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(_ids, value, out alreadyExists);
+            if (!alreadyExists)
             {
-                alreadyExists = true;
-                return id;
+                id = _next.ToString(CultureInfo.InvariantCulture);
+                _next++;
             }
 
-            id = _next.ToString(CultureInfo.InvariantCulture);
-            _next++;
-            _ids[value] = id;
-            alreadyExists = false;
-            return id;
+            return id!;
         }
 
         /// <inheritdoc />

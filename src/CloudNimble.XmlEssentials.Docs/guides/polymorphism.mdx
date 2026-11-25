@@ -19,7 +19,7 @@ Without any attributes, the serializer writes the members of the declared type a
 
 ## Declare the derived types
 
-To opt in, put [`[XmlPolymorphic]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPolymorphicAttribute) on the base type and one [`[XmlDerivedType<T>]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) for each derived type. By default, each derived type is written under an element named after it. Pass a string to choose another name.
+To opt in, put one [`[XmlDerivedType<T>]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) on the base type for each derived type. [`[XmlPolymorphic]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPolymorphicAttribute) is optional: add it to choose another placement for the discriminator, the name of a discriminator attribute, the handling of an undeclared type, or closed-type inference. By default, each derived type is written under an element named after it. Pass a string to choose another name.
 
 ```csharp Product.cs
 [XmlPolymorphic]
@@ -94,14 +94,16 @@ Notice the following:
 
 - The element name is the discriminator. `<Book>` becomes a `Book` and `<Disc>` becomes a `Dvd`, with every member of the derived type.
 - An object of the base type itself is written under the member's own name, `<Products>`, and is read back as a `Product`.
-- The naming policy for elements applies to a discriminator that is used as an element name. With `PropertyNamingPolicy = XmlNamingPolicy.CamelCase`, `Book` is written as `<book>`.
+- An element named for a derived type is matched the way every element name is: exactly, or without regard to the case of ASCII letters when `PropertyNameCaseInsensitive` is `true`.
+- The naming policy for elements applies to a discriminator that is used as an element name. With `PropertyNamingPolicy = XmlNamingPolicy.CamelCase`, `Book` is written as `<book>`. `ElementNamingPolicy` takes precedence when it is set.
+- A derived type's element can be in a namespace of its own. Set `Namespace` on the attribute: with `[XmlDerivedType<Invoice>(Namespace = "urn:billing")]`, an `Invoice` is written as `<Invoice xmlns="urn:billing">`, and only an `Invoice` element in that namespace is read as one.
 - A discriminator can't be the element name of another member of the containing type. If two members could claim the same element name, the serializer throws an `InvalidOperationException` when it first builds the type's metadata. Give each derived type its own discriminator.
 
 `[XmlDerivedType<T>]` is a generic attribute, so the derived type is checked by the compiler. The discriminator is always a string. There is no integer form.
 
 The declared base type can be a concrete class, an abstract class, or an interface. An abstract class or an interface must list its derived types with `[XmlDerivedType<T>]`, because the serializer can't create the declared type itself:
 
-- When reading, an element that doesn't identify a derived type throws `XmlException`. A concrete base class would be created instead.
+- When reading, an element that doesn't identify a derived type throws `XmlException` with a message that names the base type: `The type 'Vehicle' is abstract or an interface, so the element must identify one of its derived types. Path: /Garage/Main | LineNumber: 1 | BytePositionInLine: 16.` A concrete base class would be created instead.
 - When writing, a value whose type isn't listed throws `NotSupportedException`, unless the base type sets `UnknownDerivedTypeHandling`.
 - An abstract class or an interface with no `[XmlDerivedType<T>]` isn't supported, and the serializer throws `NotSupportedException` with the message `The type '...' is not supported.`
 
@@ -187,7 +189,7 @@ The code produces the following output:
   </Payment>
 </Checkout>
 CardPayment
-Unknown type discriminator 'voucher'.
+Unknown type discriminator 'voucher'. Path: /Checkout/Payment | LineNumber: 1 | BytePositionInLine: 58.
 ```
 
 The last line shows the default when a document names a discriminator that the base type doesn't declare: an `XmlException`. An element with no discriminator attribute at all is read as the declared type.
@@ -198,7 +200,7 @@ The discriminator attribute can appear anywhere in the start tag. Unlike a JSON 
 
 ### Use xsi:type
 
-`XmlDiscriminatorPlacement.XsiType` writes the discriminator as `xsi:type`, the attribute that XML Schema defines for this purpose and that `System.Xml.Serialization.XmlSerializer` also writes. The value is the discriminator string exactly as you declared it. The serializer doesn't write or resolve a namespace prefix inside the value. The next example uses this placement.
+`XmlDiscriminatorPlacement.XsiType` writes the discriminator as `xsi:type`, the attribute that XML Schema defines for this purpose and that `System.Xml.Serialization.XmlSerializer` also writes. The value is the discriminator string exactly as you declared it, with no namespace prefix. When reading, the exact string is tried first; a value with a prefix, such as `p:Truck`, is then matched by the part after the colon, whatever namespace the prefix is bound to. The next example uses this placement.
 
 ## Handle a type that isn't declared
 
@@ -344,6 +346,17 @@ Each item is written under the element of its own type, and the list keeps its o
 - Each type can have one element name and each element name one type, because a value is written under the element of its type. Two elements for one type are refused when the type is first used, unless the member holds [named values](#when-two-elements-hold-the-same-type).
 - Every type must be assignable to the member's type, or to the item type of a collection.
 - A value whose type has no element is refused with a `NotSupportedException`, except a value of the member's own type, which is written under the member's name.
+
+Each of these throws `NotSupportedException`. The first two are thrown when the type is first used, and the third when the value is written:
+
+| Mistake | Message |
+| --- | --- |
+| Two elements for one type | `Member 'Timeline.Events' has more than one element for the type 'System.String'. A value is written under the element of its type, so a type can have one. Declare the member as XmlNamedValue to let each value name its element.` |
+| A type the member can't hold | `Member 'Timeline.Events' has an element for the type 'System.String', which is not a 'Shape'.` |
+| A value whose type has no element | `The type 'System.Double' is not a declared derived type of 'System.Object'.` |
+
+Also know the following:
+
 - When the type of an element declares derived types with `xsi:type` or an attribute, they still apply inside that element: a value of one of them is written under the element of its base type, with its discriminator.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
@@ -380,7 +393,7 @@ foreach (XmlNamedValue phone in read.Phones)
 
 The code produces the following output:
 
-```
+```text
 <ContactCard><Work>555-0100</Work><Home>555-0199</Home></ContactCard>
 Work: 555-0100
 Home: 555-0199
@@ -388,11 +401,16 @@ Home: 555-0199
 
 The name must be one of the member's elements, and the value must be of the type that element holds; anything else is refused with a `NotSupportedException` when it is written. A value that is `null` is written as an element marked `xsi:nil="true"`.
 
+| Mistake | Message |
+| --- | --- |
+| A name that isn't one of the member's elements | `The member has no element named 'Cell' for a XmlNamedValue.` |
+| A value of another type than the element holds | `The element 'Home' holds a value of type 'System.String', and the value given for it is of type 'System.Int32'.` |
+
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
 ## Mind the type you serialize as
 
-The serializer uses the type you declare, not the runtime type, to choose the document element. The next example serializes the same `CardPayment` three ways: as `Payment`, as its own type through type inference, and as its runtime type through the overload that takes a `Type`.
+With `Attribute` or `XsiType` placement, the serializer uses the type you declare, not the runtime type, to choose the document element. With `ElementName` placement the element name is the discriminator, so a derived value serialized as its base type gets the element of the derived type as its document element. The next example uses `Attribute` placement and serializes the same `CardPayment` three ways: as `Payment`, as its own type through type inference, and as its runtime type through the overload that takes a `Type`.
 
 ```csharp Program.cs
 var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
@@ -411,7 +429,7 @@ The code produces the following output:
 <CardPayment><Amount>59.90</Amount><LastFour>4242</LastFour></CardPayment>
 ```
 
-A discriminator says which derived type a value of the declared type is. A value that is serialized as its own type needs none, so none is written, as in `System.Xml.Serialization` and System.Text.Json. A derived type still inherits the list of its base type: a value of a type that derives from `CardPayment` and is listed on `Payment` is written with its discriminator when it is serialized as `CardPayment`. Read a document with the same type argument that wrote it: a document written as `Payment` has a `<Payment>` root, and `Deserialize<CardPayment>` expects `<CardPayment>`.
+A discriminator says which derived type a value of the declared type is. A value that is serialized as its own type needs none, so none is written, as in `System.Xml.Serialization` and System.Text.Json. A derived type still inherits the list of its base type: if a type derived from a listed type, say an `AudioBook` that derives from `Book`, is also listed on the base type, a value of it serialized as `Book` is written with its discriminator, and a plain `Book` is written with none. When reading into a member declared as a derived type, a discriminator attribute, an `xsi:type`, or an item of a wrapped collection that names a type that isn't that type or below it throws an `XmlException`: `The element identifies the type '...', which is not a '...'.` Under `ElementName`, an element named for such a type is content that no member maps. Read a document with the same type argument that wrote it: a document written as `Payment` has a `<Payment>` root, and `Deserialize<CardPayment>` expects `<CardPayment>`.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)
 
@@ -419,7 +437,7 @@ A discriminator says which derived type a value of the declared type is. A value
 
 If you come from `System.Xml.Serialization`, you know `[XmlInclude(typeof(Book))]` as the way to declare a known derived type. In XmlEssentials that job belongs to `[XmlDerivedType<T>]`.
 
-[`[XmlInclude]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIncludeAttribute) in this library is the counterpart of `[JsonInclude]`: it goes on a property or field that isn't public, and opts that member in to serialization.
+[`[XmlInclude]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIncludeAttribute) in this library is the counterpart of `[JsonInclude]`: it goes on a property or field that isn't public, and opts that member in to serialization. It also makes the serializer use a `set` or `init` accessor that isn't public when it reads a public property.
 
 ```csharp Account.cs
 public sealed class Account
@@ -523,7 +541,7 @@ SmsNotification
 
 The rules are those of `InferClosedTypePolymorphism` in System.Text.Json:
 
-- The discriminator of a derived type is its name. For a generic type that is the name without its type arguments. It goes through the naming policy, and it is written where `DiscriminatorPlacement` says, as a declared discriminator is.
+- The discriminator of a derived type is its name. For a generic type that is the name without its type arguments. It is written where `DiscriminatorPlacement` says, as a declared discriminator is. The element naming policy applies when it is an element name; as an attribute or `xsi:type` value it is written as the type name.
 - A derived type that is closed itself can't be created, so the types that derive from it are used in its place.
 - `[XmlPolymorphic(InferClosedTypePolymorphism = true)]` on a type infers for that type whatever the options say, and `false` turns it off for that type.
 - A type that declares a derived type with `[XmlDerivedType<T>]` has nothing inferred. What it declares is the whole list.

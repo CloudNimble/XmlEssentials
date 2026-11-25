@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -16,13 +17,27 @@ namespace CloudNimble.Text.Xml.Serialization
         private readonly bool _acceptsList;
 
         /// <summary>
+        /// Whether a member declared as the collection type can have items added to the collection it holds.
+        /// </summary>
+        private readonly bool _canPopulate;
+
+        /// <summary>
         /// Creates the declared collection from the items read, or null when the list or an array of them is the collection.
         /// </summary>
         private readonly Func<List<TElement>, object>? _create;
 
         private readonly bool _isArray;
+
         private readonly XmlTypeInfo<TElement>? _itemInfo;
+
         private readonly XmlValueConverter<TElement>? _itemValueConverter;
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override bool HasItemValueConverter => _itemValueConverter is not null;
 
         #endregion
 
@@ -36,12 +51,32 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="utf8ItemName">The UTF-8 local name of each item element inside a wrapper.</param>
         /// <param name="itemTypeInfo">The type info used for each item.</param>
         /// <param name="mixed">Whether the collection holds mixed text and child elements.</param>
-        public XmlCollectionBinding(Type collectionType, bool wrapped, byte[] utf8ItemName, XmlTypeInfo itemTypeInfo, bool mixed)
+        public XmlCollectionBinding([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods)] Type collectionType, bool wrapped, byte[] utf8ItemName, XmlTypeInfo itemTypeInfo, bool mixed)
             : base(wrapped, utf8ItemName, itemTypeInfo, mixed)
         {
             _isArray = collectionType.IsArray;
             _acceptsList = collectionType.IsAssignableFrom(typeof(List<TElement>));
+            _canPopulate = XmlCollectionShape.CanPopulate<TElement>(collectionType);
             _create = _isArray || _acceptsList ? null : XmlCollectionShape.CreateCollectionFactory<TElement>(collectionType);
+            _itemInfo = itemTypeInfo as XmlTypeInfo<TElement>;
+            _itemValueConverter = _itemInfo?.Converter as XmlValueConverter<TElement>;
+        }
+
+        /// <summary>
+        /// Creates the mapping of an array of <typeparamref name="TElement"/>.
+        /// </summary>
+        /// <param name="wrapped">Whether a wrapper element surrounds the items.</param>
+        /// <param name="utf8ItemName">The UTF-8 local name of each item element inside a wrapper.</param>
+        /// <param name="itemTypeInfo">The type info used for each item.</param>
+        /// <param name="mixed">Whether the collection holds mixed text and child elements.</param>
+        /// <remarks>
+        /// An array is made from the items that were read and is never added to, so nothing about its type has to
+        /// be looked up. Generated metadata uses this constructor for an array member and an array type.
+        /// </remarks>
+        public XmlCollectionBinding(bool wrapped, byte[] utf8ItemName, XmlTypeInfo itemTypeInfo, bool mixed)
+            : base(wrapped, utf8ItemName, itemTypeInfo, mixed)
+        {
+            _isArray = true;
             _itemInfo = itemTypeInfo as XmlTypeInfo<TElement>;
             _itemValueConverter = _itemInfo?.Converter as XmlValueConverter<TElement>;
         }
@@ -63,9 +98,21 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override bool CanPopulate(Type collectionType)
+        internal override void AddLexicalItem(object builder, ReadOnlySpan<byte> utf8)
         {
-            return !Mixed && XmlCollectionShape.CanPopulate<TElement>(collectionType);
+            ((List<TElement>)builder).Add(_itemValueConverter!.Parse(utf8, _itemInfo!.Options));
+        }
+
+        /// <inheritdoc />
+        internal override void AddNilItem(object builder)
+        {
+            ((List<TElement>)builder).Add(default!);
+        }
+
+        /// <inheritdoc />
+        internal override bool CanPopulate()
+        {
+            return !Mixed && _canPopulate;
         }
 
         /// <inheritdoc />
@@ -98,6 +145,22 @@ namespace CloudNimble.Text.Xml.Serialization
             ((List<TElement>)builder).Add(_itemInfo!.ReadRoot(ref reader)!);
         }
 
+        /// <inheritdoc />
+        internal override void ReadWholeItems(ref Utf8XmlReader reader, object builder, byte[]? openTag, byte[]? closeTag)
+        {
+            if (_itemValueConverter is null || openTag is null || Mixed)
+            {
+                return;
+            }
+
+            var list = (List<TElement>)builder;
+            var options = _itemInfo!.Options;
+            while (reader.TryReadExpectedLeaf(openTag, closeTag, out var content))
+            {
+                list.Add(_itemValueConverter.Parse(content, options));
+            }
+        }
+
         /// <summary>
         /// Writes one item as an element of <paramref name="property"/>.
         /// </summary>
@@ -112,30 +175,37 @@ namespace CloudNimble.Text.Xml.Serialization
                 var openTag = Wrapped ? ItemLeafOpenTag : property.LeafOpenTag;
                 if (openTag is not null)
                 {
-                    writer.WriteLeafStart(openTag);
-                    _itemValueConverter.WriteValue(writer, item, options);
-                    writer.WriteLeafEnd(Wrapped ? ItemLeafCloseTag : property.LeafCloseTag);
+                    _itemValueConverter.WriteLeaf(writer, openTag, Wrapped ? ItemLeafCloseTag : property.LeafCloseTag, item, options);
                     return;
                 }
             }
 
             var polymorphism = property.Polymorphism;
-            object? content = polymorphism.Derived.Length > 0 ? item : null;
-            if (content is not null && polymorphism.ResolveWrite(ref content) is { } derived)
+            if (polymorphism.Derived.Length > 0 && !XmlConverterHelpers.IsNull(item))
             {
-                if (polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
+                if (polymorphism.IsNamed)
                 {
-                    derived.WriteStart(writer);
-                }
-                else
-                {
-                    WriteItemStart(writer, property);
-                    XmlConverterHelpers.WriteDiscriminator(writer, polymorphism.Placement, polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
+                    // The value names its element. Every other value finds its element by its type.
+                    polymorphism.WriteNamed(writer, (XmlNamedValue)(object)item);
+                    return;
                 }
 
-                derived.WriteContent(writer, content);
-                writer.WriteEndElement();
-                return;
+                if (polymorphism.TryGetDerivedWrite(item.GetType()) is { } derived)
+                {
+                    if (polymorphism.Placement is XmlDiscriminatorPlacement.ElementName)
+                    {
+                        derived.WriteStart(writer);
+                    }
+                    else
+                    {
+                        WriteItemStart(writer, property);
+                        XmlConverterHelpers.WriteDiscriminator(writer, polymorphism.Placement, polymorphism.Utf8DiscriminatorAttributeName, derived.Discriminator);
+                    }
+
+                    derived.WriteContent(writer, item);
+                    writer.WriteEndElement();
+                    return;
+                }
             }
 
             WriteItemStart(writer, property);
@@ -149,28 +219,6 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             writer.WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes the start tag of one item: the item name inside a wrapper, the member name otherwise.
-        /// </summary>
-        /// <param name="writer">The writer.</param>
-        /// <param name="property">The member that holds the collection.</param>
-        internal void WriteItemStart(Utf8XmlWriter writer, XmlBoundProperty property)
-        {
-            if (Wrapped)
-            {
-                if (Utf8ItemNamespaceUri is { } itemNamespace)
-                {
-                    writer.WriteStartElement(Utf8ItemName, itemNamespace);
-                    return;
-                }
-
-                writer.WriteStartElement(Utf8ItemName);
-                return;
-            }
-
-            property.WriteStart(writer);
         }
 
         /// <inheritdoc />
@@ -200,6 +248,28 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 WriteItem(writer, item, property, options);
             }
+        }
+
+        /// <summary>
+        /// Writes the start tag of one item: the item name inside a wrapper, the member name otherwise.
+        /// </summary>
+        /// <param name="writer">The writer.</param>
+        /// <param name="property">The member that holds the collection.</param>
+        internal void WriteItemStart(Utf8XmlWriter writer, XmlBoundProperty property)
+        {
+            if (Wrapped)
+            {
+                if (Utf8ItemNamespaceUri is { } itemNamespace)
+                {
+                    writer.WriteStartElement(Utf8ItemName, itemNamespace);
+                    return;
+                }
+
+                writer.WriteStartElement(Utf8ItemName);
+                return;
+            }
+
+            property.WriteStart(writer);
         }
 
         /// <inheritdoc />

@@ -1,5 +1,6 @@
 using System;
 using CloudNimble.Text.Xml;
+using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Tests.POCOs;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -17,7 +18,7 @@ namespace CloudNimble.XmlEssentials.Tests
 
         #region Fields
 
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true };
 
         #endregion
 

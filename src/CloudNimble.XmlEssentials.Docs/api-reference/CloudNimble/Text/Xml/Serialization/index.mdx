@@ -74,7 +74,7 @@ The how-to guides cover each group of attributes: [Customize names and shape](/g
 
 - **These aren't the `System.Xml.Serialization` attributes.** Several types here have the same names as attributes in `System.Xml.Serialization`, such as `XmlRootAttribute`, `XmlElementAttribute`, `XmlAttributeAttribute`, and `XmlIgnoreAttribute`. The serializer reads only the ones in this namespace. An attribute from `System.Xml.Serialization` on your type is ignored.
 - **Don't import both namespaces in one file.** `[XmlElement]` would be ambiguous and the file wouldn't compile. When you move a type over, replace `using System.Xml.Serialization;` with `using CloudNimble.Text.Xml.Serialization;`. See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer).
-- **The same names don't always mean the same defaults.** For example, a collection has no wrapper element here unless you add `[XmlArray]`.
+- **The same names don't always mean the same defaults.** For example, a collection has no wrapper element here unless you add `[XmlArray]` or set `DefaultCollectionMapping` to `Wrapped`. `XmlSerializerOptions.Bcl` sets the defaults that write what `System.Xml.Serialization.XmlSerializer` writes.
 - **Mapping mistakes are reported on first use.** A combination that can't be mapped, such as `[XmlAttribute]` on an object member or `[XmlText]` on a type that also has child elements, throws a `NotSupportedException` the first time the type is serialized or deserialized.
 
 ## Related APIs

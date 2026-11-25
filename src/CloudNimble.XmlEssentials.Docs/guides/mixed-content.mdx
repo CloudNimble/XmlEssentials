@@ -117,7 +117,7 @@ if (a < b && b > 0) { run(); }
 - The member is the content of the *containing* element. It doesn't get an element of its own, so the type can't also have members that are child elements. The other members must be attributes.
 - A type can have one `[XmlText]` or `[XmlCData]` member, and the member must have a simple type, such as `string`, a number, or an enumeration.
 - When reading, the serializer accepts escaped text and CDATA alike. The attribute only affects writing.
-- A value that contains `]]>` can't be written as one CDATA section. The serializer throws an `XmlException` with the message `CDATA must not contain ']]>'.` Use `[XmlText]` for values that can contain that sequence.
+- A value that contains `]]>` can't be written as one CDATA section, so the serializer splits it at each `]]>` and writes several sections: `a]]>b` is written as `<![CDATA[a]]]]><![CDATA[>b]]>`. A reader joins them again, and the value reads back as it was.
 - A `null` value writes no content, which leaves the element empty.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)
@@ -223,10 +223,10 @@ The code produces the following output:
 
 ```text
 Ada
-Unknown element 'Phone'.
+Unknown element 'Phone'. Path: /Contact | LineNumber: 1 | BytePositionInLine: 33.
 ```
 
-An unmapped attribute fails the same way, with the message `Unknown attribute '...'.` The `XmlSerializerOptions.Strict` preset sets `Disallow` for you.
+An unmapped attribute fails the same way, with a message that names the attribute: `Unknown attribute 'a'. Path: /Contact | LineNumber: 1 | BytePositionInLine: 15.` The `XmlSerializerOptions.Strict` preset sets `Disallow` for you.
 
 An extension data member takes precedence. A type that has one accepts unmapped content even when the options say `Disallow`, because the content is mapped: it goes to that member.
 

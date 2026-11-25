@@ -52,54 +52,104 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         internal const int MaxInternedNamespaceValues = 64;
 
-        private int _autoNs;
-        private XmlWriterName8 _attrLocalsInline;
-        private XmlWriterName[]? _attrLocalsHeap;
-        private XmlWriterName8 _attrNsInline;
-        private XmlWriterName[]? _attrNsHeap;
+        private int _attributeCount;
+
+        /// <summary>
+        /// The names of the attributes on the open start tag, two entries for each: the local name, then
+        /// the namespace URI.
+        /// </summary>
+        private XmlWriterName[] _attributes = new XmlWriterName[16];
+
         private int _attributesPerLine;
+
+        private int _autoNs;
+
         private long _bracketEnd;
+
         private int _bracketRun;
-        private int _buffered;
+
         private byte[] _buffer;
+
+        private int _buffered;
+
         private IBufferWriter<byte>? _bufferWriter;
+
         private long _committed;
+
         private int _depth;
+
         private bool _disposed;
+
         private bool _emittedBom;
-        private XmlWriterFrame[]? _frames;
-        private XmlWriterFrame8 _framesInline;
+
+        private XmlWriterFrame[] _frames = new XmlWriterFrame[8];
+
+        private bool _hasContent;
+
+        private bool _hasText;
+
         private bool _inAttribute;
+
         private int _indentSize;
+
         private bool _leafParentHadText;
+
         private byte[] _lineIndent = [];
+
         private int _lineIndentLength;
+
         private bool _lineOpen = true;
+
         private int _lineScanned;
+
         private int _maxAttributes;
+
         private int _maxDepth;
+
         private int _maxNameBytes;
+
         private Memory<byte> _memory;
+
         private byte[] _names;
+
         private int _namesLength;
+
         private bool _newLineIsCrLf;
+
         private Int8Buffer _nsCacheIndexes;
+
         private int _nsCacheMask;
+
         private int _nsCount;
+
         private XmlWriterNsBinding[]? _nsHeap;
+
         private byte[][]? _nsInterned;
+
         private int _nsInternedCount;
+
         private XmlWriterOptions _options;
+
+        private Serialization.XmlPooledBufferWriter? _rawDocument;
+
         private bool _seenRoot;
+
         private XmlWriterSegment _segment;
+
         private int _segmentCarry;
+
         private int _segmentCarryLength;
+
         private Stream? _stream;
-        private SearchValues<byte> _plainTextBytes = XmlChars.AsciiTextWriteChars;
-        private SearchValues<char> _plainTextChars = XmlChars.PlainTextChars;
+
         private byte[] _tagIndent = [];
+
         private int _tagIndentLength;
+
+        private bool _tagOpen;
+
         private XmlVersion _version;
+
         private bool _wroteDeclaration;
 
         #endregion
@@ -140,6 +190,12 @@ namespace CloudNimble.Text.Xml
         /// The options that were passed to the constructor of this instance.
         /// </value>
         public XmlWriterOptions Options => _options;
+
+        /// <summary>
+        /// Gets the number of bytes of names the writer is holding: the names of the open elements and of
+        /// the attributes on their start tags.
+        /// </summary>
+        internal int NameBytes => _namesLength;
 
         #endregion
 
@@ -324,7 +380,10 @@ namespace CloudNimble.Text.Xml
             _committed = 0;
             _depth = 0;
             _emittedBom = false;
+            _hasContent = false;
+            _hasText = false;
             _inAttribute = false;
+            _tagOpen = false;
             _nsCacheMask = 0;
             _nsCount = 0;
             _lineIndentLength = 0;
@@ -392,714 +451,1392 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes the attribute <c>xsi:nil="true"</c> on the start tag of the current element.
+        /// Writes an attribute with the name specified as a string and an <see cref="int"/> value.
         /// </summary>
-        /// <exception cref="XmlException">
-        /// No start tag is open.
-        /// -or-
-        /// The element already has an <c>xsi:nil</c> attribute, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The number to write as the value of the attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
         /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        public void WriteAttributeNumber(string name, int value)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            WriteAttributeNumberLiteral(name, value);
+        }
+
+        /// <summary>
+        /// Writes an attribute with the name specified as a string and a <see cref="long"/> value.
+        /// </summary>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The number to write as the value of the attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        public void WriteAttributeNumber(string name, long value)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            WriteStartAttribute(name);
+            WriteNumberValue(value);
+            WriteEndAttribute();
+        }
+
+        /// <summary>
+        /// Writes an attribute with the name specified as a string and a <see cref="double"/> value.
+        /// </summary>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The number to write as the value of the attribute.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
         /// </exception>
         /// <remarks>
-        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer first
-        /// declares it on the element with the prefix <c>xsi</c>.
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
         /// </remarks>
-        public void WriteNilValue()
+        public void WriteAttributeNumber(string name, double value)
         {
-            ThrowIfDisposed();
-            if (_depth == 0 || !CurrentFrame().TagOpen)
+            ArgumentNullException.ThrowIfNull(name);
+            WriteStartAttribute(name);
+            WriteNumberValue(value);
+            WriteEndAttribute();
+        }
+
+        /// <summary>
+        /// Writes an attribute with the name and the value specified as strings.
+        /// </summary>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        public void WriteAttributeString(string name, string? value)
+        {
+            WriteStartAttribute(name);
+            if (value is not null)
             {
-                throw XmlException.Create("xsi:nil must be written on a start tag.");
+                WriteStringValue(value);
             }
 
-            EnsureXsi();
-            TrackAttribute("nil"u8, XmlUtf8.Xsi);
-            WriteAttributeSeparator();
-            WriteRaw("xsi:nil=\"true\""u8);
+            WriteEndAttribute();
         }
 
         /// <summary>
-        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a string.
+        /// Writes an attribute with the local name, the namespace URI, and the value specified as strings.
         /// </summary>
-        /// <param name="localName">The local name of the element.</param>
+        /// <param name="localName">The local name of the attribute.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
         /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// The document already has a root element.
+        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
         /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// <paramref name="value"/> contains a character that XML does not allow.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
-        /// declares it on the element with the prefix <c>xsi</c>.
+        /// The namespace is handled as it is by <see cref="WriteStartAttribute(string, string, string)"/>.
         /// </remarks>
-        public void WriteNilElement(string localName)
+        public void WriteAttributeString(string localName, string? namespaceUri, string? value)
         {
-            WriteStartElement(localName);
-            WriteNilValue();
-            WriteEndElement();
+            WriteStartAttribute(null, localName, namespaceUri);
+            if (value is not null)
+            {
+                WriteStringValue(value);
+            }
+
+            WriteEndAttribute();
         }
 
         /// <summary>
-        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name and the
-        /// namespace URI specified as strings.
+        /// Writes an attribute with the prefix, the local name, the namespace URI, and the value specified as strings.
         /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
+        /// <param name="prefix">The prefix of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the attribute.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// No start tag is open, or another attribute is still open.
         /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>. If the XML Schema
-        /// instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer declares it on the
-        /// element with the prefix <c>xsi</c>.
-        /// </remarks>
-        public void WriteNilElement(string localName, string? namespaceUri)
-        {
-            WriteStartElement(localName, namespaceUri);
-            WriteNilValue();
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
-        /// read-only span of characters.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
-        /// declares it on the element with the prefix <c>xsi</c>.
-        /// </remarks>
-        public void WriteNilElement(ReadOnlySpan<char> localName)
-        {
-            WriteStartElement(localName);
-            WriteNilValue();
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
-        /// read-only span of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
-        /// declares it on the element with the prefix <c>xsi</c>.
-        /// </remarks>
-        public void WriteNilElement(ReadOnlySpan<byte> utf8LocalName)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNilValue();
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
-        /// pre-encoded <see cref="XmlEncodedText"/>.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
-        /// declares it on the element with the prefix <c>xsi</c>.
-        /// </remarks>
-        public void WriteNilElement(XmlEncodedText localName)
-        {
-            WriteStartElement(localName);
-            WriteNilValue();
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a string.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteEmptyElement(string localName)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            WriteStartElementLiteral(localName, prefix: null, namespaceUri: null, empty: true);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the local name and the namespace URI specified as strings.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
-        /// </remarks>
-        public void WriteEmptyElement(string localName, string? namespaceUri)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            WriteEmptyElementChars(localName, default, namespaceUri.AsSpan(), explicitNamespace: namespaceUri is not null);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the prefix, the local name, and the namespace URI specified as strings.
-        /// </summary>
-        /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
         /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// <paramref name="prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// <paramref name="prefix"/> is a prefix other than <c>xml</c> and <c>xmlns</c>, and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
         /// -or-
-        /// The document already has a root element.
+        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
         /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// <paramref name="value"/> contains a character that XML does not allow.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
+        /// The namespace is handled as it is by <see cref="WriteStartAttribute(string, string, string)"/>.
         /// </remarks>
-        public void WriteEmptyElement(string? prefix, string localName, string? namespaceUri)
+        public void WriteAttributeString(string? prefix, string localName, string? namespaceUri, string? value)
         {
-            ArgumentNullException.ThrowIfNull(localName);
-            WriteEmptyElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), explicitNamespace: namespaceUri is not null);
-        }
-
-        /// <summary>
-        /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a read-only span of characters.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteEmptyElement(ReadOnlySpan<char> localName)
-        {
-            WriteEmptyElementChars(localName, default, default, explicitNamespace: false);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the local name and the namespace URI specified as read-only spans of characters.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty span means no namespace.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
-        /// </remarks>
-        public void WriteEmptyElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
-        {
-            WriteEmptyElementChars(localName, default, namespaceUri, explicitNamespace: true);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the local name specified as a read-only span of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName)
-        {
-            WriteStartElementUtf8(utf8LocalName, [], [], empty: true);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the local name and the namespace URI specified as read-only spans of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
-        /// </remarks>
-        public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
-        {
-            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: true, explicitNamespace: true);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the prefix, the local name, and the namespace URI specified as read-only
-        /// spans of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// <paramref name="utf8Prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="utf8NamespaceUri"/> is empty.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
-        /// </remarks>
-        public void WriteEmptyElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
-        {
-            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: true, explicitNamespace: true);
-        }
-
-        /// <summary>
-        /// Writes an empty element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/>.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteEmptyElement(XmlEncodedText localName)
-        {
-            WriteStartElementUtf8(localName.EncodedUtf8Bytes, [], [], empty: true);
-        }
-
-        /// <summary>
-        /// Writes the XML declaration (<c>&lt;?xml version="1.0" encoding="utf-8"?&gt;</c>).
-        /// </summary>
-        /// <exception cref="XmlException">
-        /// The writer has already written output for this document.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The declaration carries the version from <see cref="XmlWriterOptions.Version"/>, the encoding <c>utf-8</c>,
-        /// and the <c>standalone</c> pseudo-attribute when <see cref="XmlWriterOptions.Standalone"/> is set. A byte
-        /// order mark comes first when <see cref="XmlWriterOptions.EmitByteOrderMark"/> is <see langword="true"/>.
-        /// The writer writes the declaration by itself before the first element, comment, or processing
-        /// instruction unless <see cref="XmlWriterOptions.OmitXmlDeclaration"/> is <see langword="true"/>.
-        /// Call this method to write the declaration even when that option is <see langword="true"/>.
-        /// </remarks>
-        public void WriteXmlDeclaration()
-        {
-            ThrowIfDisposed();
-            if (_wroteDeclaration || _seenRoot || _buffered > 0 || _committed > 0)
+            WriteStartAttribute(prefix, localName, namespaceUri);
+            if (value is not null)
             {
-                throw XmlException.Create("The XML declaration must be the first output.");
+                WriteStringValue(value);
             }
 
-            EmitDeclaration();
+            WriteEndAttribute();
         }
 
         /// <summary>
-        /// Writes the start tag of an element with the local name specified as a string.
+        /// Writes an attribute with the name and the value specified as read-only spans of UTF-8 bytes.
         /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
+        /// <param name="utf8Name">The UTF-8 encoded name of the attribute, without a prefix.</param>
+        /// <param name="utf8Value">The UTF-8 encoded value of the attribute, escaped as needed.</param>
         /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// No start tag is open, or another attribute is still open.
         /// -or-
-        /// The document already has a root element.
+        /// <paramref name="utf8Name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
+        public void WriteAttributeString(ReadOnlySpan<byte> utf8Name, ReadOnlySpan<byte> utf8Value)
+        {
+            WriteStartAttributeUtf8(utf8Name, [], []);
+            WriteStringValue(utf8Value);
+            WriteEndAttribute();
+        }
+
+        /// <summary>
+        /// Writes an attribute with the name and the value specified as read-only spans of characters.
+        /// </summary>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <param name="value">The value of the attribute, escaped as needed.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteAttributeString(ReadOnlySpan<char> name, ReadOnlySpan<char> value)
+        {
+            WriteStartAttribute(name);
+            WriteStringValue(value);
+            WriteEndAttribute();
+        }
+
+        /// <summary>
+        /// Writes a segment of binary data as base64 encoded text to the content of the current element or to the
+        /// value of the current attribute.
+        /// </summary>
+        /// <param name="value">The segment of the binary data to write as base64 encoded text.</param>
+        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the binary data; otherwise, <see langword="false"/>.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// A value of another kind is being written in segments.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// writer.WriteStartElement("data");
+        /// writer.WriteBase64StringSegment([1], isFinalSegment: false);
+        /// writer.WriteBase64StringSegment([2], isFinalSegment: true);
+        /// writer.WriteEndElement();
+        /// // &lt;data&gt;AQI=&lt;/data&gt;
+        /// </code>
+        /// </example>
         /// <remarks>
-        /// The start tag stays open for attributes and namespace declarations until content or an end tag is written.
+        /// The segments together are written as <see cref="WriteBase64StringValue(ReadOnlySpan{byte})"/> writes the
+        /// whole data: one base64 value, padded only at its end. A segment can be any length. The writer keeps the
+        /// one or two bytes that do not fill a group of three and encodes them with the next segment. After a
+        /// segment that is not final, the next call on the writer must be the next segment, apart from
+        /// <see cref="Flush"/> and <see cref="FlushAsync(CancellationToken)"/>; any other call throws an
+        /// <see cref="XmlException"/>.
         /// </remarks>
-        public void WriteStartElement(string localName)
+        public void WriteBase64StringSegment(ReadOnlySpan<byte> value, bool isFinalSegment)
         {
-            ArgumentNullException.ThrowIfNull(localName);
-            WriteStartElementLiteral(localName, prefix: null, namespaceUri: null, empty: false);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the local name and the namespace URI specified as strings.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// If <paramref name="namespaceUri"/> is the default namespace in scope, the element is written without a
-        /// prefix. If it is bound to a prefix that is in scope, the element is written with that prefix. Otherwise,
-        /// the writer declares it as the default namespace on the element. For an empty string, that declaration
-        /// is <c>xmlns=""</c>, and it is written only when a default namespace is in scope.
-        /// </remarks>
-        public void WriteStartElement(string localName, string? namespaceUri)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            WriteStartElementLiteral(localName, prefix: null, namespaceUri, empty: false);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the prefix, the local name, and the namespace URI specified as strings.
-        /// </summary>
-        /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// <paramref name="prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The element is written with <paramref name="prefix"/>. Unless <paramref name="prefix"/> is already bound
-        /// to <paramref name="namespaceUri"/>, the writer declares it on the element, even when the namespace has
-        /// another prefix in scope. Without a prefix, this overload behaves as
-        /// <see cref="WriteStartElement(string, string)"/> does.
-        /// </remarks>
-        public void WriteStartElement(string? prefix, string localName, string? namespaceUri)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            WriteStartElementLiteral(localName, prefix, namespaceUri, empty: false);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the local name specified as a read-only span of characters.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStartElement(ReadOnlySpan<char> localName)
-        {
-            WriteStartElementChars(localName, default, default, empty: false, explicitNamespace: false);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the local name specified as a read-only span of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName)
-        {
-            WriteStartElementUtf8(utf8LocalName, [], []);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/>.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStartElement(XmlEncodedText localName)
-        {
-            WriteStartElementUtf8(localName.EncodedUtf8Bytes, [], []);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the local name and the namespace URI specified as read-only
-        /// spans of characters.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="namespaceUri">The namespace URI of the element. An empty span means no namespace.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
-        /// </remarks>
-        public void WriteStartElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
-        {
-            WriteStartElementChars(localName, default, namespaceUri, empty: false, explicitNamespace: true);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the local name and the namespace URI specified as read-only
-        /// spans of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
-        /// </remarks>
-        public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
-        {
-            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: false, explicitNamespace: true);
-        }
-
-        /// <summary>
-        /// Writes the start tag of an element with the prefix, the local name, and the namespace URI specified as
-        /// read-only spans of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// <paramref name="utf8Prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="utf8NamespaceUri"/> is empty.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
-        /// </remarks>
-        public void WriteStartElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
-        {
-            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: false, explicitNamespace: true);
-        }
-
-        /// <summary>
-        /// Writes the end of the current element.
-        /// </summary>
-        /// <exception cref="XmlException">
-        /// No element is open.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// An element that has no content is closed as an empty element (<c>/&gt;</c>). Any other element gets an
-        /// end tag (<c>&lt;/name&gt;</c>). An attribute that is still open is ended first.
-        /// </remarks>
-        public void WriteEndElement()
-        {
-            ThrowIfDisposed();
-            if (_inAttribute)
+            var carry = BeginSegment(XmlWriterSegment.Base64, out var carryLength);
+            if (carryLength > 0)
             {
-                WriteEndAttribute();
+                Span<byte> group = stackalloc byte[3];
+                for (var i = 0; i < carryLength; i++)
+                {
+                    group[i] = (byte)(carry >> (8 * i));
+                }
+
+                var take = Math.Min(group.Length - carryLength, value.Length);
+                value[..take].CopyTo(group[carryLength..]);
+                group = group[..(carryLength + take)];
+                value = value[take..];
+                if (group.Length < 3 && !isFinalSegment)
+                {
+                    EndSegment(XmlWriterSegment.Base64, PackCarry(group), group.Length);
+                    return;
+                }
+
+                // A whole group encodes with no padding. A short one is the end of the data, and nothing follows it.
+                WriteBase64StringValue(group);
             }
 
+            var tail = isFinalSegment ? 0 : value.Length % 3;
+            WriteBase64StringValue(value[..^tail]);
+            if (isFinalSegment)
+            {
+                return;
+            }
+
+            EndSegment(XmlWriterSegment.Base64, PackCarry(value[^tail..]), tail);
+        }
+
+        /// <summary>
+        /// Writes binary data as base64 encoded text to the content of the current element or to the value of the
+        /// current attribute.
+        /// </summary>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteBase64StringValue(ReadOnlySpan<byte> bytes)
+        {
+            ThrowIfDisposed();
+            if (!_inAttribute)
+            {
+                if (_depth == 0)
+                {
+                    throw XmlException.Create("Text is not allowed at the document level.");
+                }
+
+                CloseStartTag();
+                MarkText();
+            }
+
+            var max = Base64.GetMaxEncodedToUtf8Length(bytes.Length);
+            Ensure(max);
+            Base64.EncodeToUtf8(bytes, _memory.Span[_buffered..], out _, out var written);
+            _buffered += written;
+        }
+
+        /// <summary>
+        /// Writes a <see cref="bool"/> value (as the XML literal <c>true</c> or <c>false</c>) to the content of the
+        /// current element or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value"><see langword="true"/> to write <c>true</c>; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteBooleanValue(bool value)
+        {
+            var text = value ? "true"u8 : "false"u8;
+            text.CopyTo(BeginPlainValue(text.Length));
+            _buffered += text.Length;
+        }
+
+        /// <summary>
+        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a string.
+        /// </summary>
+        /// <param name="text">The text of the CDATA section. It is written as it is, without escaping.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="text"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element.
+        /// -or-
+        /// <paramref name="text"/> contains <c>]]&gt;</c>.
+        /// -or-
+        /// <paramref name="text"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteCData(string text)
+        {
+            ArgumentNullException.ThrowIfNull(text);
+            WriteCData(text.AsSpan());
+        }
+
+        /// <summary>
+        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a read-only span of characters.
+        /// </summary>
+        /// <param name="text">The text of the CDATA section. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element.
+        /// -or-
+        /// <paramref name="text"/> contains <c>]]&gt;</c>.
+        /// -or-
+        /// <paramref name="text"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteCData(ReadOnlySpan<char> text)
+        {
+            WriteCData(EncodeUtf8(text, stackalloc byte[256], out _));
+        }
+
+        /// <summary>
+        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a read-only span of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8Value">The UTF-8 encoded text of the CDATA section. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element.
+        /// -or-
+        /// <paramref name="utf8Value"/> contains <c>]]&gt;</c>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteCData(ReadOnlySpan<byte> utf8Value)
+        {
+            ThrowIfDisposed();
             if (_depth == 0)
             {
-                throw XmlException.Create("No element to end.");
+                throw XmlException.Create("CDATA is not allowed at the document level.");
             }
 
-            ref var frame = ref CurrentFrame();
-            var empty = frame.TagOpen && !frame.HasContent;
-            if (empty && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
+            if (utf8Value.IndexOf("]]>"u8) >= 0)
             {
-                WriteSelfClose();
+                throw XmlException.Create("CDATA must not contain ']]>'.");
+            }
+
+            ValidateContentChars(utf8Value);
+
+            CloseStartTag();
+            MarkText();
+            WriteRaw("<![CDATA["u8);
+            WriteRawLines(utf8Value);
+            WriteRaw("]]>"u8);
+        }
+
+        /// <summary>
+        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a string.
+        /// </summary>
+        /// <param name="value">The text of the comment. It is written as it is, without escaping.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="value"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="value"/> contains <c>--</c> or ends with <c>-</c>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A comment can be written inside an element, and before or after the root element.
+        /// </remarks>
+        public void WriteComment(string value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            WriteComment(value.AsSpan());
+        }
+
+        /// <summary>
+        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a read-only span of characters.
+        /// </summary>
+        /// <param name="value">The text of the comment. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="value"/> contains <c>--</c> or ends with <c>-</c>.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A comment can be written inside an element, and before or after the root element.
+        /// </remarks>
+        public void WriteComment(ReadOnlySpan<char> value)
+        {
+            WriteComment(EncodeUtf8(value, stackalloc byte[256], out _));
+        }
+
+        /// <summary>
+        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a read-only span of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8Value">The UTF-8 encoded text of the comment. It is written as it is, without escaping.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8Value"/> contains <c>--</c> or ends with <c>-</c>.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A comment can be written inside an element, and before or after the root element.
+        /// </remarks>
+        public void WriteComment(ReadOnlySpan<byte> utf8Value)
+        {
+            ThrowIfDisposed();
+            if (utf8Value.IndexOf("--"u8) >= 0 || (utf8Value.Length > 0 && utf8Value[^1] is (byte)'-'))
+            {
+                throw XmlException.Create("Comments must not contain '--' or end with '-'.");
+            }
+
+            ValidateContentChars(utf8Value);
+
+            if (_depth > 0)
+            {
+                CloseStartTag();
+                MarkContent();
             }
             else
             {
-                CloseStartTag();
-                if (!empty && _options.Indented && !frame.HasText)
-                {
-                    WriteIndent(_depth - 1);
-                }
-
-                WriteTagClose(frame);
+                EnsureDeclaration();
             }
 
-            PopNs(_depth);
-            _depth--;
+            // A comment between elements gets a line of its own, as an element does.
+            WriteElementIndent(_depth);
+            WriteRaw("<!--"u8);
+            WriteRawLines(utf8Value);
+            WriteRaw("-->"u8);
         }
 
         /// <summary>
-        /// Writes the end of the current element as a full end tag (<c>&lt;/name&gt;</c>), even when the element has no content.
+        /// Writes a default namespace declaration (<c>xmlns="namespaceUri"</c>) on the start tag of the current
+        /// element, with the namespace URI specified as a string.
         /// </summary>
+        /// <param name="namespaceUri">The namespace URI to declare as the default namespace. An empty string removes the default namespace.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// </exception>
         /// <exception cref="XmlException">
-        /// No element is open.
+        /// No start tag is open, or an attribute is still open.
+        /// -or-
+        /// <paramref name="namespaceUri"/> is the <c>xml</c> or the <c>xmlns</c> namespace.
+        /// -or-
+        /// The element already declares a default namespace, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// An attribute that is still open is ended first.
+        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
+        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
         /// </remarks>
-        public void WriteFullEndElement()
+        public void WriteDefaultNamespace(string namespaceUri)
         {
-            ThrowIfDisposed();
-            if (_inAttribute)
+            ArgumentNullException.ThrowIfNull(namespaceUri);
+            WriteDefaultNamespace(EncodeUtf8(namespaceUri, stackalloc byte[256], out _));
+        }
+
+        /// <summary>
+        /// Writes a default namespace declaration (<c>xmlns="namespaceUri"</c>) on the start tag of the current
+        /// element, with the namespace URI specified as a read-only span of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI to declare as the default namespace. An empty span removes the default namespace.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or an attribute is still open.
+        /// -or-
+        /// <paramref name="utf8NamespaceUri"/> is the <c>xml</c> or the <c>xmlns</c> namespace.
+        /// -or-
+        /// The element already declares a default namespace, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
+        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// </remarks>
+        public void WriteDefaultNamespace(ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            RegisterNamespace([], utf8NamespaceUri);
+            WriteRegisteredNamespace([], utf8NamespaceUri);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and binary data, encoded as base64 text, as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBase64String(string localName, ReadOnlySpan<byte> bytes)
+        {
+            WriteStartElement(localName);
+            WriteBase64StringValue(bytes);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and binary data,
+        /// encoded as base64 text, as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBase64String(ReadOnlySpan<char> localName, ReadOnlySpan<byte> bytes)
+        {
+            WriteStartElement(localName);
+            WriteBase64StringValue(bytes);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and binary data,
+        /// encoded as base64 text, as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBase64String(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> bytes)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteBase64StringValue(bytes);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and binary data, encoded as base64 text, as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBase64String(XmlEncodedText localName, ReadOnlySpan<byte> bytes)
+        {
+            WriteStartElement(localName);
+            WriteBase64StringValue(bytes);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="bool"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBoolean(string localName, bool value)
+        {
+            WriteStartElement(localName);
+            WriteBooleanValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="bool"/>
+        /// value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBoolean(ReadOnlySpan<char> localName, bool value)
+        {
+            WriteStartElement(localName);
+            WriteBooleanValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="bool"/>
+        /// value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBoolean(ReadOnlySpan<byte> utf8LocalName, bool value)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteBooleanValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="bool"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementBoolean(XmlEncodedText localName, bool value)
+        {
+            WriteStartElement(localName);
+            WriteBooleanValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(string localName, int value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(string localName, long value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(string localName, double value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(string localName, float value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(string localName, decimal value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(string localName, uint value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a string and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(string localName, ulong value)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteElementNumber(localName.AsSpan(), value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, int value)
+        {
+            WriteElementFormatted(localName, value, 11);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, long value)
+        {
+            WriteElementFormatted(localName, value, 20);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, double value)
+        {
+            if (double.IsFinite(value))
             {
-                WriteEndAttribute();
+                WriteElementFormatted(localName, value, 32);
+                return;
             }
 
-            if (_depth == 0)
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, float value)
+        {
+            if (float.IsFinite(value))
             {
-                throw XmlException.Create("No element to end.");
+                WriteElementFormatted(localName, value, 24);
+                return;
             }
 
-            CloseStartTag();
-            ref var frame = ref CurrentFrame();
-            if (_options.Indented && frame.HasContent && !frame.HasText)
+            WriteStartElement(localName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<char> localName, decimal value)
+        {
+            WriteElementFormatted(localName, value, 32);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<char> localName, uint value)
+        {
+            WriteElementFormatted(localName, value, 10);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<char> localName, ulong value)
+        {
+            WriteElementFormatted(localName, value, 20);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, int value)
+        {
+            WriteElementFormatted(utf8LocalName, value, 11);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, long value)
+        {
+            WriteElementFormatted(utf8LocalName, value, 20);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, double value)
+        {
+            if (double.IsFinite(value))
             {
-                WriteIndent(_depth - 1);
+                WriteElementFormatted(utf8LocalName, value, 32);
+                return;
             }
 
-            WriteRaw("</"u8);
-            WriteFrameName(frame);
-            WriteRawByte((byte)'>');
-            PopNs(_depth);
-            _depth--;
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, float value)
+        {
+            if (float.IsFinite(value))
+            {
+                WriteElementFormatted(utf8LocalName, value, 24);
+                return;
+            }
+
+            WriteStartElement(utf8LocalName);
+            WriteNumberValue(value);
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, decimal value)
+        {
+            WriteElementFormatted(utf8LocalName, value, 32);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, uint value)
+        {
+            WriteElementFormatted(utf8LocalName, value, 10);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, ulong value)
+        {
+            WriteElementFormatted(utf8LocalName, value, 20);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and an <see cref="int"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(XmlEncodedText localName, int value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="long"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(XmlEncodedText localName, long value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="double"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(XmlEncodedText localName, double value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="float"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
+        /// </remarks>
+        public void WriteElementNumber(XmlEncodedText localName, float value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="decimal"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteElementNumber(XmlEncodedText localName, decimal value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="uint"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(XmlEncodedText localName, uint value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
+        }
+
+        /// <summary>
+        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="ulong"/> value as its content.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="value">The number to write as the content of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        [CLSCompliant(false)]
+        public void WriteElementNumber(XmlEncodedText localName, ulong value)
+        {
+            WriteElementNumber(localName.EncodedUtf8Bytes, value);
         }
 
         /// <summary>
@@ -1125,7 +1862,10 @@ namespace CloudNimble.Text.Xml
         public void WriteElementString(string localName, string? value)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            WriteCompleteElement(localName, value, valueIsNull: value is null);
+            if (value is null || !TryWriteElementText(localName, value))
+            {
+                WriteCompleteElement(localName, value, valueIsNull: value is null);
+            }
         }
 
         /// <summary>
@@ -1611,13 +2351,10 @@ namespace CloudNimble.Text.Xml
         /// </exception>
         public void WriteElementString(XmlEncodedText localName, string? value)
         {
-            WriteStartElement(localName);
-            if (value is not null)
+            if (value is null || !TryWriteElementText(localName.EncodedUtf8Bytes, value))
             {
-                WriteStringValue(value);
+                WriteCompleteElement(localName, value);
             }
-
-            WriteEndElement();
         }
 
         /// <summary>
@@ -1738,10 +2475,9 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes an element with the local name specified as a string and an <see cref="int"/> value as its content.
+        /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a string.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -1755,19 +2491,17 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
-        public void WriteElementNumber(string localName, int value)
+        public void WriteEmptyElement(string localName)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            Span<byte> buffer = stackalloc byte[16];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
+            WriteStartElementLiteral(localName, prefix: null, namespaceUri: null, empty: true);
         }
 
         /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="long"/> value as its content.
+        /// Writes an empty element with the local name and the namespace URI specified as strings.
         /// </summary>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
@@ -1781,1158 +2515,173 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
-        public void WriteElementNumber(string localName, long value)
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
+        public void WriteEmptyElement(string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            Span<byte> buffer = stackalloc byte[24];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
+            WriteEmptyElementChars(localName, default, namespaceUri.AsSpan(), explicitNamespace: namespaceUri is not null);
         }
 
         /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="double"/> value as its content.
+        /// Writes an empty element with the prefix, the local name, and the namespace URI specified as strings.
         /// </summary>
+        /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
         /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
         /// <exception cref="ArgumentNullException">
         /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(string localName, double value)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            if (double.IsNaN(value))
-            {
-                WriteCompleteElementUtf8Value(localName, "NaN"u8);
-                return;
-            }
-
-            if (double.IsPositiveInfinity(value))
-            {
-                WriteCompleteElementUtf8Value(localName, "INF"u8);
-                return;
-            }
-
-            if (double.IsNegativeInfinity(value))
-            {
-                WriteCompleteElementUtf8Value(localName, "-INF"u8);
-                return;
-            }
-
-            Span<byte> buffer = stackalloc byte[32];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="float"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(string localName, float value)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            if (float.IsNaN(value))
-            {
-                WriteCompleteElementUtf8Value(localName, "NaN"u8);
-                return;
-            }
-
-            if (float.IsPositiveInfinity(value))
-            {
-                WriteCompleteElementUtf8Value(localName, "INF"u8);
-                return;
-            }
-
-            if (float.IsNegativeInfinity(value))
-            {
-                WriteCompleteElementUtf8Value(localName, "-INF"u8);
-                return;
-            }
-
-            Span<byte> buffer = stackalloc byte[24];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="decimal"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(string localName, decimal value)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            Span<byte> buffer = stackalloc byte[32];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="uint"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(string localName, uint value)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            Span<byte> buffer = stackalloc byte[16];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="ulong"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(string localName, ulong value)
-        {
-            ArgumentNullException.ThrowIfNull(localName);
-            Span<byte> buffer = stackalloc byte[24];
-            Utf8Formatter.TryFormat(value, buffer, out var written);
-            WriteCompleteElementUtf8Value(localName, buffer[..written]);
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and an <see cref="int"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(ReadOnlySpan<char> localName, int value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="long"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(ReadOnlySpan<char> localName, long value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="double"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(ReadOnlySpan<char> localName, double value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="float"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(ReadOnlySpan<char> localName, float value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="decimal"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(ReadOnlySpan<char> localName, decimal value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="uint"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(ReadOnlySpan<char> localName, uint value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="ulong"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(ReadOnlySpan<char> localName, ulong value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and an <see cref="int"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, int value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="long"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, long value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="double"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, double value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="float"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, float value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="decimal"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, decimal value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="uint"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, uint value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="ulong"/> value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(ReadOnlySpan<byte> utf8LocalName, ulong value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and an <see cref="int"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(XmlEncodedText localName, int value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="long"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(XmlEncodedText localName, long value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="double"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(XmlEncodedText localName, double value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="float"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteElementNumber(XmlEncodedText localName, float value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="decimal"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementNumber(XmlEncodedText localName, decimal value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="uint"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(XmlEncodedText localName, uint value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="ulong"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value">The number to write as the content of the element.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        [CLSCompliant(false)]
-        public void WriteElementNumber(XmlEncodedText localName, ulong value)
-        {
-            WriteStartElement(localName);
-            WriteNumberValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a string and a <see cref="bool"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBoolean(string localName, bool value)
-        {
-            WriteStartElement(localName);
-            WriteBooleanValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and a <see cref="bool"/>
-        /// value as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBoolean(ReadOnlySpan<char> localName, bool value)
-        {
-            WriteStartElement(localName);
-            WriteBooleanValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and a <see cref="bool"/>
-        /// value as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBoolean(ReadOnlySpan<byte> utf8LocalName, bool value)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteBooleanValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and a <see cref="bool"/> value as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="value"><see langword="true"/> to write <c>true</c> as the content of the element; <see langword="false"/> to write <c>false</c>.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBoolean(XmlEncodedText localName, bool value)
-        {
-            WriteStartElement(localName);
-            WriteBooleanValue(value);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a string and binary data, encoded as base64 text, as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBase64String(string localName, ReadOnlySpan<byte> bytes)
-        {
-            WriteStartElement(localName);
-            WriteBase64StringValue(bytes);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of characters and binary data,
-        /// encoded as base64 text, as its content.
-        /// </summary>
-        /// <param name="localName">The local name of the element.</param>
-        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBase64String(ReadOnlySpan<char> localName, ReadOnlySpan<byte> bytes)
-        {
-            WriteStartElement(localName);
-            WriteBase64StringValue(bytes);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a read-only span of UTF-8 bytes and binary data,
-        /// encoded as base64 text, as its content.
-        /// </summary>
-        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBase64String(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> bytes)
-        {
-            WriteStartElement(utf8LocalName);
-            WriteBase64StringValue(bytes);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/> and binary data, encoded as base64 text, as its content.
-        /// </summary>
-        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
-        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The document already has a root element.
-        /// -or-
-        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteElementBase64String(XmlEncodedText localName, ReadOnlySpan<byte> bytes)
-        {
-            WriteStartElement(localName);
-            WriteBase64StringValue(bytes);
-            WriteEndElement();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the name and the value specified as strings.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="name"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
-        /// </exception>
-        public void WriteAttributeString(string name, string? value)
-        {
-            WriteStartAttribute(name);
-            if (value is not null)
-            {
-                WriteStringValue(value);
-            }
-
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the name specified as a string and an <see cref="int"/> value.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <param name="value">The number to write as the value of the attribute.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="name"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// </exception>
-        public void WriteAttributeNumber(string name, int value)
-        {
-            ArgumentNullException.ThrowIfNull(name);
-            WriteAttributeNumberLiteral(name, value);
-        }
-
-        /// <summary>
-        /// Writes an attribute with the name specified as a string and a <see cref="long"/> value.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <param name="value">The number to write as the value of the attribute.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="name"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// </exception>
-        public void WriteAttributeNumber(string name, long value)
-        {
-            ArgumentNullException.ThrowIfNull(name);
-            WriteStartAttribute(name);
-            WriteNumberValue(value);
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the name specified as a string and a <see cref="double"/> value.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <param name="value">The number to write as the value of the attribute.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="name"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// </exception>
-        /// <remarks>
-        /// Not-a-number is written as <c>NaN</c>, positive infinity as <c>INF</c>, and negative infinity as <c>-INF</c>.
-        /// </remarks>
-        public void WriteAttributeNumber(string name, double value)
-        {
-            ArgumentNullException.ThrowIfNull(name);
-            WriteStartAttribute(name);
-            WriteNumberValue(value);
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the local name, the namespace URI, and the value specified as strings.
-        /// </summary>
-        /// <param name="localName">The local name of the attribute.</param>
-        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
-        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartAttribute(string, string, string)"/>.
-        /// </remarks>
-        public void WriteAttributeString(string localName, string? namespaceUri, string? value)
-        {
-            WriteStartAttribute(null, localName, namespaceUri);
-            if (value is not null)
-            {
-                WriteStringValue(value);
-            }
-
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the prefix, the local name, the namespace URI, and the value specified as strings.
-        /// </summary>
-        /// <param name="prefix">The prefix of the attribute, or <see langword="null"/> or an empty string for none.</param>
-        /// <param name="localName">The local name of the attribute.</param>
-        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
-        /// <param name="value">The value of the attribute, escaped as needed, or <see langword="null"/> to write an empty value.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
         /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// <paramref name="prefix"/> is a prefix other than <c>xml</c> and <c>xmlns</c>, and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// <paramref name="prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
         /// -or-
-        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// The document already has a root element.
         /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The namespace is handled as it is by <see cref="WriteStartAttribute(string, string, string)"/>.
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
         /// </remarks>
-        public void WriteAttributeString(string? prefix, string localName, string? namespaceUri, string? value)
-        {
-            WriteStartAttribute(prefix, localName, namespaceUri);
-            if (value is not null)
-            {
-                WriteStringValue(value);
-            }
-
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the name and the value specified as read-only spans of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8Name">The UTF-8 encoded name of the attribute, without a prefix.</param>
-        /// <param name="utf8Value">The UTF-8 encoded value of the attribute, escaped as needed.</param>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="utf8Name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// -or-
-        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteAttributeString(ReadOnlySpan<byte> utf8Name, ReadOnlySpan<byte> utf8Value)
-        {
-            WriteStartAttributeUtf8(utf8Name, [], []);
-            WriteStringValue(utf8Value);
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes an attribute with the name and the value specified as read-only spans of characters.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <param name="value">The value of the attribute, escaped as needed.</param>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteAttributeString(ReadOnlySpan<char> name, ReadOnlySpan<char> value)
-        {
-            WriteStartAttribute(name);
-            WriteStringValue(value);
-            WriteEndAttribute();
-        }
-
-        /// <summary>
-        /// Writes the beginning of an attribute with the name specified as a string.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="name"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// </exception>
-        /// <remarks>
-        /// Write the value with one or more calls to the value methods, such as <see cref="WriteStringValue(string)"/>,
-        /// and then call <see cref="WriteEndAttribute"/>.
-        /// </remarks>
-        public void WriteStartAttribute(string name)
-        {
-            ArgumentNullException.ThrowIfNull(name);
-            WriteStartAttributeLiteral(name);
-        }
-
-        /// <summary>
-        /// Writes the beginning of an attribute with the name specified as a read-only span of characters.
-        /// </summary>
-        /// <param name="name">The name of the attribute, without a prefix.</param>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Write the value with one or more calls to the value methods, such as <see cref="WriteStringValue(string)"/>,
-        /// and then call <see cref="WriteEndAttribute"/>.
-        /// </remarks>
-        public void WriteStartAttribute(ReadOnlySpan<char> name)
-        {
-            WriteStartAttributeChars(name, default, default);
-        }
-
-        /// <summary>
-        /// Writes the beginning of an attribute with the prefix, the local name, and the namespace URI specified as strings.
-        /// </summary>
-        /// <param name="prefix">The prefix of the attribute, or <see langword="null"/> or an empty string for none.</param>
-        /// <param name="localName">The local name of the attribute.</param>
-        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="localName"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// No start tag is open, or another attribute is still open.
-        /// -or-
-        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
-        /// -or-
-        /// <paramref name="prefix"/> is a prefix other than <c>xml</c> and <c>xmlns</c>, and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
-        /// -or-
-        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// With a prefix, the writer declares <paramref name="prefix"/> on the element unless it is already bound to
-        /// <paramref name="namespaceUri"/>. With a namespace URI and no prefix, the writer uses a prefix that is
-        /// already bound to <paramref name="namespaceUri"/>, or declares a generated prefix (<c>ns1</c>, <c>ns2</c>,
-        /// and so on) on the element. Write the value with one or more calls to the value methods, such as
-        /// <see cref="WriteStringValue(string)"/>, and then call <see cref="WriteEndAttribute"/>.
-        /// </remarks>
-        public void WriteStartAttribute(string? prefix, string localName, string? namespaceUri)
+        public void WriteEmptyElement(string? prefix, string localName, string? namespaceUri)
         {
             ArgumentNullException.ThrowIfNull(localName);
-            WriteStartAttributeChars(localName, prefix.AsSpan(), namespaceUri.AsSpan());
+            WriteEmptyElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), explicitNamespace: namespaceUri is not null);
+        }
+
+        /// <summary>
+        /// Writes an empty element (<c>&lt;localName/&gt;</c>) with the local name specified as a read-only span of characters.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteEmptyElement(ReadOnlySpan<char> localName)
+        {
+            WriteEmptyElementChars(localName, default, default, explicitNamespace: false);
+        }
+
+        /// <summary>
+        /// Writes an empty element with the local name and the namespace URI specified as read-only spans of characters.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty span means no namespace.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
+        public void WriteEmptyElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
+        {
+            WriteEmptyElementChars(localName, default, namespaceUri, explicitNamespace: true);
+        }
+
+        /// <summary>
+        /// Writes an empty element with the local name specified as a read-only span of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName)
+        {
+            WriteStartElementUtf8(utf8LocalName, [], [], empty: true);
+        }
+
+        /// <summary>
+        /// Writes an empty element with the local name and the namespace URI specified as read-only spans of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
+        public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: true, explicitNamespace: true);
+        }
+
+        /// <summary>
+        /// Writes an empty element with the prefix, the local name, and the namespace URI specified as read-only
+        /// spans of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="utf8NamespaceUri"/> is empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
+        /// </remarks>
+        public void WriteEmptyElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: true, explicitNamespace: true);
+        }
+
+        /// <summary>
+        /// Writes an empty element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/>.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteEmptyElement(XmlEncodedText localName)
+        {
+            WriteStartElementUtf8(localName.EncodedUtf8Bytes, [], [], empty: true);
         }
 
         /// <summary>
@@ -2954,6 +2703,88 @@ namespace CloudNimble.Text.Xml
 
             WriteRaw("\""u8);
             _inAttribute = false;
+        }
+
+        /// <summary>
+        /// Writes the end of the current element.
+        /// </summary>
+        /// <exception cref="XmlException">
+        /// No element is open.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// An element that has no content is closed as an empty element (<c>/&gt;</c>). Any other element gets an
+        /// end tag (<c>&lt;/name&gt;</c>). An attribute that is still open is ended first.
+        /// </remarks>
+        public void WriteEndElement()
+        {
+            ThrowIfDisposed();
+            if (_inAttribute)
+            {
+                WriteEndAttribute();
+            }
+
+            if (_depth == 0)
+            {
+                throw XmlException.Create("No element to end.");
+            }
+
+            ref var frame = ref CurrentFrame();
+            var empty = _tagOpen && !_hasContent;
+            if (empty && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
+            {
+                WriteSelfClose();
+            }
+            else
+            {
+                CloseStartTag();
+                if (!empty && _options.Indented && !_hasText)
+                {
+                    WriteIndent(_depth - 1);
+                }
+
+                WriteTagClose(frame);
+            }
+
+            PopFrame(frame);
+        }
+
+        /// <summary>
+        /// Writes the end of the current element as a full end tag (<c>&lt;/name&gt;</c>), even when the element has no content.
+        /// </summary>
+        /// <exception cref="XmlException">
+        /// No element is open.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// An attribute that is still open is ended first.
+        /// </remarks>
+        public void WriteFullEndElement()
+        {
+            ThrowIfDisposed();
+            if (_inAttribute)
+            {
+                WriteEndAttribute();
+            }
+
+            if (_depth == 0)
+            {
+                throw XmlException.Create("No element to end.");
+            }
+
+            CloseStartTag();
+            ref var frame = ref CurrentFrame();
+            if (_options.Indented && _hasContent && !_hasText)
+            {
+                WriteIndent(_depth - 1);
+            }
+
+            WriteTagClose(frame);
+            PopFrame(frame);
         }
 
         /// <summary>
@@ -3019,360 +2850,169 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Validates a namespace declaration for the open start tag and puts it in scope without writing it.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a string.
         /// </summary>
-        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
-        /// <param name="ns">The namespace URI. Empty undeclares.</param>
-        /// <remarks>
-        /// The DOM registers every declaration of a start tag first, then writes the tag's attributes in
-        /// document order with <see cref="WriteRegisteredNamespace"/>. A prefixed attribute that precedes
-        /// its own declaration (<c>&lt;e p:a="1" xmlns:p="u"/&gt;</c>) then finds the prefix bound instead
-        /// of triggering a second, automatic declaration.
-        /// </remarks>
-        internal void RegisterNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
-        {
-            ThrowIfDisposed();
-            RequireOpenTag();
-            if (prefix.IsEmpty)
-            {
-                if (!_options.SkipValidation && Utf8XmlReader.IsReservedNamespace(ns))
-                {
-                    throw XmlException.Create("The xml and xmlns namespaces cannot be declared as the default namespace.");
-                }
-
-                PushNs(_depth, [], ns);
-                return;
-            }
-
-            RegisterPrefixedNamespace(prefix, ns);
-        }
-
-        /// <summary>
-        /// Writes the text of a namespace declaration that <see cref="RegisterNamespace"/> already put in scope.
-        /// </summary>
-        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
-        /// <param name="ns">The namespace URI.</param>
-        internal void WriteRegisteredNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
-        {
-            if (prefix.IsEmpty)
-            {
-                TrackAttribute("xmlns"u8, XmlUtf8.Xmlns);
-                WriteAttributeSeparator();
-                WriteRaw("xmlns=\""u8);
-            }
-            else
-            {
-                TrackAttribute(prefix, XmlUtf8.Xmlns);
-                WriteAttributeSeparator();
-                WriteRaw("xmlns:"u8);
-                WriteRaw(prefix);
-                WriteRaw("=\""u8);
-            }
-
-            WriteAttributeText(ns);
-            WriteRaw("\""u8);
-        }
-
-        /// <summary>
-        /// Validates an <c>xmlns:prefix</c> declaration and puts it in scope.
-        /// </summary>
-        /// <param name="utf8Prefix">The prefix.</param>
-        /// <param name="utf8NamespaceUri">The namespace URI.</param>
-        internal void RegisterPrefixedNamespace(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8NamespaceUri)
-        {
-            ValidateNcName(utf8Prefix);
-            if (!_options.SkipValidation && utf8NamespaceUri.IsEmpty && _version is XmlVersion.Version10)
-            {
-                throw XmlException.Create("Prefix undeclaration is not allowed in XML 1.0.");
-            }
-
-            if (!_options.SkipValidation && utf8Prefix.SequenceEqual("xml"u8) && !utf8NamespaceUri.SequenceEqual(XmlUtf8.Xml))
-            {
-                throw XmlException.Create("The xml prefix cannot be rebound.");
-            }
-
-            if (!_options.SkipValidation && utf8Prefix.SequenceEqual("xmlns"u8))
-            {
-                throw XmlException.Create("The xmlns prefix cannot be declared.");
-            }
-
-            if (!_options.SkipValidation
-                && !utf8Prefix.SequenceEqual("xml"u8)
-                && Utf8XmlReader.IsReservedNamespace(utf8NamespaceUri))
-            {
-                throw XmlException.Create("The xml and xmlns namespaces cannot be bound to another prefix.");
-            }
-
-            PushNs(_depth, utf8Prefix, utf8NamespaceUri);
-        }
-
-        /// <summary>
-        /// Writes a default namespace declaration (<c>xmlns="namespaceUri"</c>) on the start tag of the current
-        /// element, with the namespace URI specified as a string.
-        /// </summary>
-        /// <param name="namespaceUri">The namespace URI to declare as the default namespace. An empty string removes the default namespace.</param>
+        /// <param name="localName">The local name of the element.</param>
         /// <exception cref="ArgumentNullException">
-        /// <paramref name="namespaceUri"/> is <see langword="null"/>.
+        /// <paramref name="localName"/> is <see langword="null"/>.
         /// </exception>
         /// <exception cref="XmlException">
-        /// No start tag is open, or an attribute is still open.
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// <paramref name="namespaceUri"/> is the <c>xml</c> or the <c>xmlns</c> namespace.
+        /// The document already has a root element.
         /// -or-
-        /// The element already declares a default namespace, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
-        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
         /// </remarks>
-        public void WriteDefaultNamespace(string namespaceUri)
+        public void WriteNilElement(string localName)
         {
-            ArgumentNullException.ThrowIfNull(namespaceUri);
-            WriteDefaultNamespace(EncodeUtf8(namespaceUri, stackalloc byte[256], out _));
+            WriteStartElement(localName);
+            WriteNilValue();
+            WriteEndElement();
         }
 
         /// <summary>
-        /// Writes a default namespace declaration (<c>xmlns="namespaceUri"</c>) on the start tag of the current
-        /// element, with the namespace URI specified as a read-only span of UTF-8 bytes.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name and the
+        /// namespace URI specified as strings.
         /// </summary>
-        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI to declare as the default namespace. An empty span removes the default namespace.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
         /// <exception cref="XmlException">
-        /// No start tag is open, or an attribute is still open.
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// <paramref name="utf8NamespaceUri"/> is the <c>xml</c> or the <c>xmlns</c> namespace.
+        /// The document already has a root element.
         /// -or-
-        /// The element already declares a default namespace, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The binding is in scope for the element and its descendants. A declaration counts as an attribute
-        /// toward <see cref="XmlWriterOptions.MaxAttributeCount"/>.
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>. If the XML Schema
+        /// instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer declares it on the
+        /// element with the prefix <c>xsi</c>.
         /// </remarks>
-        public void WriteDefaultNamespace(ReadOnlySpan<byte> utf8NamespaceUri)
+        public void WriteNilElement(string localName, string? namespaceUri)
         {
-            RegisterNamespace([], utf8NamespaceUri);
-            WriteRegisteredNamespace([], utf8NamespaceUri);
+            WriteStartElement(localName, namespaceUri);
+            WriteNilValue();
+            WriteEndElement();
         }
 
         /// <summary>
-        /// Writes text specified as a string to the content of the current element or to the value of the current attribute.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
+        /// read-only span of characters.
         /// </summary>
-        /// <param name="value">The text to write, or <see langword="null"/> to write nothing.</param>
+        /// <param name="localName">The local name of the element.</param>
         /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The text is escaped as needed: <c>&amp;</c> and <c>&lt;</c> become entity references, and a character
-        /// that would not survive a round trip (such as a carriage return, or a tab or line feed in an attribute
-        /// value) becomes a character reference.
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
         /// </remarks>
-        public void WriteStringValue(string? value)
+        public void WriteNilElement(ReadOnlySpan<char> localName)
         {
-            if (value is null)
-            {
-                return;
-            }
-
-            WriteStringValue(value.AsSpan());
+            WriteStartElement(localName);
+            WriteNilValue();
+            WriteEndElement();
         }
 
         /// <summary>
-        /// Writes text specified as a read-only span of characters to the content of the current element or to the
-        /// value of the current attribute.
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
+        /// read-only span of UTF-8 bytes.
         /// </summary>
-        /// <param name="value">The text to write.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
         /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
         /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
         /// </exception>
         /// <remarks>
-        /// The text is escaped as it is by <see cref="WriteStringValue(string)"/>.
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
         /// </remarks>
-        public void WriteStringValue(ReadOnlySpan<char> value)
+        public void WriteNilElement(ReadOnlySpan<byte> utf8LocalName)
+        {
+            WriteStartElement(utf8LocalName);
+            WriteNilValue();
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes an empty element that has the attribute <c>xsi:nil="true"</c>, with the local name specified as a
+        /// pre-encoded <see cref="XmlEncodedText"/>.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
+        public void WriteNilElement(XmlEncodedText localName)
+        {
+            WriteStartElement(localName);
+            WriteNilValue();
+            WriteEndElement();
+        }
+
+        /// <summary>
+        /// Writes the attribute <c>xsi:nil="true"</c> on the start tag of the current element.
+        /// </summary>
+        /// <exception cref="XmlException">
+        /// No start tag is open.
+        /// -or-
+        /// The element already has an <c>xsi:nil</c> attribute, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If the XML Schema instance namespace (<see cref="XmlNamespaces.Xsi"/>) is not in scope, the writer first
+        /// declares it on the element with the prefix <c>xsi</c>.
+        /// </remarks>
+        public void WriteNilValue()
         {
             ThrowIfDisposed();
-            if (value.IndexOfAnyExcept(_inAttribute ? XmlChars.PlainAttributeChars : _plainTextChars) < 0
-                && (_inAttribute || PendingBrackets() == 0))
+            if (!_tagOpen)
             {
-                if (_inAttribute)
-                {
-                    WriteCharsRaw(value);
-                    return;
-                }
-
-                if (_depth == 0)
-                {
-                    throw XmlException.Create("Text is not allowed at the document level.");
-                }
-
-                CloseStartTag();
-                MarkText();
-                WriteCharsRaw(value);
-                return;
+                throw XmlException.Create("xsi:nil must be written on a start tag.");
             }
 
-            var utf8 = EncodeUtf8(value, stackalloc byte[256], out var heap);
-            WriteStringValue(utf8);
-            _ = heap;
-        }
-
-        /// <summary>
-        /// Writes text specified as a read-only span of UTF-8 bytes to the content of the current element or to the
-        /// value of the current attribute.
-        /// </summary>
-        /// <param name="utf8Value">The UTF-8 encoded text to write.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// -or-
-        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// The text is escaped as it is by <see cref="WriteStringValue(string)"/>.
-        /// </remarks>
-        public void WriteStringValue(ReadOnlySpan<byte> utf8Value)
-        {
-            ThrowIfDisposed();
-            if (_inAttribute)
-            {
-                WriteAttributeText(utf8Value);
-                return;
-            }
-
-            if (_depth == 0)
-            {
-                throw XmlException.Create("Text is not allowed at the document level.");
-            }
-
-            CloseStartTag();
-            MarkText();
-            WriteElementText(utf8Value);
-        }
-
-        /// <summary>
-        /// Writes a <see cref="DateTime"/> value as an XML Schema <c>dateTime</c> to the content of the current
-        /// element or to the value of the current attribute.
-        /// </summary>
-        /// <param name="value">The value to write.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// A value whose <see cref="DateTime.Kind"/> is <see cref="DateTimeKind.Utc"/> ends with <c>Z</c>. A
-        /// <see cref="DateTimeKind.Local"/> value ends with the offset of the local time zone. A
-        /// <see cref="DateTimeKind.Unspecified"/> value has no time zone.
-        /// </remarks>
-        public void WriteStringValue(DateTime value)
-        {
-            var destination = BeginPlainValue(40);
-            var written = XmlLexical.FormatDateTime(value, destination);
-            if (value.Kind is DateTimeKind.Utc)
-            {
-                destination[written++] = (byte)'Z';
-            }
-            else if (value.Kind is DateTimeKind.Local)
-            {
-                written += XmlLexical.FormatOffset(TimeZoneInfo.Local.GetUtcOffset(value), destination[written..]);
-            }
-
-            _buffered += written;
-        }
-
-        /// <summary>
-        /// Writes a <see cref="DateTimeOffset"/> value as an XML Schema <c>dateTime</c> with its offset to the
-        /// content of the current element or to the value of the current attribute.
-        /// </summary>
-        /// <param name="value">The value to write.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStringValue(DateTimeOffset value)
-        {
-            var destination = BeginPlainValue(40);
-            var written = XmlLexical.FormatDateTime(value.DateTime, destination);
-            _buffered += written + XmlLexical.FormatOffset(value.Offset, destination[written..]);
-        }
-
-        /// <summary>
-        /// Writes a <see cref="DateOnly"/> value as an XML Schema <c>date</c> to the content of the current element
-        /// or to the value of the current attribute.
-        /// </summary>
-        /// <param name="value">The value to write.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStringValue(DateOnly value)
-        {
-            var written = XmlLexical.FormatDate(value.Year, value.Month, value.Day, BeginPlainValue(10));
-            _buffered += written;
-        }
-
-        /// <summary>
-        /// Writes a <see cref="TimeOnly"/> value as an XML Schema <c>time</c> to the content of the current element
-        /// or to the value of the current attribute.
-        /// </summary>
-        /// <param name="value">The value to write.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStringValue(TimeOnly value)
-        {
-            var written = XmlLexical.FormatTime(value.Ticks, BeginPlainValue(16));
-            _buffered += written;
-        }
-
-        /// <summary>
-        /// Writes a <see cref="TimeSpan"/> value as an XML Schema <c>duration</c> to the content of the current
-        /// element or to the value of the current attribute.
-        /// </summary>
-        /// <param name="value">The value to write.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStringValue(TimeSpan value)
-        {
-            var written = XmlLexical.FormatDuration(value, BeginPlainValue(32));
-            _buffered += written;
-        }
-
-        /// <summary>
-        /// Writes a <see cref="Guid"/> value to the content of the current element or to the value of the current attribute.
-        /// </summary>
-        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteStringValue(Guid value)
-        {
-            WriteFormatted(value, "D");
+            EnsureXsi();
+            TrackAttribute("nil"u8, XmlUtf8.Xsi);
+            WriteAttributeSeparator();
+            WriteRaw("xsi:nil=\"true\""u8);
         }
 
         /// <summary>
@@ -3525,35 +3165,501 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a <see cref="bool"/> value (as the XML literal <c>true</c> or <c>false</c>) to the content of the
-        /// current element or to the value of the current attribute.
+        /// Writes a processing instruction (<c>&lt;?target data?&gt;</c>) with the target and the data specified as strings.
         /// </summary>
-        /// <param name="value"><see langword="true"/> to write <c>true</c>; <see langword="false"/> to write <c>false</c>.</param>
+        /// <param name="target">The target of the processing instruction.</param>
+        /// <param name="data">The data of the processing instruction, or <see langword="null"/> or an empty string for none. It is written as it is, without escaping.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="target"/> is <see langword="null"/>.
+        /// </exception>
         /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
+        /// <paramref name="target"/> is not a valid XML name without a colon, is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or is <c>xml</c> in any letter case.
+        /// -or-
+        /// <paramref name="data"/> contains <c>?&gt;</c>.
+        /// -or-
+        /// <paramref name="data"/> contains a character that XML does not allow.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
-        public void WriteBooleanValue(bool value)
+        /// <remarks>
+        /// A processing instruction can be written inside an element, and before or after the root element.
+        /// </remarks>
+        public void WriteProcessingInstruction(string target, string? data)
         {
-            WriteStringValue(value ? "true"u8 : "false"u8);
+            ArgumentNullException.ThrowIfNull(target);
+            WriteProcessingInstructionUtf8(
+                EncodeUtf8(target, stackalloc byte[64], out _),
+                EncodeUtf8(data, stackalloc byte[256], out _));
         }
 
         /// <summary>
-        /// Writes binary data as base64 encoded text to the content of the current element or to the value of the
-        /// current attribute.
+        /// Writes the input as XML content, with the input specified as a read-only span of UTF-8 bytes. The
+        /// input is copied to the output without escaping.
         /// </summary>
-        /// <param name="bytes">The binary data to write as base64 encoded text.</param>
+        /// <param name="utf8Xml">The UTF-8 encoded XML text to write.</param>
+        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
         /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
+        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
-        public void WriteBase64StringValue(ReadOnlySpan<byte> bytes)
+        /// <remarks>
+        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
+        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
+        /// throws if the document would not be well formed: inside an element the input must be element content
+        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
+        /// mark, and at the document level it must be comments, processing instructions, white space, and at
+        /// most the one root element. Inside an element, the input counts as text of that element, so the
+        /// element's end tag is not indented. At the document level, the writer does not write the XML
+        /// declaration before the input.
+        /// </remarks>
+        public void WriteRawValue(ReadOnlySpan<byte> utf8Xml, bool skipInputValidation = false)
         {
             ThrowIfDisposed();
+            if (!skipInputValidation && !_options.SkipValidation)
+            {
+                ValidateRawValue(utf8Xml);
+            }
+
+            if (_depth > 0 && !_inAttribute)
+            {
+                CloseStartTag();
+                MarkText();
+            }
+
+            WriteRaw(utf8Xml);
+        }
+
+        /// <summary>
+        /// Writes the input as XML content, with the input specified as a read-only span of characters. The
+        /// input is copied to the output without escaping.
+        /// </summary>
+        /// <param name="xml">The XML text to write.</param>
+        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
+        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
+        /// throws if the document would not be well formed: inside an element the input must be element content
+        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
+        /// mark, and at the document level it must be comments, processing instructions, white space, and at
+        /// most the one root element. Inside an element, the input counts as text of that element, so the
+        /// element's end tag is not indented. At the document level, the writer does not write the XML
+        /// declaration before the input.
+        /// </remarks>
+        public void WriteRawValue(ReadOnlySpan<char> xml, bool skipInputValidation = false)
+        {
+            WriteRawValue(EncodeUtf8(xml, stackalloc byte[256], out _), skipInputValidation);
+        }
+
+        /// <summary>
+        /// Writes the input as XML content, with the input specified as a string. The input is copied to the
+        /// output without escaping.
+        /// </summary>
+        /// <param name="xml">The XML text to write.</param>
+        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="xml"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
+        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
+        /// throws if the document would not be well formed: inside an element the input must be element content
+        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
+        /// mark, and at the document level it must be comments, processing instructions, white space, and at
+        /// most the one root element. Inside an element, the input counts as text of that element, so the
+        /// element's end tag is not indented. At the document level, the writer does not write the XML
+        /// declaration before the input.
+        /// </remarks>
+        public void WriteRawValue(string xml, bool skipInputValidation = false)
+        {
+            ArgumentNullException.ThrowIfNull(xml);
+            WriteRawValue(xml.AsSpan(), skipInputValidation);
+        }
+
+        /// <summary>
+        /// Writes the beginning of an attribute with the name specified as a string.
+        /// </summary>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="name"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <remarks>
+        /// Write the value with one or more calls to the value methods, such as <see cref="WriteStringValue(string)"/>,
+        /// and then call <see cref="WriteEndAttribute"/>.
+        /// </remarks>
+        public void WriteStartAttribute(string name)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            WriteStartAttributeLiteral(name);
+        }
+
+        /// <summary>
+        /// Writes the beginning of an attribute with the name specified as a read-only span of characters.
+        /// </summary>
+        /// <param name="name">The name of the attribute, without a prefix.</param>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="name"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The element already has an attribute with the same name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// Write the value with one or more calls to the value methods, such as <see cref="WriteStringValue(string)"/>,
+        /// and then call <see cref="WriteEndAttribute"/>.
+        /// </remarks>
+        public void WriteStartAttribute(ReadOnlySpan<char> name)
+        {
+            WriteStartAttributeChars(name, default, default);
+        }
+
+        /// <summary>
+        /// Writes the beginning of an attribute with the prefix, the local name, and the namespace URI specified as strings.
+        /// </summary>
+        /// <param name="prefix">The prefix of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the attribute.</param>
+        /// <param name="namespaceUri">The namespace URI of the attribute, or <see langword="null"/> or an empty string for none.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// No start tag is open, or another attribute is still open.
+        /// -or-
+        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="prefix"/> is a prefix other than <c>xml</c> and <c>xmlns</c>, and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// -or-
+        /// The element already has an attribute with the same local name and namespace URI, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// With a prefix, the writer declares <paramref name="prefix"/> on the element unless it is already bound to
+        /// <paramref name="namespaceUri"/>. With a namespace URI and no prefix, the writer uses a prefix that is
+        /// already bound to <paramref name="namespaceUri"/>, or declares a generated prefix (<c>ns1</c>, <c>ns2</c>,
+        /// and so on) on the element. Write the value with one or more calls to the value methods, such as
+        /// <see cref="WriteStringValue(string)"/>, and then call <see cref="WriteEndAttribute"/>.
+        /// </remarks>
+        public void WriteStartAttribute(string? prefix, string localName, string? namespaceUri)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteStartAttributeChars(localName, prefix.AsSpan(), namespaceUri.AsSpan());
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name specified as a string.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The start tag stays open for attributes and namespace declarations until content or an end tag is written.
+        /// </remarks>
+        public void WriteStartElement(string localName)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteStartElementLiteral(localName, prefix: null, namespaceUri: null, empty: false);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name and the namespace URI specified as strings.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// If <paramref name="namespaceUri"/> is the default namespace in scope, the element is written without a
+        /// prefix. If it is bound to a prefix that is in scope, the element is written with that prefix. Otherwise,
+        /// the writer declares it as the default namespace on the element. For an empty string, that declaration
+        /// is <c>xmlns=""</c>, and it is written only when a default namespace is in scope.
+        /// </remarks>
+        public void WriteStartElement(string localName, string? namespaceUri)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteStartElementLiteral(localName, prefix: null, namespaceUri, empty: false);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the prefix, the local name, and the namespace URI specified as strings.
+        /// </summary>
+        /// <param name="prefix">The prefix of the element, or <see langword="null"/> or an empty string for none.</param>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty string means no namespace. <see langword="null"/> leaves the namespace unstated, so the element is written as named and inherits the default namespace in scope.</param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="localName"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> or <paramref name="prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="namespaceUri"/> is <see langword="null"/> or empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The element is written with <paramref name="prefix"/>. Unless <paramref name="prefix"/> is already bound
+        /// to <paramref name="namespaceUri"/>, the writer declares it on the element, even when the namespace has
+        /// another prefix in scope. Without a prefix, this overload behaves as
+        /// <see cref="WriteStartElement(string, string)"/> does.
+        /// </remarks>
+        public void WriteStartElement(string? prefix, string localName, string? namespaceUri)
+        {
+            ArgumentNullException.ThrowIfNull(localName);
+            WriteStartElementLiteral(localName, prefix, namespaceUri, empty: false);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name specified as a read-only span of characters.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStartElement(ReadOnlySpan<char> localName)
+        {
+            WriteStartElementChars(localName, default, default, empty: false, explicitNamespace: false);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name specified as a read-only span of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName)
+        {
+            if (TryStoreShortName(utf8LocalName))
+            {
+                BeginStartElement();
+                WriteTagOpen([], utf8LocalName);
+                PushStoredFrame(utf8LocalName.Length, empty: false);
+                return;
+            }
+
+            WriteStartElementUtf8(utf8LocalName, [], []);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name specified as a pre-encoded <see cref="XmlEncodedText"/>.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name of the element.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStartElement(XmlEncodedText localName)
+        {
+            WriteStartElement(localName.EncodedUtf8Bytes);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name and the namespace URI specified as read-only
+        /// spans of characters.
+        /// </summary>
+        /// <param name="localName">The local name of the element.</param>
+        /// <param name="namespaceUri">The namespace URI of the element. An empty span means no namespace.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="localName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
+        public void WriteStartElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri)
+        {
+            WriteStartElementChars(localName, default, namespaceUri, empty: false, explicitNamespace: true);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the local name and the namespace URI specified as read-only
+        /// spans of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string)"/>.
+        /// </remarks>
+        public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            WriteStartElementUtf8(utf8LocalName, [], utf8NamespaceUri, empty: false, explicitNamespace: true);
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element with the prefix, the local name, and the namespace URI specified as
+        /// read-only spans of UTF-8 bytes.
+        /// </summary>
+        /// <param name="utf8Prefix">The UTF-8 encoded prefix of the element, or an empty span for none.</param>
+        /// <param name="utf8LocalName">The UTF-8 encoded local name of the element.</param>
+        /// <param name="utf8NamespaceUri">The UTF-8 encoded namespace URI of the element. An empty span means no namespace.</param>
+        /// <exception cref="XmlException">
+        /// <paramref name="utf8LocalName"/> or <paramref name="utf8Prefix"/> is not a valid XML name without a colon, or is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>.
+        /// -or-
+        /// <paramref name="utf8Prefix"/> is <c>xmlns</c>, or is a prefix other than <c>xml</c> and <paramref name="utf8NamespaceUri"/> is empty.
+        /// -or-
+        /// The document already has a root element.
+        /// -or-
+        /// The element is nested deeper than <see cref="XmlWriterOptions.MaxDepth"/>.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The namespace is handled as it is by <see cref="WriteStartElement(string, string, string)"/>.
+        /// </remarks>
+        public void WriteStartElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            WriteStartElementUtf8(utf8LocalName, utf8Prefix, utf8NamespaceUri, empty: false, explicitNamespace: true);
+        }
+
+        /// <summary>
+        /// Writes text specified as a string to the content of the current element or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The text to write, or <see langword="null"/> to write nothing.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <remarks>
+        /// The text is escaped as needed: <c>&amp;</c> and <c>&lt;</c> become entity references, and a character
+        /// that would not survive a round trip (such as a carriage return, or a tab or line feed in an attribute
+        /// value) becomes a character reference.
+        /// </remarks>
+        public void WriteStringValue(string? value)
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            WriteStringValue(value.AsSpan());
+        }
+
+        /// <summary>
+        /// Writes text specified as a read-only span of characters to the content of the current element or to the
+        /// value of the current attribute.
+        /// </summary>
+        /// <param name="value">The text to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="value"/> contains a character that XML does not allow.
+        /// </exception>
+        /// <remarks>
+        /// The text is escaped as it is by <see cref="WriteStringValue(string)"/>.
+        /// </remarks>
+        public void WriteStringValue(ReadOnlySpan<char> value)
+        {
+            ThrowIfDisposed();
+            if ((_inAttribute ? value.IndexOfAnyExcept(XmlChars.PlainAttributeChars) : IndexOfEscapedText(value)) < 0
+                && (_inAttribute || PendingBrackets() == 0))
+            {
+                if (_inAttribute)
+                {
+                    WriteCharsRaw(value);
+                    return;
+                }
+
+                if (_depth == 0)
+                {
+                    throw XmlException.Create("Text is not allowed at the document level.");
+                }
+
+                CloseStartTag();
+                MarkText();
+                WriteCharsRaw(value);
+                return;
+            }
+
             if (!_inAttribute)
             {
                 if (_depth == 0)
@@ -3565,10 +3671,149 @@ namespace CloudNimble.Text.Xml
                 MarkText();
             }
 
-            var max = Base64.GetMaxEncodedToUtf8Length(bytes.Length);
-            Ensure(max);
-            Base64.EncodeToUtf8(bytes, _memory.Span[_buffered..], out _, out var written);
+            WriteEscapedChars(value, _inAttribute);
+        }
+
+        /// <summary>
+        /// Writes text specified as a read-only span of UTF-8 bytes to the content of the current element or to the
+        /// value of the current attribute.
+        /// </summary>
+        /// <param name="utf8Value">The UTF-8 encoded text to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// -or-
+        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// The text is escaped as it is by <see cref="WriteStringValue(string)"/>.
+        /// </remarks>
+        public void WriteStringValue(ReadOnlySpan<byte> utf8Value)
+        {
+            ThrowIfDisposed();
+            if (_inAttribute)
+            {
+                WriteAttributeText(utf8Value);
+                return;
+            }
+
+            if (_depth == 0)
+            {
+                throw XmlException.Create("Text is not allowed at the document level.");
+            }
+
+            CloseStartTag();
+            MarkText();
+            WriteElementText(utf8Value);
+        }
+
+        /// <summary>
+        /// Writes a <see cref="DateTime"/> value as an XML Schema <c>dateTime</c> to the content of the current
+        /// element or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        /// <remarks>
+        /// A value whose <see cref="DateTime.Kind"/> is <see cref="DateTimeKind.Utc"/> ends with <c>Z</c>. A
+        /// <see cref="DateTimeKind.Local"/> value ends with the offset of the local time zone. A
+        /// <see cref="DateTimeKind.Unspecified"/> value has no time zone.
+        /// </remarks>
+        public void WriteStringValue(DateTime value)
+        {
+            // The count is read after the value is written: getting ready for a value can close a start tag.
+            var written = XmlLexical.FormatDateTimeWithZone(value, BeginPlainValue(40));
             _buffered += written;
+        }
+
+        /// <summary>
+        /// Writes a <see cref="DateTimeOffset"/> value as an XML Schema <c>dateTime</c> with its offset to the
+        /// content of the current element or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStringValue(DateTimeOffset value)
+        {
+            var destination = BeginPlainValue(40);
+            var written = XmlLexical.FormatDateTime(value.DateTime, destination);
+            _buffered += written + XmlLexical.FormatOffset(value.Offset, destination[written..]);
+        }
+
+        /// <summary>
+        /// Writes a <see cref="DateOnly"/> value as an XML Schema <c>date</c> to the content of the current element
+        /// or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStringValue(DateOnly value)
+        {
+            var written = XmlLexical.FormatDate(value.Year, value.Month, value.Day, BeginPlainValue(10));
+            _buffered += written;
+        }
+
+        /// <summary>
+        /// Writes a <see cref="TimeOnly"/> value as an XML Schema <c>time</c> to the content of the current element
+        /// or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStringValue(TimeOnly value)
+        {
+            var written = XmlLexical.FormatTime(value.Ticks, BeginPlainValue(16));
+            _buffered += written;
+        }
+
+        /// <summary>
+        /// Writes a <see cref="TimeSpan"/> value as an XML Schema <c>duration</c> to the content of the current
+        /// element or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The value to write.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStringValue(TimeSpan value)
+        {
+            var written = XmlLexical.FormatDuration(value, BeginPlainValue(32));
+            _buffered += written;
+        }
+
+        /// <summary>
+        /// Writes a <see cref="Guid"/> value to the content of the current element or to the value of the current attribute.
+        /// </summary>
+        /// <param name="value">The value to write in the form <c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>.</param>
+        /// <exception cref="XmlException">
+        /// The writer is not inside an element or an attribute.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// This instance has been disposed.
+        /// </exception>
+        public void WriteStringValue(Guid value)
+        {
+            WriteFormatted(value, "D");
         }
 
         /// <summary>
@@ -3704,217 +3949,371 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a segment of binary data as base64 encoded text to the content of the current element or to the
-        /// value of the current attribute.
+        /// Writes the XML declaration (<c>&lt;?xml version="1.0" encoding="utf-8"?&gt;</c>).
         /// </summary>
-        /// <param name="value">The segment of the binary data to write as base64 encoded text.</param>
-        /// <param name="isFinalSegment"><see langword="true"/> to indicate that this is the final segment of the binary data; otherwise, <see langword="false"/>.</param>
         /// <exception cref="XmlException">
-        /// The writer is not inside an element or an attribute.
-        /// -or-
-        /// A value of another kind is being written in segments.
+        /// The writer has already written output for this document.
         /// </exception>
         /// <exception cref="ObjectDisposedException">
         /// This instance has been disposed.
         /// </exception>
-        /// <example>
-        /// <code>
-        /// writer.WriteStartElement("data");
-        /// writer.WriteBase64StringSegment([1], isFinalSegment: false);
-        /// writer.WriteBase64StringSegment([2], isFinalSegment: true);
-        /// writer.WriteEndElement();
-        /// // &lt;data&gt;AQI=&lt;/data&gt;
-        /// </code>
-        /// </example>
         /// <remarks>
-        /// The segments together are written as <see cref="WriteBase64StringValue(ReadOnlySpan{byte})"/> writes the
-        /// whole data: one base64 value, padded only at its end. A segment can be any length. The writer keeps the
-        /// one or two bytes that do not fill a group of three and encodes them with the next segment. After a
-        /// segment that is not final, the next call on the writer must be the next segment, apart from
-        /// <see cref="Flush"/> and <see cref="FlushAsync(CancellationToken)"/>; any other call throws an
-        /// <see cref="XmlException"/>.
+        /// The declaration carries the version from <see cref="XmlWriterOptions.Version"/>, the encoding <c>utf-8</c>,
+        /// and the <c>standalone</c> pseudo-attribute when <see cref="XmlWriterOptions.Standalone"/> is set. A byte
+        /// order mark comes first when <see cref="XmlWriterOptions.EmitByteOrderMark"/> is <see langword="true"/>.
+        /// The writer writes the declaration by itself before the first element, comment, or processing
+        /// instruction unless <see cref="XmlWriterOptions.OmitXmlDeclaration"/> is <see langword="true"/>.
+        /// Call this method to write the declaration even when that option is <see langword="true"/>.
         /// </remarks>
-        public void WriteBase64StringSegment(ReadOnlySpan<byte> value, bool isFinalSegment)
-        {
-            var carry = BeginSegment(XmlWriterSegment.Base64, out var carryLength);
-            if (carryLength > 0)
-            {
-                Span<byte> group = stackalloc byte[3];
-                for (var i = 0; i < carryLength; i++)
-                {
-                    group[i] = (byte)(carry >> (8 * i));
-                }
-
-                var take = Math.Min(group.Length - carryLength, value.Length);
-                value[..take].CopyTo(group[carryLength..]);
-                group = group[..(carryLength + take)];
-                value = value[take..];
-                if (group.Length < 3 && !isFinalSegment)
-                {
-                    EndSegment(XmlWriterSegment.Base64, PackCarry(group), group.Length);
-                    return;
-                }
-
-                // A whole group encodes with no padding. A short one is the end of the data, and nothing follows it.
-                WriteBase64StringValue(group);
-            }
-
-            var tail = isFinalSegment ? 0 : value.Length % 3;
-            WriteBase64StringValue(value[..^tail]);
-            if (isFinalSegment)
-            {
-                return;
-            }
-
-            EndSegment(XmlWriterSegment.Base64, PackCarry(value[^tail..]), tail);
-        }
-
-        /// <summary>
-        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a string.
-        /// </summary>
-        /// <param name="text">The text of the CDATA section. It is written as it is, without escaping.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="text"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element.
-        /// -or-
-        /// <paramref name="text"/> contains <c>]]&gt;</c>.
-        /// -or-
-        /// <paramref name="text"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteCData(string text)
-        {
-            ArgumentNullException.ThrowIfNull(text);
-            WriteCData(text.AsSpan());
-        }
-
-        /// <summary>
-        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a read-only span of characters.
-        /// </summary>
-        /// <param name="text">The text of the CDATA section. It is written as it is, without escaping.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element.
-        /// -or-
-        /// <paramref name="text"/> contains <c>]]&gt;</c>.
-        /// -or-
-        /// <paramref name="text"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteCData(ReadOnlySpan<char> text)
-        {
-            WriteCData(EncodeUtf8(text, stackalloc byte[256], out _));
-        }
-
-        /// <summary>
-        /// Writes a CDATA section (<c>&lt;![CDATA[...]]&gt;</c>) with the text specified as a read-only span of UTF-8 bytes.
-        /// </summary>
-        /// <param name="utf8Value">The UTF-8 encoded text of the CDATA section. It is written as it is, without escaping.</param>
-        /// <exception cref="XmlException">
-        /// The writer is not inside an element.
-        /// -or-
-        /// <paramref name="utf8Value"/> contains <c>]]&gt;</c>.
-        /// -or-
-        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        public void WriteCData(ReadOnlySpan<byte> utf8Value)
+        public void WriteXmlDeclaration()
         {
             ThrowIfDisposed();
-            if (_depth == 0)
+            if (_wroteDeclaration || _seenRoot || _buffered > 0 || _committed > 0)
             {
-                throw XmlException.Create("CDATA is not allowed at the document level.");
+                throw XmlException.Create("The XML declaration must be the first output.");
             }
 
-            if (utf8Value.IndexOf("]]>"u8) >= 0)
+            EmitDeclaration();
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Counts bytes that were formatted into the span <see cref="BeginPlainValue"/> returned as written.
+        /// </summary>
+        /// <param name="count">The number of bytes.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Advance(int count)
+        {
+            _buffered += count;
+        }
+
+        /// <summary>
+        /// Appends the name of an open element, as its start tag has it.
+        /// </summary>
+        /// <param name="destination">The destination.</param>
+        /// <param name="frame">The element.</param>
+        internal void AppendFrameName(IBufferWriter<byte> destination, in XmlWriterFrame frame)
+        {
+            if (frame.Prefix.Length > 0)
             {
-                throw XmlException.Create("CDATA must not contain ']]>'.");
+                destination.Write(NameSpan(frame.Prefix));
+                destination.Write(":"u8);
             }
 
-            ValidateContentChars(utf8Value);
-
-            CloseStartTag();
-            MarkText();
-            WriteRaw("<![CDATA["u8);
-            WriteRawLines(utf8Value);
-            WriteRaw("]]>"u8);
+            destination.Write(NameSpan(frame.Local));
         }
 
         /// <summary>
-        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a string.
+        /// Appends <paramref name="utf8"/> to the name store.
         /// </summary>
-        /// <param name="value">The text of the comment. It is written as it is, without escaping.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="value"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="value"/> contains <c>--</c> or ends with <c>-</c>.
-        /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// A comment can be written inside an element, and before or after the root element.
-        /// </remarks>
-        public void WriteComment(string value)
+        /// <param name="utf8">The UTF-8 name.</param>
+        /// <returns>The stored slice.</returns>
+        internal XmlWriterName AppendName(ReadOnlySpan<byte> utf8)
         {
-            ArgumentNullException.ThrowIfNull(value);
-            WriteComment(value.AsSpan());
+            if (utf8.IsEmpty)
+            {
+                return default;
+            }
+
+            EnsureNameStore(utf8.Length);
+            utf8.CopyTo(_names.AsSpan(_namesLength));
+            var name = XmlWriterName.From(_namesLength, utf8.Length);
+            _namesLength += utf8.Length;
+            return name;
         }
 
         /// <summary>
-        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a read-only span of characters.
+        /// Appends an ASCII or UTF-16 name to the name store without a UTF-8 transcode when the name is ASCII.
         /// </summary>
-        /// <param name="value">The text of the comment. It is written as it is, without escaping.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="value"/> contains <c>--</c> or ends with <c>-</c>.
-        /// -or-
-        /// <paramref name="value"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// A comment can be written inside an element, and before or after the root element.
-        /// </remarks>
-        public void WriteComment(ReadOnlySpan<char> value)
+        /// <param name="chars">The name characters.</param>
+        /// <returns>The stored slice.</returns>
+        internal XmlWriterName AppendNameFromChars(ReadOnlySpan<char> chars)
         {
-            WriteComment(EncodeUtf8(value, stackalloc byte[256], out _));
+            if (chars.IsEmpty)
+            {
+                return default;
+            }
+
+            if (Ascii.IsValid(chars))
+            {
+                EnsureNameStore(chars.Length);
+                Encoding.Latin1.GetBytes(chars, _names.AsSpan(_namesLength));
+                var name = XmlWriterName.From(_namesLength, chars.Length);
+                _namesLength += chars.Length;
+                return name;
+            }
+
+            var utf8 = EncodeUtf8(chars, stackalloc byte[256], out var heap);
+            var stored = AppendName(utf8);
+            _ = heap;
+            return stored;
         }
 
         /// <summary>
-        /// Writes a comment (<c>&lt;!--...--&gt;</c>) with the text specified as a read-only span of UTF-8 bytes.
+        /// Appends a declaration for every namespace binding that is in effect, so that text read on its own
+        /// sees the prefixes it would see in the document.
         /// </summary>
-        /// <param name="utf8Value">The UTF-8 encoded text of the comment. It is written as it is, without escaping.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="utf8Value"/> contains <c>--</c> or ends with <c>-</c>.
-        /// -or-
-        /// <paramref name="utf8Value"/> is not valid UTF-8, or contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
+        /// <param name="destination">The destination, inside a start tag.</param>
+        internal void AppendNamespacesInScope(IBufferWriter<byte> destination)
+        {
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                var binding = NsAt(i);
+                var hidden = false;
+                for (var inner = i + 1; inner < _nsCount && !hidden; inner++)
+                {
+                    hidden = binding.Prefix.AsSpan().SequenceEqual(NsAt(inner).Prefix);
+                }
+
+                if (hidden || binding.Uri.Length == 0)
+                {
+                    // Hidden by a declaration on an element further in, or a declaration that removes a binding.
+                    continue;
+                }
+
+                destination.Write(" xmlns"u8);
+                if (binding.Prefix.Length > 0)
+                {
+                    destination.Write(":"u8);
+                    destination.Write(binding.Prefix);
+                }
+
+                destination.Write("=\""u8);
+                foreach (var b in binding.Uri)
+                {
+                    switch (b)
+                    {
+                        case (byte)'&': destination.Write("&amp;"u8); break;
+                        case (byte)'<': destination.Write("&lt;"u8); break;
+                        case (byte)'"': destination.Write("&quot;"u8); break;
+                        default: destination.Write([b]); break;
+                    }
+                }
+
+                destination.Write("\""u8);
+            }
+        }
+
+        /// <summary>
+        /// Gives a writer that <see cref="Detach"/> left with no destination a buffer writer to write to.
+        /// </summary>
+        /// <param name="bufferWriter">The destination.</param>
+        internal void Attach(IBufferWriter<byte> bufferWriter)
+        {
+            _bufferWriter = bufferWriter;
+        }
+
+        /// <summary>
+        /// Gives a writer that <see cref="Detach"/> left with no destination a stream to write to.
+        /// </summary>
+        /// <param name="utf8Xml">The destination.</param>
+        internal void Attach(Stream utf8Xml)
+        {
+            _stream = utf8Xml;
+            _buffer = ArrayPool<byte>.Shared.Rent(XmlLimits.DefaultBufferSize);
+            _memory = _buffer;
+        }
+
+        /// <summary>
+        /// Writes what comes before the value of an attribute in no namespace, from bytes built ahead of time,
+        /// and returns the place for a value that needs no escaping. <see cref="EndAttribute"/> closes it.
+        /// </summary>
+        /// <param name="local">The attribute name, an NCName that was checked when <paramref name="head"/> was built.</param>
+        /// <param name="head">Everything up to the value: a space, the name, <c>="</c>.</param>
+        /// <param name="room">The most bytes the value can take.</param>
+        /// <returns>The place in the output where the value goes, with room for it and the closing quote.</returns>
         /// <remarks>
-        /// A comment can be written inside an element, and before or after the root element.
+        /// The name is still recorded and compared with the attributes already on the element, so a duplicate is
+        /// reported as it is for any other attribute.
         /// </remarks>
-        public void WriteComment(ReadOnlySpan<byte> utf8Value)
+        /// <exception cref="XmlException">No start tag is open, the name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or the element already has an attribute with this name.</exception>
+        internal Span<byte> BeginAttribute(ReadOnlySpan<byte> local, ReadOnlySpan<byte> head, int room)
+        {
+            RequireOpenTag();
+            if (local.Length > _maxNameBytes)
+            {
+                ValidateNcName(local);
+            }
+
+            TrackAttribute(local, []);
+            if (_attributesPerLine != 0)
+            {
+                // The head starts with the space that separates it from what is before it.
+                WriteAttributeSeparator();
+                head = head[1..];
+            }
+
+            Ensure(head.Length + room + 1);
+            var destination = _memory.Span[_buffered..];
+            head.CopyTo(destination);
+            _buffered += head.Length;
+            return destination[head.Length..];
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element that has no prefix, is in no stated namespace, and holds one
+        /// value that needs no escaping. <see cref="EndElementValue(ReadOnlySpan{byte}, Span{byte}, int)"/>
+        /// writes its end tag.
+        /// </summary>
+        /// <param name="localName">The UTF-8 local name.</param>
+        /// <param name="valueRoom">The most bytes the value can take.</param>
+        /// <returns>
+        /// The place in the output where the value goes, with room for it and for the end tag; or an empty
+        /// span when the name is not a short ASCII NCName, in which case nothing has been written and the
+        /// caller writes the element a part at a time.
+        /// </returns>
+        /// <remarks>
+        /// The element is written in one reservation and gets no frame: it cannot have attributes, namespaces
+        /// or children, so there is nothing to remember about it. Nothing counts as written until the end tag is.
+        /// </remarks>
+        internal Span<byte> BeginElementValue(ReadOnlySpan<byte> localName, int valueRoom)
+        {
+            if (!XmlChars.IsShortAsciiNcName(localName, Math.Min(_maxNameBytes, XmlChars.ShortNameLength)))
+            {
+                return default;
+            }
+
+            BeginStartElement();
+            Ensure((2 * localName.Length) + 5 + valueRoom);
+            var destination = _memory.Span[_buffered..];
+            destination[0] = (byte)'<';
+            localName.CopyTo(destination[1..]);
+            destination[localName.Length + 1] = (byte)'>';
+            return destination[(localName.Length + 2)..];
+        }
+
+        /// <summary>
+        /// Writes the start tag of an element that has no prefix, is in no stated namespace, and holds one
+        /// value that needs no escaping. <see cref="EndElementValue(ReadOnlySpan{char}, Span{byte}, int)"/>
+        /// writes its end tag.
+        /// </summary>
+        /// <param name="localName">The local name.</param>
+        /// <param name="valueRoom">The most bytes the value can take.</param>
+        /// <returns>
+        /// The place in the output where the value goes, with room for it and for the end tag; or an empty
+        /// span when the name is not a short ASCII NCName, in which case nothing has been written and the
+        /// caller writes the element a part at a time.
+        /// </returns>
+        internal Span<byte> BeginElementValue(ReadOnlySpan<char> localName, int valueRoom)
+        {
+            if (!XmlChars.IsShortAsciiNcName(localName, Math.Min(_maxNameBytes, XmlChars.ShortNameLength)))
+            {
+                return default;
+            }
+
+            BeginStartElement();
+            Ensure((2 * localName.Length) + 5 + valueRoom);
+            var destination = _memory.Span[_buffered..];
+            destination[0] = (byte)'<';
+            XmlChars.NarrowAscii(localName, destination[1..]);
+            destination[localName.Length + 1] = (byte)'>';
+            return destination[(localName.Length + 2)..];
+        }
+
+        /// <summary>
+        /// Writes the start tag of a child element that holds exactly one value that needs no escaping and has
+        /// no attributes, from a start tag built ahead of time. <see cref="EndLeaf"/> writes its end tag.
+        /// </summary>
+        /// <param name="openTag">
+        /// The whole start tag, <c>&lt;name&gt;</c>. The name is an NCName that was checked when the tag was built,
+        /// has no prefix, and is in no namespace of its own.
+        /// </param>
+        /// <param name="room">The most bytes the value and the end tag can take together.</param>
+        /// <returns>The place in the output where the value goes.</returns>
+        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>, or no element is open.</exception>
+        /// <remarks>
+        /// The whole element is written in one reservation and gets no frame. The value is not recorded as text
+        /// of the element that holds this one, so nothing has to be put back afterwards.
+        /// </remarks>
+        internal Span<byte> BeginLeaf(ReadOnlySpan<byte> openTag, int room)
+        {
+            PrepareLeaf(openTag);
+            Ensure(openTag.Length + room);
+            var destination = _memory.Span[_buffered..];
+            openTag.CopyTo(destination);
+            _buffered += openTag.Length;
+            return destination[openTag.Length..];
+        }
+
+        /// <summary>
+        /// Gets ready to write a value that needs no escaping, such as a number or a date, and returns the place
+        /// to format it. The caller adds the bytes it wrote to <c>_buffered</c>.
+        /// </summary>
+        /// <param name="maxBytes">The most bytes the value can take.</param>
+        /// <returns>The free part of the output buffer, at least <paramref name="maxBytes"/> long.</returns>
+        /// <exception cref="XmlException">The writer is at the document level, where text is not allowed.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal Span<byte> BeginPlainValue(int maxBytes)
         {
             ThrowIfDisposed();
-            if (utf8Value.IndexOf("--"u8) >= 0 || (utf8Value.Length > 0 && utf8Value[^1] is (byte)'-'))
+            if (!_inAttribute)
             {
-                throw XmlException.Create("Comments must not contain '--' or end with '-'.");
+                if (_depth == 0)
+                {
+                    throw XmlException.Create("Text is not allowed at the document level.");
+                }
+
+                CloseStartTag();
+                MarkText();
             }
 
-            ValidateContentChars(utf8Value);
+            Ensure(maxBytes);
+            return _memory.Span[_buffered..];
+        }
+
+        /// <summary>
+        /// Starts a segment of <paramref name="kind"/> and takes what the segment before it left over.
+        /// </summary>
+        /// <param name="kind">The kind of value the segment belongs to.</param>
+        /// <param name="carryLength">The number of bytes or characters left over by the segment before.</param>
+        /// <returns>What was left over: UTF-8 or binary bytes, lowest byte first, or one UTF-16 character.</returns>
+        /// <exception cref="ObjectDisposedException">The writer has been disposed.</exception>
+        /// <exception cref="XmlException">
+        /// A segmented value of another kind is open, or the writer is at the document level.
+        /// </exception>
+        /// <remarks>
+        /// The writer is left with no segmented value open, so the segment can write through the ordinary value
+        /// methods and an exception leaves nothing behind. The caller calls <see cref="EndSegment"/> last.
+        /// </remarks>
+        internal int BeginSegment(XmlWriterSegment kind, out int carryLength)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_segment is not XmlWriterSegment.None && _segment != kind)
+            {
+                ThrowSegmentOpen();
+            }
+
+            if (!_inAttribute && _depth == 0)
+            {
+                throw XmlException.Create("Text is not allowed at the document level.");
+            }
+
+            var carry = _segmentCarry;
+            carryLength = _segmentCarryLength;
+            _segment = XmlWriterSegment.None;
+            _segmentCarry = 0;
+            _segmentCarryLength = 0;
+            return carry;
+        }
+
+        /// <summary>
+        /// Closes a parent start tag, writes indent, and enforces depth before a new element.
+        /// </summary>
+        internal void BeginStartElement()
+        {
+            ThrowIfDisposed();
+            if (_inAttribute)
+            {
+                WriteEndAttribute();
+            }
+
+            if (_depth == 0 && _seenRoot)
+            {
+                throw XmlException.Create("Multiple root elements are not allowed.");
+            }
 
             if (_depth > 0)
             {
@@ -3926,142 +4325,829 @@ namespace CloudNimble.Text.Xml
                 EnsureDeclaration();
             }
 
-            // A comment between elements gets a line of its own, as an element does.
+            if (_depth + 1 > _maxDepth)
+            {
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
+            }
+
             WriteElementIndent(_depth);
-            WriteRaw("<!--"u8);
-            WriteRawLines(utf8Value);
-            WriteRaw("-->"u8);
         }
 
         /// <summary>
-        /// Writes a processing instruction (<c>&lt;?target data?&gt;</c>) with the target and the data specified as strings.
+        /// Closes an open start tag with <c>&gt;</c> when attributes are finished.
         /// </summary>
-        /// <param name="target">The target of the processing instruction.</param>
-        /// <param name="data">The data of the processing instruction, or <see langword="null"/> or an empty string for none. It is written as it is, without escaping.</param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="target"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="XmlException">
-        /// <paramref name="target"/> is not a valid XML name without a colon, is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or is <c>xml</c> in any letter case.
-        /// -or-
-        /// <paramref name="data"/> contains <c>?&gt;</c>.
-        /// -or-
-        /// <paramref name="data"/> contains a character that XML does not allow.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// A processing instruction can be written inside an element, and before or after the root element.
-        /// </remarks>
-        public void WriteProcessingInstruction(string target, string? data)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void CloseStartTag()
         {
-            ArgumentNullException.ThrowIfNull(target);
-            WriteProcessingInstructionUtf8(
-                EncodeUtf8(target, stackalloc byte[64], out _),
-                EncodeUtf8(data, stackalloc byte[256], out _));
-        }
-
-        /// <summary>
-        /// Writes the input as XML content, with the input specified as a read-only span of UTF-8 bytes. The
-        /// input is copied to the output without escaping.
-        /// </summary>
-        /// <param name="utf8Xml">The UTF-8 encoded XML text to write.</param>
-        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
-        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
-        /// throws if the document would not be well formed: inside an element the input must be element content
-        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
-        /// mark, and at the document level it must be comments, processing instructions, white space, and at
-        /// most the one root element. Inside an element, the input counts as text of that element, so the
-        /// element's end tag is not indented. At the document level, the writer does not write the XML
-        /// declaration before the input.
-        /// </remarks>
-        public void WriteRawValue(ReadOnlySpan<byte> utf8Xml, bool skipInputValidation = false)
-        {
-            ThrowIfDisposed();
-            if (!skipInputValidation && !_options.SkipValidation)
+            if (!_tagOpen)
             {
-                ValidateRawValue(utf8Xml);
+                return;
             }
 
-            if (_depth > 0 && !_inAttribute)
+            WriteRawByte((byte)'>');
+            _tagOpen = false;
+        }
+
+        /// <summary>
+        /// Applies <paramref name="options"/> to the writer.
+        /// </summary>
+        /// <param name="options">The options.</param>
+        internal void Configure(in XmlWriterOptions options)
+        {
+            _options = options;
+            _attributesPerLine = options.AttributeStyle is XmlAttributeStyle.PerLine ? XmlLimits.Resolve(options.AttributesPerLine, 1) : 0;
+            _indentSize = XmlLimits.Resolve(options.IndentSize, 2);
+            _maxAttributes = XmlLimits.Resolve(options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
+            _maxDepth = XmlLimits.Resolve(options.MaxDepth, XmlLimits.DefaultMaxDepth);
+            _maxNameBytes = XmlLimits.Resolve(options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
+            _newLineIsCrLf = options.NewLine is "\r\n";
+            _version = options.Version;
+        }
+
+        /// <summary>
+        /// Returns a reference to the current element frame.
+        /// </summary>
+        /// <returns>The current frame.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ref XmlWriterFrame CurrentFrame()
+        {
+            return ref _frames[_depth - 1];
+        }
+
+        /// <summary>
+        /// Returns the path of the element that is open: the name of each open element from the document
+        /// element down, each after a slash.
+        /// </summary>
+        /// <returns>The path, such as <c>/Order/Lines/Line</c>, or an empty string when no element is open.</returns>
+        /// <remarks>
+        /// The serializer puts this on an <see cref="XmlException"/> that is thrown while it writes. An element
+        /// that is written whole, with no frame of its own, is not in the path: the path then ends at the element
+        /// that holds it.
+        /// </remarks>
+        internal string CurrentPath()
+        {
+            var path = new ArrayBufferWriter<byte>();
+            for (var index = 0; index < _depth; index++)
             {
-                CloseStartTag();
-                MarkText();
+                ref var frame = ref _frames[index];
+                if (frame.Local.Length == 0)
+                {
+                    // An element with no content and a namespace declaration is given a frame with no name.
+                    continue;
+                }
+
+                path.Write("/"u8);
+                AppendFrameName(path, frame);
             }
 
-            WriteRaw(utf8Xml);
+            return Encoding.UTF8.GetString(path.WrittenSpan);
         }
 
         /// <summary>
-        /// Writes the input as XML content, with the input specified as a read-only span of characters. The
-        /// input is copied to the output without escaping.
+        /// Writes an xmlns declaration for <paramref name="prefix"/>, or a default xmlns declaration when it is empty.
         /// </summary>
-        /// <param name="xml">The XML text to write.</param>
-        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
-        /// <remarks>
-        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
-        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
-        /// throws if the document would not be well formed: inside an element the input must be element content
-        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
-        /// mark, and at the document level it must be comments, processing instructions, white space, and at
-        /// most the one root element. Inside an element, the input counts as text of that element, so the
-        /// element's end tag is not indented. At the document level, the writer does not write the XML
-        /// declaration before the input.
-        /// </remarks>
-        public void WriteRawValue(ReadOnlySpan<char> xml, bool skipInputValidation = false)
+        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
+        /// <param name="ns">The namespace URI. Empty undeclares.</param>
+        internal void DeclareNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
         {
-            WriteRawValue(EncodeUtf8(xml, stackalloc byte[256], out _), skipInputValidation);
+            RegisterNamespace(prefix, ns);
+            WriteRegisteredNamespace(prefix, ns);
         }
 
         /// <summary>
-        /// Writes the input as XML content, with the input specified as a string. The input is copied to the
-        /// output without escaping.
+        /// Drops everything not yet flushed, forgets the destination, returns the output buffer, and leaves
+        /// the writer as <see cref="Reset()"/> leaves it, ready for a new destination.
         /// </summary>
-        /// <param name="xml">The XML text to write.</param>
-        /// <param name="skipInputValidation"><see langword="true"/> to copy the input without checking it; <see langword="false"/> to check first that the input is well formed in the place where it is written. The default is <see langword="false"/>.</param>
-        /// <exception cref="XmlException">
-        /// <paramref name="skipInputValidation"/> is <see langword="false"/> and the input is not well formed in the place where it is written.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="xml"/> is <see langword="null"/>.
-        /// </exception>
-        /// <exception cref="ObjectDisposedException">
-        /// This instance has been disposed.
-        /// </exception>
         /// <remarks>
-        /// Unless <paramref name="skipInputValidation"/> is <see langword="true"/> or
-        /// <see cref="XmlWriterOptions.SkipValidation"/> is set, the writer reads the input before it copies it and
-        /// throws if the document would not be well formed: inside an element the input must be element content
-        /// that uses only prefixes in scope, in an attribute it must be an attribute value with no quotation
-        /// mark, and at the document level it must be comments, processing instructions, white space, and at
-        /// most the one root element. Inside an element, the input counts as text of that element, so the
-        /// element's end tag is not indented. At the document level, the writer does not write the XML
-        /// declaration before the input.
+        /// The serializer calls this when a write fails part way through a document, so the half-written
+        /// bytes still in the buffer never reach the destination, and when it puts a writer back in its cache,
+        /// so the cache keeps neither the caller's destination nor an output buffer alive. The small buffer
+        /// of names stays with the writer until it is disposed: giving it back and renting it again for every
+        /// document costs more than the document's own tags.
         /// </remarks>
-        public void WriteRawValue(string xml, bool skipInputValidation = false)
+        internal void Detach()
         {
-            ArgumentNullException.ThrowIfNull(xml);
-            WriteRawValue(xml.AsSpan(), skipInputValidation);
+            Reset();
+            _bufferWriter = null;
+            _stream = null;
+            _memory = default;
+            if (_buffer.Length > 0)
+            {
+                ArrayPool<byte>.Shared.Return(_buffer);
+                _buffer = [];
+            }
         }
 
-        #endregion
+        /// <summary>
+        /// Writes the XML declaration (and BOM when requested).
+        /// </summary>
+        internal void EmitDeclaration()
+        {
+            EnsureBom();
 
-        #region Private Methods
+            // The longest declaration is 55 bytes. It is written in one reservation, from parts of fixed length.
+            Ensure(64);
+            var destination = _memory.Span[_buffered..];
+            "<?xml version=\"1."u8.CopyTo(destination);
+            destination[17] = (byte)(_version is XmlVersion.Version11 ? '1' : '0');
+            "\" encoding=\"utf-8\""u8.CopyTo(destination[18..]);
+            var position = 36;
+            if (_options.Standalone is { } standalone)
+            {
+                var text = standalone ? " standalone=\"yes\""u8 : " standalone=\"no\""u8;
+                text.CopyTo(destination[position..]);
+                position += text.Length;
+            }
+
+            destination[position] = (byte)'?';
+            destination[position + 1] = (byte)'>';
+            _buffered += position + 2;
+            _wroteDeclaration = true;
+        }
+
+        /// <summary>
+        /// Encodes <paramref name="value"/> to UTF-8 on the heap.
+        /// </summary>
+        /// <param name="value">The characters.</param>
+        /// <returns>UTF-8 bytes, or empty.</returns>
+        internal static byte[] EncodeChars(ReadOnlySpan<char> value)
+        {
+            var utf8 = new byte[Encoding.UTF8.GetByteCount(value)];
+            Transcode(value, utf8);
+            return utf8;
+        }
+
+        /// <summary>
+        /// Encodes <paramref name="value"/> into <paramref name="scratch"/> when it fits, otherwise onto the heap.
+        /// </summary>
+        /// <param name="value">The characters.</param>
+        /// <param name="scratch">Stack scratch space.</param>
+        /// <param name="heap">Heap bytes when scratch is too small, otherwise null.</param>
+        /// <returns>The UTF-8 bytes.</returns>
+        internal static ReadOnlySpan<byte> EncodeUtf8(ReadOnlySpan<char> value, Span<byte> scratch, out byte[]? heap)
+        {
+            heap = null;
+            if (value.IsEmpty)
+            {
+                return [];
+            }
+
+            var max = Encoding.UTF8.GetMaxByteCount(value.Length);
+            if (max <= scratch.Length)
+            {
+                var written = Transcode(value, scratch);
+                return scratch[..written];
+            }
+
+            heap = EncodeChars(value);
+            return heap;
+        }
+
+        /// <summary>
+        /// Writes the quote that closes an attribute started with <see cref="BeginAttribute"/>.
+        /// </summary>
+        /// <param name="destination">The span that <see cref="BeginAttribute"/> returned.</param>
+        /// <param name="written">The number of bytes of value that were put in <paramref name="destination"/>.</param>
+        internal void EndAttribute(Span<byte> destination, int written)
+        {
+            destination[written] = (byte)'"';
+            _buffered += written + 1;
+        }
+
+        /// <summary>
+        /// Writes the end tag of an element started with <see cref="BeginElementValue(ReadOnlySpan{byte}, int)"/>
+        /// and counts the whole element as written.
+        /// </summary>
+        /// <param name="localName">The UTF-8 local name that was passed to start the element.</param>
+        /// <param name="destination">The span that starting the element returned.</param>
+        /// <param name="written">The number of bytes of value that were put in <paramref name="destination"/>.</param>
+        internal void EndElementValue(ReadOnlySpan<byte> localName, Span<byte> destination, int written)
+        {
+            destination[written] = (byte)'<';
+            destination[written + 1] = (byte)'/';
+            localName.CopyTo(destination[(written + 2)..]);
+            destination[written + 2 + localName.Length] = (byte)'>';
+            _buffered += (2 * localName.Length) + 5 + written;
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes the end tag of an element started with <see cref="BeginElementValue(ReadOnlySpan{char}, int)"/>
+        /// and counts the whole element as written.
+        /// </summary>
+        /// <param name="localName">The local name that was passed to start the element.</param>
+        /// <param name="destination">The span that starting the element returned.</param>
+        /// <param name="written">The number of bytes of value that were put in <paramref name="destination"/>.</param>
+        internal void EndElementValue(ReadOnlySpan<char> localName, Span<byte> destination, int written)
+        {
+            destination[written] = (byte)'<';
+            destination[written + 1] = (byte)'/';
+            XmlChars.NarrowAscii(localName, destination[(written + 2)..]);
+            destination[written + 2 + localName.Length] = (byte)'>';
+            _buffered += (2 * localName.Length) + 5 + written;
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes the end tag of an element started with <see cref="BeginLeaf"/>.
+        /// </summary>
+        /// <param name="destination">The span that <see cref="BeginLeaf"/> returned.</param>
+        /// <param name="written">The number of bytes of value that were put in <paramref name="destination"/>.</param>
+        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
+        internal void EndLeaf(Span<byte> destination, int written, ReadOnlySpan<byte> closeTag)
+        {
+            closeTag.CopyTo(destination[written..]);
+            _buffered += written + closeTag.Length;
+        }
+
+        /// <summary>
+        /// Ends a segment, keeping what it left over for the next one.
+        /// </summary>
+        /// <param name="kind">The kind of value, or <see cref="XmlWriterSegment.None"/> after the final segment.</param>
+        /// <param name="carry">What is left over.</param>
+        /// <param name="carryLength">The number of bytes or characters in <paramref name="carry"/>.</param>
+        internal void EndSegment(XmlWriterSegment kind, int carry, int carryLength)
+        {
+            _segment = kind;
+            _segmentCarry = carry;
+            _segmentCarryLength = carryLength;
+        }
+
+        /// <summary>
+        /// Ensures <paramref name="needed"/> bytes of buffer remain.
+        /// </summary>
+        /// <param name="needed">The number of bytes about to be written.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Ensure(int needed)
+        {
+            if ((uint)_buffered + (uint)needed <= (uint)_memory.Length)
+            {
+                return;
+            }
+
+            Grow(needed);
+        }
+
+        /// <summary>
+        /// Writes a UTF-8 BOM when <see cref="XmlWriterOptions.EmitByteOrderMark"/> is set and nothing has been written.
+        /// </summary>
+        internal void EnsureBom()
+        {
+            if (_emittedBom || !_options.EmitByteOrderMark)
+            {
+                return;
+            }
+
+            WriteRaw([(byte)0xEF, (byte)0xBB, (byte)0xBF]);
+            _emittedBom = true;
+        }
+
+        /// <summary>
+        /// Writes the XML declaration when it has not been omitted and has not been written yet.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void EnsureDeclaration()
+        {
+            if (!_wroteDeclaration && !_options.OmitXmlDeclaration)
+            {
+                EmitDeclaration();
+                return;
+            }
+
+            EnsureBom();
+        }
+
+        /// <summary>
+        /// Declares the namespace of the open start tag's own name unless the in-scope binding already matches.
+        /// </summary>
+        /// <param name="prefix">The element prefix, or empty.</param>
+        /// <param name="ns">The element namespace URI, or empty for no namespace.</param>
+        /// <remarks>
+        /// Pairs with <see cref="WriteStartElementDeferred"/>. An unprefixed element in no namespace under a
+        /// non-empty default namespace gets <c>xmlns=""</c>, which is the only way to keep it out of that
+        /// namespace (Namespaces in XML, section 6.2).
+        /// </remarks>
+        internal void EnsureElementNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
+            if (!prefix.IsEmpty && ns.IsEmpty)
+            {
+                if (!_options.SkipValidation)
+                {
+                    throw XmlException.Create("Prefixed names require a namespace URI.");
+                }
+
+                return;
+            }
+
+            if (ns.SequenceEqual(LookupUri(prefix)))
+            {
+                return;
+            }
+
+            DeclareNamespace(prefix, ns);
+        }
+
+        /// <summary>
+        /// Grows the name store so <paramref name="needed"/> more bytes fit.
+        /// </summary>
+        /// <param name="needed">Additional bytes to store.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void EnsureNameStore(int needed)
+        {
+            if (_namesLength + needed > _names.Length)
+            {
+                GrowNameStore(needed);
+            }
+        }
+
+        /// <summary>
+        /// Ensures the XML Schema instance namespace is in scope as prefix <c>xsi</c>.
+        /// </summary>
+        internal void EnsureXsi()
+        {
+            // The attribute is written as xsi:nil, so it is the xsi prefix that has to be bound to the
+            // namespace. Another prefix for the same namespace does not help.
+            if (XmlUtf8.Xsi.AsSpan().SequenceEqual(LookupUri("xsi"u8)))
+            {
+                return;
+            }
+
+            WriteNamespaceDeclaration("xsi"u8, XmlUtf8.Xsi);
+        }
+
+        /// <summary>
+        /// Writes buffered bytes to the destination.
+        /// </summary>
+        internal void FlushBuffer()
+        {
+            if (_buffered == 0)
+            {
+                return;
+            }
+
+            TrackFlushedLine();
+            if (_stream is not null)
+            {
+                _stream.Write(_buffer, 0, _buffered);
+                _committed += _buffered;
+                _buffered = 0;
+                return;
+            }
+
+            _bufferWriter!.Advance(_buffered);
+            _committed += _buffered;
+            _buffered = 0;
+            _memory = default;
+        }
+
+        /// <summary>
+        /// Commits the current buffer and obtains a destination span of at least <paramref name="needed"/> bytes.
+        /// </summary>
+        /// <param name="needed">The number of bytes about to be written.</param>
+        /// <remarks>
+        /// <see cref="IBufferWriter{T}"/> destinations write into <c>GetMemory</c> like
+        /// <c>Utf8JsonWriter</c>, so the catalog path does not rent a 16 KB staging buffer or copy
+        /// the document on flush. Stream destinations keep a pooled buffer with BCL-style overflow
+        /// growth.
+        /// </remarks>
+        internal void Grow(int needed)
+        {
+            TrackFlushedLine();
+            if (_bufferWriter is not null)
+            {
+                if (_buffered > 0)
+                {
+                    _bufferWriter.Advance(_buffered);
+                    _committed += _buffered;
+                    _buffered = 0;
+                }
+
+                _memory = _bufferWriter.GetMemory(Math.Max(needed, 4096));
+                if (_memory.Length == 0)
+                {
+                    throw XmlException.Create("The destination buffer is too small.");
+                }
+
+                return;
+            }
+
+            if (_buffered > 0)
+            {
+                _stream!.Write(_buffer, 0, _buffered);
+                _committed += _buffered;
+                _buffered = 0;
+            }
+
+            if (needed > _buffer.Length)
+            {
+                var rented = ArrayPool<byte>.Shared.Rent(needed);
+                ArrayPool<byte>.Shared.Return(_buffer);
+                _buffer = rented;
+            }
+
+            _memory = _buffer;
+        }
+
+        /// <summary>
+        /// Rents a larger name store and moves the names that are in use to it.
+        /// </summary>
+        /// <param name="needed">Additional bytes to store.</param>
+        internal void GrowNameStore(int needed)
+        {
+            if (_names.Length == 0)
+            {
+                _names = ArrayPool<byte>.Shared.Rent(Math.Max(256, needed));
+                return;
+            }
+
+            var rented = ArrayPool<byte>.Shared.Rent(Math.Max(_names.Length * 2, _namesLength + needed));
+            _names.AsSpan(0, _namesLength).CopyTo(rented);
+            ArrayPool<byte>.Shared.Return(_names);
+            _names = rented;
+        }
+
+        /// <summary>
+        /// Returns the number of bytes at the end of <paramref name="utf8"/> that are the start of a character
+        /// whose other bytes have not arrived.
+        /// </summary>
+        /// <param name="utf8">A segment of UTF-8 text.</param>
+        /// <returns>1 to 3, or 0 when the text ends on a character boundary or ends with bytes that are not valid UTF-8.</returns>
+        internal static int IncompleteUtf8Tail(ReadOnlySpan<byte> utf8)
+        {
+            for (var back = 1; back <= 3 && back <= utf8.Length; back++)
+            {
+                var b = utf8[^back];
+                if (b < 0x80)
+                {
+                    return 0;
+                }
+
+                if ((b & 0xC0) == 0x80)
+                {
+                    continue;
+                }
+
+                return Rune.DecodeFromUtf8(utf8[^back..], out _, out _) is OperationStatus.NeedMoreData ? back : 0;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Increments the current start tag's attribute count, including xmlns*.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void IncrementAttributeCount()
+        {
+            if (_attributeCount >= _maxAttributes)
+            {
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxAttributeCount)} exceeded ({_maxAttributes}).");
+            }
+
+            _attributeCount++;
+        }
+
+        /// <summary>
+        /// Returns the index of the first byte of element text that cannot be copied as it is, or -1.
+        /// </summary>
+        /// <param name="utf8">The text.</param>
+        /// <returns>The index, or -1 when all of <paramref name="utf8"/> is copied as it is.</returns>
+        /// <remarks>
+        /// A line feed is copied as it is unless the line ending is CR LF.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int IndexOfEscapedText(ReadOnlySpan<byte> utf8)
+        {
+            // Each branch searches for a set the JIT knows, so the search is inlined. A set held in a field of
+            // the writer is searched through a virtual call, and element text pays that for every run it copies.
+            return _newLineIsCrLf
+                ? utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteCharsNoLineFeed)
+                : utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars);
+        }
+
+        /// <summary>
+        /// Returns the index of the first character of element text that cannot be copied as it is, or -1.
+        /// </summary>
+        /// <param name="text">The text.</param>
+        /// <returns>The index, or -1 when all of <paramref name="text"/> is copied as it is.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int IndexOfEscapedText(ReadOnlySpan<char> text)
+        {
+            return _newLineIsCrLf
+                ? text.IndexOfAnyExcept(XmlChars.PlainTextCharsNoLineFeed)
+                : text.IndexOfAnyExcept(XmlChars.PlainTextChars);
+        }
+
+        /// <summary>
+        /// Returns an array this writer owns that holds <paramref name="value"/>, reusing one from an earlier declaration.
+        /// </summary>
+        /// <param name="value">A namespace prefix or URI.</param>
+        /// <returns>The owned bytes.</returns>
+        /// <remarks>
+        /// A binding slot remembers the last declaration it held, which covers a document whose declarations
+        /// repeat in the same order. Sibling elements that declare different prefixes land in the same slot
+        /// in turn, so the writer also keeps the first <see cref="MaxInternedNamespaceValues"/> distinct
+        /// values it has seen. Past that limit a value is copied each time it is declared.
+        /// </remarks>
+        internal byte[] InternNamespaceBytes(ReadOnlySpan<byte> value)
+        {
+            for (var i = 0; i < _nsInternedCount; i++)
+            {
+                if (value.SequenceEqual(_nsInterned![i]))
+                {
+                    return _nsInterned[i];
+                }
+            }
+
+            var owned = value.ToArray();
+            if (_nsInternedCount < MaxInternedNamespaceValues)
+            {
+                _nsInterned ??= new byte[MaxInternedNamespaceValues][];
+                _nsInterned[_nsInternedCount] = owned;
+                _nsInternedCount++;
+            }
+
+            return owned;
+        }
+
+        /// <summary>
+        /// Returns an in-scope non-empty prefix bound to <paramref name="uri"/>, or null.
+        /// </summary>
+        /// <param name="uri">The namespace URI.</param>
+        /// <returns>The prefix bytes, or null.</returns>
+        internal byte[]? LookupPrefixedPrefix(ReadOnlySpan<byte> uri)
+        {
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                var binding = NsAt(i);
+                if (binding.Prefix.Length > 0 && uri.SequenceEqual(binding.Uri) && uri.SequenceEqual(LookupUri(binding.Prefix)))
+                {
+                    // The second test skips a prefix that an inner element has bound to something else.
+                    return binding.Prefix;
+                }
+            }
+
+            if (uri.SequenceEqual(XmlUtf8.Xml))
+            {
+                return XmlUtf8.XmlPrefix;
+            }
+
+            if (uri.SequenceEqual(XmlUtf8.Xmlns))
+            {
+                return XmlUtf8.XmlnsPrefix;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the URI bound to <paramref name="prefix"/>, or null.
+        /// </summary>
+        /// <param name="prefix">The prefix bytes.</param>
+        /// <returns>The URI bytes, or null if the prefix is unbound.</returns>
+        /// <remarks>
+        /// A document uses a handful of prefixes over and over, usually declared on its root. A small
+        /// direct-mapped cache from prefix to binding index, emptied whenever a binding is pushed or
+        /// popped, answers those with one compare instead of a scan of every binding in scope.
+        /// </remarks>
+        internal byte[]? LookupUri(ReadOnlySpan<byte> prefix)
+        {
+            var slot = prefix.IsEmpty ? 0 : (prefix[0] ^ (prefix[^1] << 1) ^ prefix.Length) & 7;
+            if ((_nsCacheMask & (1 << slot)) != 0)
+            {
+                var cached = NsAt(_nsCacheIndexes[slot]);
+                if (prefix.SequenceEqual(cached.Prefix))
+                {
+                    return cached.Uri;
+                }
+            }
+
+            for (var i = _nsCount - 1; i >= 0; i--)
+            {
+                var binding = NsAt(i);
+                if (prefix.SequenceEqual(binding.Prefix))
+                {
+                    _nsCacheMask |= 1 << slot;
+                    _nsCacheIndexes[slot] = i;
+                    return binding.Uri;
+                }
+            }
+
+            if (prefix.SequenceEqual("xml"u8))
+            {
+                return XmlUtf8.Xml;
+            }
+
+            if (prefix.SequenceEqual("xmlns"u8))
+            {
+                return XmlUtf8.Xmlns;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Marks the current element as having content.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void MarkContent()
+        {
+            _hasContent = true;
+        }
+
+        /// <summary>
+        /// Records that an XML declaration was already written (for example by <see cref="XmlDocument.WriteTo"/>).
+        /// </summary>
+        /// <remarks>
+        /// Prevents <see cref="EnsureDeclaration"/> from emitting a second declaration when
+        /// <see cref="XmlWriterOptions.OmitXmlDeclaration"/> is false.
+        /// </remarks>
+        internal void MarkDeclarationWritten()
+        {
+            _wroteDeclaration = true;
+        }
+
+        /// <summary>
+        /// Marks the current element as having character data.
+        /// </summary>
+        /// <remarks>
+        /// Whitespace is significant next to character data, so an element that holds text is never
+        /// indented: not its child start tags, and not its end tag.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void MarkText()
+        {
+            if (_depth > 0)
+            {
+                _hasContent = true;
+                _hasText = true;
+            }
+        }
+
+        /// <summary>
+        /// Returns the UTF-8 bytes for <paramref name="name"/>.
+        /// </summary>
+        /// <param name="name">The stored slice.</param>
+        /// <returns>The UTF-8 span.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ReadOnlySpan<byte> NameSpan(XmlWriterName name)
+        {
+            return _names.AsSpan(name.Start, name.Length);
+        }
+
+        /// <summary>
+        /// Returns the UTF-8 line ending that <see cref="XmlWriterOptions.NewLine"/> asks for.
+        /// </summary>
+        /// <returns>The newline bytes.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ReadOnlySpan<byte> NewLineUtf8()
+        {
+            return _newLineIsCrLf ? "\r\n"u8 : "\n"u8;
+        }
+
+        /// <summary>
+        /// Returns the next auto-generated prefix <c>nsN</c> that is not in scope.
+        /// </summary>
+        /// <returns>The prefix bytes.</returns>
+        internal byte[] NextAutoPrefix()
+        {
+            Span<byte> buffer = stackalloc byte[16];
+            "ns"u8.CopyTo(buffer);
+            while (true)
+            {
+                _autoNs++;
+                Utf8Formatter.TryFormat(_autoNs, buffer[2..], out var written);
+                var prefix = buffer[..(2 + written)];
+                if (!PrefixInUse(prefix))
+                {
+                    return prefix.ToArray();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the slot the next element's frame goes in, growing the stack when it is full.
+        /// </summary>
+        /// <returns>The slot at the current depth. It still holds whatever frame used it last.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ref XmlWriterFrame NextFrame()
+        {
+            if (_depth == _frames.Length)
+            {
+                Array.Resize(ref _frames, _frames.Length * 2);
+            }
+
+            return ref _frames[_depth];
+        }
+
+        /// <summary>
+        /// Returns the namespace binding at <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The binding index.</param>
+        /// <returns>The binding.</returns>
+        internal XmlWriterNsBinding NsAt(int index)
+        {
+            return _nsHeap![index];
+        }
+
+        /// <summary>
+        /// Records that a start tag was just written and is open: the element has no attributes and no content yet.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void OpenTag()
+        {
+            _attributeCount = 0;
+            _hasContent = false;
+            _hasText = false;
+            _tagOpen = true;
+        }
+
+        /// <summary>
+        /// Packs up to three bytes into one number, lowest byte first.
+        /// </summary>
+        /// <param name="bytes">The bytes.</param>
+        /// <returns>The packed bytes.</returns>
+        internal static int PackCarry(ReadOnlySpan<byte> bytes)
+        {
+            var carry = 0;
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                carry |= bytes[i] << (8 * i);
+            }
+
+            return carry;
+        }
+
+        /// <summary>
+        /// Returns the number of <c>]</c> characters that end the element text written so far, when they are the
+        /// last thing written.
+        /// </summary>
+        /// <returns>The count, or 0 when anything else has been written since.</returns>
+        /// <remarks>
+        /// The count is kept with the output position it was true at. Any write moves the position, so nothing
+        /// has to clear the count.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int PendingBrackets()
+        {
+            return _bracketRun > 0 && _bracketEnd == _committed + _buffered ? _bracketRun : 0;
+        }
+
+        /// <summary>
+        /// Leaves the element whose end was just written and goes back to the element that holds it.
+        /// </summary>
+        /// <param name="frame">The frame of the element that ended.</param>
+        /// <remarks>
+        /// The element that holds it had its start tag closed and was given content when this one started.
+        /// The names the element put in the name buffer, its own and those of its attributes, are let go, so
+        /// the buffer holds the names of the open elements and no more.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void PopFrame(in XmlWriterFrame frame)
+        {
+            PopNs(_depth);
+            _depth--;
+            _hasContent = true;
+            _hasText = frame.ParentHasText;
+            _namesLength = frame.NamesMark;
+            _tagOpen = false;
+        }
+
+        /// <summary>
+        /// Pops xmlns bindings owned by <paramref name="depth"/>.
+        /// </summary>
+        /// <param name="depth">The ending element depth.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void PopNs(int depth)
+        {
+            if (_nsCount > 0)
+            {
+                PopNsAt(depth);
+            }
+        }
+
+        /// <summary>
+        /// Pops xmlns bindings that belong to <paramref name="depth"/>, when any binding is in scope.
+        /// </summary>
+        /// <param name="depth">The ending element depth.</param>
+        internal void PopNsAt(int depth)
+        {
+            while (_nsCount > 0 && NsAt(_nsCount - 1).Depth == depth)
+            {
+                _nsCount--;
+                _nsCacheMask = 0;
+            }
+        }
+
+        /// <summary>
+        /// Returns true when <paramref name="prefix"/> is already in scope.
+        /// </summary>
+        /// <param name="prefix">The prefix bytes.</param>
+        /// <returns><see langword="true"/> if the prefix is bound.</returns>
+        internal bool PrefixInUse(ReadOnlySpan<byte> prefix)
+        {
+            return LookupUri(prefix) is not null;
+        }
 
         /// <summary>
         /// Records where the attributes of the start tag that is about to be written go when they are laid out
@@ -4090,6 +5176,332 @@ namespace CloudNimble.Text.Xml
             _lineIndent.AsSpan(0, _lineIndentLength).CopyTo(_tagIndent);
             _tagIndent.AsSpan(_lineIndentLength, nameLength + 2).Fill((byte)' ');
             _tagIndentLength = length;
+        }
+
+        /// <summary>
+        /// Makes the writer ready for the start tag of a child element that gets no frame: checks the limits,
+        /// closes the start tag of the element that holds it, and writes the indentation.
+        /// </summary>
+        /// <param name="openTag">The whole start tag, <c>&lt;name&gt;</c>.</param>
+        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>, or no element is open.</exception>
+        internal void PrepareLeaf(ReadOnlySpan<byte> openTag)
+        {
+            ThrowIfDisposed();
+            if (_depth == 0)
+            {
+                throw XmlException.Create("A leaf element must be written inside an element.");
+            }
+
+            if (openTag.Length - 2 > _maxNameBytes)
+            {
+                ValidateNcName(openTag[1..^1]);
+            }
+
+            if (_inAttribute)
+            {
+                WriteEndAttribute();
+            }
+
+            if (_depth + 1 > _maxDepth)
+            {
+                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
+            }
+
+            CloseStartTag();
+            _hasContent = true;
+            WriteElementIndent(_depth);
+        }
+
+        /// <summary>
+        /// Pushes the frame of an element whose name is given as UTF-8, and keeps the name in the name buffer.
+        /// </summary>
+        /// <param name="local">The local name; empty for an element that is ended at once and never named again.</param>
+        /// <param name="prefix">The prefix; empty for none.</param>
+        /// <remarks>
+        /// The frame is built in its slot. Passing a whole frame and storing it copies a struct that holds
+        /// references, which goes through the collector's block move on every start tag.
+        /// </remarks>
+        internal void PushFrame(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix)
+        {
+            ref var frame = ref NextFrame();
+            frame = default;
+            frame.NamesMark = _namesLength;
+            frame.Local = AppendName(local);
+            frame.Prefix = AppendName(prefix);
+            frame.ParentHasText = _hasText;
+            OpenTag();
+        }
+
+        /// <summary>
+        /// Pushes an xmlns binding.
+        /// </summary>
+        /// <param name="depth">The owning depth.</param>
+        /// <param name="prefix">The prefix bytes.</param>
+        /// <param name="uri">The URI bytes.</param>
+        /// <remarks>
+        /// A popped slot keeps its arrays. Documents declare the same namespaces over and over (sibling
+        /// elements, or the next document after <see cref="Reset()"/>), so a push whose bytes match the
+        /// slot's previous occupant reuses those arrays instead of allocating new ones.
+        /// </remarks>
+        internal void PushNs(int depth, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> uri)
+        {
+            if (_nsHeap is null)
+            {
+                _nsHeap = new XmlWriterNsBinding[8];
+            }
+            else if (_nsCount == _nsHeap.Length)
+            {
+                Array.Resize(ref _nsHeap, _nsHeap.Length * 2);
+            }
+
+            var stale = _nsHeap[_nsCount];
+            var ownedPrefix = stale.Prefix is { } stalePrefix && prefix.SequenceEqual(stalePrefix) ? stalePrefix : InternNamespaceBytes(prefix);
+            var ownedUri = stale.Uri is { } staleUri && uri.SequenceEqual(staleUri) ? staleUri : InternNamespaceBytes(uri);
+            _nsHeap[_nsCount] = new XmlWriterNsBinding(depth, ownedPrefix, ownedUri);
+            _nsCount++;
+            _nsCacheMask = 0;
+        }
+
+        /// <summary>
+        /// Finishes the start tag of an element with no prefix, in no stated namespace, whose name
+        /// <see cref="TryStoreShortName(ReadOnlySpan{char})"/> has just checked and put in the name buffer,
+        /// and whose <c>&lt;</c> and name have just been written.
+        /// </summary>
+        /// <param name="length">The length of the name in bytes.</param>
+        /// <param name="empty">Whether the element is ended at once.</param>
+        /// <remarks>
+        /// The name stays where it is in the name buffer and becomes the name of the element's frame, so the
+        /// end tag is a copy of bytes and the frame holds no reference. The start tag is written from the
+        /// caller's name and not from the name buffer: reading back bytes that were stored a moment ago is slow.
+        /// </remarks>
+        internal void PushStoredFrame(int length, bool empty)
+        {
+            _seenRoot = true;
+            if (empty && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
+            {
+                WriteSelfClose();
+                return;
+            }
+
+            ref var frame = ref NextFrame();
+            frame.NamesMark = _namesLength;
+            frame.Local = XmlWriterName.From(_namesLength, length);
+            frame.Prefix = default;
+            frame.ParentHasText = _hasText;
+            _namesLength += length;
+            OpenTag();
+            _depth++;
+            if (empty)
+            {
+                // The end tag needs the name, so the element is started and ended as any other is.
+                WriteEndElement();
+            }
+        }
+
+        /// <summary>
+        /// Validates a namespace declaration for the open start tag and puts it in scope without writing it.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
+        /// <param name="ns">The namespace URI. Empty undeclares.</param>
+        /// <remarks>
+        /// The DOM registers every declaration of a start tag first, then writes the tag's attributes in
+        /// document order with <see cref="WriteRegisteredNamespace"/>. A prefixed attribute that precedes
+        /// its own declaration (<c>&lt;e p:a="1" xmlns:p="u"/&gt;</c>) then finds the prefix bound instead
+        /// of triggering a second, automatic declaration.
+        /// </remarks>
+        internal void RegisterNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
+            ThrowIfDisposed();
+            RequireOpenTag();
+            if (prefix.IsEmpty)
+            {
+                if (!_options.SkipValidation && Utf8XmlReader.IsReservedNamespace(ns))
+                {
+                    throw XmlException.Create("The xml and xmlns namespaces cannot be declared as the default namespace.");
+                }
+
+                PushNs(_depth, [], ns);
+                return;
+            }
+
+            RegisterPrefixedNamespace(prefix, ns);
+        }
+
+        /// <summary>
+        /// Validates an <c>xmlns:prefix</c> declaration and puts it in scope.
+        /// </summary>
+        /// <param name="utf8Prefix">The prefix.</param>
+        /// <param name="utf8NamespaceUri">The namespace URI.</param>
+        internal void RegisterPrefixedNamespace(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8NamespaceUri)
+        {
+            ValidateNcName(utf8Prefix);
+            if (!_options.SkipValidation && utf8NamespaceUri.IsEmpty && _version is XmlVersion.Version10)
+            {
+                throw XmlException.Create("Prefix undeclaration is not allowed in XML 1.0.");
+            }
+
+            if (!_options.SkipValidation && utf8Prefix.SequenceEqual("xml"u8) && !utf8NamespaceUri.SequenceEqual(XmlUtf8.Xml))
+            {
+                throw XmlException.Create("The xml prefix cannot be rebound.");
+            }
+
+            if (!_options.SkipValidation && utf8Prefix.SequenceEqual("xmlns"u8))
+            {
+                throw XmlException.Create("The xmlns prefix cannot be declared.");
+            }
+
+            if (!_options.SkipValidation
+                && !utf8Prefix.SequenceEqual("xml"u8)
+                && Utf8XmlReader.IsReservedNamespace(utf8NamespaceUri))
+            {
+                throw XmlException.Create("The xml and xmlns namespaces cannot be bound to another prefix.");
+            }
+
+            PushNs(_depth, utf8Prefix, utf8NamespaceUri);
+        }
+
+        /// <summary>
+        /// Records an attribute key and throws when <c>{local, ns}</c> is already on the start tag.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="ns">The namespace URI.</param>
+        internal void RememberAttribute(ReadOnlySpan<byte> local, ReadOnlySpan<byte> ns)
+        {
+            var attributes = _attributes.AsSpan(0, 2 * _attributeCount);
+            for (var i = 0; i < attributes.Length; i += 2)
+            {
+                if (NameSpan(attributes[i]).SequenceEqual(local) && NameSpan(attributes[i + 1]).SequenceEqual(ns))
+                {
+                    throw XmlException.Create("Duplicate attribute.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Throws if attributes are not allowed.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void RequireOpenTag()
+        {
+            // Every attribute, namespace declaration and nil marker starts here, so this is also where a
+            // disposed writer and an open segmented value are caught for the paths that write names directly.
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_segment is not XmlWriterSegment.None)
+            {
+                ThrowSegmentOpen();
+            }
+
+            if (!_tagOpen || _inAttribute)
+            {
+                throw XmlException.Create("Attributes must be written on an open start tag.");
+            }
+        }
+
+        /// <summary>
+        /// Returns the pending buffer to <see cref="ArrayPool{T}"/>.
+        /// </summary>
+        internal void ReturnBuffer()
+        {
+            if (_buffer.Length > 0)
+            {
+                ArrayPool<byte>.Shared.Return(_buffer);
+                _buffer = [];
+            }
+
+            _memory = default;
+            _buffered = 0;
+            if (_names.Length > 0)
+            {
+                ArrayPool<byte>.Shared.Return(_names);
+                _names = [];
+                _namesLength = 0;
+            }
+        }
+
+        /// <summary>
+        /// Stores an attribute key at the current count and increments.
+        /// </summary>
+        /// <param name="storedLocal">The stored local name.</param>
+        /// <param name="storedNs">The stored namespace URI.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void StoreAttribute(XmlWriterName storedLocal, XmlWriterName storedNs)
+        {
+            var index = 2 * _attributeCount;
+            if (index == _attributes.Length)
+            {
+                Array.Resize(ref _attributes, 2 * index);
+            }
+
+            _attributes[index] = storedLocal;
+            _attributes[index + 1] = storedNs;
+            IncrementAttributeCount();
+        }
+
+        /// <summary>
+        /// Throws if the writer has been disposed, or if a value is part way through being written in segments.
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">The writer has been disposed.</exception>
+        /// <exception cref="XmlException">A segmented value is open, and this call is not its next segment.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ThrowIfDisposed()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_segment is not XmlWriterSegment.None)
+            {
+                ThrowSegmentOpen();
+            }
+        }
+
+        /// <summary>
+        /// Throws for a write that is not the next segment of the value being written in segments.
+        /// </summary>
+        /// <exception cref="XmlException">Always.</exception>
+        [DoesNotReturn]
+        internal static void ThrowSegmentOpen()
+        {
+            throw XmlException.Create("A value is being written in segments. Write its final segment before anything else.");
+        }
+
+        /// <summary>
+        /// Stores the attribute key at the current count, then increments.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="ns">The namespace URI.</param>
+        internal void TrackAttribute(ReadOnlySpan<byte> local, ReadOnlySpan<byte> ns)
+        {
+            if (!_options.SkipValidation)
+            {
+                RememberAttribute(local, ns);
+            }
+
+            StoreAttribute(AppendName(local), AppendName(ns));
+        }
+
+        /// <summary>
+        /// Records an attribute from UTF-16 names without a UTF-8 transcode when the name is ASCII.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="ns">The namespace URI.</param>
+        internal void TrackAttributeChars(ReadOnlySpan<char> local, ReadOnlySpan<char> ns)
+        {
+            var storedLocal = AppendNameFromChars(local);
+            var storedNs = AppendNameFromChars(ns);
+            if (!_options.SkipValidation)
+            {
+                RememberAttribute(NameSpan(storedLocal), NameSpan(storedNs));
+            }
+
+            StoreAttribute(storedLocal, storedNs);
+        }
+
+        /// <summary>
+        /// Reads what is in the buffer before it is handed on, as <see cref="TrackLine"/> does, and starts
+        /// again at the start of the buffer.
+        /// </summary>
+        internal void TrackFlushedLine()
+        {
+            TrackLine();
+            _lineScanned = 0;
         }
 
         /// <summary>
@@ -4142,162 +5554,6 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Reads what is in the buffer before it is handed on, as <see cref="TrackLine"/> does, and starts
-        /// again at the start of the buffer.
-        /// </summary>
-        internal void TrackFlushedLine()
-        {
-            TrackLine();
-            _lineScanned = 0;
-        }
-
-        /// <summary>
-        /// Writes what separates an attribute from what is before it in the start tag: a space, or a new line
-        /// and the indentation when the attributes are laid out a fixed number to a line.
-        /// </summary>
-        /// <remarks>
-        /// The attribute has been counted already, so the count of the element is one more than its index.
-        /// </remarks>
-        internal void WriteAttributeSeparator()
-        {
-            if (_attributesPerLine == 0)
-            {
-                WriteRawByte((byte)' ');
-                return;
-            }
-
-            var index = CurrentFrame().AttributeCount - 1;
-            if (index == 0 || index % _attributesPerLine != 0)
-            {
-                WriteRawByte((byte)' ');
-                return;
-            }
-
-            WriteRaw(NewLineUtf8());
-            WriteRaw(_tagIndent.AsSpan(0, _tagIndentLength));
-        }
-
-        /// <summary>
-        /// Writes the content of a comment, a CDATA section or a processing instruction, with each line break
-        /// as the line ending <see cref="XmlWriterOptions.NewLine"/> asks for.
-        /// </summary>
-        /// <param name="utf8">The content, which holds no markup to escape.</param>
-        /// <remarks>
-        /// A line feed that follows a carriage return is left as it is: the two are the line ending already.
-        /// </remarks>
-        internal void WriteRawLines(ReadOnlySpan<byte> utf8)
-        {
-            if (!_newLineIsCrLf)
-            {
-                WriteRaw(utf8);
-                return;
-            }
-
-            while (true)
-            {
-                var lineEnd = utf8.IndexOf((byte)'\n');
-                if (lineEnd < 0)
-                {
-                    WriteRaw(utf8);
-                    return;
-                }
-
-                WriteRaw(utf8[..lineEnd]);
-                WriteRaw(lineEnd > 0 && utf8[lineEnd - 1] is (byte)'\r' ? "\n"u8 : "\r\n"u8);
-                utf8 = utf8[(lineEnd + 1)..];
-            }
-        }
-
-        /// <summary>
-        /// Ends a start tag as the tag of an element with no content, in the form
-        /// <see cref="XmlWriterOptions.EmptyElementStyle"/> asks for: <c>/&gt;</c> or <c> /&gt;</c>.
-        /// </summary>
-        /// <remarks>
-        /// The caller writes a start tag and an end tag for <see cref="XmlEmptyElementStyle.StartAndEndTag"/>,
-        /// because that needs the name of the element.
-        /// </remarks>
-        internal void WriteSelfClose()
-        {
-            WriteRaw(_options.EmptyElementStyle is XmlEmptyElementStyle.SelfClosingWithSpace ? " />"u8 : "/>"u8);
-        }
-
-        /// <summary>
-        /// Closes an open start tag with <c>&gt;</c> when attributes are finished.
-        /// </summary>
-        internal void CloseStartTag()
-        {
-            if (_depth == 0)
-            {
-                return;
-            }
-
-            ref var frame = ref CurrentFrame();
-            if (!frame.TagOpen)
-            {
-                return;
-            }
-
-            WriteRawByte((byte)'>');
-            frame.TagOpen = false;
-        }
-
-        /// <summary>
-        /// Returns the path of the element that is open: the name of each open element from the document
-        /// element down, each after a slash.
-        /// </summary>
-        /// <returns>The path, such as <c>/Order/Lines/Line</c>, or an empty string when no element is open.</returns>
-        /// <remarks>
-        /// The serializer puts this on an <see cref="XmlException"/> that is thrown while it writes. An element
-        /// that is written whole, with no frame of its own, is not in the path: the path then ends at the element
-        /// that holds it.
-        /// </remarks>
-        internal string CurrentPath()
-        {
-            var path = new ArrayBufferWriter<byte>();
-            for (var index = 0; index < _depth; index++)
-            {
-                ref var frame = ref (index < 8 ? ref _framesInline[index] : ref _frames![index]);
-                if (frame.LocalChars is null && frame.Local.Length == 0)
-                {
-                    // An element with no content and a namespace declaration is given a frame with no name.
-                    continue;
-                }
-
-                path.Write("/"u8);
-                AppendFrameName(path, frame);
-            }
-
-            return Encoding.UTF8.GetString(path.WrittenSpan);
-        }
-
-        /// <summary>
-        /// Returns a reference to the current element frame.
-        /// </summary>
-        /// <returns>The current frame.</returns>
-        internal ref XmlWriterFrame CurrentFrame()
-        {
-            var index = _depth - 1;
-            if (index < 8)
-            {
-                return ref _framesInline[index];
-            }
-
-            return ref _frames![index];
-        }
-
-        /// <summary>
-        /// Encodes <paramref name="value"/> to UTF-8 on the heap.
-        /// </summary>
-        /// <param name="value">The characters.</param>
-        /// <returns>UTF-8 bytes, or empty.</returns>
-        internal static byte[] EncodeChars(ReadOnlySpan<char> value)
-        {
-            var utf8 = new byte[Encoding.UTF8.GetByteCount(value)];
-            Transcode(value, utf8);
-            return utf8;
-        }
-
-        /// <summary>
         /// Encodes <paramref name="value"/> as UTF-8 into <paramref name="destination"/>.
         /// </summary>
         /// <param name="value">The characters.</param>
@@ -4319,370 +5575,312 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Encodes <paramref name="value"/> into <paramref name="scratch"/> when it fits, otherwise onto the heap.
+        /// Decodes one UTF-8 rune from <paramref name="span"/> at <paramref name="index"/>.
         /// </summary>
-        /// <param name="value">The characters.</param>
-        /// <param name="scratch">Stack scratch space.</param>
-        /// <param name="heap">Heap bytes when scratch is too small, otherwise null.</param>
-        /// <returns>The UTF-8 bytes.</returns>
-        internal static ReadOnlySpan<byte> EncodeUtf8(ReadOnlySpan<char> value, Span<byte> scratch, out byte[]? heap)
+        /// <param name="span">The UTF-8 bytes.</param>
+        /// <param name="index">The byte index, advanced on success.</param>
+        /// <param name="cp">The code point.</param>
+        /// <returns><see langword="true"/> if a rune was decoded.</returns>
+        internal static bool TryReadRune(ReadOnlySpan<byte> span, ref int index, out int cp)
         {
-            heap = null;
-            if (value.IsEmpty)
+            cp = 0;
+            if (index >= span.Length)
             {
-                return [];
+                return false;
             }
 
-            var max = Encoding.UTF8.GetMaxByteCount(value.Length);
-            if (max <= scratch.Length)
+            var b = span[index];
+            if (b < 0x80)
             {
-                var written = Transcode(value, scratch);
-                return scratch[..written];
+                cp = b;
+                index++;
+                return true;
             }
 
-            heap = EncodeChars(value);
-            return heap;
-        }
-
-        /// <summary>
-        /// Writes a start tag or empty element from UTF-16 parts.
-        /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="empty">When true, closes as <c>/&gt;</c> without keeping a frame name.</param>
-        /// <param name="explicitNamespace">
-        /// Whether the caller stated the namespace. An empty <paramref name="namespaceUri"/> then means no
-        /// namespace; otherwise it means the name is written as given and inherits the default namespace.
-        /// </param>
-        internal void WriteStartElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool empty, bool explicitNamespace)
-        {
-            var localUtf8 = EncodeUtf8(localName, stackalloc byte[256], out var localHeap);
-            var prefixUtf8 = EncodeUtf8(prefix, stackalloc byte[64], out var prefixHeap);
-            var nsUtf8 = EncodeUtf8(namespaceUri, stackalloc byte[256], out var nsHeap);
-            WriteStartElementUtf8(localUtf8, prefixUtf8, nsUtf8, empty, explicitNamespace);
-            _ = localHeap;
-            _ = prefixHeap;
-            _ = nsHeap;
-        }
-
-        /// <summary>
-        /// Writes an empty element from UTF-16 parts.
-        /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="explicitNamespace">Whether the caller stated the namespace, so that an empty one means no namespace.</param>
-        internal void WriteEmptyElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool explicitNamespace)
-        {
-            WriteStartElementChars(localName, prefix, namespaceUri, empty: true, explicitNamespace);
-        }
-
-        /// <summary>
-        /// Begins an attribute from UTF-16 parts.
-        /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="prefix">The prefix.</param>
-        /// <param name="namespaceUri">The namespace URI.</param>
-        internal void WriteStartAttributeChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri)
-        {
-            var localUtf8 = EncodeUtf8(localName, stackalloc byte[256], out var localHeap);
-            var prefixUtf8 = EncodeUtf8(prefix, stackalloc byte[64], out var prefixHeap);
-            var nsUtf8 = EncodeUtf8(namespaceUri, stackalloc byte[256], out var nsHeap);
-            WriteStartAttributeUtf8(localUtf8, prefixUtf8, nsUtf8);
-            _ = localHeap;
-            _ = prefixHeap;
-            _ = nsHeap;
-        }
-
-        /// <summary>
-        /// Ensures <paramref name="needed"/> bytes of buffer remain.
-        /// </summary>
-        /// <param name="needed">The number of bytes about to be written.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Ensure(int needed)
-        {
-            if ((uint)_buffered + (uint)needed <= (uint)_memory.Length)
+            var status = Rune.DecodeFromUtf8(span[index..], out var rune, out var consumed);
+            if (status is not OperationStatus.Done)
             {
-                return;
+                return false;
             }
 
-            Grow(needed);
+            cp = rune.Value;
+            index += consumed;
+            return true;
         }
 
         /// <summary>
-        /// Commits the current buffer and obtains a destination span of at least <paramref name="needed"/> bytes.
+        /// Puts <paramref name="name"/> at the end of the name buffer as UTF-8, without making it part of the
+        /// buffer yet, when it is a short ASCII NCName.
         /// </summary>
-        /// <param name="needed">The number of bytes about to be written.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>
+        /// <see langword="true"/> if the name is valid and its bytes are in the name buffer from
+        /// <c>_namesLength</c>; <see langword="false"/> if the name has to take the general path.
+        /// </returns>
+        internal bool TryStoreShortName(ReadOnlySpan<char> name)
+        {
+            EnsureNameStore(name.Length);
+            return XmlChars.TryCopyShortAsciiNcName(name, _names.AsSpan(_namesLength), Math.Min(_maxNameBytes, XmlChars.ShortNameLength));
+        }
+
+        /// <summary>
+        /// Puts <paramref name="name"/> at the end of the name buffer, without making it part of the buffer
+        /// yet, when it is a short ASCII NCName.
+        /// </summary>
+        /// <param name="name">The UTF-8 name.</param>
+        /// <returns>
+        /// <see langword="true"/> if the name is valid and its bytes are in the name buffer from
+        /// <c>_namesLength</c>; <see langword="false"/> if the name has to take the general path.
+        /// </returns>
+        internal bool TryStoreShortName(ReadOnlySpan<byte> name)
+        {
+            if (!XmlChars.IsShortAsciiNcName(name, Math.Min(_maxNameBytes, XmlChars.ShortNameLength)))
+            {
+                return false;
+            }
+
+            EnsureNameStore(name.Length);
+            name.CopyTo(_names.AsSpan(_namesLength));
+            return true;
+        }
+
+        /// <summary>
+        /// Writes what comes before the value of an unprefixed attribute in no namespace, when its name is a
+        /// short ASCII NCName: the separator, the name, and <c>="</c>. The bytes are not counted as written.
+        /// </summary>
+        /// <param name="name">The attribute name.</param>
+        /// <param name="valueRoom">The number of bytes to keep free after what is written.</param>
+        /// <param name="destination">The output at the place the next byte goes.</param>
+        /// <returns>
+        /// The number of bytes written to <paramref name="destination"/>, which the caller adds to
+        /// <c>_buffered</c> with what it writes after them; or 0 when the name has to take the general path,
+        /// in which case nothing was recorded.
+        /// </returns>
+        /// <exception cref="XmlException">The element already has an attribute with this name, or already has <see cref="XmlWriterOptions.MaxAttributeCount"/> attributes.</exception>
         /// <remarks>
-        /// <see cref="IBufferWriter{T}"/> destinations write into <c>GetMemory</c> like
-        /// <c>Utf8JsonWriter</c>, so the catalog path does not rent a 16 KB staging buffer or copy
-        /// the document on flush. Stream destinations keep a pooled buffer with BCL-style overflow
-        /// growth.
+        /// The name is checked as it is copied into the output, and recorded from there, so it is read once.
+        /// Nothing counts as written until the caller says so, so a name that is refused leaves no trace.
         /// </remarks>
-        internal void Grow(int needed)
+        internal int TryWriteAttributeHead(ReadOnlySpan<char> name, int valueRoom, out Span<byte> destination)
         {
-            TrackFlushedLine();
-            if (_bufferWriter is not null)
+            var separator = _attributesPerLine == 0 || _attributeCount == 0 || _attributeCount % _attributesPerLine != 0
+                ? " "u8
+                : _tagIndent.AsSpan(0, _tagIndentLength);
+            var position = separator.Length;
+            if (position != 1)
             {
-                if (_buffered > 0)
+                // The attribute starts a line: a line break, then the indentation that was worked out for the tag.
+                position += NewLineUtf8().Length;
+            }
+
+            Ensure(position + name.Length + 2 + valueRoom);
+            EnsureNameStore(name.Length);
+            destination = _memory.Span[_buffered..];
+            if (!XmlChars.TryCopyShortAsciiNcName(name, destination[position..], _names.AsSpan(_namesLength), Math.Min(_maxNameBytes, XmlChars.ShortNameLength)))
+            {
+                return 0;
+            }
+
+            var stored = XmlWriterName.From(_namesLength, name.Length);
+            if (!_options.SkipValidation)
+            {
+                RememberAttribute(NameSpan(stored), []);
+            }
+
+            StoreAttribute(stored, default);
+            _namesLength += name.Length;
+            if (position == 1)
+            {
+                destination[0] = (byte)' ';
+            }
+            else
+            {
+                var newLine = NewLineUtf8();
+                newLine.CopyTo(destination);
+                separator.CopyTo(destination[newLine.Length..]);
+            }
+
+            position += name.Length;
+            destination[position] = (byte)'=';
+            destination[position + 1] = (byte)'"';
+            return position + 2;
+        }
+
+        /// <summary>
+        /// Writes an element with no prefix, in no stated namespace, whose content is text that needs no
+        /// escaping, when the name and the text allow it to be written in one step.
+        /// </summary>
+        /// <param name="localName">The local name.</param>
+        /// <param name="value">The text.</param>
+        /// <returns>
+        /// <see langword="true"/> if the element was written; <see langword="false"/> if the name is not a
+        /// short ASCII NCName or the text holds a character that is not plain ASCII, in which case nothing
+        /// has been written.
+        /// </returns>
+        internal bool TryWriteElementText(ReadOnlySpan<char> localName, ReadOnlySpan<char> value)
+        {
+            if (IndexOfEscapedText(value) >= 0)
+            {
+                return false;
+            }
+
+            var destination = BeginElementValue(localName, value.Length);
+            if (destination.IsEmpty)
+            {
+                return false;
+            }
+
+            XmlChars.NarrowAscii(value, destination);
+            EndElementValue(localName, destination, value.Length);
+            return true;
+        }
+
+        /// <summary>
+        /// Writes an element with no prefix, in no stated namespace, whose content is text that needs no
+        /// escaping, when the name and the text allow it to be written in one step.
+        /// </summary>
+        /// <param name="localName">The UTF-8 local name.</param>
+        /// <param name="value">The text.</param>
+        /// <returns>
+        /// <see langword="true"/> if the element was written; <see langword="false"/> if the name is not a
+        /// short ASCII NCName or the text holds a character that is not plain ASCII, in which case nothing
+        /// has been written.
+        /// </returns>
+        internal bool TryWriteElementText(ReadOnlySpan<byte> localName, ReadOnlySpan<char> value)
+        {
+            if (IndexOfEscapedText(value) >= 0)
+            {
+                return false;
+            }
+
+            var destination = BeginElementValue(localName, value.Length);
+            if (destination.IsEmpty)
+            {
+                return false;
+            }
+
+            XmlChars.NarrowAscii(value, destination);
+            EndElementValue(localName, destination, value.Length);
+            return true;
+        }
+
+        /// <summary>
+        /// Writes text that is copied as it is but for its line feeds, each of which is written as CR LF.
+        /// </summary>
+        /// <param name="utf8">The text.</param>
+        /// <returns>
+        /// <see langword="false"/>, with nothing written, when the text holds anything else that is not copied
+        /// as it is.
+        /// </returns>
+        /// <remarks>
+        /// Short text is looked at once, a byte at a time, which costs less than the searches a long text is
+        /// worth. For long text, room for all of it is taken once and the runs between the line feeds are
+        /// copied one after another.
+        /// </remarks>
+        internal bool TryWriteLinesAsCrLf(ReadOnlySpan<byte> utf8)
+        {
+            Span<byte> destination;
+            var written = 0;
+            if (utf8.Length <= 32)
+            {
+                Ensure(utf8.Length * 2);
+                destination = _memory.Span[_buffered..];
+                foreach (var value in utf8)
                 {
-                    _bufferWriter.Advance(_buffered);
-                    _committed += _buffered;
-                    _buffered = 0;
+                    if (value is (byte)'\n')
+                    {
+                        destination[written++] = (byte)'\r';
+                        destination[written++] = (byte)'\n';
+                    }
+                    else if (XmlChars.AsciiTextWriteChars.Contains(value))
+                    {
+                        destination[written++] = value;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
 
-                _memory = _bufferWriter.GetMemory(Math.Max(needed, 4096));
-                if (_memory.Length == 0)
+                _buffered += written;
+                return true;
+            }
+
+            if (utf8.IndexOfAnyExcept(XmlChars.AsciiTextWriteChars) >= 0)
+            {
+                return false;
+            }
+
+            Ensure(utf8.Length + utf8.Count((byte)'\n'));
+            destination = _memory.Span[_buffered..];
+            while (true)
+            {
+                var lineFeed = utf8.IndexOf((byte)'\n');
+                if (lineFeed < 0)
                 {
-                    throw XmlException.Create("The destination buffer is too small.");
+                    break;
                 }
 
-                return;
+                utf8[..lineFeed].CopyTo(destination[written..]);
+                written += lineFeed;
+                destination[written++] = (byte)'\r';
+                destination[written++] = (byte)'\n';
+                utf8 = utf8[(lineFeed + 1)..];
             }
 
-            if (_buffered > 0)
-            {
-                _stream!.Write(_buffer, 0, _buffered);
-                _committed += _buffered;
-                _buffered = 0;
-            }
-
-            if (needed > _buffer.Length)
-            {
-                var rented = ArrayPool<byte>.Shared.Rent(needed);
-                ArrayPool<byte>.Shared.Return(_buffer);
-                _buffer = rented;
-            }
-
-            _memory = _buffer;
+            utf8.CopyTo(destination[written..]);
+            _buffered += written + utf8.Length;
+            return true;
         }
 
         /// <summary>
-        /// Returns the pending buffer to <see cref="ArrayPool{T}"/>.
+        /// Writes an attribute in no namespace, from a name built ahead of time, when its value is plain ASCII
+        /// that needs no escaping.
         /// </summary>
-        internal void ReturnBuffer()
+        /// <param name="local">The attribute name, an NCName that was checked when <paramref name="head"/> was built.</param>
+        /// <param name="head">Everything up to the value: a space, the name, <c>="</c>.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>
+        /// <see langword="true"/> if the attribute was written; <see langword="false"/> if the value holds a
+        /// character that has to be escaped or is not ASCII, in which case nothing has been written.
+        /// </returns>
+        /// <exception cref="XmlException">No start tag is open, the name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or the element already has an attribute with this name.</exception>
+        internal bool TryWritePlainAttribute(ReadOnlySpan<byte> local, ReadOnlySpan<byte> head, ReadOnlySpan<char> value)
         {
-            if (_buffer.Length > 0)
+            if (value.IndexOfAnyExcept(XmlChars.PlainAttributeChars) >= 0)
             {
-                ArrayPool<byte>.Shared.Return(_buffer);
-                _buffer = [];
+                return false;
             }
 
-            _memory = default;
-            _buffered = 0;
-            if (_names.Length > 0)
-            {
-                ArrayPool<byte>.Shared.Return(_names);
-                _names = [];
-                _namesLength = 0;
-            }
+            var destination = BeginAttribute(local, head, value.Length);
+            XmlChars.NarrowAscii(value, destination);
+            EndAttribute(destination, value.Length);
+            return true;
         }
 
         /// <summary>
-        /// Appends <paramref name="utf8"/> to the name store.
+        /// Writes a child element that holds text and has no attributes, from tags built ahead of time, when
+        /// the text is plain ASCII that needs no escaping.
         /// </summary>
-        /// <param name="utf8">The UTF-8 name.</param>
-        /// <returns>The stored slice.</returns>
-        internal XmlWriterName AppendName(ReadOnlySpan<byte> utf8)
+        /// <param name="openTag">The whole start tag, <c>&lt;name&gt;</c>.</param>
+        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
+        /// <param name="value">The text.</param>
+        /// <returns>
+        /// <see langword="true"/> if the element was written; <see langword="false"/> if the text holds a
+        /// character that has to be escaped or is not ASCII, in which case nothing has been written.
+        /// </returns>
+        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>, or no element is open.</exception>
+        internal bool TryWritePlainLeaf(ReadOnlySpan<byte> openTag, ReadOnlySpan<byte> closeTag, ReadOnlySpan<char> value)
         {
-            if (utf8.IsEmpty)
+            if (IndexOfEscapedText(value) >= 0)
             {
-                return default;
+                return false;
             }
 
-            EnsureNameStore(utf8.Length);
-            utf8.CopyTo(_names.AsSpan(_namesLength));
-            var name = XmlWriterName.From(_namesLength, utf8.Length);
-            _namesLength += utf8.Length;
-            return name;
-        }
-
-        /// <summary>
-        /// Appends an ASCII or UTF-16 name to the name store without a UTF-8 transcode when the name is ASCII.
-        /// </summary>
-        /// <param name="chars">The name characters.</param>
-        /// <returns>The stored slice.</returns>
-        internal XmlWriterName AppendNameFromChars(ReadOnlySpan<char> chars)
-        {
-            if (chars.IsEmpty)
-            {
-                return default;
-            }
-
-            if (Ascii.IsValid(chars))
-            {
-                EnsureNameStore(chars.Length);
-                Encoding.Latin1.GetBytes(chars, _names.AsSpan(_namesLength));
-                var name = XmlWriterName.From(_namesLength, chars.Length);
-                _namesLength += chars.Length;
-                return name;
-            }
-
-            var utf8 = EncodeUtf8(chars, stackalloc byte[256], out var heap);
-            var stored = AppendName(utf8);
-            _ = heap;
-            return stored;
-        }
-
-        /// <summary>
-        /// Returns the UTF-8 bytes for <paramref name="name"/>.
-        /// </summary>
-        /// <param name="name">The stored slice.</param>
-        /// <returns>The UTF-8 span.</returns>
-        internal ReadOnlySpan<byte> NameSpan(XmlWriterName name)
-        {
-            return _names.AsSpan(name.Start, name.Length);
-        }
-
-        /// <summary>
-        /// Writes a UTF-8 BOM when <see cref="XmlWriterOptions.EmitByteOrderMark"/> is set and nothing has been written.
-        /// </summary>
-        internal void EnsureBom()
-        {
-            if (_emittedBom || !_options.EmitByteOrderMark)
-            {
-                return;
-            }
-
-            WriteRaw([(byte)0xEF, (byte)0xBB, (byte)0xBF]);
-            _emittedBom = true;
-        }
-
-        /// <summary>
-        /// Writes the XML declaration when it has not been omitted and has not been written yet.
-        /// </summary>
-        internal void EnsureDeclaration()
-        {
-            if (!_wroteDeclaration && !_options.OmitXmlDeclaration)
-            {
-                EmitDeclaration();
-                return;
-            }
-
-            EnsureBom();
-        }
-
-        /// <summary>
-        /// Writes the XML declaration (and BOM when requested).
-        /// </summary>
-        internal void EmitDeclaration()
-        {
-            EnsureBom();
-            WriteRaw("<?xml version=\""u8);
-            WriteRaw(_version is XmlVersion.Version11 ? "1.1"u8 : "1.0"u8);
-            WriteRaw("\" encoding=\"utf-8\""u8);
-            if (_options.Standalone is { } standalone)
-            {
-                WriteRaw(standalone ? " standalone=\"yes\""u8 : " standalone=\"no\""u8);
-            }
-
-            WriteRaw("?>"u8);
-            _wroteDeclaration = true;
-        }
-
-        /// <summary>
-        /// Ensures the XML Schema instance namespace is in scope as prefix <c>xsi</c>.
-        /// </summary>
-        internal void EnsureXsi()
-        {
-            // The attribute is written as xsi:nil, so it is the xsi prefix that has to be bound to the
-            // namespace. Another prefix for the same namespace does not help.
-            if (XmlUtf8.Xsi.AsSpan().SequenceEqual(LookupUri("xsi"u8)))
-            {
-                return;
-            }
-
-            WriteNamespaceDeclaration("xsi"u8, XmlUtf8.Xsi);
-        }
-
-        /// <summary>
-        /// Writes buffered bytes to the destination.
-        /// </summary>
-        internal void FlushBuffer()
-        {
-            if (_buffered == 0)
-            {
-                return;
-            }
-
-            TrackFlushedLine();
-            if (_stream is not null)
-            {
-                _stream.Write(_buffer, 0, _buffered);
-                _committed += _buffered;
-                _buffered = 0;
-                return;
-            }
-
-            _bufferWriter!.Advance(_buffered);
-            _committed += _buffered;
-            _buffered = 0;
-            _memory = default;
-        }
-
-        /// <summary>
-        /// Applies <paramref name="options"/> to the writer.
-        /// </summary>
-        /// <param name="options">The options.</param>
-        internal void Configure(in XmlWriterOptions options)
-        {
-            _options = options;
-            _attributesPerLine = options.AttributeStyle is XmlAttributeStyle.PerLine ? XmlLimits.Resolve(options.AttributesPerLine, 1) : 0;
-            _indentSize = XmlLimits.Resolve(options.IndentSize, 2);
-            _maxAttributes = XmlLimits.Resolve(options.MaxAttributeCount, XmlLimits.DefaultMaxAttributeCount);
-            _maxDepth = XmlLimits.Resolve(options.MaxDepth, XmlLimits.DefaultMaxDepth);
-            _maxNameBytes = XmlLimits.Resolve(options.MaxNameByteCount, XmlLimits.DefaultMaxNameByteCount);
-            _newLineIsCrLf = options.NewLine is "\r\n";
-            _plainTextBytes = _newLineIsCrLf ? XmlChars.AsciiTextWriteCharsNoLineFeed : XmlChars.AsciiTextWriteChars;
-            _plainTextChars = _newLineIsCrLf ? XmlChars.PlainTextCharsNoLineFeed : XmlChars.PlainTextChars;
-            _version = options.Version;
-        }
-
-        /// <summary>
-        /// Drops everything not yet flushed, forgets the destination, returns rented arrays, and leaves the
-        /// writer ready for <see cref="Reset(IBufferWriter{byte})"/> or <see cref="Reset(Stream)"/>.
-        /// </summary>
-        /// <remarks>
-        /// The serializer calls this when a write fails part way through a document, so the half-written
-        /// bytes still in the buffer never reach the destination, and when it puts a writer back in its cache,
-        /// so the cache keeps neither the caller's destination nor a pooled array alive.
-        /// </remarks>
-        internal void Detach()
-        {
-            _buffered = 0;
-            Reset();
-            _bufferWriter = null;
-            _stream = null;
-            ReturnBuffer();
-        }
-
-        /// <summary>
-        /// Closes the start tag of the current element with nothing after it, so that the element is ended
-        /// with an end tag: <c>&lt;e&gt;&lt;/e&gt;</c>.
-        /// </summary>
-        /// <remarks>
-        /// This is for an element that was read with an end tag and no content, and is written by a caller that
-        /// writes the element's content and not its tags. The element counts as holding character data, so
-        /// indentation puts nothing between the two tags.
-        /// </remarks>
-        internal void WriteEmptyText()
-        {
-            CloseStartTag();
-            ref var frame = ref CurrentFrame();
-            frame.HasContent = true;
-            frame.HasText = true;
-        }
-
-        /// <summary>
-        /// Marks the current element as having content.
-        /// </summary>
-        internal void MarkContent()
-        {
-            if (_depth > 0)
-            {
-                CurrentFrame().HasContent = true;
-            }
+            var destination = BeginLeaf(openTag, value.Length + closeTag.Length);
+            XmlChars.NarrowAscii(value, destination);
+            EndLeaf(destination, value.Length, closeTag);
+            return true;
         }
 
         /// <summary>
@@ -4733,438 +5931,6 @@ namespace CloudNimble.Text.Xml
             {
                 throw XmlException.Create("Element names must not use the xmlns prefix.");
             }
-        }
-
-        /// <summary>
-        /// Rejects the <c>xmlns</c> prefix on an element name.
-        /// </summary>
-        /// <param name="prefix">The element prefix.</param>
-        /// <exception cref="XmlException">The prefix is <c>xmlns</c> (Namespaces in XML, section 3: element names must not use it).</exception>
-        internal void ValidateElementPrefix(ReadOnlySpan<char> prefix)
-        {
-            if (!_options.SkipValidation && prefix.SequenceEqual("xmlns"))
-            {
-                throw XmlException.Create("Element names must not use the xmlns prefix.");
-            }
-        }
-
-        /// <summary>
-        /// Marks the current element as having character data.
-        /// </summary>
-        /// <remarks>
-        /// Whitespace is significant next to character data, so an element that holds text is never
-        /// indented: not its child start tags, and not its end tag.
-        /// </remarks>
-        internal void MarkText()
-        {
-            if (_depth > 0)
-            {
-                ref var frame = ref CurrentFrame();
-                frame.HasContent = true;
-                frame.HasText = true;
-            }
-        }
-
-        /// <summary>
-        /// Formats <paramref name="value"/> as UTF-8 on the stack with the invariant culture and writes it as a value.
-        /// </summary>
-        /// <typeparam name="T">The value type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <param name="format">The format string. Its longest output must fit in 64 bytes.</param>
-        internal void WriteFormatted<T>(T value, ReadOnlySpan<char> format)
-            where T : struct, IUtf8SpanFormattable
-        {
-            value.TryFormat(BeginPlainValue(64), out var written, format, CultureInfo.InvariantCulture);
-            _buffered += written;
-        }
-
-        /// <summary>
-        /// Writes the newline and indent before a child start tag, unless the parent holds character data.
-        /// </summary>
-        /// <param name="depth">The depth of the element about to be written.</param>
-        internal void WriteElementIndent(int depth)
-        {
-            if (_options.Indented && (_depth == 0 || !CurrentFrame().HasText))
-            {
-                WriteIndent(depth);
-            }
-        }
-
-        /// <summary>
-        /// Records that an XML declaration was already written (for example by <see cref="XmlDocument.WriteTo"/>).
-        /// </summary>
-        /// <remarks>
-        /// Prevents <see cref="EnsureDeclaration"/> from emitting a second declaration when
-        /// <see cref="XmlWriterOptions.OmitXmlDeclaration"/> is false.
-        /// </remarks>
-        internal void MarkDeclarationWritten()
-        {
-            _wroteDeclaration = true;
-        }
-
-        /// <summary>
-        /// Writes an xmlns declaration for <paramref name="prefix"/>, or a default xmlns declaration when it is empty.
-        /// </summary>
-        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
-        /// <param name="ns">The namespace URI. Empty undeclares.</param>
-        internal void DeclareNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
-        {
-            RegisterNamespace(prefix, ns);
-            WriteRegisteredNamespace(prefix, ns);
-        }
-
-        /// <summary>
-        /// Declares the namespace of the open start tag's own name unless the in-scope binding already matches.
-        /// </summary>
-        /// <param name="prefix">The element prefix, or empty.</param>
-        /// <param name="ns">The element namespace URI, or empty for no namespace.</param>
-        /// <remarks>
-        /// Pairs with <see cref="WriteStartElementDeferred"/>. An unprefixed element in no namespace under a
-        /// non-empty default namespace gets <c>xmlns=""</c>, which is the only way to keep it out of that
-        /// namespace (Namespaces in XML, section 6.2).
-        /// </remarks>
-        internal void EnsureElementNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
-        {
-            if (!prefix.IsEmpty && ns.IsEmpty)
-            {
-                if (!_options.SkipValidation)
-                {
-                    throw XmlException.Create("Prefixed names require a namespace URI.");
-                }
-
-                return;
-            }
-
-            if (ns.SequenceEqual(LookupUri(prefix)))
-            {
-                return;
-            }
-
-            DeclareNamespace(prefix, ns);
-        }
-
-        /// <summary>
-        /// Writes <c>&lt;prefix:local</c> and opens the element without declaring any namespace.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="prefix">The prefix, or empty.</param>
-        /// <remarks>
-        /// The DOM replays an element's own xmlns declarations in document order and then calls
-        /// <see cref="EnsureElementNamespace"/>. Declaring up front, as <see cref="WriteStartElementUtf8(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>
-        /// does, would drop declarations that are only referenced from content (<c>xsi:type="p:T"</c>).
-        /// </remarks>
-        internal void WriteStartElementDeferred(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix)
-        {
-            ThrowIfDisposed();
-            ValidateNcName(local);
-            if (!prefix.IsEmpty)
-            {
-                ValidateNcName(prefix);
-                ValidateElementPrefix(prefix);
-            }
-
-            BeginStartElement();
-            WriteTagOpen(prefix, local);
-            PushFrame(AppendName(local), AppendName(prefix));
-            _depth++;
-            _seenRoot = true;
-        }
-
-        /// <summary>
-        /// Writes a complete element with a UTF-8 name and text content.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="prefix">The prefix, or empty.</param>
-        /// <param name="ns">The namespace URI, or empty.</param>
-        /// <param name="utf8Text">The unescaped text content.</param>
-        /// <remarks>
-        /// When the text needs no escaping and the name needs no new namespace declaration, the whole
-        /// <c>&lt;n&gt;v&lt;/n&gt;</c> run is written in one reserved span and no frame is pushed.
-        /// Anything else takes the start tag, text, end tag route and produces the same bytes.
-        /// </remarks>
-        internal void WriteCompleteElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, ReadOnlySpan<byte> utf8Text)
-        {
-            ThrowIfDisposed();
-            var nameIsBound = _nsCount == 0 && prefix.IsEmpty
-                ? ns.IsEmpty
-                : ns.SequenceEqual(LookupUri(prefix));
-            if (!nameIsBound || _options.Indented || utf8Text.IndexOfAnyExcept(_plainTextBytes) >= 0)
-            {
-                WriteStartElementDeferred(local, prefix);
-                EnsureElementNamespace(prefix, ns);
-                WriteStringValue(utf8Text);
-                WriteFullEndElement();
-                return;
-            }
-
-            ValidateNcName(local);
-            var nameLength = local.Length;
-            if (!prefix.IsEmpty)
-            {
-                ValidateNcName(prefix);
-                ValidateElementPrefix(prefix);
-                nameLength += prefix.Length + 1;
-            }
-
-            BeginStartElement();
-            Ensure(5 + (2 * nameLength) + utf8Text.Length);
-            var dest = _memory.Span[_buffered..];
-            dest[0] = (byte)'<';
-            var pos = 1;
-            if (!prefix.IsEmpty)
-            {
-                prefix.CopyTo(dest[pos..]);
-                pos += prefix.Length;
-                dest[pos++] = (byte)':';
-            }
-
-            local.CopyTo(dest[pos..]);
-            pos += local.Length;
-            dest[pos++] = (byte)'>';
-            utf8Text.CopyTo(dest[pos..]);
-            pos += utf8Text.Length;
-            dest[pos++] = (byte)'<';
-            dest[pos++] = (byte)'/';
-            dest.Slice(1, nameLength).CopyTo(dest[pos..]);
-            pos += nameLength;
-            dest[pos++] = (byte)'>';
-            _buffered += pos;
-            _seenRoot = true;
-        }
-
-        /// <summary>
-        /// Writes a processing instruction from UTF-8 parts.
-        /// </summary>
-        /// <param name="utf8Target">The UTF-8 PI target.</param>
-        /// <param name="utf8Data">The UTF-8 PI data, or empty.</param>
-        /// <remarks>
-        /// <see cref="XmlDocument.WriteTo"/> replays parsed processing instructions through this overload
-        /// without materializing strings.
-        /// </remarks>
-        internal void WriteProcessingInstructionUtf8(ReadOnlySpan<byte> utf8Target, ReadOnlySpan<byte> utf8Data)
-        {
-            ThrowIfDisposed();
-            ValidateNcName(utf8Target);
-            if (!_options.SkipValidation && utf8Target.Length == 3 && (utf8Target[0] | 0x20) is (byte)'x' && (utf8Target[1] | 0x20) is (byte)'m' && (utf8Target[2] | 0x20) is (byte)'l')
-            {
-                throw XmlException.Create("Processing instruction target cannot be 'xml'.");
-            }
-
-            if (utf8Data.IndexOf("?>"u8) >= 0)
-            {
-                throw XmlException.Create("Processing instruction data must not contain '?>'.");
-            }
-
-            ValidateContentChars(utf8Data);
-
-            if (_depth > 0)
-            {
-                CloseStartTag();
-                MarkContent();
-            }
-            else
-            {
-                EnsureDeclaration();
-            }
-
-            // A processing instruction between elements gets a line of its own, as an element does.
-            WriteElementIndent(_depth);
-            WriteRaw("<?"u8);
-            WriteRaw(utf8Target);
-            if (!utf8Data.IsEmpty)
-            {
-                WriteRaw(" "u8);
-                WriteRawLines(utf8Data);
-            }
-
-            WriteRaw("?>"u8);
-        }
-
-        /// <summary>
-        /// Returns the namespace binding at <paramref name="index"/>.
-        /// </summary>
-        /// <param name="index">The binding index.</param>
-        /// <returns>The binding.</returns>
-        internal XmlWriterNsBinding NsAt(int index)
-        {
-            return _nsHeap![index];
-        }
-
-        /// <summary>
-        /// Pops xmlns bindings owned by <paramref name="depth"/>.
-        /// </summary>
-        /// <param name="depth">The ending element depth.</param>
-        internal void PopNs(int depth)
-        {
-            while (_nsCount > 0 && NsAt(_nsCount - 1).Depth == depth)
-            {
-                _nsCount--;
-                _nsCacheMask = 0;
-            }
-        }
-
-        /// <summary>
-        /// Pushes an xmlns binding.
-        /// </summary>
-        /// <param name="depth">The owning depth.</param>
-        /// <param name="prefix">The prefix bytes.</param>
-        /// <param name="uri">The URI bytes.</param>
-        /// <remarks>
-        /// A popped slot keeps its arrays. Documents declare the same namespaces over and over (sibling
-        /// elements, or the next document after <see cref="Reset()"/>), so a push whose bytes match the
-        /// slot's previous occupant reuses those arrays instead of allocating new ones.
-        /// </remarks>
-        internal void PushNs(int depth, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> uri)
-        {
-            if (_nsHeap is null)
-            {
-                _nsHeap = new XmlWriterNsBinding[8];
-            }
-            else if (_nsCount == _nsHeap.Length)
-            {
-                Array.Resize(ref _nsHeap, _nsHeap.Length * 2);
-            }
-
-            var stale = _nsHeap[_nsCount];
-            var ownedPrefix = stale.Prefix is { } stalePrefix && prefix.SequenceEqual(stalePrefix) ? stalePrefix : InternNamespaceBytes(prefix);
-            var ownedUri = stale.Uri is { } staleUri && uri.SequenceEqual(staleUri) ? staleUri : InternNamespaceBytes(uri);
-            _nsHeap[_nsCount] = new XmlWriterNsBinding(depth, ownedPrefix, ownedUri);
-            _nsCount++;
-            _nsCacheMask = 0;
-        }
-
-        /// <summary>
-        /// Throws if attributes are not allowed.
-        /// </summary>
-        internal void RequireOpenTag()
-        {
-            // Every attribute, namespace declaration and nil marker starts here, so this is also where a
-            // disposed writer and an open segmented value are caught for the paths that write names directly.
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_segment is not XmlWriterSegment.None)
-            {
-                ThrowSegmentOpen();
-            }
-
-            if (_depth == 0 || !CurrentFrame().TagOpen || _inAttribute)
-            {
-                throw XmlException.Create("Attributes must be written on an open start tag.");
-            }
-        }
-
-        /// <summary>
-        /// Throws if the writer has been disposed, or if a value is part way through being written in segments.
-        /// </summary>
-        /// <exception cref="ObjectDisposedException">The writer has been disposed.</exception>
-        /// <exception cref="XmlException">A segmented value is open, and this call is not its next segment.</exception>
-        internal void ThrowIfDisposed()
-        {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_segment is not XmlWriterSegment.None)
-            {
-                ThrowSegmentOpen();
-            }
-        }
-
-        /// <summary>
-        /// Throws for a write that is not the next segment of the value being written in segments.
-        /// </summary>
-        /// <exception cref="XmlException">Always.</exception>
-        [DoesNotReturn]
-        internal static void ThrowSegmentOpen()
-        {
-            throw XmlException.Create("A value is being written in segments. Write its final segment before anything else.");
-        }
-
-        /// <summary>
-        /// Starts a segment of <paramref name="kind"/> and takes what the segment before it left over.
-        /// </summary>
-        /// <param name="kind">The kind of value the segment belongs to.</param>
-        /// <param name="carryLength">The number of bytes or characters left over by the segment before.</param>
-        /// <returns>What was left over: UTF-8 or binary bytes, lowest byte first, or one UTF-16 character.</returns>
-        /// <exception cref="ObjectDisposedException">The writer has been disposed.</exception>
-        /// <exception cref="XmlException">
-        /// A segmented value of another kind is open, or the writer is at the document level.
-        /// </exception>
-        /// <remarks>
-        /// The writer is left with no segmented value open, so the segment can write through the ordinary value
-        /// methods and an exception leaves nothing behind. The caller calls <see cref="EndSegment"/> last.
-        /// </remarks>
-        internal int BeginSegment(XmlWriterSegment kind, out int carryLength)
-        {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_segment is not XmlWriterSegment.None && _segment != kind)
-            {
-                ThrowSegmentOpen();
-            }
-
-            if (!_inAttribute && _depth == 0)
-            {
-                throw XmlException.Create("Text is not allowed at the document level.");
-            }
-
-            var carry = _segmentCarry;
-            carryLength = _segmentCarryLength;
-            _segment = XmlWriterSegment.None;
-            _segmentCarry = 0;
-            _segmentCarryLength = 0;
-            return carry;
-        }
-
-        /// <summary>
-        /// Ends a segment, keeping what it left over for the next one.
-        /// </summary>
-        /// <param name="kind">The kind of value, or <see cref="XmlWriterSegment.None"/> after the final segment.</param>
-        /// <param name="carry">What is left over.</param>
-        /// <param name="carryLength">The number of bytes or characters in <paramref name="carry"/>.</param>
-        internal void EndSegment(XmlWriterSegment kind, int carry, int carryLength)
-        {
-            _segment = kind;
-            _segmentCarry = carry;
-            _segmentCarryLength = carryLength;
-        }
-
-        /// <summary>
-        /// Packs up to three bytes into one number, lowest byte first.
-        /// </summary>
-        /// <param name="bytes">The bytes.</param>
-        /// <returns>The packed bytes.</returns>
-        internal static int PackCarry(ReadOnlySpan<byte> bytes)
-        {
-            var carry = 0;
-            for (var i = 0; i < bytes.Length; i++)
-            {
-                carry |= bytes[i] << (8 * i);
-            }
-
-            return carry;
-        }
-
-        /// <summary>
-        /// Returns the number of bytes at the end of <paramref name="utf8"/> that are the start of a character
-        /// whose other bytes have not arrived.
-        /// </summary>
-        /// <param name="utf8">A segment of UTF-8 text.</param>
-        /// <returns>1 to 3, or 0 when the text ends on a character boundary or ends with bytes that are not valid UTF-8.</returns>
-        internal static int IncompleteUtf8Tail(ReadOnlySpan<byte> utf8)
-        {
-            for (var back = 1; back <= 3 && back <= utf8.Length; back++)
-            {
-                var b = utf8[^back];
-                if (b < 0x80)
-                {
-                    return 0;
-                }
-
-                if ((b & 0xC0) == 0x80)
-                {
-                    continue;
-                }
-
-                return Rune.DecodeFromUtf8(utf8[^back..], out _, out _) is OperationStatus.NeedMoreData ? back : 0;
-            }
-
-            return 0;
         }
 
         /// <summary>
@@ -5272,321 +6038,6 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Increments the current start tag's attribute count, including xmlns*.
-        /// </summary>
-        internal void IncrementAttributeCount()
-        {
-            ref var frame = ref CurrentFrame();
-            if (frame.AttributeCount >= _maxAttributes)
-            {
-                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxAttributeCount)} exceeded ({_maxAttributes}).");
-            }
-
-            frame.AttributeCount++;
-        }
-
-        /// <summary>
-        /// Records an attribute key and throws when <c>{local, ns}</c> is already on the start tag.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="ns">The namespace URI.</param>
-        internal void RememberAttribute(ReadOnlySpan<byte> local, ReadOnlySpan<byte> ns)
-        {
-            ref var frame = ref CurrentFrame();
-            var count = frame.AttributeCount;
-            for (var i = 0; i < count; i++)
-            {
-                if (NameSpan(AttrLocalAt(i)).SequenceEqual(local) && NameSpan(AttrNsAt(i)).SequenceEqual(ns))
-                {
-                    throw XmlException.Create("Duplicate attribute.");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stores the attribute key at the current count, then increments.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="ns">The namespace URI.</param>
-        internal void TrackAttribute(ReadOnlySpan<byte> local, ReadOnlySpan<byte> ns)
-        {
-            if (!_options.SkipValidation)
-            {
-                RememberAttribute(local, ns);
-            }
-
-            StoreAttribute(AppendName(local), AppendName(ns));
-        }
-
-        /// <summary>
-        /// Records an attribute from UTF-16 names without a UTF-8 transcode when the name is ASCII.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="ns">The namespace URI.</param>
-        internal void TrackAttributeChars(ReadOnlySpan<char> local, ReadOnlySpan<char> ns)
-        {
-            var storedLocal = AppendNameFromChars(local);
-            var storedNs = AppendNameFromChars(ns);
-            if (!_options.SkipValidation)
-            {
-                RememberAttribute(NameSpan(storedLocal), NameSpan(storedNs));
-            }
-
-            StoreAttribute(storedLocal, storedNs);
-        }
-
-        /// <summary>
-        /// Stores an attribute key at the current count and increments.
-        /// </summary>
-        /// <param name="storedLocal">The stored local name.</param>
-        /// <param name="storedNs">The stored namespace URI.</param>
-        internal void StoreAttribute(XmlWriterName storedLocal, XmlWriterName storedNs)
-        {
-            var index = CurrentFrame().AttributeCount;
-            if (index < 8)
-            {
-                _attrLocalsInline[index] = storedLocal;
-                _attrNsInline[index] = storedNs;
-            }
-            else
-            {
-                if (_attrLocalsHeap is null)
-                {
-                    _attrLocalsHeap = new XmlWriterName[16];
-                    _attrNsHeap = new XmlWriterName[16];
-                    for (var i = 0; i < 8; i++)
-                    {
-                        _attrLocalsHeap[i] = _attrLocalsInline[i];
-                        _attrNsHeap[i] = _attrNsInline[i];
-                    }
-                }
-                else if (index == _attrLocalsHeap.Length)
-                {
-                    Array.Resize(ref _attrLocalsHeap, _attrLocalsHeap.Length * 2);
-                    Array.Resize(ref _attrNsHeap, _attrNsHeap!.Length * 2);
-                }
-
-                _attrLocalsHeap[index] = storedLocal;
-                _attrNsHeap![index] = storedNs;
-            }
-
-            IncrementAttributeCount();
-        }
-
-        /// <summary>
-        /// Returns the recorded attribute local name at <paramref name="index"/>.
-        /// </summary>
-        /// <param name="index">The attribute index.</param>
-        /// <returns>The local name.</returns>
-        internal XmlWriterName AttrLocalAt(int index)
-        {
-            return index < 8 ? _attrLocalsInline[index] : _attrLocalsHeap![index];
-        }
-
-        /// <summary>
-        /// Returns the recorded attribute namespace at <paramref name="index"/>.
-        /// </summary>
-        /// <param name="index">The attribute index.</param>
-        /// <returns>The namespace URI.</returns>
-        internal XmlWriterName AttrNsAt(int index)
-        {
-            return index < 8 ? _attrNsInline[index] : _attrNsHeap![index];
-        }
-
-        /// <summary>
-        /// Decodes one UTF-8 rune from <paramref name="span"/> at <paramref name="index"/>.
-        /// </summary>
-        /// <param name="span">The UTF-8 bytes.</param>
-        /// <param name="index">The byte index, advanced on success.</param>
-        /// <param name="cp">The code point.</param>
-        /// <returns><see langword="true"/> if a rune was decoded.</returns>
-        internal static bool TryReadRune(ReadOnlySpan<byte> span, ref int index, out int cp)
-        {
-            cp = 0;
-            if (index >= span.Length)
-            {
-                return false;
-            }
-
-            var b = span[index];
-            if (b < 0x80)
-            {
-                cp = b;
-                index++;
-                return true;
-            }
-
-            var status = Rune.DecodeFromUtf8(span[index..], out var rune, out var consumed);
-            if (status is not OperationStatus.Done)
-            {
-                return false;
-            }
-
-            cp = rune.Value;
-            index += consumed;
-            return true;
-        }
-
-        /// <summary>
-        /// Writes UTF-8 bytes to the buffer.
-        /// </summary>
-        /// <param name="utf8">The bytes.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void WriteRaw(ReadOnlySpan<byte> utf8)
-        {
-            if (utf8.IsEmpty)
-            {
-                return;
-            }
-
-            Ensure(utf8.Length);
-            utf8.CopyTo(_memory.Span[_buffered..]);
-            _buffered += utf8.Length;
-        }
-
-        /// <summary>
-        /// Writes one UTF-8 byte, matching BCL <c>_bufBytes[_bufPos++] = (byte)ch</c> for markup.
-        /// </summary>
-        /// <param name="value">The byte.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void WriteRawByte(byte value)
-        {
-            if (_buffered == _memory.Length)
-            {
-                Ensure(1);
-            }
-
-            _memory.Span[_buffered] = value;
-            _buffered++;
-        }
-
-        /// <summary>
-        /// Writes UTF-16 as UTF-8. ASCII is copied as bytes, matching BCL <c>XmlUtf8RawTextWriter.RawText</c>.
-        /// </summary>
-        /// <param name="chars">The characters.</param>
-        internal void WriteCharsRaw(ReadOnlySpan<char> chars)
-        {
-            if (chars.IsEmpty)
-            {
-                return;
-            }
-
-            Ensure(chars.Length);
-            var status = Ascii.FromUtf16(chars, _memory.Span[_buffered..], out var written);
-            if (status is OperationStatus.Done)
-            {
-                _buffered += written;
-                return;
-            }
-
-            if (written > 0)
-            {
-                _buffered += written;
-                chars = chars[written..];
-            }
-
-            var utf8 = EncodeUtf8(chars, stackalloc byte[256], out var heap);
-            WriteRaw(utf8);
-            _ = heap;
-        }
-
-        /// <summary>
-        /// Writes escaped element text.
-        /// </summary>
-        /// <param name="utf8">The raw UTF-8 text.</param>
-        internal void WriteElementText(ReadOnlySpan<byte> utf8)
-        {
-            // Text may arrive in several calls, and "]]" at the end of one followed by ">" at the start of
-            // the next is the same "]]>" as in one call.
-            var bracket = PendingBrackets();
-            if (bracket == 0 && utf8.IndexOfAnyExcept(_plainTextBytes) < 0)
-            {
-                WriteRaw(utf8);
-                return;
-            }
-
-            WriteElementText(utf8, bracket);
-        }
-
-        /// <summary>
-        /// Writes escaped element text that follows <paramref name="bracket"/> closing brackets already written.
-        /// </summary>
-        /// <param name="utf8">The raw UTF-8 text.</param>
-        /// <param name="bracket">The number of <c>]</c> characters that end the text written just before.</param>
-        internal void WriteElementText(ReadOnlySpan<byte> utf8, int bracket)
-        {
-            var i = 0;
-            while (i < utf8.Length)
-            {
-                if (bracket >= 2 && utf8[i] is (byte)'>')
-                {
-                    // "]]>" must not appear in character data (XML 1.0 and 1.1 section 2.4).
-                    WriteRaw("&gt;"u8);
-                    i++;
-                    bracket = 0;
-                    continue;
-                }
-
-                var plain = utf8[i..].IndexOfAnyExcept(_plainTextBytes);
-                if (plain != 0)
-                {
-                    plain = plain < 0 ? utf8.Length - i : plain;
-                    WriteRaw(utf8.Slice(i, plain));
-                    i += plain;
-                    bracket = 0;
-                    continue;
-                }
-
-                int cp = utf8[i];
-                if (cp >= 0x80)
-                {
-                    i += WriteMultiByteRun(utf8[i..]);
-                    bracket = 0;
-                    continue;
-                }
-
-                var start = i;
-                i++;
-                if (cp is (byte)'&')
-                {
-                    WriteRaw("&amp;"u8);
-                    bracket = 0;
-                    continue;
-                }
-
-                if (cp is '\r')
-                {
-                    // A literal CR would be read back as LF (XML 1.0 and 1.1 section 2.11).
-                    WriteRaw("&#xD;"u8);
-                    bracket = 0;
-                    continue;
-                }
-
-                if (cp is '<')
-                {
-                    WriteRaw("&lt;"u8);
-                    bracket = 0;
-                    continue;
-                }
-
-                if (cp is '\n')
-                {
-                    // A line feed is plain text unless the line ending is CR LF, so this is that case. A reader
-                    // gives CR LF back as the line feed it was (XML 1.0 and 1.1 section 2.11).
-                    WriteRaw("\r\n"u8);
-                    bracket = 0;
-                    continue;
-                }
-
-                WriteValueSlice(utf8[start..i], cp);
-                bracket = cp is ']' ? bracket + 1 : 0;
-            }
-
-            _bracketRun = bracket;
-            _bracketEnd = _committed + _buffered;
-        }
-
-        /// <summary>
         /// Checks that raw input is well formed in the place it is about to be written.
         /// </summary>
         /// <param name="utf8Xml">The raw input.</param>
@@ -5599,7 +6050,29 @@ namespace CloudNimble.Text.Xml
         /// </remarks>
         internal void ValidateRawValue(ReadOnlySpan<byte> utf8Xml)
         {
-            var document = new ArrayBufferWriter<byte>(utf8Xml.Length + 128);
+            // The document the input is read in is built in an array from the pool. The writer keeps the object
+            // that holds the array, so a second raw value allocates nothing.
+            var document = _rawDocument ??= new Serialization.XmlPooledBufferWriter();
+            document.Rent(utf8Xml.Length + 128);
+            try
+            {
+                ValidateRawValue(utf8Xml, document);
+            }
+            finally
+            {
+                document.Return();
+            }
+        }
+
+        /// <summary>
+        /// Checks that raw input is well formed in the place it is about to be written, building the document it
+        /// is read in into <paramref name="document"/>.
+        /// </summary>
+        /// <param name="utf8Xml">The raw input.</param>
+        /// <param name="document">An empty buffer for the document.</param>
+        /// <exception cref="XmlException">The document would not be well formed with the input in it.</exception>
+        internal void ValidateRawValue(ReadOnlySpan<byte> utf8Xml, Serialization.XmlPooledBufferWriter document)
+        {
             var hasDeclaration = utf8Xml.StartsWith("<?xml"u8) && utf8Xml.Length > 5 && XmlChars.IsWhiteSpace(utf8Xml[5]);
             if (_version is XmlVersion.Version11 && !hasDeclaration)
             {
@@ -5680,89 +6153,51 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Appends the name of an open element, as its start tag has it.
+        /// Writes a complete unprefixed integer attribute without entering attribute state.
         /// </summary>
-        /// <param name="destination">The destination.</param>
-        /// <param name="frame">The element.</param>
-        internal void AppendFrameName(ArrayBufferWriter<byte> destination, in XmlWriterFrame frame)
+        /// <param name="name">The attribute name.</param>
+        /// <param name="value">The value.</param>
+        internal void WriteAttributeNumberLiteral(string name, int value)
         {
-            if (frame.PrefixChars is { Length: > 0 } prefixChars)
+            RequireOpenTag();
+            var head = TryWriteAttributeHead(name, valueRoom: 12, out var destination);
+            if (head == 0)
             {
-                Encoding.UTF8.GetBytes(prefixChars, destination);
-                destination.Write(":"u8);
-            }
-            else if (frame.Prefix.Length > 0)
-            {
-                destination.Write(NameSpan(frame.Prefix));
-                destination.Write(":"u8);
-            }
-
-            if (frame.LocalChars is not null)
-            {
-                Encoding.UTF8.GetBytes(frame.LocalChars, destination);
+                WriteStartAttributeLiteral(name);
+                WriteNumberValue(value);
+                WriteEndAttribute();
                 return;
             }
 
-            destination.Write(NameSpan(frame.Local));
+            Utf8Formatter.TryFormat(value, destination[head..], out var digits);
+            destination[head + digits] = (byte)'"';
+            _buffered += head + digits + 1;
         }
 
         /// <summary>
-        /// Appends a declaration for every namespace binding that is in effect, so that text read on its own
-        /// sees the prefixes it would see in the document.
+        /// Writes what separates an attribute from what is before it in the start tag: a space, or a new line
+        /// and the indentation when the attributes are laid out a fixed number to a line.
         /// </summary>
-        /// <param name="destination">The destination, inside a start tag.</param>
-        internal void AppendNamespacesInScope(ArrayBufferWriter<byte> destination)
-        {
-            for (var i = _nsCount - 1; i >= 0; i--)
-            {
-                var binding = NsAt(i);
-                var hidden = false;
-                for (var inner = i + 1; inner < _nsCount && !hidden; inner++)
-                {
-                    hidden = binding.Prefix.AsSpan().SequenceEqual(NsAt(inner).Prefix);
-                }
-
-                if (hidden || binding.Uri.Length == 0)
-                {
-                    // Hidden by a declaration on an element further in, or a declaration that removes a binding.
-                    continue;
-                }
-
-                destination.Write(" xmlns"u8);
-                if (binding.Prefix.Length > 0)
-                {
-                    destination.Write(":"u8);
-                    destination.Write(binding.Prefix);
-                }
-
-                destination.Write("=\""u8);
-                foreach (var b in binding.Uri)
-                {
-                    switch (b)
-                    {
-                        case (byte)'&': destination.Write("&amp;"u8); break;
-                        case (byte)'<': destination.Write("&lt;"u8); break;
-                        case (byte)'"': destination.Write("&quot;"u8); break;
-                        default: destination.Write([b]); break;
-                    }
-                }
-
-                destination.Write("\""u8);
-            }
-        }
-
-        /// <summary>
-        /// Returns how many <c>]</c> characters end the element text written so far, when that text is the
-        /// last thing written.
-        /// </summary>
-        /// <returns>The count, or 0 when anything else has been written since.</returns>
         /// <remarks>
-        /// The count is kept with the output position it was true at. Any write moves the position, so nothing
-        /// has to clear the count.
+        /// The attribute has been counted already, so the count of the element is one more than its index.
         /// </remarks>
-        internal int PendingBrackets()
+        internal void WriteAttributeSeparator()
         {
-            return _bracketRun > 0 && _bracketEnd == _committed + _buffered ? _bracketRun : 0;
+            if (_attributesPerLine == 0)
+            {
+                WriteRawByte((byte)' ');
+                return;
+            }
+
+            var index = _attributeCount - 1;
+            if (index == 0 || index % _attributesPerLine != 0)
+            {
+                WriteRawByte((byte)' ');
+                return;
+            }
+
+            WriteRaw(NewLineUtf8());
+            WriteRaw(_tagIndent.AsSpan(0, _tagIndentLength));
         }
 
         /// <summary>
@@ -5829,38 +6264,478 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes <paramref name="slice"/> or a numeric character reference when required.
+        /// Writes UTF-16 as UTF-8. ASCII is copied as bytes, matching BCL <c>XmlUtf8RawTextWriter.RawText</c>.
         /// </summary>
-        /// <param name="slice">The UTF-8 encoding of <paramref name="cp"/>.</param>
-        /// <param name="cp">The Unicode code point.</param>
-        internal void WriteValueSlice(ReadOnlySpan<byte> slice, int cp)
+        /// <param name="chars">The characters.</param>
+        internal void WriteCharsRaw(ReadOnlySpan<char> chars)
         {
-            if (cp is 0)
+            if (chars.IsEmpty)
             {
-                throw XmlException.Create("Illegal character in XML value.");
+                return;
             }
 
-            if (_version is XmlVersion.Version11)
+            Ensure(chars.Length);
+            var status = Ascii.FromUtf16(chars, _memory.Span[_buffered..], out var written);
+            if (status is OperationStatus.Done)
             {
-                if (!XmlChars.IsXml11Char(cp))
+                _buffered += written;
+                return;
+            }
+
+            if (written > 0)
+            {
+                _buffered += written;
+                chars = chars[written..];
+            }
+
+            // The rest holds a character outside ASCII. It is transcoded into the output, with room for the
+            // three bytes a character can take.
+            Ensure(Encoding.UTF8.GetMaxByteCount(chars.Length));
+            _buffered += Transcode(chars, _memory.Span[_buffered..]);
+        }
+
+        /// <summary>
+        /// Writes a complete unprefixed element without pushing a frame.
+        /// </summary>
+        /// <param name="localName">The local name.</param>
+        /// <param name="value">The text, ignored when <paramref name="valueIsNull"/> is true.</param>
+        /// <param name="valueIsNull">When true, writes an empty element.</param>
+        internal void WriteCompleteElement(string localName, string? value, bool valueIsNull)
+        {
+            ValidateNcNameChars(localName);
+            BeginStartElement();
+            WriteRawByte((byte)'<');
+            WriteCharsRaw(localName);
+            if (valueIsNull && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
+            {
+                WriteSelfClose();
+                _seenRoot = true;
+                return;
+            }
+
+            WriteRawByte((byte)'>');
+            WriteElementContentChars(value.AsSpan());
+            WriteRaw("</"u8);
+            WriteCharsRaw(localName);
+            WriteRawByte((byte)'>');
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes a complete unprefixed element whose name was encoded ahead of time and whose content is text.
+        /// </summary>
+        /// <param name="localName">The UTF-8 encoded local name.</param>
+        /// <param name="value">The text, or null for an empty element.</param>
+        /// <remarks>
+        /// It writes what <see cref="WriteCompleteElement(string, string, bool)"/> writes for the same name.
+        /// </remarks>
+        internal void WriteCompleteElement(XmlEncodedText localName, string? value)
+        {
+            var name = localName.EncodedUtf8Bytes;
+            ValidateNcName(name);
+            BeginStartElement();
+            WriteRawByte((byte)'<');
+            WriteRaw(name);
+            if (value is null && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
+            {
+                WriteSelfClose();
+                _seenRoot = true;
+                return;
+            }
+
+            WriteRawByte((byte)'>');
+            WriteElementContentChars(value.AsSpan());
+            WriteRaw("</"u8);
+            WriteRaw(name);
+            WriteRawByte((byte)'>');
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes a complete element with a UTF-8 name and text content.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="ns">The namespace URI, or empty.</param>
+        /// <param name="utf8Text">The unescaped text content.</param>
+        /// <remarks>
+        /// When the text needs no escaping and the name needs no new namespace declaration, the whole
+        /// <c>&lt;n&gt;v&lt;/n&gt;</c> run is written in one reserved span and no frame is pushed.
+        /// Anything else takes the start tag, text, end tag route and produces the same bytes.
+        /// </remarks>
+        internal void WriteCompleteElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, ReadOnlySpan<byte> utf8Text)
+        {
+            ThrowIfDisposed();
+            var nameIsBound = _nsCount == 0 && prefix.IsEmpty
+                ? ns.IsEmpty
+                : ns.SequenceEqual(LookupUri(prefix));
+            if (!nameIsBound || _options.Indented || IndexOfEscapedText(utf8Text) >= 0)
+            {
+                WriteStartElementDeferred(local, prefix);
+                EnsureElementNamespace(prefix, ns);
+                WriteStringValue(utf8Text);
+                WriteFullEndElement();
+                return;
+            }
+
+            ValidateNcName(local);
+            var nameLength = local.Length;
+            if (!prefix.IsEmpty)
+            {
+                ValidateNcName(prefix);
+                ValidateElementPrefix(prefix);
+                nameLength += prefix.Length + 1;
+            }
+
+            BeginStartElement();
+            Ensure(5 + (2 * nameLength) + utf8Text.Length);
+            var dest = _memory.Span[_buffered..];
+            dest[0] = (byte)'<';
+            var pos = 1;
+            if (!prefix.IsEmpty)
+            {
+                prefix.CopyTo(dest[pos..]);
+                pos += prefix.Length;
+                dest[pos++] = (byte)':';
+            }
+
+            local.CopyTo(dest[pos..]);
+            pos += local.Length;
+            dest[pos++] = (byte)'>';
+            utf8Text.CopyTo(dest[pos..]);
+            pos += utf8Text.Length;
+            dest[pos++] = (byte)'<';
+            dest[pos++] = (byte)'/';
+            dest.Slice(1, nameLength).CopyTo(dest[pos..]);
+            pos += nameLength;
+            dest[pos++] = (byte)'>';
+            _buffered += pos;
+            _seenRoot = true;
+        }
+
+        /// <summary>
+        /// Writes element character data from UTF-16 without closing a start tag.
+        /// </summary>
+        /// <param name="value">The characters.</param>
+        internal void WriteElementContentChars(ReadOnlySpan<char> value)
+        {
+            if (IndexOfEscapedText(value) < 0)
+            {
+                WriteCharsRaw(value);
+                return;
+            }
+
+            WriteEscapedChars(value, attribute: false);
+        }
+
+        /// <summary>
+        /// Writes an element with no prefix, in no stated namespace, whose content is <paramref name="value"/>
+        /// formatted with the invariant culture.
+        /// </summary>
+        /// <typeparam name="T">A value type that formats itself as UTF-8 and needs no escaping.</typeparam>
+        /// <param name="localName">The UTF-8 local name.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="maxBytes">The most bytes the value can take.</param>
+        internal void WriteElementFormatted<T>(ReadOnlySpan<byte> localName, T value, int maxBytes)
+            where T : struct, IUtf8SpanFormattable
+        {
+            var destination = BeginElementValue(localName, maxBytes);
+            if (destination.IsEmpty)
+            {
+                WriteStartElement(localName);
+                WriteNumberUtf8(value, maxBytes);
+                WriteEndElement();
+                return;
+            }
+
+            value.TryFormat(destination, out var written, default, CultureInfo.InvariantCulture);
+            EndElementValue(localName, destination, written);
+        }
+
+        /// <summary>
+        /// Writes an element with no prefix, in no stated namespace, whose content is <paramref name="value"/>
+        /// formatted with the invariant culture.
+        /// </summary>
+        /// <typeparam name="T">A value type that formats itself as UTF-8 and needs no escaping.</typeparam>
+        /// <param name="localName">The local name.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="maxBytes">The most bytes the value can take.</param>
+        internal void WriteElementFormatted<T>(ReadOnlySpan<char> localName, T value, int maxBytes)
+            where T : struct, IUtf8SpanFormattable
+        {
+            var destination = BeginElementValue(localName, maxBytes);
+            if (destination.IsEmpty)
+            {
+                WriteStartElement(localName);
+                WriteNumberUtf8(value, maxBytes);
+                WriteEndElement();
+                return;
+            }
+
+            value.TryFormat(destination, out var written, default, CultureInfo.InvariantCulture);
+            EndElementValue(localName, destination, written);
+        }
+
+        /// <summary>
+        /// Writes the newline and indent before a child start tag, unless the parent holds character data.
+        /// </summary>
+        /// <param name="depth">The depth of the element about to be written.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteElementIndent(int depth)
+        {
+            if (_options.Indented && !_hasText)
+            {
+                WriteIndent(depth);
+            }
+        }
+
+        /// <summary>
+        /// Writes escaped element text.
+        /// </summary>
+        /// <param name="utf8">The raw UTF-8 text.</param>
+        internal void WriteElementText(ReadOnlySpan<byte> utf8)
+        {
+            // Text may arrive in several calls, and "]]" at the end of one followed by ">" at the start of
+            // the next is the same "]]>" as in one call.
+            var bracket = PendingBrackets();
+            if (bracket == 0)
+            {
+                var first = IndexOfEscapedText(utf8);
+                if (first < 0)
                 {
-                    throw XmlException.Create("Illegal character in XML value.");
+                    WriteRaw(utf8);
+                    return;
                 }
 
-                if (XmlChars.IsXml11RestrictedChar(cp) || cp is 0x85 or 0x2028)
+                // When the first thing that needs care is a line break, it is usually the only kind there is:
+                // the white space between the elements of a document is a line break and an indent.
+                if (utf8[first] is (byte)'\n' && TryWriteLinesAsCrLf(utf8))
                 {
-                    // RestrictedChar must be a reference. NEL and LS are legal literals but would be
-                    // read back as LF (XML 1.1 section 2.11), so they are written as references too.
-                    WriteNcr(cp);
                     return;
                 }
             }
-            else if (!XmlChars.IsXml10Char(cp))
+
+            WriteElementText(utf8, bracket);
+        }
+
+        /// <summary>
+        /// Writes escaped element text that follows <paramref name="bracket"/> closing brackets already written.
+        /// </summary>
+        /// <param name="utf8">The raw UTF-8 text.</param>
+        /// <param name="bracket">The number of <c>]</c> characters that end the text written just before.</param>
+        internal void WriteElementText(ReadOnlySpan<byte> utf8, int bracket)
+        {
+            var i = 0;
+            while (i < utf8.Length)
             {
-                throw XmlException.Create("Illegal character in XML value.");
+                if (bracket >= 2 && utf8[i] is (byte)'>')
+                {
+                    // "]]>" must not appear in character data (XML 1.0 and 1.1 section 2.4).
+                    WriteRaw("&gt;"u8);
+                    i++;
+                    bracket = 0;
+                    continue;
+                }
+
+                var plain = IndexOfEscapedText(utf8[i..]);
+                if (plain != 0)
+                {
+                    plain = plain < 0 ? utf8.Length - i : plain;
+                    WriteRaw(utf8.Slice(i, plain));
+                    i += plain;
+                    bracket = 0;
+                    continue;
+                }
+
+                int cp = utf8[i];
+                if (cp >= 0x80)
+                {
+                    i += WriteMultiByteRun(utf8[i..]);
+                    bracket = 0;
+                    continue;
+                }
+
+                var start = i;
+                i++;
+                if (cp is (byte)'&')
+                {
+                    WriteRaw("&amp;"u8);
+                    bracket = 0;
+                    continue;
+                }
+
+                if (cp is '\r')
+                {
+                    // A literal CR would be read back as LF (XML 1.0 and 1.1 section 2.11).
+                    WriteRaw("&#xD;"u8);
+                    bracket = 0;
+                    continue;
+                }
+
+                if (cp is '<')
+                {
+                    WriteRaw("&lt;"u8);
+                    bracket = 0;
+                    continue;
+                }
+
+                if (cp is '\n')
+                {
+                    // A line feed is plain text unless the line ending is CR LF, so this is that case. A reader
+                    // gives CR LF back as the line feed it was (XML 1.0 and 1.1 section 2.11).
+                    WriteRaw("\r\n"u8);
+                    bracket = 0;
+                    continue;
+                }
+
+                WriteValueSlice(utf8[start..i], cp);
+                bracket = cp is ']' ? bracket + 1 : 0;
             }
 
-            WriteRaw(slice);
+            _bracketRun = bracket;
+            _bracketEnd = _committed + _buffered;
+        }
+
+        /// <summary>
+        /// Writes an empty element from UTF-16 parts.
+        /// </summary>
+        /// <param name="localName">The local name.</param>
+        /// <param name="prefix">The prefix.</param>
+        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="explicitNamespace">Whether the caller stated the namespace, so that an empty one means no namespace.</param>
+        internal void WriteEmptyElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool explicitNamespace)
+        {
+            WriteStartElementChars(localName, prefix, namespaceUri, empty: true, explicitNamespace);
+        }
+
+        /// <summary>
+        /// Closes the start tag of the current element with nothing after it, so that the element is ended
+        /// with an end tag: <c>&lt;e&gt;&lt;/e&gt;</c>.
+        /// </summary>
+        /// <remarks>
+        /// This is for an element that was read with an end tag and no content, and is written by a caller that
+        /// writes the element's content and not its tags. The element counts as holding character data, so
+        /// indentation puts nothing between the two tags.
+        /// </remarks>
+        internal void WriteEmptyText()
+        {
+            CloseStartTag();
+            _hasContent = true;
+            _hasText = true;
+        }
+
+        /// <summary>
+        /// Writes characters as escaped text, a part at a time, so that text of any length is written from the
+        /// stack and nothing is allocated for it.
+        /// </summary>
+        /// <param name="value">The characters.</param>
+        /// <param name="attribute">Whether the text is an attribute value; otherwise it is element text.</param>
+        /// <exception cref="XmlException">The text contains half of a surrogate pair.</exception>
+        /// <remarks>
+        /// A part never ends between the two halves of a surrogate pair. Element text keeps count of the
+        /// <c>]</c> characters a part ends with, so a <c>]]&gt;</c> that two parts share is still escaped.
+        /// </remarks>
+        [SkipLocalsInit]
+        internal void WriteEscapedChars(ReadOnlySpan<char> value, bool attribute)
+        {
+            // A character is three bytes at most; a surrogate pair is two characters and four bytes. The buffer
+            // is not cleared: only the bytes a part was transcoded into are read.
+            Span<byte> utf8 = stackalloc byte[1024];
+            while (!value.IsEmpty)
+            {
+                var take = Math.Min(value.Length, utf8.Length / 3);
+                if (take < value.Length && char.IsHighSurrogate(value[take - 1]))
+                {
+                    take--;
+                }
+
+                var written = Transcode(value[..take], utf8);
+                if (attribute)
+                {
+                    WriteAttributeText(utf8[..written]);
+                }
+                else
+                {
+                    WriteElementText(utf8[..written]);
+                }
+
+                value = value[take..];
+            }
+        }
+
+        /// <summary>
+        /// Formats <paramref name="value"/> as UTF-8 on the stack with the invariant culture and writes it as a value.
+        /// </summary>
+        /// <typeparam name="T">The value type.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <param name="format">The format string. Its longest output must fit in 64 bytes.</param>
+        internal void WriteFormatted<T>(T value, ReadOnlySpan<char> format)
+            where T : struct, IUtf8SpanFormattable
+        {
+            value.TryFormat(BeginPlainValue(64), out var written, format, CultureInfo.InvariantCulture);
+            _buffered += written;
+        }
+
+        /// <summary>
+        /// Writes indent for <paramref name="depth"/>.
+        /// </summary>
+        /// <param name="depth">The indent depth.</param>
+        internal void WriteIndent(int depth)
+        {
+            if (!_options.Indented)
+            {
+                return;
+            }
+
+            if (depth <= 0 && _buffered == 0 && _committed == 0)
+            {
+                return;
+            }
+
+            WriteRaw(NewLineUtf8());
+            var ch = _options.IndentCharacter == '\0' ? (byte)' ' : (byte)_options.IndentCharacter;
+            var count = Math.Max(depth, 0) * _indentSize;
+            Ensure(count);
+            _memory.Span.Slice(_buffered, count).Fill(ch);
+            _buffered += count;
+        }
+
+        /// <summary>
+        /// Ends an element started with <see cref="WriteLeafStart"/>.
+        /// </summary>
+        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
+        internal void WriteLeafEnd(ReadOnlySpan<byte> closeTag)
+        {
+            ThrowIfDisposed();
+            if (_depth == 0)
+            {
+                throw XmlException.Create("A leaf element must be written inside an element.");
+            }
+
+            WriteRaw(closeTag);
+            _hasText = _leafParentHadText;
+        }
+
+        /// <summary>
+        /// Starts a child element that will hold exactly one value and no attributes, from a start tag built ahead
+        /// of time. The caller writes the value and then calls <see cref="WriteLeafEnd"/>.
+        /// </summary>
+        /// <param name="openTag">
+        /// The whole start tag, <c>&lt;name&gt;</c>. The name is an NCName that was checked when the tag was built,
+        /// has no prefix, and is in no namespace of its own.
+        /// </param>
+        /// <remarks>
+        /// No element frame is pushed: the element cannot have attributes, namespaces, or children, and its end tag
+        /// is supplied by the caller, so there is nothing for a frame to remember. The value is written as text of
+        /// the parent, and <see cref="WriteLeafEnd"/> puts back the one thing that changes, the parent's record of
+        /// holding text. The writer must be inside an element.
+        /// </remarks>
+        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>, or no element is open.</exception>
+        internal void WriteLeafStart(ReadOnlySpan<byte> openTag)
+        {
+            PrepareLeaf(openTag);
+            _leafParentHadText = _hasText;
+            WriteRaw(openTag);
         }
 
         /// <summary>
@@ -5914,178 +6789,42 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes indent for <paramref name="depth"/>.
+        /// Formats <paramref name="value"/> into the output without going through the text escaper.
         /// </summary>
-        /// <param name="depth">The indent depth.</param>
-        internal void WriteIndent(int depth)
+        /// <typeparam name="T">A UTF-8 span-formattable number.</typeparam>
+        /// <param name="value">The number.</param>
+        /// <param name="maxBytes">Maximum UTF-8 digits to reserve.</param>
+        internal void WriteNumberUtf8<T>(T value, int maxBytes)
+            where T : struct, IUtf8SpanFormattable
         {
-            if (!_options.Indented)
-            {
-                return;
-            }
-
-            if (depth <= 0 && _buffered == 0 && _committed == 0)
-            {
-                return;
-            }
-
-            WriteRaw(NewLineUtf8());
-            var ch = _options.IndentCharacter == '\0' ? (byte)' ' : (byte)_options.IndentCharacter;
-            var count = Math.Max(depth, 0) * _indentSize;
-            Ensure(count);
-            _memory.Span.Slice(_buffered, count).Fill(ch);
-            _buffered += count;
+            value.TryFormat(BeginPlainValue(maxBytes), out var written, default, CultureInfo.InvariantCulture);
+            _buffered += written;
         }
 
         /// <summary>
-        /// Writes a start tag from UTF-8 parts.
+        /// Writes a processing instruction from UTF-8 parts.
         /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="prefix">The prefix, or empty.</param>
-        /// <param name="ns">The namespace URI, or empty.</param>
-        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
-        {
-            WriteStartElementUtf8(local, prefix, ns, empty: false);
-        }
-
-        /// <summary>
-        /// Gets ready to write a value that needs no escaping, such as a number or a date, and returns the place
-        /// to format it. The caller adds the bytes it wrote to <c>_buffered</c>.
-        /// </summary>
-        /// <param name="maxBytes">The most bytes the value can take.</param>
-        /// <returns>The free part of the output buffer, at least <paramref name="maxBytes"/> long.</returns>
-        /// <exception cref="XmlException">The writer is at the document level, where text is not allowed.</exception>
-        internal Span<byte> BeginPlainValue(int maxBytes)
-        {
-            ThrowIfDisposed();
-            if (!_inAttribute)
-            {
-                if (_depth == 0)
-                {
-                    throw XmlException.Create("Text is not allowed at the document level.");
-                }
-
-                CloseStartTag();
-                MarkText();
-            }
-
-            Ensure(maxBytes);
-            return _memory.Span[_buffered..];
-        }
-
-        /// <summary>
-        /// Closes a parent start tag, writes indent, and enforces depth before a new element.
-        /// </summary>
-        internal void BeginStartElement()
-        {
-            ThrowIfDisposed();
-            if (_inAttribute)
-            {
-                WriteEndAttribute();
-            }
-
-            if (_depth == 0 && _seenRoot)
-            {
-                throw XmlException.Create("Multiple root elements are not allowed.");
-            }
-
-            if (_depth > 0)
-            {
-                CloseStartTag();
-                MarkContent();
-            }
-            else
-            {
-                EnsureDeclaration();
-            }
-
-            if (_depth + 1 > _maxDepth)
-            {
-                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
-            }
-
-            WriteElementIndent(_depth);
-        }
-
-        /// <summary>
-        /// Writes a start tag from UTF-8 parts, optionally closing it as empty.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="prefix">The prefix, or empty.</param>
-        /// <param name="ns">The namespace URI, or empty.</param>
-        /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
-        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty)
-        {
-            WriteStartElementUtf8(local, prefix, ns, empty, explicitNamespace: false);
-        }
-
-        /// <summary>
-        /// Writes a start tag from UTF-8 parts in the namespace given, optionally closing it as empty.
-        /// </summary>
-        /// <param name="local">The local name.</param>
-        /// <param name="prefix">The prefix, or empty.</param>
-        /// <param name="ns">The namespace URI, or empty.</param>
-        /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
-        /// <param name="explicitNamespace">
-        /// Whether the caller stated the namespace. An empty <paramref name="ns"/> then means no namespace, and
-        /// <c>xmlns=""</c> is written when a default namespace is in scope. Otherwise an empty
-        /// <paramref name="ns"/> says nothing: the name is written as given and inherits the default namespace.
-        /// </param>
+        /// <param name="utf8Target">The UTF-8 PI target.</param>
+        /// <param name="utf8Data">The UTF-8 PI data, or empty.</param>
         /// <remarks>
-        /// <para>
-        /// A name with a prefix is written with that prefix, which is declared on the element unless it is
-        /// already bound to <paramref name="ns"/>. Whether <paramref name="ns"/> has another prefix does not matter.
-        /// </para>
-        /// <para>
-        /// A name with no prefix is written bare when <paramref name="ns"/> is the default namespace in scope,
-        /// with a prefix that is bound to <paramref name="ns"/> when there is one, and otherwise bare with
-        /// <paramref name="ns"/> declared as the default namespace on the element.
-        /// </para>
+        /// <see cref="XmlDocument.WriteTo"/> replays parsed processing instructions through this overload
+        /// without materializing strings.
         /// </remarks>
-        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty, bool explicitNamespace)
+        internal void WriteProcessingInstructionUtf8(ReadOnlySpan<byte> utf8Target, ReadOnlySpan<byte> utf8Data)
         {
             ThrowIfDisposed();
-            if (empty && _options.EmptyElementStyle is XmlEmptyElementStyle.StartAndEndTag)
+            ValidateNcName(utf8Target);
+            if (!_options.SkipValidation && utf8Target.Length == 3 && (utf8Target[0] | 0x20) is (byte)'x' && (utf8Target[1] | 0x20) is (byte)'m' && (utf8Target[2] | 0x20) is (byte)'l')
             {
-                // The end tag needs the name, so the element is started and ended as any other is.
-                WriteStartElementUtf8(local, prefix, ns, empty: false, explicitNamespace);
-                WriteEndElement();
-                return;
+                throw XmlException.Create("Processing instruction target cannot be 'xml'.");
             }
 
-            ValidateNcName(local);
-            if (!prefix.IsEmpty)
+            if (utf8Data.IndexOf("?>"u8) >= 0)
             {
-                ValidateNcName(prefix);
-                ValidateElementPrefix(prefix);
+                throw XmlException.Create("Processing instruction data must not contain '?>'.");
             }
 
-            var nsUri = ns;
-            if (!prefix.IsEmpty && nsUri.IsEmpty)
-            {
-                if (prefix.SequenceEqual("xml"u8))
-                {
-                    nsUri = XmlUtf8.Xml;
-                }
-                else if (prefix.SequenceEqual("xmlns"u8))
-                {
-                    nsUri = XmlUtf8.Xmlns;
-                }
-                else if (!_options.SkipValidation)
-                {
-                    throw XmlException.Create("Prefixed names require a namespace URI.");
-                }
-            }
-
-            if (_inAttribute)
-            {
-                WriteEndAttribute();
-            }
-
-            if (_depth == 0 && _seenRoot)
-            {
-                throw XmlException.Create("Multiple root elements are not allowed.");
-            }
+            ValidateContentChars(utf8Data);
 
             if (_depth > 0)
             {
@@ -6097,71 +6836,160 @@ namespace CloudNimble.Text.Xml
                 EnsureDeclaration();
             }
 
-            if (_depth + 1 > _maxDepth)
-            {
-                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
-            }
-
+            // A processing instruction between elements gets a line of its own, as an element does.
             WriteElementIndent(_depth);
-            byte[]? autoPrefix = null;
-            var declarePrefixed = false;
-            var declareDefault = false;
-            if (!prefix.IsEmpty)
+            WriteRaw("<?"u8);
+            WriteRaw(utf8Target);
+            if (!utf8Data.IsEmpty)
             {
-                declarePrefixed = !nsUri.IsEmpty && !nsUri.SequenceEqual(LookupUri(prefix));
-            }
-            else if (!nsUri.IsEmpty)
-            {
-                if (!nsUri.SequenceEqual(LookupUri([])))
-                {
-                    autoPrefix = LookupPrefixedPrefix(nsUri);
-                    declareDefault = autoPrefix is null;
-                }
-            }
-            else if (explicitNamespace)
-            {
-                // No namespace under a default namespace: only xmlns="" keeps the element out of it
-                // (Namespaces in XML, section 6.2).
-                declareDefault = LookupUri([]) is { Length: > 0 };
+                WriteRaw(" "u8);
+                WriteRawLines(utf8Data);
             }
 
-            WriteTagOpen(autoPrefix is null ? prefix : autoPrefix, local);
-            if (empty)
+            WriteRaw("?>"u8);
+        }
+
+        /// <summary>
+        /// Writes UTF-8 bytes to the buffer.
+        /// </summary>
+        /// <param name="utf8">The bytes.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteRaw(ReadOnlySpan<byte> utf8)
+        {
+            if (utf8.IsEmpty)
             {
-                if (!declarePrefixed && !declareDefault)
+                return;
+            }
+
+            Ensure(utf8.Length);
+            utf8.CopyTo(_memory.Span[_buffered..]);
+            _buffered += utf8.Length;
+        }
+
+        /// <summary>
+        /// Writes one UTF-8 byte, matching BCL <c>_bufBytes[_bufPos++] = (byte)ch</c> for markup.
+        /// </summary>
+        /// <param name="value">The byte.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteRawByte(byte value)
+        {
+            if (_buffered == _memory.Length)
+            {
+                Ensure(1);
+            }
+
+            _memory.Span[_buffered] = value;
+            _buffered++;
+        }
+
+        /// <summary>
+        /// Writes the content of a comment, a CDATA section or a processing instruction, with each line break
+        /// as the line ending <see cref="XmlWriterOptions.NewLine"/> asks for.
+        /// </summary>
+        /// <param name="utf8">The content, which holds no markup to escape.</param>
+        /// <remarks>
+        /// A line feed that follows a carriage return is left as it is: the two are the line ending already.
+        /// </remarks>
+        internal void WriteRawLines(ReadOnlySpan<byte> utf8)
+        {
+            if (!_newLineIsCrLf)
+            {
+                WriteRaw(utf8);
+                return;
+            }
+
+            while (true)
+            {
+                var lineEnd = utf8.IndexOf((byte)'\n');
+                if (lineEnd < 0)
                 {
-                    WriteSelfClose();
-                    _seenRoot = true;
+                    WriteRaw(utf8);
                     return;
                 }
 
-                PushFrame(default, default(XmlWriterName));
-                _depth++;
-                _seenRoot = true;
-                if (declarePrefixed)
-                {
-                    WriteNamespaceDeclaration(prefix, nsUri);
-                }
-                else
-                {
-                    WriteDefaultNamespace(nsUri);
-                }
+                WriteRaw(utf8[..lineEnd]);
+                WriteRaw(lineEnd > 0 && utf8[lineEnd - 1] is (byte)'\r' ? "\n"u8 : "\r\n"u8);
+                utf8 = utf8[(lineEnd + 1)..];
+            }
+        }
 
-                WriteEndElement();
-                return;
+        /// <summary>
+        /// Writes the text of a namespace declaration that <see cref="RegisterNamespace"/> already put in scope.
+        /// </summary>
+        /// <param name="prefix">The prefix, or empty for the default namespace.</param>
+        /// <param name="ns">The namespace URI.</param>
+        internal void WriteRegisteredNamespace(ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
+        {
+            if (prefix.IsEmpty)
+            {
+                TrackAttribute("xmlns"u8, XmlUtf8.Xmlns);
+                WriteAttributeSeparator();
+                WriteRaw("xmlns=\""u8);
+            }
+            else
+            {
+                TrackAttribute(prefix, XmlUtf8.Xmlns);
+                WriteAttributeSeparator();
+                WriteRaw("xmlns:"u8);
+                WriteRaw(prefix);
+                WriteRaw("=\""u8);
             }
 
-            PushFrame(AppendName(local), AppendName(autoPrefix ?? prefix));
-            _depth++;
-            _seenRoot = true;
-            if (declarePrefixed)
+            WriteAttributeText(ns);
+            WriteRaw("\""u8);
+        }
+
+        /// <summary>
+        /// Ends a start tag as the tag of an element with no content, in the form
+        /// <see cref="XmlWriterOptions.EmptyElementStyle"/> asks for: <c>/&gt;</c> or <c> /&gt;</c>.
+        /// </summary>
+        /// <remarks>
+        /// The caller writes a start tag and an end tag for <see cref="XmlEmptyElementStyle.StartAndEndTag"/>,
+        /// because that needs the name of the element.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteSelfClose()
+        {
+            WriteRaw(_options.EmptyElementStyle is XmlEmptyElementStyle.SelfClosingWithSpace ? " />"u8 : "/>"u8);
+        }
+
+        /// <summary>
+        /// Begins an attribute from UTF-16 parts.
+        /// </summary>
+        /// <param name="localName">The local name.</param>
+        /// <param name="prefix">The prefix.</param>
+        /// <param name="namespaceUri">The namespace URI.</param>
+        [SkipLocalsInit]
+        internal void WriteStartAttributeChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri)
+        {
+            var localUtf8 = EncodeUtf8(localName, stackalloc byte[256], out var localHeap);
+            var prefixUtf8 = EncodeUtf8(prefix, stackalloc byte[64], out var prefixHeap);
+            var nsUtf8 = EncodeUtf8(namespaceUri, stackalloc byte[256], out var nsHeap);
+            WriteStartAttributeUtf8(localUtf8, prefixUtf8, nsUtf8);
+            _ = localHeap;
+            _ = prefixHeap;
+            _ = nsHeap;
+        }
+
+        /// <summary>
+        /// Begins an unprefixed attribute from a string name without a UTF-8 transcode when the name is ASCII.
+        /// </summary>
+        /// <param name="name">The attribute name.</param>
+        internal void WriteStartAttributeLiteral(string name)
+        {
+            RequireOpenTag();
+            var head = TryWriteAttributeHead(name, valueRoom: 0, out _);
+            if (head == 0)
             {
-                WriteNamespaceDeclaration(prefix, nsUri);
+                ValidateNcNameChars(name);
+                TrackAttributeChars(name, []);
+                WriteAttributeSeparator();
+                WriteCharsRaw(name);
+                WriteRaw("=\""u8);
             }
-            else if (declareDefault)
-            {
-                WriteDefaultNamespace(nsUri);
-            }
+
+            _buffered += head;
+            _inAttribute = true;
         }
 
         /// <summary>
@@ -6176,25 +7004,7 @@ namespace CloudNimble.Text.Xml
         /// <exception cref="XmlException">No start tag is open, the name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, or the element already has an attribute with this name.</exception>
         internal void WriteStartAttributeTrusted(ReadOnlySpan<byte> local, ReadOnlySpan<byte> head)
         {
-            ThrowIfDisposed();
-            RequireOpenTag();
-            if (local.Length > _maxNameBytes)
-            {
-                ValidateNcName(local);
-            }
-
-            TrackAttribute(local, []);
-            if (_attributesPerLine == 0)
-            {
-                WriteRaw(head);
-            }
-            else
-            {
-                // The head starts with the space that separates it from what is before it.
-                WriteAttributeSeparator();
-                WriteRaw(head[1..]);
-            }
-
+            BeginAttribute(local, head, room: 0);
             _inAttribute = true;
         }
 
@@ -6270,262 +7080,224 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Returns an in-scope non-empty prefix bound to <paramref name="uri"/>, or null.
+        /// Writes a start tag or empty element from UTF-16 parts.
         /// </summary>
-        /// <param name="uri">The namespace URI.</param>
-        /// <returns>The prefix bytes, or null.</returns>
-        internal byte[]? LookupPrefixedPrefix(ReadOnlySpan<byte> uri)
+        /// <param name="localName">The local name.</param>
+        /// <param name="prefix">The prefix.</param>
+        /// <param name="namespaceUri">The namespace URI.</param>
+        /// <param name="empty">When true, closes as <c>/&gt;</c> without keeping a frame name.</param>
+        /// <param name="explicitNamespace">
+        /// Whether the caller stated the namespace. An empty <paramref name="namespaceUri"/> then means no
+        /// namespace; otherwise it means the name is written as given and inherits the default namespace.
+        /// </param>
+        [SkipLocalsInit]
+        internal void WriteStartElementChars(ReadOnlySpan<char> localName, ReadOnlySpan<char> prefix, ReadOnlySpan<char> namespaceUri, bool empty, bool explicitNamespace)
         {
-            for (var i = _nsCount - 1; i >= 0; i--)
-            {
-                var binding = NsAt(i);
-                if (binding.Prefix.Length > 0 && uri.SequenceEqual(binding.Uri) && uri.SequenceEqual(LookupUri(binding.Prefix)))
-                {
-                    // The second test skips a prefix that an inner element has bound to something else.
-                    return binding.Prefix;
-                }
-            }
-
-            if (uri.SequenceEqual(XmlUtf8.Xml))
-            {
-                return XmlUtf8.XmlPrefix;
-            }
-
-            if (uri.SequenceEqual(XmlUtf8.Xmlns))
-            {
-                return XmlUtf8.XmlnsPrefix;
-            }
-
-            return null;
+            var localUtf8 = EncodeUtf8(localName, stackalloc byte[256], out var localHeap);
+            var prefixUtf8 = EncodeUtf8(prefix, stackalloc byte[64], out var prefixHeap);
+            var nsUtf8 = EncodeUtf8(namespaceUri, stackalloc byte[256], out var nsHeap);
+            WriteStartElementUtf8(localUtf8, prefixUtf8, nsUtf8, empty, explicitNamespace);
+            _ = localHeap;
+            _ = prefixHeap;
+            _ = nsHeap;
         }
 
         /// <summary>
-        /// Returns true when <paramref name="prefix"/> is already in scope.
+        /// Writes <c>&lt;prefix:local</c> and opens the element without declaring any namespace.
         /// </summary>
-        /// <param name="prefix">The prefix bytes.</param>
-        /// <returns><see langword="true"/> if the prefix is bound.</returns>
-        internal bool PrefixInUse(ReadOnlySpan<byte> prefix)
-        {
-            return LookupUri(prefix) is not null;
-        }
-
-        /// <summary>
-        /// Returns the URI bound to <paramref name="prefix"/>, or null.
-        /// </summary>
-        /// <param name="prefix">The prefix bytes.</param>
-        /// <returns>The URI bytes, or null if the prefix is unbound.</returns>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
         /// <remarks>
-        /// A document uses a handful of prefixes over and over, usually declared on its root. A small
-        /// direct-mapped cache from prefix to binding index, emptied whenever a binding is pushed or
-        /// popped, answers those with one compare instead of a scan of every binding in scope.
+        /// The DOM replays an element's own xmlns declarations in document order and then calls
+        /// <see cref="EnsureElementNamespace"/>. Declaring up front, as <see cref="WriteStartElementUtf8(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>
+        /// does, would drop declarations that are only referenced from content (<c>xsi:type="p:T"</c>).
         /// </remarks>
-        internal byte[]? LookupUri(ReadOnlySpan<byte> prefix)
+        internal void WriteStartElementDeferred(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix)
         {
-            var slot = prefix.IsEmpty ? 0 : (prefix[0] ^ (prefix[^1] << 1) ^ prefix.Length) & 7;
-            if ((_nsCacheMask & (1 << slot)) != 0)
+            ThrowIfDisposed();
+            ValidateNcName(local);
+            if (!prefix.IsEmpty)
             {
-                var cached = NsAt(_nsCacheIndexes[slot]);
-                if (prefix.SequenceEqual(cached.Prefix))
-                {
-                    return cached.Uri;
-                }
+                ValidateNcName(prefix);
+                ValidateElementPrefix(prefix);
             }
 
-            for (var i = _nsCount - 1; i >= 0; i--)
-            {
-                var binding = NsAt(i);
-                if (prefix.SequenceEqual(binding.Prefix))
-                {
-                    _nsCacheMask |= 1 << slot;
-                    _nsCacheIndexes[slot] = i;
-                    return binding.Uri;
-                }
-            }
-
-            if (prefix.SequenceEqual("xml"u8))
-            {
-                return XmlUtf8.Xml;
-            }
-
-            if (prefix.SequenceEqual("xmlns"u8))
-            {
-                return XmlUtf8.Xmlns;
-            }
-
-            return null;
+            BeginStartElement();
+            WriteTagOpen(prefix, local);
+            PushFrame(local, prefix);
+            _depth++;
+            _seenRoot = true;
         }
 
         /// <summary>
-        /// Returns an array this writer owns that holds <paramref name="value"/>, reusing one from an earlier declaration.
+        /// Writes a start tag from string names, keeping interned literals on the frame when there is no xmlns work.
         /// </summary>
-        /// <param name="value">A namespace prefix or URI.</param>
-        /// <returns>The owned bytes.</returns>
-        /// <remarks>
-        /// A binding slot remembers the last declaration it held, which covers a document whose declarations
-        /// repeat in the same order. Sibling elements that declare different prefixes land in the same slot
-        /// in turn, so the writer also keeps the first <see cref="MaxInternedNamespaceValues"/> distinct
-        /// values it has seen. Past that limit a value is copied each time it is declared.
-        /// </remarks>
-        internal byte[] InternNamespaceBytes(ReadOnlySpan<byte> value)
+        /// <param name="localName">The local name.</param>
+        /// <param name="prefix">The prefix, or null.</param>
+        /// <param name="namespaceUri">The namespace URI, or null.</param>
+        /// <param name="empty">When true, writes <c>/&gt;</c> without pushing a frame.</param>
+        internal void WriteStartElementLiteral(string localName, string? prefix, string? namespaceUri, bool empty)
         {
-            for (var i = 0; i < _nsInternedCount; i++)
+            // A null namespace says nothing about the namespace and the name is written as given. An empty
+            // string says "no namespace", which needs xmlns="" when a default namespace is in scope.
+            if (namespaceUri is not null && (namespaceUri.Length > 0 || LookupUri([]) is { Length: > 0 }))
             {
-                if (value.SequenceEqual(_nsInterned![i]))
-                {
-                    return _nsInterned[i];
-                }
-            }
-
-            var owned = value.ToArray();
-            if (_nsInternedCount < MaxInternedNamespaceValues)
-            {
-                _nsInterned ??= new byte[MaxInternedNamespaceValues][];
-                _nsInterned[_nsInternedCount] = owned;
-                _nsInternedCount++;
-            }
-
-            return owned;
-        }
-
-        /// <summary>
-        /// Returns the next auto-generated prefix <c>nsN</c> that is not in scope.
-        /// </summary>
-        /// <returns>The prefix bytes.</returns>
-        internal byte[] NextAutoPrefix()
-        {
-            Span<byte> buffer = stackalloc byte[16];
-            "ns"u8.CopyTo(buffer);
-            while (true)
-            {
-                _autoNs++;
-                Utf8Formatter.TryFormat(_autoNs, buffer[2..], out var written);
-                var prefix = buffer[..(2 + written)];
-                if (!PrefixInUse(prefix))
-                {
-                    return prefix.ToArray();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns the slot the next element's frame goes in, growing the stack when it is full.
-        /// </summary>
-        /// <returns>The slot at the current depth. It still holds whatever frame used it last.</returns>
-        internal ref XmlWriterFrame NextFrame()
-        {
-            if (_depth < 8)
-            {
-                return ref _framesInline[_depth];
-            }
-
-            if (_frames is null)
-            {
-                _frames = new XmlWriterFrame[16];
-                for (var i = 0; i < 8; i++)
-                {
-                    _frames[i] = _framesInline[i];
-                }
-            }
-            else if (_depth == _frames.Length)
-            {
-                Array.Resize(ref _frames, _frames.Length * 2);
-            }
-
-            return ref _frames[_depth];
-        }
-
-        /// <summary>
-        /// Pushes the frame of an element whose name is in the name buffer.
-        /// </summary>
-        /// <param name="local">Where the local name is in the name buffer.</param>
-        /// <param name="prefix">Where the prefix is in the name buffer; empty for none.</param>
-        /// <remarks>
-        /// The frame is built in its slot. Passing a whole frame and storing it copies a struct that holds
-        /// references, which goes through the collector's block move on every start tag.
-        /// </remarks>
-        internal void PushFrame(XmlWriterName local, XmlWriterName prefix)
-        {
-            ref var frame = ref NextFrame();
-            frame = default;
-            frame.Local = local;
-            frame.Prefix = prefix;
-            frame.TagOpen = true;
-        }
-
-        /// <summary>
-        /// Pushes the frame of an element whose name is held as strings.
-        /// </summary>
-        /// <param name="localChars">The local name.</param>
-        /// <param name="prefixChars">The prefix, or <see langword="null"/> for none.</param>
-        internal void PushFrame(string localChars, string? prefixChars)
-        {
-            ref var frame = ref NextFrame();
-            frame = default;
-            frame.LocalChars = localChars;
-            frame.PrefixChars = prefixChars;
-            frame.TagOpen = true;
-        }
-
-        /// <summary>
-        /// Returns the UTF-8 line ending that <see cref="XmlWriterOptions.NewLine"/> asks for.
-        /// </summary>
-        /// <returns>The newline bytes.</returns>
-        internal ReadOnlySpan<byte> NewLineUtf8()
-        {
-            return _newLineIsCrLf ? "\r\n"u8 : "\n"u8;
-        }
-
-        /// <summary>
-        /// Grows the name store so <paramref name="needed"/> more bytes fit.
-        /// </summary>
-        /// <param name="needed">Additional bytes to store.</param>
-        internal void EnsureNameStore(int needed)
-        {
-            if (_names.Length == 0)
-            {
-                _names = ArrayPool<byte>.Shared.Rent(Math.Max(256, needed));
+                WriteStartElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), empty, explicitNamespace: true);
                 return;
             }
 
-            if (_namesLength + needed <= _names.Length)
+            if (string.IsNullOrEmpty(prefix) && TryStoreShortName(localName))
             {
+                BeginStartElement();
+                WriteTagOpen(localName);
+                PushStoredFrame(localName.Length, empty);
                 return;
             }
 
-            var rented = ArrayPool<byte>.Shared.Rent(Math.Max(_names.Length * 2, _namesLength + needed));
-            _names.AsSpan(0, _namesLength).CopyTo(rented);
-            ArrayPool<byte>.Shared.Return(_names);
-            _names = rented;
+            WriteStartElementChars(localName, prefix.AsSpan(), default, empty, explicitNamespace: false);
         }
 
         /// <summary>
-        /// Writes the prefix and local name stored on <paramref name="frame"/>.
+        /// Writes a start tag from UTF-8 parts.
         /// </summary>
-        /// <param name="frame">The element frame.</param>
-        /// <remarks>
-        /// String start tags keep interned literals on the frame (BCL <c>ElementScope</c>) so the
-        /// end tag does not copy UTF-8 out of the name store.
-        /// </remarks>
-        internal void WriteFrameName(in XmlWriterFrame frame)
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="ns">The namespace URI, or empty.</param>
+        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns)
         {
-            if (frame.PrefixChars is { Length: > 0 } prefixChars)
-            {
-                WriteCharsRaw(prefixChars);
-                WriteRawByte((byte)':');
-            }
-            else if (frame.Prefix.Length > 0)
-            {
-                WriteRaw(NameSpan(frame.Prefix));
-                WriteRawByte((byte)':');
-            }
+            WriteStartElementUtf8(local, prefix, ns, empty: false);
+        }
 
-            if (frame.LocalChars is not null)
+        /// <summary>
+        /// Writes a start tag from UTF-8 parts, optionally closing it as empty.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="ns">The namespace URI, or empty.</param>
+        /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
+        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty)
+        {
+            WriteStartElementUtf8(local, prefix, ns, empty, explicitNamespace: false);
+        }
+
+        /// <summary>
+        /// Writes a start tag from UTF-8 parts in the namespace given, optionally closing it as empty.
+        /// </summary>
+        /// <param name="local">The local name.</param>
+        /// <param name="prefix">The prefix, or empty.</param>
+        /// <param name="ns">The namespace URI, or empty.</param>
+        /// <param name="empty">When true, writes <c>/&gt;</c> and does not keep the name on the stack.</param>
+        /// <param name="explicitNamespace">
+        /// Whether the caller stated the namespace. An empty <paramref name="ns"/> then means no namespace, and
+        /// <c>xmlns=""</c> is written when a default namespace is in scope. Otherwise an empty
+        /// <paramref name="ns"/> says nothing: the name is written as given and inherits the default namespace.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// A name with a prefix is written with that prefix, which is declared on the element unless it is
+        /// already bound to <paramref name="ns"/>. Whether <paramref name="ns"/> has another prefix does not matter.
+        /// </para>
+        /// <para>
+        /// A name with no prefix is written bare when <paramref name="ns"/> is the default namespace in scope,
+        /// with a prefix that is bound to <paramref name="ns"/> when there is one, and otherwise bare with
+        /// <paramref name="ns"/> declared as the default namespace on the element.
+        /// </para>
+        /// </remarks>
+        internal void WriteStartElementUtf8(ReadOnlySpan<byte> local, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> ns, bool empty, bool explicitNamespace)
+        {
+            ThrowIfDisposed();
+            if (empty && _options.EmptyElementStyle is XmlEmptyElementStyle.StartAndEndTag)
             {
-                WriteCharsRaw(frame.LocalChars);
+                // The end tag needs the name, so the element is started and ended as any other is.
+                WriteStartElementUtf8(local, prefix, ns, empty: false, explicitNamespace);
+                WriteEndElement();
                 return;
             }
 
-            WriteRaw(NameSpan(frame.Local));
+            ValidateNcName(local);
+            if (!prefix.IsEmpty)
+            {
+                ValidateNcName(prefix);
+                ValidateElementPrefix(prefix);
+            }
+
+            var nsUri = ns;
+            if (!prefix.IsEmpty && nsUri.IsEmpty)
+            {
+                if (prefix.SequenceEqual("xml"u8))
+                {
+                    nsUri = XmlUtf8.Xml;
+                }
+                else if (prefix.SequenceEqual("xmlns"u8))
+                {
+                    nsUri = XmlUtf8.Xmlns;
+                }
+                else if (!_options.SkipValidation)
+                {
+                    throw XmlException.Create("Prefixed names require a namespace URI.");
+                }
+            }
+
+            BeginStartElement();
+            byte[]? autoPrefix = null;
+            var declarePrefixed = false;
+            var declareDefault = false;
+            if (!prefix.IsEmpty)
+            {
+                declarePrefixed = !nsUri.IsEmpty && !nsUri.SequenceEqual(LookupUri(prefix));
+            }
+            else if (!nsUri.IsEmpty)
+            {
+                if (!nsUri.SequenceEqual(LookupUri([])))
+                {
+                    autoPrefix = LookupPrefixedPrefix(nsUri);
+                    declareDefault = autoPrefix is null;
+                }
+            }
+            else if (explicitNamespace)
+            {
+                // No namespace under a default namespace: only xmlns="" keeps the element out of it
+                // (Namespaces in XML, section 6.2).
+                declareDefault = LookupUri([]) is { Length: > 0 };
+            }
+
+            WriteTagOpen(autoPrefix is null ? prefix : autoPrefix, local);
+            if (empty)
+            {
+                if (!declarePrefixed && !declareDefault)
+                {
+                    WriteSelfClose();
+                    _seenRoot = true;
+                    return;
+                }
+
+                PushFrame([], []);
+                _depth++;
+                _seenRoot = true;
+                if (declarePrefixed)
+                {
+                    WriteNamespaceDeclaration(prefix, nsUri);
+                }
+                else
+                {
+                    WriteDefaultNamespace(nsUri);
+                }
+
+                WriteEndElement();
+                return;
+            }
+
+            PushFrame(local, autoPrefix ?? prefix);
+            _depth++;
+            _seenRoot = true;
+            if (declarePrefixed)
+            {
+                WriteNamespaceDeclaration(prefix, nsUri);
+            }
+            else if (declareDefault)
+            {
+                WriteDefaultNamespace(nsUri);
+            }
         }
 
         /// <summary>
@@ -6533,19 +7305,11 @@ namespace CloudNimble.Text.Xml
         /// </summary>
         /// <param name="frame">The element's frame.</param>
         /// <remarks>
-        /// A name held in the name buffer is written with <c>&lt;/</c> and <c>&gt;</c> in one step, because
-        /// each separate write looks up the output span again.
+        /// The tag is written with <c>&lt;/</c> and <c>&gt;</c> in one step, because each separate write
+        /// looks up the output span again.
         /// </remarks>
         internal void WriteTagClose(in XmlWriterFrame frame)
         {
-            if (frame.LocalChars is not null || frame.PrefixChars is not null)
-            {
-                WriteRaw("</"u8);
-                WriteFrameName(frame);
-                WriteRawByte((byte)'>');
-                return;
-            }
-
             var prefix = NameSpan(frame.Prefix);
             var local = NameSpan(frame.Local);
             var prefixed = prefix.Length > 0 ? prefix.Length + 1 : 0;
@@ -6562,6 +7326,24 @@ namespace CloudNimble.Text.Xml
             local.CopyTo(destination[(prefixed + 2)..]);
             destination[prefixed + local.Length + 2] = (byte)'>';
             _buffered += prefixed + local.Length + 3;
+        }
+
+        /// <summary>
+        /// Writes <c>&lt;</c> and a local name that is known to be ASCII, in one step.
+        /// </summary>
+        /// <param name="local">The local name, every character of which is ASCII.</param>
+        internal void WriteTagOpen(ReadOnlySpan<char> local)
+        {
+            PrepareAttributeLayout(local.Length);
+            Ensure(local.Length + 1);
+            var destination = _memory.Span.Slice(_buffered, local.Length + 1);
+            destination[0] = (byte)'<';
+            for (var i = 0; i < local.Length; i++)
+            {
+                destination[i + 1] = (byte)local[i];
+            }
+
+            _buffered += destination.Length;
         }
 
         /// <summary>
@@ -6591,270 +7373,38 @@ namespace CloudNimble.Text.Xml
         }
 
         /// <summary>
-        /// Writes a start tag from string names, keeping interned literals on the frame when there is no xmlns work.
+        /// Writes <paramref name="slice"/> or a numeric character reference when required.
         /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="prefix">The prefix, or null.</param>
-        /// <param name="namespaceUri">The namespace URI, or null.</param>
-        /// <param name="empty">When true, writes <c>/&gt;</c> without pushing a frame.</param>
-        internal void WriteStartElementLiteral(string localName, string? prefix, string? namespaceUri, bool empty)
+        /// <param name="slice">The UTF-8 encoding of <paramref name="cp"/>.</param>
+        /// <param name="cp">The Unicode code point.</param>
+        internal void WriteValueSlice(ReadOnlySpan<byte> slice, int cp)
         {
-            if (empty && _options.EmptyElementStyle is XmlEmptyElementStyle.StartAndEndTag)
+            if (cp is 0)
             {
-                // The end tag needs the name, so the element is started and ended as any other is.
-                WriteStartElementLiteral(localName, prefix, namespaceUri, empty: false);
-                WriteEndElement();
-                return;
+                throw XmlException.Create("Illegal character in XML value.");
             }
 
-            // A null namespace says nothing about the namespace and the name is written as given. An empty
-            // string says "no namespace", which needs xmlns="" when a default namespace is in scope.
-            if (namespaceUri is not null && (namespaceUri.Length > 0 || LookupUri([]) is { Length: > 0 }))
+            if (_version is XmlVersion.Version11)
             {
-                WriteStartElementChars(localName, prefix.AsSpan(), namespaceUri.AsSpan(), empty, explicitNamespace: true);
-                return;
-            }
-
-            ValidateNcNameChars(localName);
-            if (!string.IsNullOrEmpty(prefix))
-            {
-                ValidateNcNameChars(prefix);
-                ValidateElementPrefix(prefix);
-                if (prefix is not "xml" and not "xmlns" && !_options.SkipValidation)
+                if (!XmlChars.IsXml11Char(cp))
                 {
-                    throw XmlException.Create("Prefixed names require a namespace URI.");
+                    throw XmlException.Create("Illegal character in XML value.");
                 }
-            }
 
-            BeginStartElement();
-            PrepareAttributeLayout((string.IsNullOrEmpty(prefix) ? 0 : prefix.Length + 1) + localName.Length);
-            WriteRawByte((byte)'<');
-            if (!string.IsNullOrEmpty(prefix))
-            {
-                WriteCharsRaw(prefix);
-                WriteRawByte((byte)':');
-            }
-
-            WriteCharsRaw(localName);
-            if (empty)
-            {
-                WriteSelfClose();
-                _seenRoot = true;
-                return;
-            }
-
-            PushFrame(localName, prefix);
-            _depth++;
-            _seenRoot = true;
-        }
-
-        /// <summary>
-        /// Writes a complete unprefixed element without pushing a frame.
-        /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="value">The text, ignored when <paramref name="valueIsNull"/> is true.</param>
-        /// <param name="valueIsNull">When true, writes an empty element.</param>
-        internal void WriteCompleteElement(string localName, string? value, bool valueIsNull)
-        {
-            ValidateNcNameChars(localName);
-            BeginStartElement();
-            WriteRawByte((byte)'<');
-            WriteCharsRaw(localName);
-            if (valueIsNull && _options.EmptyElementStyle is not XmlEmptyElementStyle.StartAndEndTag)
-            {
-                WriteSelfClose();
-                _seenRoot = true;
-                return;
-            }
-
-            WriteRawByte((byte)'>');
-            WriteElementContentChars(value.AsSpan());
-            WriteRaw("</"u8);
-            WriteCharsRaw(localName);
-            WriteRawByte((byte)'>');
-            _seenRoot = true;
-        }
-
-        /// <summary>
-        /// Writes a complete unprefixed element whose content is already UTF-8.
-        /// </summary>
-        /// <param name="localName">The local name.</param>
-        /// <param name="utf8Value">The UTF-8 content, already escaped as character data.</param>
-        internal void WriteCompleteElementUtf8Value(string localName, ReadOnlySpan<byte> utf8Value)
-        {
-            ValidateNcNameChars(localName);
-            BeginStartElement();
-            if (!_options.Indented)
-            {
-                var name = localName.AsSpan();
-                Ensure(5 + (2 * name.Length) + utf8Value.Length);
-                var dest = _memory.Span[_buffered..];
-                dest[0] = (byte)'<';
-                if (Ascii.FromUtf16(name, dest[1..], out var n) is OperationStatus.Done)
+                if (XmlChars.IsXml11RestrictedChar(cp) || cp is 0x85 or 0x2028)
                 {
-                    dest[1 + n] = (byte)'>';
-                    utf8Value.CopyTo(dest[(2 + n)..]);
-                    var pos = 2 + n + utf8Value.Length;
-                    dest[pos++] = (byte)'<';
-                    dest[pos++] = (byte)'/';
-                    Ascii.FromUtf16(name, dest[pos..], out _);
-                    pos += n;
-                    dest[pos++] = (byte)'>';
-                    _buffered += pos;
-                    _seenRoot = true;
+                    // RestrictedChar must be a reference. NEL and LS are legal literals but would be
+                    // read back as LF (XML 1.1 section 2.11), so they are written as references too.
+                    WriteNcr(cp);
                     return;
                 }
             }
-
-            WriteRawByte((byte)'<');
-            WriteCharsRaw(localName);
-            WriteRawByte((byte)'>');
-            WriteRaw(utf8Value);
-            WriteRaw("</"u8);
-            WriteCharsRaw(localName);
-            WriteRawByte((byte)'>');
-            _seenRoot = true;
-        }
-
-        /// <summary>
-        /// Writes element character data from UTF-16 without closing a start tag.
-        /// </summary>
-        /// <param name="value">The characters.</param>
-        internal void WriteElementContentChars(ReadOnlySpan<char> value)
-        {
-            if (value.IndexOfAnyExcept(_plainTextChars) < 0)
+            else if (!XmlChars.IsXml10Char(cp))
             {
-                WriteCharsRaw(value);
-                return;
+                throw XmlException.Create("Illegal character in XML value.");
             }
 
-            var utf8 = EncodeUtf8(value, stackalloc byte[256], out var heap);
-            WriteElementText(utf8);
-            _ = heap;
-        }
-
-        /// <summary>
-        /// Ends an element started with <see cref="WriteLeafStart"/>.
-        /// </summary>
-        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
-        internal void WriteLeafEnd(ReadOnlySpan<byte> closeTag)
-        {
-            ThrowIfDisposed();
-            if (_depth == 0)
-            {
-                throw XmlException.Create("A leaf element must be written inside an element.");
-            }
-
-            WriteRaw(closeTag);
-            CurrentFrame().HasText = _leafParentHadText;
-        }
-
-        /// <summary>
-        /// Starts a child element that will hold exactly one value and no attributes, from a start tag built ahead
-        /// of time. The caller writes the value and then calls <see cref="WriteLeafEnd"/>.
-        /// </summary>
-        /// <param name="openTag">
-        /// The whole start tag, <c>&lt;name&gt;</c>. The name is an NCName that was checked when the tag was built,
-        /// has no prefix, and is in no namespace of its own.
-        /// </param>
-        /// <remarks>
-        /// No element frame is pushed: the element cannot have attributes, namespaces, or children, and its end tag
-        /// is supplied by the caller, so there is nothing for a frame to remember. The value is written as text of
-        /// the parent, and <see cref="WriteLeafEnd"/> puts back the one thing that changes, the parent's record of
-        /// holding text. The writer must be inside an element.
-        /// </remarks>
-        /// <exception cref="XmlException">The name is longer than <see cref="XmlWriterOptions.MaxNameByteCount"/>, the element is deeper than <see cref="XmlWriterOptions.MaxDepth"/>, or no element is open.</exception>
-        internal void WriteLeafStart(ReadOnlySpan<byte> openTag)
-        {
-            ThrowIfDisposed();
-            if (_depth == 0)
-            {
-                throw XmlException.Create("A leaf element must be written inside an element.");
-            }
-
-            if (openTag.Length - 2 > _maxNameBytes)
-            {
-                ValidateNcName(openTag[1..^1]);
-            }
-
-            if (_inAttribute)
-            {
-                WriteEndAttribute();
-            }
-
-            if (_depth + 1 > _maxDepth)
-            {
-                throw XmlException.Create($"{nameof(XmlWriterOptions.MaxDepth)} exceeded ({_maxDepth}).");
-            }
-
-            CloseStartTag();
-            ref var parent = ref CurrentFrame();
-            parent.HasContent = true;
-            WriteElementIndent(_depth);
-            _leafParentHadText = parent.HasText;
-            WriteRaw(openTag);
-        }
-
-        /// <summary>
-        /// Formats <paramref name="value"/> into the output without going through the text escaper.
-        /// </summary>
-        /// <typeparam name="T">A UTF-8 span-formattable number.</typeparam>
-        /// <param name="value">The number.</param>
-        /// <param name="maxBytes">Maximum UTF-8 digits to reserve.</param>
-        internal void WriteNumberUtf8<T>(T value, int maxBytes)
-            where T : struct, IUtf8SpanFormattable
-        {
-            value.TryFormat(BeginPlainValue(maxBytes), out var written, default, CultureInfo.InvariantCulture);
-            _buffered += written;
-        }
-
-        /// <summary>
-        /// Begins an unprefixed attribute from a string name without a UTF-8 transcode when the name is ASCII.
-        /// </summary>
-        /// <param name="name">The attribute name.</param>
-        internal void WriteStartAttributeLiteral(string name)
-        {
-            RequireOpenTag();
-            ValidateNcNameChars(name);
-            TrackAttributeChars(name, []);
-            WriteAttributeSeparator();
-            WriteCharsRaw(name);
-            WriteRaw("=\""u8);
-            _inAttribute = true;
-        }
-
-        /// <summary>
-        /// Writes a complete unprefixed integer attribute without entering attribute state.
-        /// </summary>
-        /// <param name="name">The attribute name.</param>
-        /// <param name="value">The value.</param>
-        internal void WriteAttributeNumberLiteral(string name, int value)
-        {
-            RequireOpenTag();
-            ValidateNcNameChars(name);
-            TrackAttributeChars(name, []);
-            Ensure(1 + name.Length + 2 + 16 + 1);
-            var dest = _memory.Span[_buffered..];
-            dest[0] = (byte)' ';
-            if (_attributesPerLine != 0 || Ascii.FromUtf16(name, dest[1..], out var n) is not OperationStatus.Done)
-            {
-                WriteAttributeSeparator();
-                WriteCharsRaw(name);
-                WriteRaw("=\""u8);
-                Ensure(16);
-                value.TryFormat(_memory.Span[_buffered..], out var fallbackDigits, default, CultureInfo.InvariantCulture);
-                _buffered += fallbackDigits;
-                WriteRawByte((byte)'"');
-                return;
-            }
-
-            var pos = 1 + n;
-            dest[pos++] = (byte)'=';
-            dest[pos++] = (byte)'"';
-            value.TryFormat(dest[pos..], out var digits, default, CultureInfo.InvariantCulture);
-            pos += digits;
-            dest[pos++] = (byte)'"';
-            _buffered += pos;
+            WriteRaw(slice);
         }
 
         #endregion

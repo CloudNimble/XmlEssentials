@@ -39,6 +39,7 @@ namespace CloudNimble.XmlEssentials.Performance
         private ArrayBufferWriter<byte> _buffer = null!;
         private ArrayBufferWriter<byte> _jsonBuffer = null!;
         private Utf8JsonWriter _jsonWriter = null!;
+        private CloudNimble.Text.Xml.Utf8XmlWriter _xmlWriter = null!;
         private BclXmlSerializer _customerBcl = null!;
         private byte[] _customerBclXml = null!;
         private byte[] _customerJson = null!;
@@ -220,6 +221,7 @@ namespace CloudNimble.XmlEssentials.Performance
         {
             _bclOutput.Dispose();
             _jsonWriter.Dispose();
+            _xmlWriter.Dispose();
         }
 
         /// <summary>
@@ -234,6 +236,7 @@ namespace CloudNimble.XmlEssentials.Performance
             _buffer = new ArrayBufferWriter<byte>(262_144);
             _jsonBuffer = new ArrayBufferWriter<byte>(262_144);
             _jsonWriter = new Utf8JsonWriter(_jsonBuffer);
+            _xmlWriter = new CloudNimble.Text.Xml.Utf8XmlWriter(_buffer);
             var placed = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
             _customerValue = new Customer
             {
@@ -712,7 +715,8 @@ namespace CloudNimble.XmlEssentials.Performance
         }
 
         /// <summary>
-        /// Writes <paramref name="value"/> with XmlEssentials to the reused buffer.
+        /// Writes <paramref name="value"/> with XmlEssentials to the reused buffer, through a writer that is reused
+        /// as the System.Text.Json writer is.
         /// </summary>
         /// <typeparam name="T">The value type.</typeparam>
         /// <param name="value">The value.</param>
@@ -720,7 +724,9 @@ namespace CloudNimble.XmlEssentials.Performance
         private long WriteXml<T>(T value)
         {
             _buffer.ResetWrittenCount();
-            EssentialsXmlSerializer.Serialize(_buffer, value);
+            _xmlWriter.Reset(_buffer);
+            EssentialsXmlSerializer.Serialize(_xmlWriter, value);
+            _xmlWriter.Flush();
             return _buffer.WrittenCount;
         }
 

@@ -136,11 +136,36 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void BuiltInInfo_IsAReadyMadeOrSuppliedConverter_AndNeedsNoResolver()
+        {
+            // Generated code asks for the type info of a built-in value this way. The options have no resolver,
+            // and none is needed: nothing is looked up by reflection.
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            XmlSerializer.Serialize(5, XmlMetadataServices.CreateBuiltInInfo<int>(options)).Should().Be("<int>5</int>");
+            XmlSerializer.Serialize((int?)null, XmlMetadataServices.CreateBuiltInInfo<int?>(options))
+                .Should().Be("<int xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
+            options.TypeInfoResolver.Should().BeNull();
+            FluentActions.Invoking(() => XmlMetadataServices.CreateBuiltInInfo<Person>(options))
+                .Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be($"The type '{typeof(Person)}' is not supported.");
+            XmlMetadataServices.GetBuiltInTypeInfo(typeof(Person), options).Should().BeNull();
+
+            // A converter the caller supplied comes first, and one that cannot convert the type is reported.
+            var negating = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            negating.Converters.Add(new NegatingIntConverter());
+            XmlSerializer.Serialize(5, XmlMetadataServices.CreateBuiltInInfo<int>(negating)).Should().Be("<int>-5</int>");
+            XmlMetadataServices.GetBuiltInTypeInfo(typeof(int?), negating).Should().BeNull("the wrapper of a replaced converter is closed by generated code, not at run time");
+            var wrongType = new XmlSerializerOptions();
+            wrongType.Converters.Add(new UIntClaimingConverter());
+            FluentActions.Invoking(() => XmlMetadataServices.GetBuiltInTypeInfo(typeof(uint), wrongType)).Should().ThrowExactly<InvalidOperationException>().Which.Message
+                .Should().Be($"The converter '{typeof(UIntClaimingConverter).FullName}' is not compatible with the type 'System.UInt32'.");
+        }
+
+        [TestMethod]
         public void SerializeHandler_WritesTheMembers_AndATypeWithNoMetadataCannotBeRead()
         {
             const string none = "The type info for 'CloudNimble.XmlEssentials.Tests.POCOs.Person' was generated in XmlSourceGenerationMode.Serialization, which provides no property metadata. " +
                 "It can only write a type that has a write fast path, with the options it was compiled for. Use XmlSourceGenerationMode.Default or XmlSourceGenerationMode.Metadata.";
-            var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            var options = new XmlSerializerOptions { OmitXmlDeclaration = true, TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
             Action<Utf8XmlWriter, Person, XmlSerializerOptions> handler = static (writer, person, _) =>
             {
                 writer.WriteStartElement("Fast");

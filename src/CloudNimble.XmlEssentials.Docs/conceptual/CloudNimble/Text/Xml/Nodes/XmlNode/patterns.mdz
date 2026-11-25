@@ -1,6 +1,6 @@
 ### Read, then edit
 
-Use `XmlNode.Parse` when you intend to change the document throughout. Use `XmlDocument.Parse` and `XmlElement.CloneNode` when you read most of the document and change a small part.
+Use `XmlNode.Parse` when you intend to change the document, in one place or throughout: the tree makes nodes only for the elements you reach into. Use `XmlDocument.Parse` and `XmlElement.CloneNode` when you read the document with the typed getters of `XmlElement` and change a small part, or when you need `XmlDocumentOptions` or a `Stream`.
 
 ### Edit one record at a time
 

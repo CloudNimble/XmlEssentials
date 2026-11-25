@@ -33,6 +33,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         internal XmlObjectBinding Binding => _binding;
 
+        /// <inheritdoc />
+        /// <remarks>
+        /// The built-in object converter is what makes an object type info, and only what it reads can stop part
+        /// way: a type info given any other converter has no binding to offer. An abstract type is never created,
+        /// and a type info with no member metadata cannot read at all.
+        /// </remarks>
+        internal override XmlObjectBinding? ResumableBinding => Converter is XmlObjectConverter<T> && !typeof(T).IsAbstract && !_binding.NoMetadata ? _binding : null;
+
         #endregion
 
         #region Constructors
@@ -82,22 +90,28 @@ namespace CloudNimble.Text.Xml.Serialization
                     }
                 }
             }
-            else if (XmlConverterHelpers.ReadDiscriminator(ref reader, polymorphism.Placement, polymorphism.Utf8DiscriminatorAttributeName) is { Length: > 0 } discriminator)
+            else if (polymorphism.ReadDiscriminator(ref reader, out var unknown) is { } derived)
             {
-                if (polymorphism.FindByDiscriminator(discriminator) is { } derived)
-                {
-                    CheckRoot(ref reader);
-                    return (T?)polymorphism.ReadDerived(ref reader, derived);
-                }
-
-                if (polymorphism.UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
-                {
-                    throw XmlException.Create($"Unknown type discriminator '{discriminator}'.");
-                }
+                CheckRoot(ref reader);
+                return (T?)polymorphism.ReadDerived(ref reader, derived);
+            }
+            else if (unknown is not null && polymorphism.UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
+            {
+                throw XmlException.Create($"Unknown type discriminator '{unknown}'.");
             }
 
             CheckRoot(ref reader);
             return ReadElement(ref reader);
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// A value of a stream is the type its element names, as a value of a member or an item of a collection is.
+        /// </remarks>
+        internal override T? ReadStreamedElement(ref Utf8XmlReader reader)
+        {
+            var polymorphism = _binding.Polymorphism;
+            return polymorphism.IsActive ? (T?)polymorphism.ReadValue(ref reader, this) : base.ReadStreamedElement(ref reader);
         }
 
         /// <inheritdoc />

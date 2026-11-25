@@ -51,7 +51,7 @@ The code produces the following output:
 
 ```text
 XmlException
-MaxDepth exceeded (64).
+MaxDepth exceeded (64). Path: /Employee/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager/DirectReports/Employee/Manager.
 ```
 
 The limit is `XmlSerializerOptions.MaxDepth`, which is 64 unless you change it. The serializer doesn't detect the cycle itself. It stops because the document became too deep.
@@ -170,7 +170,7 @@ False
 - Use options with the same handler to read the document. Without a handler, an `id` attribute is ignored and a `ref` attribute is an `XmlException`.
 - A `ref` must point to an `id` that appears earlier in the document. A reference to an unknown identifier is an `XmlException` with the message `Unknown reference '...'.`
 - An element with a `ref` attribute is replaced by the referenced object. Any content it has is skipped.
-- An object that is created through a constructor with parameters is registered under its identifier after the constructor runs. A document can refer to it later, but the object can't hold a reference to itself.
+- An object that is created through a constructor with parameters is registered under its identifier after the constructor runs. A document can refer to it later, but the object can't hold a reference to itself: reading one that does throws an `XmlException` whose message starts with `Unknown reference '1'.`
 
 ### Where Preserve applies
 
@@ -340,7 +340,7 @@ A resolver holds state for one call. If your handler shares state between calls,
 
 ## Understand the cost
 
-A reference handler makes the serializer look up every object it writes. In the library's own measurements, writing 200 customer objects takes 134 µs with `Preserve` against 50 µs with no handler, about 2.6 times as long. The cost is a dictionary lookup, an identifier string, and a namespaced attribute for each object.
+A reference handler makes the serializer look up every object it writes. Writing with `Preserve` takes noticeably longer than writing with no handler. The cost is a dictionary lookup, an identifier string, and a namespaced attribute for each object.
 
 Leave `ReferenceHandler` unset, which is the default, unless the graph needs it. With no handler, the serializer does no reference tracking at all.
 

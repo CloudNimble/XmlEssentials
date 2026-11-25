@@ -6,7 +6,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="DateTime"/> as <c>xs:dateTime</c>.
     /// </summary>
-    internal sealed class XmlDateTimeConverter : XmlValueConverter<DateTime>
+    internal sealed class XmlDateTimeConverter : XmlFormattedValueConverter<DateTime>
     {
 
         #region Fields
@@ -15,6 +15,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The shared instance.
         /// </summary>
         internal static readonly XmlDateTimeConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 40;
 
         #endregion
 
@@ -27,9 +34,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, DateTime value, XmlSerializerOptions options)
+        internal override int Format(DateTime value, Span<byte> destination, XmlSerializerOptions options)
         {
-            writer.WriteStringValue(value);
+            return XmlLexical.FormatDateTimeWithZone(value, destination);
         }
 
         #endregion

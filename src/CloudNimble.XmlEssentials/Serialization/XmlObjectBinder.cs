@@ -16,13 +16,174 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #region Fields
 
-        private static readonly MethodInfo CreatePropertyMethod = typeof(XmlObjectBinder).GetMethod(nameof(CreateProperty), BindingFlags.NonPublic | BindingFlags.Static)!;
         private static readonly MethodInfo CreateStructGetterMethod = typeof(XmlObjectBinder).GetMethod(nameof(CreateStructGetter), BindingFlags.NonPublic | BindingFlags.Static)!;
+
         private static readonly MethodInfo CreateStructSetterMethod = typeof(XmlObjectBinder).GetMethod(nameof(CreateStructSetter), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+#if NET11_0_OR_GREATER
+        /// <summary>
+        /// The derived types of generic closed types that generated contexts named, by the closed type and the
+        /// definition of the derived type the compiler lists for it.
+        /// </summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type Closed, Type Definition), Type> s_closedDerived = new();
+
+        /// <summary>
+        /// Closes the definition of a generic derived type over the arguments of its closed base type and returns
+        /// it, or <see langword="null"/> when it cannot take them. The field is <see langword="null"/> when nothing
+        /// in the program reflects: the reflection resolver sets it when it is created.
+        /// </summary>
+        private static Func<Type, Type[], Type?>? s_closeGeneric;
+#endif
+
+        /// <summary>
+        /// <see cref="CreateReflectedProperty"/>, found the first time the reflection resolver binds a member. It is
+        /// not found when the class is loaded, because a program that has only generated contexts never needs it.
+        /// </summary>
+        private static MethodInfo? s_createReflectedProperty;
 
         #endregion
 
-        #region Public Methods
+        #region Private Methods
+
+        /// <summary>
+        /// Records, on a bound member, the nulls its nullable annotations refuse.
+        /// </summary>
+        /// <param name="property">The bound member.</param>
+        /// <param name="member">The facts of the member, which say what its annotations refuse.</param>
+        /// <param name="type">The type that is bound, which the message for a constructor parameter names.</param>
+        /// <param name="parameter">The constructor parameter the member fills, or null when it is set after construction.</param>
+        /// <remarks>
+        /// As System.Text.Json has it with <c>RespectNullableAnnotations</c>: what is read is checked against what
+        /// the member, or the parameter, accepts, and what is written against what the member returns. The two
+        /// differ under <c>[AllowNull]</c>, <c>[DisallowNull]</c>, <c>[MaybeNull]</c> and <c>[NotNull]</c>. A member
+        /// compiled without annotations, and one whose type is a type parameter, says nothing and accepts null.
+        /// </remarks>
+        internal static void ApplyNullableAnnotations(XmlBoundProperty property, XmlMemberFacts member, Type type, XmlParameterFacts? parameter)
+        {
+            if (member.NeverReturnsNull)
+            {
+                property.NullWriteError = $"The property or field '{member.Name}' on type '{member.DeclaringType}' doesn't allow getting null values. Consider updating its nullability annotation.";
+            }
+
+            if (parameter is not null)
+            {
+                if (parameter.RefusesNull)
+                {
+                    property.NullReadError = $"The constructor parameter '{parameter.Name}' on type '{type}' doesn't allow null values. Consider updating its nullability annotation.";
+                }
+
+                return;
+            }
+
+            if (member.RefusesNull)
+            {
+                property.NullReadError = $"The property or field '{member.Name}' on type '{member.DeclaringType}' doesn't allow setting null values. Consider updating its nullability annotation.";
+            }
+        }
+
+        /// <summary>
+        /// Decides, for each member of a type, whether the value it already holds is populated when it is read.
+        /// </summary>
+        /// <param name="type">The type that is bound.</param>
+        /// <param name="bound">The bound members.</param>
+        /// <param name="members">The member models, in the same order.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <param name="hasConstructorParameters">Whether the type is created through a constructor with parameters.</param>
+        /// <exception cref="NotSupportedException">
+        /// The type is created through a constructor with parameters, and it or one of its members is marked
+        /// <see cref="XmlObjectCreationHandling.Populate"/>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// A member marked <see cref="XmlObjectCreationHandling.Populate"/> cannot be populated, or a member is
+        /// populated and the options handle references.
+        /// </exception>
+        /// <remarks>
+        /// The rules are those of System.Text.Json. The attribute on a member comes first, then the attribute on the
+        /// type, then <see cref="XmlSerializerOptions.PreferredObjectCreationHandling"/>. Only a member marked itself
+        /// is refused when it cannot be populated; the attribute on the type and the option apply where they can.
+        /// A type created through a constructor with parameters populates nothing.
+        /// </remarks>
+        internal static void ApplyObjectCreationHandling(Type type, XmlBoundProperty[] bound, List<XmlMemberModel> members, XmlSerializerOptions options, bool hasConstructorParameters)
+        {
+            var onType = type.GetCustomAttribute<XmlObjectCreationHandlingAttribute>(inherit: false)?.Handling;
+            var populates = false;
+            for (var i = 0; i < bound.Length; i++)
+            {
+                var onMember = members[i].Member.GetCustomAttribute<XmlObjectCreationHandlingAttribute>()?.Handling;
+                if (hasConstructorParameters)
+                {
+                    if ((onMember ?? onType) is XmlObjectCreationHandling.Populate)
+                    {
+                        throw new NotSupportedException("XmlObjectCreationHandling.Populate is currently not supported in types with parameterized constructors.");
+                    }
+
+                    continue;
+                }
+
+                if ((onMember ?? onType ?? options.PreferredObjectCreationHandling) is not XmlObjectCreationHandling.Populate)
+                {
+                    continue;
+                }
+
+                if (bound[i].PopulateRefusal() is { } refusal)
+                {
+                    if (onMember is XmlObjectCreationHandling.Populate)
+                    {
+                        throw new InvalidOperationException($"Property '{members[i].Member.Name}' on type '{members[i].Member.DeclaringType}' is marked with XmlObjectCreationHandling.Populate {refusal}");
+                    }
+
+                    continue;
+                }
+
+                bound[i].Populates = true;
+                populates = true;
+            }
+
+            if (populates && options.ReferenceHandler is not null)
+            {
+                throw new InvalidOperationException("XmlObjectCreationHandling.Populate is incompatible with reference handling.");
+            }
+        }
+
+        /// <summary>
+        /// Tells each element member that has no namespace which namespaces the other members of its local name
+        /// have, so that it leaves their elements to them.
+        /// </summary>
+        /// <param name="properties">The bound members.</param>
+        /// <param name="caseInsensitive">Whether names are compared without regard to ASCII case.</param>
+        /// <remarks>
+        /// A member with no namespace matches an element of its local name in any namespace. When another member
+        /// has the same local name and a namespace, an element in that namespace is that member's: without this,
+        /// <c>&lt;atom:link&gt;</c> would be read into the member for <c>&lt;link&gt;</c> whenever that member was
+        /// tried first.
+        /// </remarks>
+        internal static void AssignSiblingNamespaces(XmlBoundProperty[] properties, bool caseInsensitive)
+        {
+            foreach (var property in properties)
+            {
+                if (property.IsAttribute || property.IsText || property.Utf8NamespaceUri.Length > 0)
+                {
+                    continue;
+                }
+
+                List<byte[]>? taken = null;
+                foreach (var other in properties)
+                {
+                    if (other.IsAttribute || other.IsText || other.Utf8NamespaceUri.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    if (other.Utf8LocalName.AsSpan().SequenceEqual(property.Utf8LocalName)
+                        || (caseInsensitive && Ascii.EqualsIgnoreCase(other.Utf8LocalName, property.Utf8LocalName)))
+                    {
+                        (taken ??= []).Add(other.Utf8NamespaceUri);
+                    }
+                }
+
+                property.SiblingNamespaces = taken?.ToArray();
+            }
+        }
 
         /// <summary>
         /// Builds the binding for <typeparamref name="T"/>.
@@ -30,13 +191,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <typeparam name="T">The CLR type.</typeparam>
         /// <param name="options">The serializer options.</param>
         /// <returns>The members and constructor.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2026")]
-        [UnconditionalSuppressMessage("Trimming", "IL2060")]
-        [UnconditionalSuppressMessage("Trimming", "IL2070")]
-        [UnconditionalSuppressMessage("Trimming", "IL2075")]
-        [UnconditionalSuppressMessage("Trimming", "IL2087")]
-        [UnconditionalSuppressMessage("Trimming", "IL2091")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         internal static XmlObjectBinding Bind<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields | DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>(XmlSerializerOptions options)
         {
             var members = Discover<T>(options);
@@ -177,258 +332,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 create,
                 nextSlot,
                 extension,
-                CreatePolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown));
-        }
-
-        #endregion
-
-        #region Private Methods
-
-        /// <summary>
-        /// Tells each element member that has no namespace which namespaces the other members of its local name
-        /// have, so that it leaves their elements to them.
-        /// </summary>
-        /// <param name="properties">The bound members.</param>
-        /// <param name="caseInsensitive">Whether names are compared without regard to ASCII case.</param>
-        /// <remarks>
-        /// A member with no namespace matches an element of its local name in any namespace. When another member
-        /// has the same local name and a namespace, an element in that namespace is that member's: without this,
-        /// <c>&lt;atom:link&gt;</c> would be read into the member for <c>&lt;link&gt;</c> whenever that member was
-        /// tried first.
-        /// </remarks>
-        internal static void AssignSiblingNamespaces(XmlBoundProperty[] properties, bool caseInsensitive)
-        {
-            foreach (var property in properties)
-            {
-                if (property.IsAttribute || property.IsText || property.Utf8NamespaceUri.Length > 0)
-                {
-                    continue;
-                }
-
-                List<byte[]>? taken = null;
-                foreach (var other in properties)
-                {
-                    if (other.IsAttribute || other.IsText || other.Utf8NamespaceUri.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    if (other.Utf8LocalName.AsSpan().SequenceEqual(property.Utf8LocalName)
-                        || (caseInsensitive && Ascii.EqualsIgnoreCase(other.Utf8LocalName, property.Utf8LocalName)))
-                    {
-                        (taken ??= []).Add(other.Utf8NamespaceUri);
-                    }
-                }
-
-                property.SiblingNamespaces = taken?.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// Fills the facts of a reflected member, with the reflection call that creates its bound member.
-        /// </summary>
-        /// <typeparam name="T">The type that is bound, which may be derived from the type that declares the member.</typeparam>
-        /// <param name="member">A property or a field.</param>
-        /// <returns>The facts.</returns>
-        /// <remarks>
-        /// The bound member is generic over the member's type, which reflection knows only as a <see cref="Type"/>, so
-        /// it is closed at run time. A source-generated context supplies a delegate that was closed when the program
-        /// was compiled, which is what makes it usable under Native AOT.
-        /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2060")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
-        internal static XmlMemberFacts CreateFacts<T>(MemberInfo member)
-        {
-            var facts = new XmlMemberFacts(member);
-            if (facts.MemberType == typeof(XmlExtensionData))
-            {
-                // The extension-data member is not bound as a member, so its accessors are made here, where the type is known.
-                facts.Getter = CreateGetter<T, XmlExtensionData>(member);
-                facts.Setter = facts.HasSetter ? CreateSetter<T, XmlExtensionData>(member) : null;
-            }
-
-            facts.CreateBound = static (model, options, index, constructorIndex) =>
-            {
-                try
-                {
-                    return (XmlBoundProperty)CreatePropertyMethod.MakeGenericMethod(typeof(T), model.Type).Invoke(null, [model, options, index, constructorIndex])!;
-                }
-                catch (TargetInvocationException ex) when (ex.InnerException is not null)
-                {
-                    throw ex.InnerException;
-                }
-            };
-            return facts;
-        }
-
-        /// <summary>
-        /// Creates a <typeparamref name="T"/> through a parameterless constructor that is not public.
-        /// </summary>
-        /// <typeparam name="T">The CLR type.</typeparam>
-        /// <returns>The instance.</returns>
-        /// <remarks>
-        /// An exception the constructor throws is rethrown as it is, not wrapped in a <see cref="TargetInvocationException"/>.
-        /// </remarks>
-        internal static object CreateNonPublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>()
-        {
-            try
-            {
-                return Activator.CreateInstance(typeof(T), nonPublic: true)!;
-            }
-            catch (TargetInvocationException ex)
-            {
-                throw ex.InnerException!;
-            }
-        }
-
-        /// <summary>
-        /// Creates the polymorphism of <paramref name="type"/> from the list of derived types it declares or inherits.
-        /// </summary>
-        /// <param name="type">The declared CLR type.</param>
-        /// <param name="known">The whole list, as <see cref="BindDerived"/> returns it, or null.</param>
-        /// <param name="placement">Where the discriminator is written.</param>
-        /// <param name="utf8DiscriminatorAttributeName">The discriminator attribute local name.</param>
-        /// <param name="unknown">How a runtime type that is not declared is handled.</param>
-        /// <returns>The polymorphism.</returns>
-        /// <remarks>
-        /// A derived type inherits the list its base declares, which names the derived type itself and the types
-        /// beside it. Only a type that derives from <paramref name="type"/> is one a value may be written as, so a
-        /// value of the declared type is written under the name of its member with no discriminator, as
-        /// <c>System.Xml.Serialization</c> writes it. The whole list is kept for reading: a document that identifies
-        /// the declared type is read as it, and one that identifies a type beside it is refused.
-        /// </remarks>
-        internal static XmlPolymorphism CreatePolymorphism(Type type, XmlDerivedBinding[]? known, XmlDiscriminatorPlacement placement, byte[] utf8DiscriminatorAttributeName, XmlUnknownDerivedTypeHandling unknown)
-        {
-            if (known is null)
-            {
-                return new XmlPolymorphism(type, null, placement, utf8DiscriminatorAttributeName, unknown);
-            }
-
-            var derived = new List<XmlDerivedBinding>(known.Length);
-            foreach (var binding in known)
-            {
-                if (binding.Type != type && type.IsAssignableFrom(binding.Type))
-                {
-                    derived.Add(binding);
-                }
-            }
-
-            return new XmlPolymorphism(type, derived.Count == known.Length ? known : derived.ToArray(), placement, utf8DiscriminatorAttributeName, unknown, known);
-        }
-
-        /// <summary>
-        /// Creates a <typeparamref name="T"/> through its public parameterless constructor, or as a default value type.
-        /// </summary>
-        /// <typeparam name="T">The CLR type.</typeparam>
-        /// <returns>The instance.</returns>
-        /// <remarks>
-        /// An exception the constructor throws is rethrown as it is, not wrapped in a <see cref="TargetInvocationException"/>.
-        /// </remarks>
-        internal static object CreatePublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] T>()
-        {
-            try
-            {
-                return Activator.CreateInstance<T>()!;
-            }
-            catch (TargetInvocationException ex)
-            {
-                throw ex.InnerException!;
-            }
-        }
-
-        /// <summary>
-        /// Creates a typed bound member.
-        /// </summary>
-        /// <typeparam name="TDeclaring">The declaring type.</typeparam>
-        /// <typeparam name="TValue">The member type.</typeparam>
-        /// <param name="member">The member model.</param>
-        /// <param name="options">The serializer options.</param>
-        /// <param name="index">The slot the member uses while an object is read.</param>
-        /// <param name="constructorIndex">The constructor parameter index, or <c>-1</c>.</param>
-        /// <returns>The bound member.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2026")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
-        internal static XmlBoundProperty CreateProperty<TDeclaring, TValue>(XmlMemberModel member, XmlSerializerOptions options, int index, int constructorIndex)
-        {
-            var mixed = member.Member.IsDefined(typeof(XmlMixedAttribute));
-            var typeForInfo = mixed ? typeof(XmlMixedText) : member.ConverterType;
-            var typeInfo = member.Member.GetCustomAttribute<XmlConverterAttribute>() is { } memberConverter
-                ? CreateMemberTypeInfo(memberConverter, typeForInfo, options, member.Member.WrapNullable)
-                : options.GetTypeInfo(typeForInfo);
-            var name = new XmlName(member.LocalName, member.NamespaceUri.Length == 0 ? null : member.NamespaceUri);
-            var info = new XmlPropertyInfo(name, typeInfo, member.IsNillable, member.IsRequired, member.Order, member.IsAttribute, member.IsText);
-            var utf8Name = Encoding.UTF8.GetBytes(member.LocalName);
-            var utf8Ns = member.NamespaceUri.Length == 0 ? [] : Encoding.UTF8.GetBytes(member.NamespaceUri);
-            var getter = (Func<object, TValue>?)member.Member.Getter ?? CreateGetter<TDeclaring, TValue>(member.Member.Member!);
-            // A member that is never read has no setter as far as reading goes. A constructor parameter of the same
-            // name is still filled, as System.Text.Json fills it.
-            var neverRead = member.Ignore is XmlIgnoreCondition.WhenReading && constructorIndex < 0;
-            if (neverRead && member.IsRequired)
-            {
-                throw new InvalidOperationException($"The member '{member.Member.Name}' on type '{member.Member.DeclaringType}' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read.");
-            }
-
-            var setter = member.CanSet && !neverRead
-                ? (Action<object, TValue>?)member.Member.Setter ?? CreateSetter<TDeclaring, TValue>(member.Member.Member!)
-                : null;
-            XmlCollectionBinding? collection = null;
-            Type? collectionElement = null;
-            if (member.IsCollection && member.Member.IsCollection(out var elementType))
-            {
-                collectionElement = elementType;
-                var itemClr = mixed ? typeof(XmlMixedContentItem) : elementType;
-                var itemInfoType = mixed ? typeof(XmlMixedText) : elementType;
-                var utf8ItemName = Encoding.UTF8.GetBytes(member.ItemLocalName);
-                var itemInfo = options.GetTypeInfo(itemInfoType);
-                collection = member.Member.CreateCollectionBinding is { } createBinding
-                    ? createBinding(typeof(TValue), member.IsWrapped, utf8ItemName, itemInfo, mixed)
-                    : XmlCollectionBinding.Create(typeof(TValue), itemClr, member.IsWrapped, utf8ItemName, itemInfo, mixed);
-                if (member.ItemNamespaceUri is { } itemNamespace)
-                {
-                    collection.SetItemNamespace(Encoding.UTF8.GetBytes(itemNamespace));
-                }
-            }
-
-            var derivedSource = mixed ? null : collectionElement ?? member.ConverterType;
-            var polymorphism = derivedSource is null ? XmlPolymorphism.None : BindPolymorphism(derivedSource, options);
-
-            if (member.Choices is { } choices)
-            {
-                // The alternatives the member names stand in place of the derived types its type declares.
-                polymorphism = BindChoices(member, collectionElement ?? member.ConverterType, choices, options);
-            }
-
-            return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
-            {
-                HeldBoxFactory = member.Member.CreateHeldBox,
-                NoNamespace = member.IsUnqualified,
-                ReflectsHeldBox = member.Member.Member is not null,
-            };
-        }
-
-        /// <summary>
-        /// Binds the derived types a type declares, as a value of that type is written and read.
-        /// </summary>
-        /// <param name="type">The declared type of a member, of an item, or of an alternative of a choice.</param>
-        /// <param name="options">The serializer options.</param>
-        /// <returns>The derived types and where their discriminator is written.</returns>
-        internal static XmlPolymorphism BindPolymorphism(Type type, XmlSerializerOptions options)
-        {
-            var placement = XmlDiscriminatorPlacement.ElementName;
-            byte[] utf8DiscAttr = [];
-            var unknown = XmlUnknownDerivedTypeHandling.FailSerialization;
-            var polymorphic = type.GetCustomAttribute<XmlPolymorphicAttribute>();
-            if (polymorphic is not null)
-            {
-                placement = polymorphic.DiscriminatorPlacement;
-                unknown = polymorphic.UnknownDerivedTypeHandling;
-                if (placement is XmlDiscriminatorPlacement.Attribute && polymorphic.TypeDiscriminatorPropertyName is { Length: > 0 } discriminatorName)
-                {
-                    utf8DiscAttr = Encoding.UTF8.GetBytes(discriminatorName);
-                }
-            }
-
-            return CreatePolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown);
+                CreatePolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown, options.PropertyNameCaseInsensitive));
         }
 
         /// <summary>
@@ -489,6 +393,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     name,
                     choice.Namespace is null ? null : Encoding.UTF8.GetBytes(choice.Namespace))
                 {
+                    IsOfDeclaredType = declared.IsAssignableFrom(choice.Type),
                     Namespace = choice.Namespace,
                     Nested = nested.Derived.Length > 0 && nested.Placement is not XmlDiscriminatorPlacement.ElementName ? nested : null,
                 };
@@ -496,98 +401,312 @@ namespace CloudNimble.Text.Xml.Serialization
 
             return new XmlPolymorphism(declared, bindings, XmlDiscriminatorPlacement.ElementName, null, XmlUnknownDerivedTypeHandling.FailSerialization)
             {
+                CaseInsensitive = options.PropertyNameCaseInsensitive,
                 IsNamed = isNamed,
             };
         }
 
         /// <summary>
-        /// Builds a getter for a property of the struct <typeparamref name="TStruct"/>.
+        /// Builds derived-type bindings for <paramref name="type"/>.
         /// </summary>
-        /// <typeparam name="TStruct">The struct type.</typeparam>
-        /// <typeparam name="TValue">The property type.</typeparam>
-        /// <param name="property">The property.</param>
-        /// <returns>The getter. It reads from the boxed struct in place.</returns>
-        internal static Func<object, TValue> CreateStructGetter<TStruct, TValue>(PropertyInfo property)
-            where TStruct : struct
-        {
-            var typed = property.GetMethod!.CreateDelegate<XmlStructGetter<TStruct, TValue>>();
-            return instance => typed(ref Unsafe.Unbox<TStruct>(instance));
-        }
-
-        /// <summary>
-        /// Builds a setter for a property of the struct <typeparamref name="TStruct"/>.
-        /// </summary>
-        /// <typeparam name="TStruct">The struct type.</typeparam>
-        /// <typeparam name="TValue">The property type.</typeparam>
-        /// <param name="property">The property.</param>
-        /// <returns>The setter. It changes the boxed struct in place.</returns>
-        internal static Action<object, TValue> CreateStructSetter<TStruct, TValue>(PropertyInfo property)
-            where TStruct : struct
-        {
-            var typed = property.SetMethod!.CreateDelegate<XmlStructSetter<TStruct, TValue>>();
-            return (instance, value) => typed(ref Unsafe.Unbox<TStruct>(instance), value);
-        }
-
-        /// <summary>
-        /// Discovers serializable members of <typeparamref name="T"/> from most-base to most-derived.
-        /// </summary>
-        /// <typeparam name="T">The CLR type.</typeparam>
+        /// <param name="type">The declared CLR type.</param>
         /// <param name="options">The serializer options.</param>
-        /// <returns>The members in declaration order, then explicit order.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2075")]
-        internal static List<XmlMemberModel> Discover<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(XmlSerializerOptions options)
+        /// <param name="placement">Where the discriminator is written.</param>
+        /// <param name="polymorphic">The <see cref="XmlPolymorphicAttribute"/> of the type, or null when it has none.</param>
+        /// <returns>The derived bindings, or null when none are declared and none are inferred.</returns>
+        /// <remarks>
+        /// The derived types a type declares with <see cref="XmlDerivedTypeAttribute"/> are the whole list. A type
+        /// that declares none has them inferred from its closed hierarchy when the attribute or the options ask.
+        /// </remarks>
+        internal static XmlDerivedBinding[]? BindDerived(Type type, XmlSerializerOptions options, XmlDiscriminatorPlacement placement, XmlPolymorphicAttribute? polymorphic)
         {
-            var types = new Stack<Type>();
-            for (var type = typeof(T); type is not null && type != typeof(object); type = type.BaseType)
+            var derivedList = new List<XmlDerivedBinding>();
+            foreach (var attr in type.GetCustomAttributes<XmlDerivedTypeAttribute>(inherit: true))
             {
-                types.Push(type);
-            }
-
-            var facts = new List<XmlMemberFacts>();
-            while (types.Count > 0)
-            {
-                var type = types.Pop();
-                foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                if (attr.Namespace is not null && placement is not XmlDiscriminatorPlacement.ElementName)
                 {
-                    facts.Add(CreateFacts<T>(property));
+                    throw new NotSupportedException($"[{nameof(XmlDerivedTypeAttribute)}] for '{attr.DerivedType}' on '{type}' sets {nameof(XmlDerivedTypeAttribute.Namespace)}, which is the namespace of the element named for the derived type. The discriminator of '{type}' is not an element name.");
                 }
 
-                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                var disc = attr.TypeDiscriminator as string ?? attr.DerivedType.Name;
+                var elementName = placement is XmlDiscriminatorPlacement.ElementName
+                    ? options.ConvertElementName(disc)
+                    : disc;
+                derivedList.Add(new XmlDerivedBinding(
+                    Encoding.UTF8.GetBytes(elementName),
+                    attr.DerivedType,
+                    options.GetTypeInfo(attr.DerivedType),
+                    disc,
+                    attr.Namespace is { } derivedNamespace ? Encoding.UTF8.GetBytes(derivedNamespace) : null)
                 {
-                    facts.Add(CreateFacts<T>(field));
-                }
+                    IsOfDeclaredType = type.IsAssignableFrom(attr.DerivedType),
+                });
             }
 
-            return CreateModels(facts, options);
+            if (derivedList.Count == 0 && InfersDerivedTypes(type, options))
+            {
+                if (!IsClosedType(type))
+                {
+                    // Only the attribute gets here: the options infer for closed types and for nothing else.
+                    throw new InvalidOperationException($"The type '{type}' enables {nameof(XmlPolymorphicAttribute)}.{nameof(XmlPolymorphicAttribute.InferClosedTypePolymorphism)} but is not a closed type, so no derived types can be inferred. Declare the type 'closed' or register its derived types using {nameof(XmlDerivedTypeAttribute)}.");
+                }
+
+#if NET11_0_OR_GREATER
+                var inferred = new List<Type>();
+                AddClosedDerivedTypes(type, inferred);
+                foreach (var derived in inferred)
+                {
+                    // The name of a generic type carries its arity after a grave accent, which is no part of an XML name.
+                    var name = derived.Name;
+                    var arity = name.IndexOf('`');
+                    var disc = arity < 0 ? name : name[..arity];
+                    var elementName = placement is XmlDiscriminatorPlacement.ElementName
+                        ? options.ConvertElementName(disc)
+                        : disc;
+                    derivedList.Add(new XmlDerivedBinding(Encoding.UTF8.GetBytes(elementName), derived, options.GetTypeInfo(derived), disc) { IsOfDeclaredType = true });
+                }
+#endif
+            }
+
+            return derivedList.Count > 0 ? derivedList.ToArray() : null;
         }
 
         /// <summary>
-        /// Returns the members with the fields of each class before its properties.
+        /// Binds the derived types a type declares, as a value of that type is written and read.
         /// </summary>
-        /// <param name="facts">The members, those of one class after those of another.</param>
-        /// <returns>
-        /// The same members. The classes keep their order, and so do the fields of a class among themselves and
-        /// its properties among themselves.
-        /// </returns>
-        internal static List<XmlMemberFacts> OrderFieldsFirst(List<XmlMemberFacts> facts)
+        /// <param name="type">The declared type of a member, of an item, or of an alternative of a choice.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The derived types and where their discriminator is written.</returns>
+        internal static XmlPolymorphism BindPolymorphism(Type type, XmlSerializerOptions options)
         {
-            var classes = new List<Type>();
-            foreach (var member in facts)
+            var placement = XmlDiscriminatorPlacement.ElementName;
+            byte[] utf8DiscAttr = [];
+            var unknown = XmlUnknownDerivedTypeHandling.FailSerialization;
+            var polymorphic = type.GetCustomAttribute<XmlPolymorphicAttribute>();
+            if (polymorphic is not null)
             {
-                if (!classes.Contains(member.DeclaringType))
+                placement = polymorphic.DiscriminatorPlacement;
+                unknown = polymorphic.UnknownDerivedTypeHandling;
+                if (placement is XmlDiscriminatorPlacement.Attribute && polymorphic.TypeDiscriminatorPropertyName is { Length: > 0 } discriminatorName)
                 {
-                    classes.Add(member.DeclaringType);
+                    utf8DiscAttr = Encoding.UTF8.GetBytes(discriminatorName);
                 }
             }
 
-            var ordered = new List<XmlMemberFacts>(facts.Count);
-            foreach (var declaring in classes)
+            return CreatePolymorphism(type, BindDerived(type, options, placement, polymorphic), placement, utf8DiscAttr, unknown, options.PropertyNameCaseInsensitive);
+        }
+
+#if NET11_0_OR_GREATER
+        /// <summary>
+        /// Closes the definition of a generic derived type over the arguments of its closed base type.
+        /// </summary>
+        /// <param name="definition">The generic type definition the compiler lists as a derived type.</param>
+        /// <param name="arguments">The type arguments of the closed base type.</param>
+        /// <returns>The constructed type, or <see langword="null"/> when the arguments do not meet a constraint of the definition.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static Type? CloseGeneric(Type definition, Type[] arguments)
+        {
+            try
             {
-                ordered.AddRange(facts.FindAll(member => member.DeclaringType == declaring && member.IsField));
-                ordered.AddRange(facts.FindAll(member => member.DeclaringType == declaring && !member.IsField));
+                return definition.MakeGenericType(arguments);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Returns a generic derived type of a closed type, constructed over the type arguments of the closed type.
+        /// </summary>
+        /// <param name="closedType">The closed type, with its type arguments.</param>
+        /// <param name="definition">The definition of the derived type, as the compiler lists it.</param>
+        /// <param name="arguments">The type arguments of <paramref name="closedType"/>.</param>
+        /// <param name="close">Closes a generic type at run time, or <see langword="null"/> in a program that does not reflect.</param>
+        /// <returns>
+        /// The type a generated context named for the pair; otherwise the type <paramref name="close"/> makes; and
+        /// <see langword="null"/> when nothing named it and nothing can close it, or it cannot take the arguments.
+        /// </returns>
+        internal static Type? ConstructClosedDerived(Type closedType, Type definition, Type[] arguments, Func<Type, Type[], Type?>? close)
+        {
+            return s_closedDerived.TryGetValue((closedType, definition), out var named)
+                ? named
+                : close?.Invoke(definition, arguments);
+        }
+
+        /// <summary>
+        /// Records a derived type of a generic closed type, which a generated context names because it cannot be
+        /// closed over its arguments at run time under Native AOT.
+        /// </summary>
+        /// <param name="closedType">The closed type, with its type arguments.</param>
+        /// <param name="derivedType">The derived type, with the same type arguments.</param>
+        internal static void RegisterClosedDerived(Type closedType, Type derivedType)
+        {
+            s_closedDerived[(closedType, derivedType.GetGenericTypeDefinition())] = derivedType;
+        }
+
+        /// <summary>
+        /// Lets a generic derived type that no generated context named be closed at run time.
+        /// </summary>
+        /// <remarks>
+        /// Only the reflection resolver calls this, so the code that closes a generic type at run time is in the
+        /// program only when that resolver is.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static void UseReflection()
+        {
+            s_closeGeneric ??= CloseGeneric;
+        }
+
+        /// <summary>
+        /// Adds the derived types of a closed type that an instance can have.
+        /// </summary>
+        /// <param name="closedType">The closed type.</param>
+        /// <param name="found">The list the types are added to.</param>
+        /// <remarks>
+        /// <para>
+        /// A derived type that is closed itself cannot be created, so its own derived types are added in its place.
+        /// </para>
+        /// <para>
+        /// The compiler lists a generic derived type without its type arguments. It is a derived type of
+        /// <paramref name="closedType"/> when it takes the same arguments, so it is given them. A type that
+        /// takes another number of arguments, cannot take these, or derives from the closed type with other
+        /// arguments is not a derived type of this one, and is left out.
+        /// </para>
+        /// </remarks>
+        internal static void AddClosedDerivedTypes(Type closedType, List<Type> found)
+        {
+            foreach (var listed in closedType.GetCustomAttribute<System.Runtime.CompilerServices.IsClosedTypeAttribute>(inherit: false)!.DerivedTypes)
+            {
+                var derived = listed;
+                if (derived.IsGenericTypeDefinition)
+                {
+                    var arguments = closedType.GetGenericArguments();
+                    if (derived.GetGenericArguments().Length != arguments.Length)
+                    {
+                        continue;
+                    }
+
+                    var constructed = ConstructClosedDerived(closedType, derived, arguments, s_closeGeneric);
+                    if (constructed is null)
+                    {
+                        continue;
+                    }
+
+                    derived = constructed;
+                }
+
+                if (!closedType.IsAssignableFrom(derived))
+                {
+                    continue;
+                }
+
+                if (IsClosedType(derived))
+                {
+                    AddClosedDerivedTypes(derived, found);
+                }
+                else
+                {
+                    found.Add(derived);
+                }
+            }
+        }
+#endif
+
+        /// <summary>
+        /// Fills the facts of a reflected member, with the reflection call that creates its bound member.
+        /// </summary>
+        /// <typeparam name="T">The type that is bound, which may be derived from the type that declares the member.</typeparam>
+        /// <param name="member">A property or a field.</param>
+        /// <returns>The facts.</returns>
+        /// <remarks>
+        /// The bound member is generic over the member's type, which reflection knows only as a <see cref="Type"/>, so
+        /// it is closed at run time. A source-generated context supplies a delegate that was closed when the program
+        /// was compiled, which is what makes it usable under Native AOT.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static XmlMemberFacts CreateFacts<T>(MemberInfo member)
+        {
+            var facts = new XmlMemberFacts(member);
+            if (facts.MemberType == typeof(XmlExtensionData))
+            {
+                // The extension-data member is not bound as a member, so its accessors are made here, where the type is known.
+                facts.Getter = CreateGetter<T, XmlExtensionData>(member);
+                facts.Setter = facts.HasSetter ? CreateSetter<T, XmlExtensionData>(member) : null;
             }
 
-            return ordered;
+            facts.CreateBound = static (model, options, index, constructorIndex) =>
+            {
+                try
+                {
+                    var create = s_createReflectedProperty ??= typeof(XmlObjectBinder).GetMethod(nameof(CreateReflectedProperty), BindingFlags.NonPublic | BindingFlags.Static)!;
+                    return (XmlBoundProperty)create.MakeGenericMethod(typeof(T), model.Type).Invoke(null, [model, options, index, constructorIndex])!;
+                }
+                catch (TargetInvocationException ex) when (ex.InnerException is not null)
+                {
+                    throw ex.InnerException;
+                }
+            };
+            return facts;
+        }
+
+        /// <summary>
+        /// Builds a getter for <paramref name="member"/>.
+        /// </summary>
+        /// <typeparam name="TDeclaring">The declaring type.</typeparam>
+        /// <typeparam name="TValue">The member type.</typeparam>
+        /// <param name="member">The property or field.</param>
+        /// <returns>The getter. The instance is passed boxed so struct setters can mutate the box.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static Func<object, TValue> CreateGetter<TDeclaring, TValue>(MemberInfo member)
+        {
+            if (member is PropertyInfo property)
+            {
+                if (typeof(TDeclaring).IsValueType)
+                {
+                    return (Func<object, TValue>)CreateStructGetterMethod.MakeGenericMethod(typeof(TDeclaring), typeof(TValue)).Invoke(null, [property])!;
+                }
+
+                var typed = property.GetMethod!.CreateDelegate<Func<TDeclaring, TValue>>();
+                return obj => typed((TDeclaring)obj);
+            }
+
+            var field = (FieldInfo)member;
+            return obj => (TValue)field.GetValue(obj)!;
+        }
+
+        /// <summary>
+        /// Creates type info for a member that names its own converter with <see cref="XmlConverterAttribute"/>.
+        /// </summary>
+        /// <param name="attribute">The attribute on the member.</param>
+        /// <param name="type">The member type.</param>
+        /// <param name="wrapNullable">Wraps the converter for a member whose type is a nullable value type, or null to close the wrapper by reflection.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>Type info that reads and writes the member with that converter. It belongs to the member, not to the options.</returns>
+        /// <exception cref="InvalidOperationException">The converter does not convert the member's type.</exception>
+        /// <remarks>
+        /// A converter for <c>T</c> on a member of type <c>T?</c> converts the value, and null is handled around it.
+        /// </remarks>
+        internal static XmlTypeInfo CreateMemberTypeInfo(XmlConverterAttribute attribute, Type type, XmlSerializerOptions options, Func<XmlConverter, XmlConverter>? wrapNullable)
+        {
+            var target = Nullable.GetUnderlyingType(type) ?? type;
+            var converter = attribute.CreateConverter().Resolve(target, options);
+            if (converter.CreateTypeInfo(target, options) is not { } typeInfo)
+            {
+                throw new InvalidOperationException($"The converter '{converter.GetType()}' is not compatible with the type '{type}'.");
+            }
+
+            if (target == type)
+            {
+                return typeInfo;
+            }
+
+            if (wrapNullable is null)
+            {
+                throw new InvalidOperationException($"The metadata of a member of type '{type}' does not say how the converter of '{target}' is wrapped.");
+            }
+
+            return wrapNullable(converter).CreateTypeInfo(type, options)!;
         }
 
         /// <summary>
@@ -658,8 +777,9 @@ namespace CloudNimble.Text.Xml.Serialization
 
             // Then the names, again from the most derived type down. A name that is taken belongs to a member of a
             // more derived type: that is what overriding and hiding a member mean, and it is what an ignored member
-            // of the same C# name left behind. Two element members may share a local name when their namespaces
-            // differ, as <link> and <atom:link> do in a feed. Anything else is two members mapped to one name.
+            // of the same C# name left behind. Two element members, or two attribute members, may share a local
+            // name when their namespaces differ, as <link> and <atom:link> do in a feed and href and xlink:href
+            // do on a link. Anything else is two members mapped to one name.
             var members = new List<XmlMemberModel>();
             var owners = new Dictionary<string, List<XmlMemberModel>>(StringComparer.Ordinal);
             for (var index = facts.Count - 1; index >= 0; index--)
@@ -683,7 +803,7 @@ namespace CloudNimble.Text.Xml.Serialization
                     continue;
                 }
 
-                if (key[0] is not 'e' || sameName.Exists(owner => owner.NamespaceUri == model.NamespaceUri))
+                if (key[0] is 't' || sameName.Exists(owner => owner.NamespaceUri == model.NamespaceUri))
                 {
                     throw new InvalidOperationException($"The type maps more than one member to the {(model.IsAttribute ? "attribute" : "element")} name '{model.LocalName}'.");
                 }
@@ -709,299 +829,193 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Decides, for each member of a type, whether the value it already holds is populated when it is read.
+        /// Creates a <typeparamref name="T"/> through a parameterless constructor that is not public.
         /// </summary>
-        /// <param name="type">The type that is bound.</param>
-        /// <param name="bound">The bound members.</param>
-        /// <param name="members">The member models, in the same order.</param>
-        /// <param name="options">The serializer options.</param>
-        /// <param name="hasConstructorParameters">Whether the type is created through a constructor with parameters.</param>
-        /// <exception cref="NotSupportedException">
-        /// The type is created through a constructor with parameters, and it or one of its members is marked
-        /// <see cref="XmlObjectCreationHandling.Populate"/>.
-        /// </exception>
-        /// <exception cref="InvalidOperationException">
-        /// A member marked <see cref="XmlObjectCreationHandling.Populate"/> cannot be populated, or a member is
-        /// populated and the options handle references.
-        /// </exception>
+        /// <typeparam name="T">The CLR type.</typeparam>
+        /// <returns>The instance.</returns>
         /// <remarks>
-        /// The rules are those of System.Text.Json. The attribute on a member comes first, then the attribute on the
-        /// type, then <see cref="XmlSerializerOptions.PreferredObjectCreationHandling"/>. Only a member marked itself
-        /// is refused when it cannot be populated; the attribute on the type and the option apply where they can.
-        /// A type created through a constructor with parameters populates nothing.
+        /// An exception the constructor throws is rethrown as it is, not wrapped in a <see cref="TargetInvocationException"/>.
         /// </remarks>
-        internal static void ApplyObjectCreationHandling(Type type, XmlBoundProperty[] bound, List<XmlMemberModel> members, XmlSerializerOptions options, bool hasConstructorParameters)
+        internal static object CreateNonPublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>()
         {
-            var onType = type.GetCustomAttribute<XmlObjectCreationHandlingAttribute>(inherit: false)?.Handling;
-            var populates = false;
-            for (var i = 0; i < bound.Length; i++)
+            try
             {
-                var onMember = members[i].Member.GetCustomAttribute<XmlObjectCreationHandlingAttribute>()?.Handling;
-                if (hasConstructorParameters)
+                return Activator.CreateInstance(typeof(T), nonPublic: true)!;
+            }
+            catch (TargetInvocationException ex)
+            {
+                throw ex.InnerException!;
+            }
+        }
+
+        /// <summary>
+        /// Creates the polymorphism of <paramref name="type"/> from the list of derived types it declares or inherits.
+        /// </summary>
+        /// <param name="type">The declared CLR type.</param>
+        /// <param name="known">The whole list, as <see cref="BindDerived"/> returns it, or null.</param>
+        /// <param name="placement">Where the discriminator is written.</param>
+        /// <param name="utf8DiscriminatorAttributeName">The discriminator attribute local name.</param>
+        /// <param name="unknown">How a runtime type that is not declared is handled.</param>
+        /// <param name="caseInsensitive">Whether the element name of a derived type is matched without regard to ASCII case.</param>
+        /// <returns>The polymorphism.</returns>
+        /// <remarks>
+        /// A derived type inherits the list its base declares, which names the derived type itself and the types
+        /// beside it. Only a type that derives from <paramref name="type"/> is one a value may be written as, so a
+        /// value of the declared type is written under the name of its member with no discriminator, as
+        /// <c>System.Xml.Serialization</c> writes it. The whole list is kept for reading: a document that identifies
+        /// the declared type is read as it, and one that identifies a type beside it is refused.
+        /// </remarks>
+        internal static XmlPolymorphism CreatePolymorphism(Type type, XmlDerivedBinding[]? known, XmlDiscriminatorPlacement placement, byte[] utf8DiscriminatorAttributeName, XmlUnknownDerivedTypeHandling unknown, bool caseInsensitive)
+        {
+            if (known is null)
+            {
+                return new XmlPolymorphism(type, null, placement, utf8DiscriminatorAttributeName, unknown) { CaseInsensitive = caseInsensitive };
+            }
+
+            var derived = new List<XmlDerivedBinding>(known.Length);
+            foreach (var binding in known)
+            {
+                if (binding.Type != type && type.IsAssignableFrom(binding.Type))
                 {
-                    if ((onMember ?? onType) is XmlObjectCreationHandling.Populate)
-                    {
-                        throw new NotSupportedException("XmlObjectCreationHandling.Populate is currently not supported in types with parameterized constructors.");
-                    }
-
-                    continue;
+                    derived.Add(binding);
                 }
-
-                if ((onMember ?? onType ?? options.PreferredObjectCreationHandling) is not XmlObjectCreationHandling.Populate)
-                {
-                    continue;
-                }
-
-                if (bound[i].PopulateRefusal() is { } refusal)
-                {
-                    if (onMember is XmlObjectCreationHandling.Populate)
-                    {
-                        throw new InvalidOperationException($"Property '{members[i].Member.Name}' on type '{members[i].Member.DeclaringType}' is marked with XmlObjectCreationHandling.Populate {refusal}");
-                    }
-
-                    continue;
-                }
-
-                bound[i].Populates = true;
-                populates = true;
             }
 
-            if (populates && options.ReferenceHandler is not null)
-            {
-                throw new InvalidOperationException("XmlObjectCreationHandling.Populate is incompatible with reference handling.");
-            }
+            return new XmlPolymorphism(type, derived.Count == known.Length ? known : derived.ToArray(), placement, utf8DiscriminatorAttributeName, unknown, known) { CaseInsensitive = caseInsensitive };
         }
 
         /// <summary>
-        /// Records, on a bound member, the nulls its nullable annotations refuse.
-        /// </summary>
-        /// <param name="property">The bound member.</param>
-        /// <param name="member">The facts of the member, which say what its annotations refuse.</param>
-        /// <param name="type">The type that is bound, which the message for a constructor parameter names.</param>
-        /// <param name="parameter">The constructor parameter the member fills, or null when it is set after construction.</param>
-        /// <remarks>
-        /// As System.Text.Json has it with <c>RespectNullableAnnotations</c>: what is read is checked against what
-        /// the member, or the parameter, accepts, and what is written against what the member returns. The two
-        /// differ under <c>[AllowNull]</c>, <c>[DisallowNull]</c>, <c>[MaybeNull]</c> and <c>[NotNull]</c>. A member
-        /// compiled without annotations, and one whose type is a type parameter, says nothing and accepts null.
-        /// </remarks>
-        internal static void ApplyNullableAnnotations(XmlBoundProperty property, XmlMemberFacts member, Type type, XmlParameterFacts? parameter)
-        {
-            if (member.NeverReturnsNull)
-            {
-                property.NullWriteError = $"The property or field '{member.Name}' on type '{member.DeclaringType}' doesn't allow getting null values. Consider updating its nullability annotation.";
-            }
-
-            if (parameter is not null)
-            {
-                if (parameter.RefusesNull)
-                {
-                    property.NullReadError = $"The constructor parameter '{parameter.Name}' on type '{type}' doesn't allow null values. Consider updating its nullability annotation.";
-                }
-
-                return;
-            }
-
-            if (member.RefusesNull)
-            {
-                property.NullReadError = $"The property or field '{member.Name}' on type '{member.DeclaringType}' doesn't allow setting null values. Consider updating its nullability annotation.";
-            }
-        }
-
-        /// <summary>
-        /// Reads the nullable annotations of reflected members and constructor parameters into their facts.
-        /// </summary>
-        /// <param name="nullability">Reads the annotations.</param>
-        /// <param name="members">The member models.</param>
-        /// <param name="constructor">The constructor, or null.</param>
-        /// <remarks>
-        /// Reading the annotations takes reflection, so the reflection resolver does it only when the options ask
-        /// for them. A source-generated context has them already: the generator read them from the symbols.
-        /// </remarks>
-        internal static void ReadNullableAnnotations(NullabilityInfoContext nullability, List<XmlMemberModel> members, XmlConstructorFacts? constructor)
-        {
-            foreach (var model in members)
-            {
-                var facts = model.Member;
-                var info = facts.Member is PropertyInfo propertyInfo ? nullability.Create(propertyInfo) : nullability.Create((FieldInfo)facts.Member!);
-                facts.NeverReturnsNull = info.ReadState is NullabilityState.NotNull;
-                facts.RefusesNull = info.WriteState is NullabilityState.NotNull;
-            }
-
-            if (constructor is null)
-            {
-                return;
-            }
-
-            foreach (var parameter in constructor.Parameters)
-            {
-                parameter.RefusesNull = nullability.Create(parameter.Parameter!).WriteState is NullabilityState.NotNull;
-            }
-        }
-
-
-        /// <summary>
-        /// Creates type info for a member that names its own converter with <see cref="XmlConverterAttribute"/>.
-        /// </summary>
-        /// <param name="attribute">The attribute on the member.</param>
-        /// <param name="type">The member type.</param>
-        /// <param name="wrapNullable">Wraps the converter for a member whose type is a nullable value type, or null to close the wrapper by reflection.</param>
-        /// <param name="options">The serializer options.</param>
-        /// <returns>Type info that reads and writes the member with that converter. It belongs to the member, not to the options.</returns>
-        /// <exception cref="InvalidOperationException">The converter does not convert the member's type.</exception>
-        /// <remarks>
-        /// A converter for <c>T</c> on a member of type <c>T?</c> converts the value, and null is handled around it.
-        /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2055")]
-        [UnconditionalSuppressMessage("Trimming", "IL2072")]
-        [UnconditionalSuppressMessage("Trimming", "IL2071", Justification = "A value type always has its parameterless constructor.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
-        internal static XmlTypeInfo CreateMemberTypeInfo(XmlConverterAttribute attribute, Type type, XmlSerializerOptions options, Func<XmlConverter, XmlConverter>? wrapNullable)
-        {
-            var target = Nullable.GetUnderlyingType(type) ?? type;
-            var converter = attribute.CreateConverter().Resolve(target, options);
-            if (converter.CreateTypeInfo(target, options) is not { } typeInfo)
-            {
-                throw new InvalidOperationException($"The converter '{converter.GetType()}' is not compatible with the type '{type}'.");
-            }
-
-            if (target == type)
-            {
-                return typeInfo;
-            }
-
-            var nullable = wrapNullable is not null
-                ? wrapNullable(converter)
-                : (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(target), converter)!;
-            return nullable.CreateTypeInfo(type, options)!;
-        }
-
-        /// <summary>
-        /// Returns whether a member of <paramref name="type"/> can be an attribute or the text of its element.
-        /// </summary>
-        /// <param name="type">The member type.</param>
-        /// <param name="options">The serializer options.</param>
-        /// <returns>
-        /// <see langword="true"/> for a built-in scalar, and for a type the caller supplied a converter for. That
-        /// converter decides whether it can write one value: its <see cref="XmlConverter{T}.WriteAsAttribute"/> and
-        /// <see cref="XmlConverter{T}.ReadLexical"/> say so when they are called.
-        /// </returns>
-        internal static bool IsSingleValue(Type type, XmlSerializerOptions options)
-        {
-            return XmlBuiltInConverters.IsScalar(type) || options.HasCustomConverter(Nullable.GetUnderlyingType(type) ?? type);
-        }
-
-        /// <summary>
-        /// Returns whether <paramref name="type"/> is mapped as an object with properties.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <param name="options">The serializer options, or null when the question is asked without them.</param>
-        /// <returns>
-        /// <see langword="true"/> for a concrete class or struct that is not a built-in primitive, and for an
-        /// abstract class or an interface that declares derived types with <see cref="XmlDerivedTypeAttribute"/>
-        /// or has them inferred from its closed hierarchy.
-        /// </returns>
-        /// <remarks>
-        /// An abstract type with no declared derived types stays unsupported: nothing could be created for it
-        /// when reading, and writing a value as its declared type would silently drop the members of the
-        /// value's own type.
-        /// </remarks>
-        internal static bool IsObjectType(Type type, XmlSerializerOptions? options = null)
-        {
-            if (type.IsPrimitive || type.IsEnum || type.IsArray || type.IsPointer
-                || type == typeof(object) || type == typeof(string) || typeof(Delegate).IsAssignableFrom(type)
-                || Nullable.GetUnderlyingType(type) is not null)
-            {
-                return false;
-            }
-
-            if (type.IsInterface || type.IsAbstract)
-            {
-                return type.IsDefined(typeof(XmlDerivedTypeAttribute), inherit: true) || InfersDerivedTypes(type, options);
-            }
-
-            return type.IsClass || type.IsValueType;
-        }
-
-        /// <summary>
-        /// Returns whether <paramref name="type"/> is a closed type: a class declared with the
-        /// <see langword="closed"/> modifier, whose derived types the compiler lists.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <returns><see langword="true"/> for a closed type. Always <see langword="false"/> before .NET 11, which has no closed types.</returns>
-        internal static bool IsClosedType(Type type)
-        {
-#if NET11_0_OR_GREATER
-            return type.IsDefined(typeof(System.Runtime.CompilerServices.IsClosedTypeAttribute), inherit: false);
-#else
-            return false;
-#endif
-        }
-
-        /// <summary>
-        /// Returns whether the derived types of <paramref name="type"/> are to be inferred from its closed hierarchy.
-        /// </summary>
-        /// <param name="type">The CLR type.</param>
-        /// <param name="options">The serializer options, or null when the question is asked without them.</param>
-        /// <returns>
-        /// What <see cref="XmlPolymorphicAttribute.InferClosedTypePolymorphism"/> says when it is set on the type.
-        /// Otherwise <see langword="true"/> for a closed type when the options ask for it, or when there are no
-        /// options to ask.
-        /// </returns>
-        internal static bool InfersDerivedTypes(Type type, XmlSerializerOptions? options)
-        {
-            if (type.GetCustomAttribute<XmlPolymorphicAttribute>(inherit: false)?.InferClosedTypePolymorphismOrNull is { } asked)
-            {
-                return asked;
-            }
-
-            return (options is null || options.InferClosedTypePolymorphism) && IsClosedType(type);
-        }
-
-        /// <summary>
-        /// Returns whether <paramref name="member"/> would be serialized and is marked never to be.
-        /// </summary>
-        /// <param name="member">The facts of a property or a field.</param>
-        /// <returns>
-        /// <see langword="true"/> for a member that is public or included, can be read, and has
-        /// <see cref="XmlIgnoreAttribute"/> with <see cref="XmlIgnoreCondition.Always"/>.
-        /// </returns>
-        /// <remarks>
-        /// Such a member still hides the member of a base type that it overrides, which a member that was never a
-        /// candidate does not.
-        /// </remarks>
-        internal static bool IsIgnored(XmlMemberFacts member)
-        {
-            return !member.IsIndexer
-                && (member.IsPublic || member.IsDefined(typeof(XmlIncludeAttribute)))
-                && member.HasGetter
-                && member.GetCustomAttribute<XmlIgnoreAttribute>() is { Condition: XmlIgnoreCondition.Always };
-        }
-
-        /// <summary>
-        /// Builds a getter for <paramref name="member"/>.
+        /// Creates a typed bound member.
         /// </summary>
         /// <typeparam name="TDeclaring">The declaring type.</typeparam>
         /// <typeparam name="TValue">The member type.</typeparam>
-        /// <param name="member">The property or field.</param>
-        /// <returns>The getter. The instance is passed boxed so struct setters can mutate the box.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2060")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
-        internal static Func<object, TValue> CreateGetter<TDeclaring, TValue>(MemberInfo member)
+        /// <param name="member">The member model.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <param name="index">The slot the member uses while an object is read.</param>
+        /// <param name="constructorIndex">The constructor parameter index, or <c>-1</c>.</param>
+        /// <returns>The bound member.</returns>
+        internal static XmlBoundProperty CreateProperty<TDeclaring, TValue>(XmlMemberModel member, XmlSerializerOptions options, int index, int constructorIndex)
         {
-            if (member is PropertyInfo property)
+            var mixed = member.Member.IsDefined(typeof(XmlMixedAttribute));
+            var typeForInfo = mixed ? typeof(XmlMixedText) : member.ConverterType;
+            var typeInfo = member.Member.GetCustomAttribute<XmlConverterAttribute>() is { } memberConverter
+                ? CreateMemberTypeInfo(memberConverter, typeForInfo, options, member.Member.WrapNullable)
+                : options.GetTypeInfo(typeForInfo);
+            var name = new XmlName(member.LocalName, member.NamespaceUri.Length == 0 ? null : member.NamespaceUri);
+            var info = new XmlPropertyInfo(name, typeInfo, member.IsNillable, member.IsRequired, member.Order, member.IsAttribute, member.IsText);
+            var utf8Name = Encoding.UTF8.GetBytes(member.LocalName);
+            var utf8Ns = member.NamespaceUri.Length == 0 ? [] : Encoding.UTF8.GetBytes(member.NamespaceUri);
+            var getter = (Func<object, TValue>?)member.Member.Getter
+                ?? throw new InvalidOperationException($"The metadata of member '{member.Member.Name}' on type '{member.Member.DeclaringType}' has no getter.");
+            // A member that is never read has no setter as far as reading goes. A constructor parameter of the same
+            // name is still filled, as System.Text.Json fills it.
+            var neverRead = member.Ignore is XmlIgnoreCondition.WhenReading && constructorIndex < 0;
+            if (neverRead && member.IsRequired)
             {
-                if (typeof(TDeclaring).IsValueType)
-                {
-                    return (Func<object, TValue>)CreateStructGetterMethod.MakeGenericMethod(typeof(TDeclaring), typeof(TValue)).Invoke(null, [property])!;
-                }
-
-                var typed = property.GetMethod!.CreateDelegate<Func<TDeclaring, TValue>>();
-                return obj => typed((TDeclaring)obj);
+                throw new InvalidOperationException($"The member '{member.Member.Name}' on type '{member.Member.DeclaringType}' is required, and its ignore condition is XmlIgnoreCondition.WhenReading, so it would never be read.");
             }
 
-            var field = (FieldInfo)member;
-            return obj => (TValue)field.GetValue(obj)!;
+            var setter = member.CanSet && !neverRead
+                ? (Action<object, TValue>?)member.Member.Setter
+                    ?? throw new InvalidOperationException($"The metadata of member '{member.Member.Name}' on type '{member.Member.DeclaringType}' has no setter.")
+                : null;
+            XmlCollectionBinding? collection = null;
+            Type? collectionElement = null;
+            if (member.IsCollection && member.Member.IsCollection(out var elementType))
+            {
+                collectionElement = elementType;
+                var itemInfoType = mixed ? typeof(XmlMixedText) : elementType;
+                var utf8ItemName = Encoding.UTF8.GetBytes(member.ItemLocalName);
+                var itemInfo = options.GetTypeInfo(itemInfoType);
+                var createBinding = member.Member.CreateCollectionBinding
+                    ?? throw new InvalidOperationException($"The metadata of member '{member.Member.Name}' on type '{member.Member.DeclaringType}' does not say how its collection is made.");
+                collection = createBinding(member.IsWrapped, utf8ItemName, itemInfo, mixed);
+                if (member.ItemNamespaceUri is { } itemNamespace)
+                {
+                    collection.SetItemNamespace(Encoding.UTF8.GetBytes(itemNamespace));
+                }
+            }
+
+            var derivedSource = mixed ? null : collectionElement ?? member.ConverterType;
+            var polymorphism = derivedSource is null ? XmlPolymorphism.None : BindPolymorphism(derivedSource, options);
+
+            if (member.Choices is { } choices)
+            {
+                // The alternatives the member names stand in place of the derived types its type declares.
+                polymorphism = BindChoices(member, collectionElement ?? member.ConverterType, choices, options);
+            }
+
+            return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
+            {
+                HeldBoxFactory = member.Member.CreateHeldBox,
+                NoNamespace = member.IsUnqualified,
+            };
+        }
+
+        /// <summary>
+        /// Creates a <typeparamref name="T"/> through its public parameterless constructor, or as a default value type.
+        /// </summary>
+        /// <typeparam name="T">The CLR type.</typeparam>
+        /// <returns>The instance.</returns>
+        /// <remarks>
+        /// An exception the constructor throws is rethrown as it is, not wrapped in a <see cref="TargetInvocationException"/>.
+        /// </remarks>
+        internal static object CreatePublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] T>()
+        {
+            try
+            {
+                return Activator.CreateInstance<T>()!;
+            }
+            catch (TargetInvocationException ex)
+            {
+                throw ex.InnerException!;
+            }
+        }
+
+        /// <summary>
+        /// Creates a typed bound member for the reflection resolver.
+        /// </summary>
+        /// <typeparam name="TDeclaring">The declaring type.</typeparam>
+        /// <typeparam name="TValue">The member type.</typeparam>
+        /// <param name="member">The member model, whose facts were read from a <see cref="MemberInfo"/>.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <param name="index">The slot the member uses while an object is read.</param>
+        /// <param name="constructorIndex">The constructor parameter index, or <c>-1</c>.</param>
+        /// <returns>The bound member.</returns>
+        /// <remarks>
+        /// Everything that has to be found by reflection or closed over a type at run time is made here and put
+        /// in the member's facts: the accessors, the wrapper of a nullable value, the box of a value type, and
+        /// the mapping of a collection. <see cref="CreateProperty"/> then binds the member from its facts alone,
+        /// as it binds one whose facts a generated context wrote, so it holds no reflection of its own.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static XmlBoundProperty CreateReflectedProperty<TDeclaring, TValue>(XmlMemberModel member, XmlSerializerOptions options, int index, int constructorIndex)
+        {
+            var facts = member.Member;
+            var info = facts.Member!;
+            var type = typeof(TValue);
+            facts.Getter ??= CreateGetter<TDeclaring, TValue>(info);
+            if (member.CanSet)
+            {
+                facts.Setter ??= CreateSetter<TDeclaring, TValue>(info);
+            }
+
+            if (Nullable.GetUnderlyingType(type) is { } underlying)
+            {
+                facts.WrapNullable ??= converter => (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(underlying), converter)!;
+            }
+            else if (type.IsValueType)
+            {
+                facts.CreateHeldBox ??= () => Activator.CreateInstance(typeof(XmlStructHeldBox<>).MakeGenericType(type))!;
+            }
+
+            if (facts.IsCollection(out var elementType))
+            {
+                facts.CreateCollectionBinding ??= (wrapped, utf8ItemName, itemTypeInfo, mixed) =>
+                    XmlCollectionBinding.Create(type, mixed ? typeof(XmlMixedContentItem) : elementType, wrapped, utf8ItemName, itemTypeInfo, mixed);
+            }
+
+            return CreateProperty<TDeclaring, TValue>(member, options, index, constructorIndex);
         }
 
         /// <summary>
@@ -1011,8 +1025,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <typeparam name="TValue">The member type.</typeparam>
         /// <param name="member">The property or field.</param>
         /// <returns>The setter. The instance is passed boxed so struct setters can mutate the box.</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2060")]
-        [UnconditionalSuppressMessage("AOT", "IL3050")]
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         internal static Action<object, TValue>? CreateSetter<TDeclaring, TValue>(MemberInfo member)
         {
             if (member is PropertyInfo property)
@@ -1028,6 +1041,67 @@ namespace CloudNimble.Text.Xml.Serialization
 
             var field = (FieldInfo)member;
             return (obj, value) => field.SetValue(obj, value);
+        }
+
+        /// <summary>
+        /// Builds a getter for a property of the struct <typeparamref name="TStruct"/>.
+        /// </summary>
+        /// <typeparam name="TStruct">The struct type.</typeparam>
+        /// <typeparam name="TValue">The property type.</typeparam>
+        /// <param name="property">The property.</param>
+        /// <returns>The getter. It reads from the boxed struct in place.</returns>
+        internal static Func<object, TValue> CreateStructGetter<TStruct, TValue>(PropertyInfo property)
+            where TStruct : struct
+        {
+            var typed = property.GetMethod!.CreateDelegate<XmlStructGetter<TStruct, TValue>>();
+            return instance => typed(ref Unsafe.Unbox<TStruct>(instance));
+        }
+
+        /// <summary>
+        /// Builds a setter for a property of the struct <typeparamref name="TStruct"/>.
+        /// </summary>
+        /// <typeparam name="TStruct">The struct type.</typeparam>
+        /// <typeparam name="TValue">The property type.</typeparam>
+        /// <param name="property">The property.</param>
+        /// <returns>The setter. It changes the boxed struct in place.</returns>
+        internal static Action<object, TValue> CreateStructSetter<TStruct, TValue>(PropertyInfo property)
+            where TStruct : struct
+        {
+            var typed = property.SetMethod!.CreateDelegate<XmlStructSetter<TStruct, TValue>>();
+            return (instance, value) => typed(ref Unsafe.Unbox<TStruct>(instance), value);
+        }
+
+        /// <summary>
+        /// Discovers serializable members of <typeparamref name="T"/> from most-base to most-derived.
+        /// </summary>
+        /// <typeparam name="T">The CLR type.</typeparam>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>The members in declaration order, then explicit order.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static List<XmlMemberModel> Discover<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] T>(XmlSerializerOptions options)
+        {
+            var types = new Stack<Type>();
+            for (var type = typeof(T); type is not null && type != typeof(object); type = type.BaseType)
+            {
+                types.Push(type);
+            }
+
+            var facts = new List<XmlMemberFacts>();
+            while (types.Count > 0)
+            {
+                var type = types.Pop();
+                foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    facts.Add(CreateFacts<T>(property));
+                }
+
+                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    facts.Add(CreateFacts<T>(field));
+                }
+            }
+
+            return CreateModels(facts, options);
         }
 
         /// <summary>
@@ -1064,6 +1138,61 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Returns whether the derived types of <paramref name="type"/> are to be inferred from its closed hierarchy.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <param name="options">The serializer options, or null when the question is asked without them.</param>
+        /// <returns>
+        /// What <see cref="XmlPolymorphicAttribute.InferClosedTypePolymorphism"/> says when it is set on the type.
+        /// Otherwise <see langword="true"/> for a closed type when the options ask for it, or when there are no
+        /// options to ask.
+        /// </returns>
+        internal static bool InfersDerivedTypes(Type type, XmlSerializerOptions? options)
+        {
+            if (type.GetCustomAttribute<XmlPolymorphicAttribute>(inherit: false)?.InferClosedTypePolymorphismOrNull is { } asked)
+            {
+                return asked;
+            }
+
+            return (options is null || options.InferClosedTypePolymorphism) && IsClosedType(type);
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is a closed type: a class declared with the
+        /// <see langword="closed"/> modifier, whose derived types the compiler lists.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <returns><see langword="true"/> for a closed type. Always <see langword="false"/> before .NET 11, which has no closed types.</returns>
+        internal static bool IsClosedType(Type type)
+        {
+#if NET11_0_OR_GREATER
+            return type.IsDefined(typeof(System.Runtime.CompilerServices.IsClosedTypeAttribute), inherit: false);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="member"/> would be serialized and is marked never to be.
+        /// </summary>
+        /// <param name="member">The facts of a property or a field.</param>
+        /// <returns>
+        /// <see langword="true"/> for a member that is public or included, can be read, and has
+        /// <see cref="XmlIgnoreAttribute"/> with <see cref="XmlIgnoreCondition.Always"/>.
+        /// </returns>
+        /// <remarks>
+        /// Such a member still hides the member of a base type that it overrides, which a member that was never a
+        /// candidate does not.
+        /// </remarks>
+        internal static bool IsIgnored(XmlMemberFacts member)
+        {
+            return !member.IsIndexer
+                && (member.IsPublic || member.IsDefined(typeof(XmlIncludeAttribute)))
+                && member.HasGetter
+                && member.GetCustomAttribute<XmlIgnoreAttribute>() is { Condition: XmlIgnoreCondition.Always };
+        }
+
+        /// <summary>
         /// Returns whether a constructor parameter belongs to a member that is always ignored.
         /// </summary>
         /// <param name="type">The type that declares the constructor.</param>
@@ -1073,7 +1202,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Such a parameter is never in the document, so the constructor is called with the default of its type.
         /// A positional record parameter marked <c>[property: XmlIgnore]</c> is the usual case.
         /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2070")]
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         internal static bool IsIgnoredMember(Type type, string parameterName)
         {
             foreach (var member in type.GetMember(parameterName, MemberTypes.Property | MemberTypes.Field, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase))
@@ -1085,6 +1214,53 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns whether <paramref name="type"/> is mapped as an object with properties.
+        /// </summary>
+        /// <param name="type">The CLR type.</param>
+        /// <param name="options">The serializer options, or null when the question is asked without them.</param>
+        /// <returns>
+        /// <see langword="true"/> for a concrete class or struct that is not a built-in primitive, and for an
+        /// abstract class or an interface that declares derived types with <see cref="XmlDerivedTypeAttribute"/>
+        /// or has them inferred from its closed hierarchy.
+        /// </returns>
+        /// <remarks>
+        /// An abstract type with no declared derived types stays unsupported: nothing could be created for it
+        /// when reading, and writing a value as its declared type would silently drop the members of the
+        /// value's own type.
+        /// </remarks>
+        internal static bool IsObjectType(Type type, XmlSerializerOptions? options = null)
+        {
+            if (type.IsPrimitive || type.IsEnum || type.IsArray || type.IsPointer
+                || type == typeof(object) || type == typeof(string) || typeof(Delegate).IsAssignableFrom(type)
+                || Nullable.GetUnderlyingType(type) is not null)
+            {
+                return false;
+            }
+
+            if (type.IsInterface || type.IsAbstract)
+            {
+                return type.IsDefined(typeof(XmlDerivedTypeAttribute), inherit: true) || InfersDerivedTypes(type, options);
+            }
+
+            return type.IsClass || type.IsValueType;
+        }
+
+        /// <summary>
+        /// Returns whether a member of <paramref name="type"/> can be an attribute or the text of its element.
+        /// </summary>
+        /// <param name="type">The member type.</param>
+        /// <param name="options">The serializer options.</param>
+        /// <returns>
+        /// <see langword="true"/> for a built-in scalar, and for a type the caller supplied a converter for. That
+        /// converter decides whether it can write one value: its <see cref="XmlConverter{T}.WriteAsAttribute"/> and
+        /// <see cref="XmlConverter{T}.ReadLexical"/> say so when they are called.
+        /// </returns>
+        internal static bool IsSingleValue(Type type, XmlSerializerOptions options)
+        {
+            return XmlBuiltInConverters.IsScalar(type) || options.HasCustomConverter(Nullable.GetUnderlyingType(type) ?? type);
         }
 
         /// <summary>
@@ -1122,6 +1298,109 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Returns the members with the fields of each class before its properties.
+        /// </summary>
+        /// <param name="facts">The members, those of one class after those of another.</param>
+        /// <returns>
+        /// The same members. The classes keep their order, and so do the fields of a class among themselves and
+        /// its properties among themselves.
+        /// </returns>
+        internal static List<XmlMemberFacts> OrderFieldsFirst(List<XmlMemberFacts> facts)
+        {
+            var classes = new List<Type>();
+            foreach (var member in facts)
+            {
+                if (!classes.Contains(member.DeclaringType))
+                {
+                    classes.Add(member.DeclaringType);
+                }
+            }
+
+            var ordered = new List<XmlMemberFacts>(facts.Count);
+            foreach (var declaring in classes)
+            {
+                ordered.AddRange(facts.FindAll(member => member.DeclaringType == declaring && member.IsField));
+                ordered.AddRange(facts.FindAll(member => member.DeclaringType == declaring && !member.IsField));
+            }
+
+            return ordered;
+        }
+
+        /// <summary>
+        /// Removes the extension-data member from <paramref name="members"/> and returns it.
+        /// </summary>
+        /// <param name="type">The declaring type.</param>
+        /// <param name="members">The discovered members.</param>
+        /// <returns>The extension-data member, or null.</returns>
+        internal static XmlMemberModel? PeelExtensionData(Type type, List<XmlMemberModel> members)
+        {
+            XmlMemberModel? extension = null;
+            for (var i = members.Count - 1; i >= 0; i--)
+            {
+                if (!members[i].Member.IsDefined(typeof(XmlExtensionDataAttribute)))
+                {
+                    continue;
+                }
+
+                if (extension is not null)
+                {
+                    throw new NotSupportedException($"The type '{type}' has more than one [{nameof(XmlExtensionDataAttribute)}].");
+                }
+
+                extension = members[i];
+                members.RemoveAt(i);
+            }
+
+            return extension;
+        }
+
+        /// <summary>
+        /// Ranks a member for write order: attributes, then simple content, then child elements.
+        /// </summary>
+        /// <param name="member">The member.</param>
+        /// <returns>The rank.</returns>
+        internal static int Rank(XmlMemberModel member)
+        {
+            if (member.IsAttribute)
+            {
+                return 0;
+            }
+
+            return member.IsText || member.IsCData ? 1 : 2;
+        }
+
+        /// <summary>
+        /// Reads the nullable annotations of reflected members and constructor parameters into their facts.
+        /// </summary>
+        /// <param name="nullability">Reads the annotations.</param>
+        /// <param name="members">The member models.</param>
+        /// <param name="constructor">The constructor, or null.</param>
+        /// <remarks>
+        /// Reading the annotations takes reflection, so the reflection resolver does it only when the options ask
+        /// for them. A source-generated context has them already: the generator read them from the symbols.
+        /// </remarks>
+        internal static void ReadNullableAnnotations(NullabilityInfoContext nullability, List<XmlMemberModel> members, XmlConstructorFacts? constructor)
+        {
+            foreach (var model in members)
+            {
+                var facts = model.Member;
+                var info = facts.Member is PropertyInfo propertyInfo ? nullability.Create(propertyInfo) : nullability.Create((FieldInfo)facts.Member!);
+                facts.NeverReturnsNull = info.ReadState is NullabilityState.NotNull;
+                facts.RefusesNull = info.WriteState is NullabilityState.NotNull;
+            }
+
+            if (constructor is null)
+            {
+                return;
+            }
+
+            foreach (var parameter in constructor.Parameters)
+            {
+                parameter.RefusesNull = nullability.Create(parameter.Parameter!).WriteState is NullabilityState.NotNull;
+            }
+        }
+
+        /// <summary>
         /// Chooses the constructor used to create <paramref name="type"/>.
         /// </summary>
         /// <param name="type">The CLR type.</param>
@@ -1135,7 +1414,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// is used. Otherwise the public parameterless constructor is used, and a value type is created as its
         /// default. Otherwise the one public constructor with parameters is used.
         /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2070")]
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
         internal static ConstructorInfo? SelectConstructor(Type type)
         {
             var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -1442,21 +1721,6 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Ranks a member for write order: attributes, then simple content, then child elements.
-        /// </summary>
-        /// <param name="member">The member.</param>
-        /// <returns>The rank.</returns>
-        internal static int Rank(XmlMemberModel member)
-        {
-            if (member.IsAttribute)
-            {
-                return 0;
-            }
-
-            return member.IsText || member.IsCData ? 1 : 2;
-        }
-
-        /// <summary>
         /// Throws when an element name could belong to two members: a member's own name, or the name one of its
         /// derived types is written under, is also used by another member. The derived types of a collection in a
         /// wrapper are not counted, because they are written inside the wrapper.
@@ -1562,156 +1826,6 @@ namespace CloudNimble.Text.Xml.Serialization
             {
                 throw new NotSupportedException($"The type '{type}' maps simple content and child elements. Use [{nameof(XmlMixedAttribute)}] for mixed content.");
             }
-        }
-
-        /// <summary>
-        /// Builds derived-type bindings for <paramref name="type"/>.
-        /// </summary>
-        /// <param name="type">The declared CLR type.</param>
-        /// <param name="options">The serializer options.</param>
-        /// <param name="placement">Where the discriminator is written.</param>
-        /// <param name="polymorphic">The <see cref="XmlPolymorphicAttribute"/> of the type, or null when it has none.</param>
-        /// <returns>The derived bindings, or null when none are declared and none are inferred.</returns>
-        /// <remarks>
-        /// The derived types a type declares with <see cref="XmlDerivedTypeAttribute"/> are the whole list. A type
-        /// that declares none has them inferred from its closed hierarchy when the attribute or the options ask.
-        /// </remarks>
-        internal static XmlDerivedBinding[]? BindDerived(Type type, XmlSerializerOptions options, XmlDiscriminatorPlacement placement, XmlPolymorphicAttribute? polymorphic)
-        {
-            var derivedList = new List<XmlDerivedBinding>();
-            foreach (var attr in type.GetCustomAttributes<XmlDerivedTypeAttribute>(inherit: true))
-            {
-                if (attr.Namespace is not null && placement is not XmlDiscriminatorPlacement.ElementName)
-                {
-                    throw new NotSupportedException($"[{nameof(XmlDerivedTypeAttribute)}] for '{attr.DerivedType}' on '{type}' sets {nameof(XmlDerivedTypeAttribute.Namespace)}, which is the namespace of the element named for the derived type. The discriminator of '{type}' is not an element name.");
-                }
-
-                var disc = attr.TypeDiscriminator as string ?? attr.DerivedType.Name;
-                var elementName = placement is XmlDiscriminatorPlacement.ElementName
-                    ? options.ConvertElementName(disc)
-                    : disc;
-                derivedList.Add(new XmlDerivedBinding(
-                    Encoding.UTF8.GetBytes(elementName),
-                    attr.DerivedType,
-                    options.GetTypeInfo(attr.DerivedType),
-                    disc,
-                    attr.Namespace is { } derivedNamespace ? Encoding.UTF8.GetBytes(derivedNamespace) : null));
-            }
-
-            if (derivedList.Count == 0 && InfersDerivedTypes(type, options))
-            {
-                if (!IsClosedType(type))
-                {
-                    // Only the attribute gets here: the options infer for closed types and for nothing else.
-                    throw new InvalidOperationException($"The type '{type}' enables {nameof(XmlPolymorphicAttribute)}.{nameof(XmlPolymorphicAttribute.InferClosedTypePolymorphism)} but is not a closed type, so no derived types can be inferred. Declare the type 'closed' or register its derived types using {nameof(XmlDerivedTypeAttribute)}.");
-                }
-
-#if NET11_0_OR_GREATER
-                var inferred = new List<Type>();
-                AddClosedDerivedTypes(type, inferred);
-                foreach (var derived in inferred)
-                {
-                    // The name of a generic type carries its arity after a grave accent, which is no part of an XML name.
-                    var name = derived.Name;
-                    var arity = name.IndexOf('`');
-                    var disc = arity < 0 ? name : name[..arity];
-                    var elementName = placement is XmlDiscriminatorPlacement.ElementName
-                        ? options.ConvertElementName(disc)
-                        : disc;
-                    derivedList.Add(new XmlDerivedBinding(Encoding.UTF8.GetBytes(elementName), derived, options.GetTypeInfo(derived), disc));
-                }
-#endif
-            }
-
-            return derivedList.Count > 0 ? derivedList.ToArray() : null;
-        }
-
-#if NET11_0_OR_GREATER
-        /// <summary>
-        /// Adds the derived types of a closed type that an instance can have.
-        /// </summary>
-        /// <param name="closedType">The closed type.</param>
-        /// <param name="found">The list the types are added to.</param>
-        /// <remarks>
-        /// <para>
-        /// A derived type that is closed itself cannot be created, so its own derived types are added in its place.
-        /// </para>
-        /// <para>
-        /// The compiler lists a generic derived type without its type arguments. It is a derived type of
-        /// <paramref name="closedType"/> when it takes the same arguments, so it is given them. A type that
-        /// takes another number of arguments, cannot take these, or derives from the closed type with other
-        /// arguments is not a derived type of this one, and is left out.
-        /// </para>
-        /// </remarks>
-        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "The derived type is one the compiler listed for the closed type, with the arguments of the closed type.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The derived type is one the compiler listed for the closed type, with the arguments of the closed type. A generated context lists it.")]
-        internal static void AddClosedDerivedTypes(Type closedType, List<Type> found)
-        {
-            foreach (var listed in closedType.GetCustomAttribute<System.Runtime.CompilerServices.IsClosedTypeAttribute>(inherit: false)!.DerivedTypes)
-            {
-                var derived = listed;
-                if (derived.IsGenericTypeDefinition)
-                {
-                    var arguments = closedType.GetGenericArguments();
-                    if (derived.GetGenericArguments().Length != arguments.Length)
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        derived = derived.MakeGenericType(arguments);
-                    }
-                    catch (ArgumentException)
-                    {
-                        // The arguments do not meet a constraint of the derived type.
-                        continue;
-                    }
-                }
-
-                if (!closedType.IsAssignableFrom(derived))
-                {
-                    continue;
-                }
-
-                if (IsClosedType(derived))
-                {
-                    AddClosedDerivedTypes(derived, found);
-                }
-                else
-                {
-                    found.Add(derived);
-                }
-            }
-        }
-#endif
-
-        /// <summary>
-        /// Removes the extension-data member from <paramref name="members"/> and returns it.
-        /// </summary>
-        /// <param name="type">The declaring type.</param>
-        /// <param name="members">The discovered members.</param>
-        /// <returns>The extension-data member, or null.</returns>
-        internal static XmlMemberModel? PeelExtensionData(Type type, List<XmlMemberModel> members)
-        {
-            XmlMemberModel? extension = null;
-            for (var i = members.Count - 1; i >= 0; i--)
-            {
-                if (!members[i].Member.IsDefined(typeof(XmlExtensionDataAttribute)))
-                {
-                    continue;
-                }
-
-                if (extension is not null)
-                {
-                    throw new NotSupportedException($"The type '{type}' has more than one [{nameof(XmlExtensionDataAttribute)}].");
-                }
-
-                extension = members[i];
-                members.RemoveAt(i);
-            }
-
-            return extension;
         }
 
         #endregion

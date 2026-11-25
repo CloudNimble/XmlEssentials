@@ -39,7 +39,7 @@ var dataOnly = new XmlReaderOptions
 ```
 
 ```csharp
-var reader = new Utf8XmlReader(utf8Xml, options);
+var reader = new Utf8XmlReader(utf8Xml, dataOnly);
 ```
 
 The properties fall into three groups:
@@ -147,7 +147,9 @@ Know the following about the defaults and the limits.
 ### What the limits count
 
 - `MaxAttributeCount` includes namespace declarations.
-- `MaxNameByteCount`, `MaxTextByteCount`, and `MaxCommentByteCount` are in UTF-8 bytes, not characters.
+- `MaxNameByteCount`, `MaxTextByteCount`, and `MaxCommentByteCount` are in UTF-8 bytes, not characters, counted as they are in the document, before references are expanded.
+- `MaxTextByteCount` applies to each text node, CDATA section, attribute value, and processing instruction's data on its own.
+- When the document is read in blocks, a token that is already longer than its limit throws before its end arrives.
 - `MaxCommentByteCount` applies to comments that are skipped as well as to comments that are reported.
 - Exceeding a limit throws an `XmlException` whose message names the property and the limit, such as `MaxDepth exceeded (64).`
 

@@ -488,6 +488,37 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow(17, DisplayName = "just over the count that is compared pair by pair")]
+        [DataRow(120, DisplayName = "a table on the stack")]
+        [DataRow(200, DisplayName = "a rented table")]
+        [DataRow(1500, DisplayName = "more than the default limit allows")]
+        public void Read_StartTagWithManyAttributes_AcceptsDistinctNamesAndRejectsADuplicate(int count)
+        {
+            // Two prefixes are bound to one namespace and a third to another, so a name is told apart by its
+            // namespace and not by its prefix.
+            var options = new XmlReaderOptions { MaxAttributeCount = 2_000 };
+            var attributes = string.Concat(Enumerable.Range(0, count).Select(i => $" a{i}=\"{i}\""));
+            string Tag(string more) => "<e xmlns:p=\"urn:a\" xmlns:q=\"urn:a\" xmlns:r=\"urn:b\"" + attributes + more + "/>";
+
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes(Tag(" p:x=\"1\" r:x=\"2\" x=\"3\"")), options);
+            reader.Read().Should().BeTrue();
+            reader.AttributeCount.Should().Be(count + 6);
+            var last = default(string);
+            while (reader.MoveToNextAttribute())
+            {
+                last = Encoding.UTF8.GetString(reader.LocalNameSpan) + "=" + reader.GetString();
+            }
+
+            last.Should().Be("x=3");
+
+            foreach (var duplicate in new[] { " a0=\"x\"", $" a{count - 1}=\"x\"", $" a{count / 2}=\"x\"", " p:x=\"1\" q:x=\"2\"", " p:x=\"1\" p:x=\"2\"" })
+            {
+                FluentActions.Invoking(() => Drain(Tag(duplicate), options))
+                    .Should().ThrowExactly<XmlException>(duplicate).Which.Message.Should().Be("Duplicate attribute.", duplicate);
+            }
+        }
+
+        [TestMethod]
         public void Read_RejectsDuplicateAttribute()
         {
             var act = () => Drain("<e a=\"1\" a=\"2\"/>");

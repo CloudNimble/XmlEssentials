@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace CloudNimble.Text.Xml.Serialization
@@ -91,7 +92,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return default;
             }
 
-            return Converter.Read(ref reader, typeof(T), Options);
+            return Converter.Read(ref reader, Type, Options);
         }
 
         /// <summary>
@@ -104,6 +105,22 @@ namespace CloudNimble.Text.Xml.Serialization
             XmlConverterHelpers.MoveToStartElement(ref reader);
             CheckRoot(ref reader);
             return ReadElement(ref reader);
+        }
+
+        /// <summary>
+        /// Reads a value of a stream from an element that is not nil and whose end tag is in the block.
+        /// </summary>
+        /// <param name="reader">The reader, on the start tag.</param>
+        /// <returns>The value.</returns>
+        internal virtual T? ReadStreamedElement(ref Utf8XmlReader reader)
+        {
+            return Converter.Read(ref reader, Type, Options);
+        }
+
+        /// <inheritdoc />
+        internal sealed override bool IsNilElement(ref Utf8XmlReader reader)
+        {
+            return IsNil(ref reader);
         }
 
         /// <inheritdoc />
@@ -142,9 +159,55 @@ namespace CloudNimble.Text.Xml.Serialization
                 return reader.TrySkip();
             }
 
-            return _valueConverter is not null
-                ? _valueConverter.TryRead(ref reader, Options, out value)
-                : TryReadWithReadAhead(ref reader, out value);
+            if (_valueConverter is not null)
+            {
+                return _valueConverter.TryRead(ref reader, Options, out value);
+            }
+
+            if (reader.IsElementInBlock())
+            {
+                // The end tag is in the block, so the element is read once. Counting tags to find that out costs
+                // far less than reading the element twice, which is what is left when the count cannot tell.
+                value = ReadStreamedElement(ref reader);
+                return true;
+            }
+
+            return TryReadWithReadAhead(ref reader, out value);
+        }
+
+        /// <summary>
+        /// Reads every element that comes next, is named for <see cref="XmlTypeInfo.Type"/>, and is a start
+        /// tag with no attributes, plain text, and an end tag, each in one step.
+        /// </summary>
+        /// <param name="reader">The reader, inside the element that holds the values.</param>
+        /// <param name="values">The list the values are added to.</param>
+        /// <returns>The number of values that were read. It is 0 when the type is not a built-in scalar.</returns>
+        /// <exception cref="XmlException">The text of an element is not a value of the type.</exception>
+        internal int ReadWholeElements(ref Utf8XmlReader reader, List<T?> values)
+        {
+            if (_valueConverter is null || RootLeafOpenTag is not { } openTag)
+            {
+                return 0;
+            }
+
+            var count = 0;
+            try
+            {
+                while (reader.TryReadExpectedLeaf(openTag, RootLeafCloseTag, out var content))
+                {
+                    values.Add(_valueConverter.Parse(content, Options));
+                    count++;
+                }
+            }
+            catch (XmlException ex)
+            {
+                // The path of an error in a value that is read from a stream starts at the element of the value.
+                reader.Locate(ex);
+                ex.AddElement(RootName.LocalName);
+                throw;
+            }
+
+            return count;
         }
 
         /// <summary>
@@ -173,7 +236,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return false;
             }
 
-            value = Converter.Read(ref reader, typeof(T), Options);
+            value = ReadStreamedElement(ref reader);
             return true;
         }
 
@@ -190,10 +253,9 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            if (_valueConverter is not null && TryWriteLeafStart(writer) is { } closeTag)
+            if (_valueConverter is not null && RootLeafTags(writer, out var closeTag) is { } openTag)
             {
-                _valueConverter.WriteValue(writer, value, Options);
-                writer.WriteLeafEnd(closeTag);
+                _valueConverter.WriteLeaf(writer, openTag, closeTag, value, Options);
                 return;
             }
 

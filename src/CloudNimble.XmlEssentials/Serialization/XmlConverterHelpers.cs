@@ -174,43 +174,6 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Reads the derived-type discriminator from attributes on the current start tag.
-        /// </summary>
-        /// <param name="reader">The reader, on a start tag.</param>
-        /// <param name="placement">Where the discriminator is written.</param>
-        /// <param name="utf8AttributeName">The discriminator attribute local name when placement is attribute.</param>
-        /// <returns>The discriminator, or null when it is absent.</returns>
-        internal static string? ReadDiscriminator(ref Utf8XmlReader reader, XmlDiscriminatorPlacement placement, byte[] utf8AttributeName)
-        {
-            if (!reader.HasAttributes)
-            {
-                return null;
-            }
-
-            string? value = null;
-            while (reader.MoveToNextAttribute())
-            {
-                if (placement is XmlDiscriminatorPlacement.XsiType)
-                {
-                    if (reader.LocalNameEquals(XmlAttributes.Type) && reader.NamespaceUriEquals(XmlNamespaces.Xsi))
-                    {
-                        value = reader.GetString();
-                    }
-
-                    continue;
-                }
-
-                if (utf8AttributeName.Length > 0 && reader.LocalNameEquals(utf8AttributeName) && reader.PrefixSpan.IsEmpty)
-                {
-                    value = reader.GetString();
-                }
-            }
-
-            reader.MoveToElement();
-            return value;
-        }
-
-        /// <summary>
         /// Writes <paramref name="text"/> as CDATA, in as many sections as it takes.
         /// </summary>
         /// <param name="writer">The writer, inside an element.</param>
@@ -250,7 +213,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
             if (placement is XmlDiscriminatorPlacement.XsiType)
             {
-                writer.WriteStartAttribute("xsi", XmlAttributes.Type, XmlNamespaces.Xsi);
+                writer.WriteStartAttributeUtf8("type"u8, "xsi"u8, "http://www.w3.org/2001/XMLSchema-instance"u8);
                 writer.WriteStringValue(discriminator);
                 writer.WriteEndAttribute();
             }

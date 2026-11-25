@@ -42,7 +42,7 @@ Receipt 77: 129.90
 DefaultXmlTypeInfoResolver
 ```
 
-The last line names the resolver that built the contract. When you don't set [`XmlSerializerOptions.TypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), the options use [`DefaultXmlTypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver), the reflection resolver.
+The last line names the resolver that built the contract. When you don't set [`XmlSerializerOptions.TypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions), the first `XmlSerializer` call that takes the options gives them [`DefaultXmlTypeInfoResolver`](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver), the reflection resolver.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)
 
@@ -133,7 +133,7 @@ Both approaches read and write with the same engine, so they produce the same do
 
 ## What each approach costs
 
-The numbers below come from the graph benchmark in the repository: a `Customer` object with two addresses, 20 line items, and four tags, on .NET 11. `System.Xml.Serialization.XmlSerializer` and `System.Text.Json` read and write the same object graph, the second one as JSON.
+The numbers below come from the graph benchmark in the repository: a `Customer` object with two addresses, 20 line items, and four tags, on .NET 11, in the run described on the [benchmarks page](/benchmarks#how-the-benchmarks-are-run). `System.Xml.Serialization.XmlSerializer` and `System.Text.Json` read and write the same object graph, the second one as JSON.
 
 | Operation | Reflection, first call | Reflection, later calls | Source generation | `System.Xml` serializer | System.Text.Json |
 | --- | --- | --- | --- | --- | --- |
@@ -143,7 +143,7 @@ The numbers below come from the graph benchmark in the repository: a `Customer` 
 What to notice:
 
 - **The first reflection call costs about 0.6 ms and 75 KB** for this graph. That's the time the serializer spends binding the type's members. It's paid once for each type and each `XmlSerializerOptions` instance, which is why you create one options instance and reuse it.
-- **After the first call, both approaches read with the same engine.** A generated context needs no reflection, is safe for trimming and Native AOT, and has a write fast path. Neither approach allocates when writing.
+- **After the first call, both approaches read with the same engine.** A generated context needs no reflection, is safe for trimming and Native AOT, and in the `Default` mode has a write fast path. Neither approach allocates when writing.
 - **The benchmark doesn't measure a first call through a generated context.** On that call, the serializer creates the type info from the generated metadata, and it reflects over no members to do so.
 
 For the full tables, see [Benchmarks](/benchmarks).
@@ -188,12 +188,18 @@ The first two calls look like reflection calls, but the generator rewrote them t
 
 The generator intercepts two shapes of call: `XmlSerializer.Serialize<T>(value)` and `XmlSerializer.Deserialize<T>(input)`, where `T` is a type that a context in the same project lists or reaches through the members of a listed type. The input can be any of the kinds `Deserialize<T>` accepts: a string, a span of characters, UTF-8 bytes, a sequence, a stream, a `Utf8XmlReader`, an `XmlDocument`, an `XmlElement`, or an `XmlNode`. Interceptors are on when the `InterceptorsNamespaces` build property contains `CloudNimble.Text.Xml.Generated`, which the package's build file adds for you.
 
+Only contexts declared in your source code with `[XmlSerializable]` redirect calls. The context generated from an `.xsd` file is itself generated code, which the generator doesn't see, so for the classes of a schema, pass the context's type info.
+
 A call is never intercepted when it passes an `XmlSerializerOptions` argument, even `null`. Options say how the call is to run: which resolver, which converters, which names. The call runs as you wrote it, and your options aren't changed. To use a generated context with your own options, create the context from them and pass its type info: `new MyContext(options).Order`.
 
 <Note>
 An intercepted call uses the type info of the context's `Default` instance, with the options that the `[XmlSourceGenerationOptions]` attribute on the context seeds. When two contexts list the same type, the call goes to one of them.
 
 To keep full control, pass an `XmlTypeInfo<T>` or a context yourself. Those calls are never intercepted.
+
+<Note>
+In a project that is published trimmed or with Native AOT, write the call with the type info or the context. The trimming and Native AOT analyzers look at the method your code names, so a call that passes only a value reports `IL2026` and `IL3050` even when the generator redirects it. XmlEssentials doesn't hide those warnings. See [Publish with Native AOT](/guides/native-aot).
+</Note>
 </Note>
 
 ## How to choose

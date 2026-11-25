@@ -184,9 +184,9 @@ public abstract class XmlNode
     public XmlNode? Parent { get; }
     public abstract string? NamespaceUri { get; }
 
-    public static XmlNode? Parse(string xml); // document → root XmlElementNode; prolog comments/PIs discarded
-    public static XmlNode? Parse(ReadOnlySpan<byte> utf8Xml);
-    public static XmlNode? ParseValue(ref Utf8XmlReader reader);
+    public static XmlNode Parse(string xml); // document → root XmlElementNode; prolog comments/PIs discarded; attributes and children are made when first asked for
+    public static XmlNode Parse(ReadOnlySpan<byte> utf8Xml);
+    public static XmlNode ParseValue(ref Utf8XmlReader reader);
 
     public abstract void WriteTo(Utf8XmlWriter writer);
     public override string ToString();

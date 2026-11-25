@@ -22,6 +22,7 @@ namespace CloudNimble.Text.Xml.Serialization
         private readonly byte[] _rootLocalName;
         private readonly byte[] _rootNamespaceUri;
         private readonly XmlDocumentElementPlan? _documentElementPlan;
+        private byte[]? _sequenceElementName;
 
         #endregion
 
@@ -80,6 +81,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The name of the document element.
         /// </value>
         public XmlName RootName { get; }
+
+        /// <summary>
+        /// Gets the UTF-8 name of the element that holds a sequence of values of <see cref="Type"/>. It is found
+        /// through the attributes of the type, so it is found once and kept.
+        /// </summary>
+        internal byte[] SequenceElementName => _sequenceElementName ??= Encoding.UTF8.GetBytes(XmlTypeNames.SequenceElementName(Type, Options));
 
         /// <summary>
         /// Gets the <see cref="System.Type"/> for which the XML serialization contract is defined.
@@ -169,6 +176,20 @@ namespace CloudNimble.Text.Xml.Serialization
         internal abstract object? ReadElementAsObject(ref Utf8XmlReader reader);
 
         /// <summary>
+        /// Returns whether the start tag the reader is on is marked <c>xsi:nil</c>, so that the value is null.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag.</param>
+        /// <returns><see langword="true"/> when the element stands for null.</returns>
+        /// <exception cref="XmlException">The element is marked nil and the type cannot be null.</exception>
+        internal abstract bool IsNilElement(ref Utf8XmlReader reader);
+
+        /// <summary>
+        /// Gets the binding of an object that the built-in object converter reads, which is what a read from a
+        /// stream can stop in the middle of and go on with; otherwise <see langword="null"/>.
+        /// </summary>
+        internal virtual XmlObjectBinding? ResumableBinding => null;
+
+        /// <summary>
         /// Reads the document element of <see cref="Type"/> and returns the value boxed.
         /// </summary>
         /// <param name="reader">The reader.</param>
@@ -176,23 +197,34 @@ namespace CloudNimble.Text.Xml.Serialization
         internal abstract object? ReadRootAsObject(ref Utf8XmlReader reader);
 
         /// <summary>
-        /// Starts the element named for <see cref="Type"/> without an element frame, when the writer is inside an
-        /// element and the name can be written from bytes built ahead of time.
+        /// Gets the whole end tag of the element named for <see cref="Type"/>, <c>&lt;/name&gt;</c>, or null
+        /// when the name has a namespace or is not a short ASCII name.
+        /// </summary>
+        internal byte[]? RootLeafCloseTag => _rootLeafCloseTag;
+
+        /// <summary>
+        /// Gets the whole start tag of the element named for <see cref="Type"/>, <c>&lt;name&gt;</c>, or null
+        /// when the name has a namespace or is not a short ASCII name.
+        /// </summary>
+        internal byte[]? RootLeafOpenTag => _rootLeafOpenTag;
+
+        /// <summary>
+        /// Gets the tags of the element named for <see cref="Type"/>, built ahead of time, for a value that is
+        /// written without an element frame.
         /// </summary>
         /// <param name="writer">The writer.</param>
-        /// <returns>The end tag to pass to <see cref="Utf8XmlWriter.WriteLeafEnd"/>, or null when nothing was written.</returns>
+        /// <param name="closeTag">The whole end tag, <c>&lt;/name&gt;</c>.</param>
+        /// <returns>
+        /// The whole start tag, <c>&lt;name&gt;</c>, or null when the writer is not inside an element or the
+        /// name cannot be written from bytes built ahead of time.
+        /// </returns>
         /// <remarks>
         /// For an item of a collection that is the document root. The caller writes exactly one value.
         /// </remarks>
-        internal byte[]? TryWriteLeafStart(Utf8XmlWriter writer)
+        internal byte[]? RootLeafTags(Utf8XmlWriter writer, out byte[]? closeTag)
         {
-            if (_rootLeafOpenTag is null || writer.CurrentDepth == 0)
-            {
-                return null;
-            }
-
-            writer.WriteLeafStart(_rootLeafOpenTag);
-            return _rootLeafCloseTag;
+            closeTag = _rootLeafCloseTag;
+            return writer.CurrentDepth == 0 ? null : _rootLeafOpenTag;
         }
 
         /// <summary>

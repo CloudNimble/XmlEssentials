@@ -38,6 +38,7 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
                 CheckShapesFromXsd();
                 inventoryXml = CheckInventoryRoundTrip();
                 EngineFeatures.Check();
+                CheckTrimmedShapes();
                 CheckReader();
             }
             catch (Exception ex)
@@ -111,6 +112,64 @@ namespace CloudNimble.XmlEssentials.Tests.Aot
             read.Any = 5;
             CheckEqual(XmlSerializer.Serialize(read, AppXmlContext.Default.Inventory), expected, "inventory-roundtrip");
             return xml;
+        }
+
+        /// <summary>
+        /// Writes and reads the member shapes whose collection type, item type or generic derived type the
+        /// serializer once found by reflection, and that a generated context now names.
+        /// </summary>
+        /// <remarks>
+        /// The expected documents are the ones the reflection resolver writes for the same values. Here there is
+        /// no reflection resolver: the interfaces of the collection types are not read, no generic type is closed
+        /// at run time, and the constructors and the <c>Add</c> method are kept because the context names the types.
+        /// </remarks>
+        internal static void CheckTrimmedShapes()
+        {
+            const string expected =
+                "<TrimmedShapes><Bag>4</Bag><Bag>5</Bag><ShapeFull><Value>9</Value></ShapeFull><Fit>Loose</Fit>" +
+                "<ShapeDisc><R>3</R></ShapeDisc><ShapeTile><Side>2</Side></ShapeTile>" +
+                "<NoFit xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Points><X>1</X><Y>2</Y></Points>" +
+                "<Rates><a>1.5</a><b>2.5</b></Rates><Set>s</Set><Stack>2</Stack><Stack>1</Stack></TrimmedShapes>";
+            var shapes = new TrimmedShapes { Fit = ShapeFit.Loose, Box = new ShapeFull<int> { Value = 9 } };
+            shapes.Bag.Add(4);
+            shapes.Bag.Add(5);
+            shapes.Kinds.Add(new ShapeDisc { R = 3 });
+            shapes.Kinds.Add(new ShapeTile { Side = 2 });
+            shapes.Points.Add(new ShapePoint { X = 1, Y = 2 });
+            shapes.Rates["b"] = 2.5;
+            shapes.Rates["a"] = 1.5;
+            shapes.Set.Add("s");
+            shapes.Stack.Push(1);
+            shapes.Stack.Push(2);
+            var xml = XmlSerializer.Serialize(shapes, TrimmedXmlContext.Default.TrimmedShapes);
+            CheckEqual(xml, expected, "trimmed-shapes");
+            var read = XmlSerializer.Deserialize(xml, TrimmedXmlContext.Default.TrimmedShapes);
+            if (read is null)
+            {
+                throw new InvalidOperationException("trimmed-shapes deserialize returned null.");
+            }
+
+            var rates = new System.Text.StringBuilder();
+            foreach (var rate in read.Rates)
+            {
+                rates.Append(rate.Key).Append('=').Append(rate.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(';');
+            }
+
+            CheckEqual(
+                string.Join(",", read.Bag) + "|" + (read.Box as ShapeFull<int>)?.Value + "|" + read.Fit + "|" + (read.Kinds[0] as ShapeDisc)?.R + "," + (read.Kinds[1] as ShapeTile)?.Side + "|" + (read.NoFit is null) + "|" + read.Points[0].X + "," + read.Points[0].Y
+                    + "|" + rates + "|" + string.Join(",", read.Set) + "|" + string.Join(",", read.Stack),
+                "4,5|9|Loose|3,2|True|1,2|a=1.5;b=2.5;|s|2,1",
+                "trimmed-shapes-values");
+            CheckEqual(XmlSerializer.Serialize(read, TrimmedXmlContext.Default.TrimmedShapes), expected, "trimmed-shapes-roundtrip");
+
+            const string paraXml = "<TrimmedPara>a <b/> c</TrimmedPara>";
+            var para = new TrimmedPara
+            {
+                Content = [new XmlMixedText("a "), new XmlMixedElement(new CloudNimble.Text.Xml.Nodes.XmlElementNode("b")), new XmlMixedText(" c")],
+            };
+            CheckEqual(XmlSerializer.Serialize(para, TrimmedXmlContext.Default.TrimmedPara), paraXml, "trimmed-para");
+            var readPara = XmlSerializer.Deserialize(paraXml, TrimmedXmlContext.Default.TrimmedPara);
+            CheckEqual((readPara?.Content.Length ?? -1).ToString(System.Globalization.CultureInfo.InvariantCulture), "3", "trimmed-para-items");
         }
 
         /// <summary>

@@ -46,6 +46,32 @@ namespace CloudNimble.Text.Xml
         #region Fields
 
         /// <summary>
+        /// Slot flag: a child element has started inside this element.
+        /// </summary>
+        internal const int ElementHasChild = 1 << 29;
+
+        /// <summary>
+        /// Slot flag: character data has been reported inside this element, so later whitespace is significant.
+        /// </summary>
+        internal const int ElementHasText = 1 << 28;
+
+        /// <summary>
+        /// Mask for the prefix length stored in the low bits of an element-stack slot.
+        /// </summary>
+        internal const int ElementPrefixLengthMask = (1 << 28) - 1;
+
+        /// <summary>
+        /// Slot flag: <c>xml:space="preserve"</c> is in force for this element.
+        /// </summary>
+        internal const int ElementPreserveSpace = 1 << 30;
+
+        /// <summary>
+        /// Inline slots for the element-name and namespace-binding stacks. Documents shallower than this
+        /// allocate no heap arrays for those stacks.
+        /// </summary>
+        internal const int InlineSlots = 8;
+
+        /// <summary>
         /// <c>_nsDefaultIndex</c> value meaning the default-namespace binding has not been looked up since the bindings last changed.
         /// </summary>
         internal const int NsIndexUnknown = -2;
@@ -66,114 +92,165 @@ namespace CloudNimble.Text.Xml
         internal const int OwnedXsi = -4;
 
         /// <summary>
-        /// Slot flag: a child element has started inside this element.
-        /// </summary>
-        internal const int ElementHasChild = 1 << 29;
-
-        /// <summary>
         /// How many bytes of a text node <see cref="ReadText"/> reads one at a time before it switches to
         /// vectorized searches.
         /// </summary>
         internal const int ShortTextBytes = 8;
 
-        /// <summary>
-        /// Slot flag: character data has been reported inside this element, so later whitespace is significant.
-        /// </summary>
-        internal const int ElementHasText = 1 << 28;
-
-        /// <summary>
-        /// Mask for the prefix length stored in the low bits of an element-stack slot.
-        /// </summary>
-        internal const int ElementPrefixLengthMask = (1 << 28) - 1;
-
-        /// <summary>
-        /// Slot flag: <c>xml:space="preserve"</c> is in force for this element.
-        /// </summary>
-        internal const int ElementPreserveSpace = 1 << 30;
-
         private int _attributeCount;
-        private int _attributeIndex;
+
         private Span<byte> _attributeDecoded;
+
         private int _attributeDecodedLength;
+
+        private int _attributeIndex;
+
         private Span<AttributeRecord> _attributes;
+
         private AttributeRecord8 _attributesInline;
+
         private int _currentNsLength;
+
         private byte[] _currentNsOwned;
+
         private int _currentNsStart;
+
         private int _decodedLength;
+
         private Span<byte> _decodedValue;
+
         private int _depth;
+
         private long _documentBytesConsumedBase;
-        /// <summary>
-        /// Inline slots for the element-name and namespace-binding stacks. Documents shallower than this
-        /// allocate no heap arrays for those stacks.
-        /// </summary>
-        internal const int InlineSlots = 8;
 
         private int _elementCount;
-        private Span<int> _elementNsLengths;
-        private Int8Buffer _elementNsLengthsInline;
-        private Span<int> _elementNsStarts;
-        private Int8Buffer _elementNsStartsInline;
-        private bool _elementNsStored;
-        private byte[][]? _elementNsUris;
+
         private Span<int> _elementNameLengths;
+
         private Int8Buffer _elementNameLengthsInline;
+
         private Span<int> _elementNameStarts;
+
         private Int8Buffer _elementNameStartsInline;
+
+        private Span<int> _elementNsLengths;
+
+        private Int8Buffer _elementNsLengthsInline;
+
+        private Span<int> _elementNsStarts;
+
+        private Int8Buffer _elementNsStartsInline;
+
+        private bool _elementNsStored;
+
+        private byte[][]? _elementNsUris;
+
         private Span<int> _elementPrefixLengths;
+
         private Int8Buffer _elementPrefixLengthsInline;
+
         private bool _finished;
-        private Span<byte> _scratch;
-        private int _scratchUsed;
+
         private bool _hasNamespaceAttribute;
-        private bool _hasUnresolvedAttribute;
-        private bool _hasXmlSpaceAttribute;
+
         private readonly bool _hasSequence;
+
+        private bool _hasUnresolvedAttribute;
+
+        private bool _hasXmlSpaceAttribute;
+
         private bool _inAttribute;
+
         private bool _incomplete;
+
         private int _internedUriCount;
+
         private byte[][]? _internedUris;
+
         private bool _isEmptyElement;
-        private bool _isOnOpenStartTag;
+
         private readonly bool _isFinalBlock;
+
+        private bool _isOnOpenStartTag;
+
         private long _lineNumber;
+
         private long _lineStart;
+
         private readonly int _maxAttributes;
+
         private readonly int _maxCommentBytes;
+
         private readonly int _maxDepth;
+
         private readonly int _maxNameBytes;
+
         private readonly int _maxTextBytes;
+
         private int _nameLength;
+
         private int _nameStart;
+
         private Span<NamespaceBinding> _nsBindings;
+
         private NamespaceBinding8 _nsBindingsInline;
+
         private int _nsCount;
+
         private int _nsDefaultIndex;
+
         private Int8Buffer _nsPrefixCacheIndexes;
+
         private Int8Buffer _nsPrefixCacheLengths;
+
         private int _nsPrefixCacheMask;
+
         private Int8Buffer _nsPrefixCacheStarts;
+
         private XmlReaderOptions _options;
+
         private int _pendingEmptyNsDepth;
+
         private int _pos;
+
         private int _prefixLength;
+
         private byte[][]? _resumeLocalNames;
+
         private int _resumeNameCount;
+
         private byte[][]? _resumeNsUris;
+
         private byte[][]? _resumePrefixes;
+
+        private Span<byte> _scratch;
+
+        private int _scratchUsed;
+
         private bool _seenRoot;
+
         private ReadOnlySequence<byte> _sequence;
+
         private byte[]? _sequenceCopy;
+
         private ReadOnlySpan<byte> _span;
+
         private long _tokenLineNumber;
+
         private long _tokenLineStart;
+
         private long _tokenStartIndex;
+
         private XmlTokenType _tokenType;
+
         private bool _valueIsEscaped;
+
         private int _valueLength;
+
         private int _valueStart;
+
         private XmlVersion _version;
+
         private bool _xmlDeclarationAllowed;
 
         #endregion
@@ -249,21 +326,6 @@ namespace CloudNimble.Text.Xml
         public readonly bool IsEmptyElement => _isEmptyElement;
 
         /// <summary>
-        /// Gets a value indicating whether the bytes after the current token start an end tag.
-        /// </summary>
-        /// <remarks>
-        /// After a text or CDATA token this tells a caller that the element holds nothing more, so the value can
-        /// be used where it lies: reading the end tag does not disturb it. It is <see langword="false"/> when the
-        /// current block ends before the next two bytes.
-        /// </remarks>
-        internal readonly bool IsEndTagNext => (uint)(_pos + 1) < (uint)_span.Length && _span[_pos] is (byte)'<' && _span[_pos + 1] is (byte)'/';
-
-        /// <summary>
-        /// Gets how many bytes at the start of the scratch buffer the reader has written to.
-        /// </summary>
-        internal readonly int ScratchBytesUsed => _scratchUsed;
-
-        /// <summary>
         /// Gets a value that indicates whether all the XML data was provided or there is more data to come.
         /// </summary>
         /// <value>
@@ -285,7 +347,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (_inAttribute)
                 {
-                    var a = CurrentAttribute();
+                    ref readonly var a = ref CurrentAttribute();
                     var adj = a.PrefixLength > 0 ? a.PrefixLength + 1 : 0;
                     return _span.Slice(a.NameStart + adj, a.NameLength - adj);
                 }
@@ -346,7 +408,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (_inAttribute)
                 {
-                    var a = CurrentAttribute();
+                    ref readonly var a = ref CurrentAttribute();
                     if (a.PrefixLength == 0)
                     {
                         return ReadOnlySpan<byte>.Empty;
@@ -406,7 +468,7 @@ namespace CloudNimble.Text.Xml
             {
                 if (_inAttribute)
                 {
-                    var a = CurrentAttribute();
+                    ref readonly var a = ref CurrentAttribute();
                     return a.DecodedStart >= 0
                         ? _attributeDecoded.Slice(a.DecodedStart, a.DecodedLength)
                         : _span.Slice(a.ValueStart, a.ValueLength);
@@ -430,6 +492,21 @@ namespace CloudNimble.Text.Xml
         /// document has none.
         /// </value>
         public readonly XmlVersion Version => _version;
+
+        /// <summary>
+        /// Gets a value indicating whether the bytes after the current token start an end tag.
+        /// </summary>
+        /// <remarks>
+        /// After a text or CDATA token this tells a caller that the element holds nothing more, so the value can
+        /// be used where it lies: reading the end tag does not disturb it. It is <see langword="false"/> when the
+        /// current block ends before the next two bytes.
+        /// </remarks>
+        internal readonly bool IsEndTagNext => (uint)(_pos + 1) < (uint)_span.Length && _span[_pos] is (byte)'<' && _span[_pos + 1] is (byte)'/';
+
+        /// <summary>
+        /// Gets how many bytes at the start of the scratch buffer the reader has written to.
+        /// </summary>
+        internal readonly int ScratchBytesUsed => _scratchUsed;
 
         #endregion
 
@@ -1062,7 +1139,7 @@ namespace CloudNimble.Text.Xml
 
             for (var i = 0; i < _attributeCount; i++)
             {
-                var attribute = AttributeAt(i);
+                ref readonly var attribute = ref AttributeAt(i);
                 if (attribute.NsIndex >= AttributeRecord.FirstBinding
                     && AttributeLocalName(attribute).SequenceEqual("nil"u8)
                     && ResolveAttributeNamespace(attribute).SequenceEqual(XmlUtf8.Xsi))

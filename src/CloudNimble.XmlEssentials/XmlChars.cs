@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace CloudNimble.Text.Xml
 {
@@ -19,6 +20,11 @@ namespace CloudNimble.Text.Xml
     {
 
         #region Fields
+
+        /// <summary>
+        /// The longest name, in characters, that is checked one character at a time as it is copied.
+        /// </summary>
+        public const int ShortNameLength = 32;
 
         /// <summary>
         /// ASCII NCName characters: letters, digits, <c>_</c>, <c>-</c>, <c>.</c>. Excludes colon.
@@ -251,6 +257,150 @@ namespace CloudNimble.Text.Xml
                 {
                     return false;
                 }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns true if <paramref name="name"/> is at most <paramref name="maxLength"/> characters of ASCII
+        /// that form an NCName.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="maxLength">The longest name to check here.</param>
+        /// <returns>
+        /// <see langword="true"/> if the name is a valid NCName in both XML versions; <see langword="false"/> if
+        /// it is not, or if deciding needs more than a look at each character.
+        /// </returns>
+        public static bool IsShortAsciiNcName(ReadOnlySpan<char> name, int maxLength)
+        {
+            if ((uint)(name.Length - 1) >= (uint)maxLength || name[0] > 0x7F || !IsAsciiNameStart((byte)name[0]) || name[0] is ':')
+            {
+                return false;
+            }
+
+            for (var i = 1; i < name.Length; i++)
+            {
+                if (name[i] > 0x7F || !IsAsciiNcNameChar((byte)name[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Copies characters that are known to be ASCII to <paramref name="destination"/> as bytes.
+        /// </summary>
+        /// <param name="ascii">The characters, every one of which is ASCII.</param>
+        /// <param name="destination">Where the bytes go. It must hold at least as many bytes as there are characters.</param>
+        /// <remarks>
+        /// Names and most values are short, and a loop over a few characters costs less than a call to a
+        /// vectorized routine. Longer text is handed to one.
+        /// </remarks>
+        public static void NarrowAscii(ReadOnlySpan<char> ascii, Span<byte> destination)
+        {
+            if (ascii.Length > 16)
+            {
+                Ascii.FromUtf16(ascii, destination, out _);
+                return;
+            }
+
+            destination = destination[..ascii.Length];
+            for (var i = 0; i < ascii.Length; i++)
+            {
+                destination[i] = (byte)ascii[i];
+            }
+        }
+
+        /// <summary>
+        /// Copies <paramref name="name"/> to <paramref name="destination"/> as UTF-8 when it is at most
+        /// <paramref name="maxLength"/> characters of ASCII that form an NCName.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="destination">Where the bytes go. It must hold at least as many bytes as the name has characters.</param>
+        /// <param name="maxLength">The longest name to check here.</param>
+        /// <returns>
+        /// <see langword="true"/> if the name is a valid NCName in both XML versions and was copied;
+        /// <see langword="false"/> if it is not, or if deciding needs more than a look at each character. Bytes
+        /// may have been written to <paramref name="destination"/> either way.
+        /// </returns>
+        /// <remarks>
+        /// A name given as a string is checked and turned into bytes in the same pass. Doing the two apart reads
+        /// a short name three times.
+        /// </remarks>
+        public static bool TryCopyShortAsciiNcName(ReadOnlySpan<char> name, Span<byte> destination, int maxLength)
+        {
+            if ((uint)(name.Length - 1) >= (uint)maxLength || name.Length > destination.Length)
+            {
+                return false;
+            }
+
+            var first = name[0];
+            if (first > 0x7F || !IsAsciiNameStart((byte)first) || first is ':')
+            {
+                return false;
+            }
+
+            destination[0] = (byte)first;
+            for (var i = 1; i < name.Length; i++)
+            {
+                var c = name[i];
+                if (c > 0x7F || !IsAsciiNcNameChar((byte)c))
+                {
+                    return false;
+                }
+
+                destination[i] = (byte)c;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Copies <paramref name="name"/> as UTF-8 to two places when it is at most
+        /// <paramref name="maxLength"/> characters of ASCII that form an NCName.
+        /// </summary>
+        /// <param name="name">The name.</param>
+        /// <param name="first">The first place the bytes go.</param>
+        /// <param name="second">The second place the bytes go.</param>
+        /// <param name="maxLength">The longest name to check here.</param>
+        /// <returns>
+        /// <see langword="true"/> if the name is a valid NCName in both XML versions and was copied;
+        /// <see langword="false"/> if it is not, if deciding needs more than a look at each character, or if
+        /// either place is too small. Bytes may have been written either way.
+        /// </returns>
+        /// <remarks>
+        /// A caller that needs the name in its output and in its own records gets both from one pass over the
+        /// characters. Copying the bytes from one place to the other afterwards reads back what was stored a
+        /// moment ago, one byte at a time, which a processor does slowly.
+        /// </remarks>
+        public static bool TryCopyShortAsciiNcName(ReadOnlySpan<char> name, Span<byte> first, Span<byte> second, int maxLength)
+        {
+            if ((uint)(name.Length - 1) >= (uint)maxLength || name.Length > first.Length || name.Length > second.Length)
+            {
+                return false;
+            }
+
+            var start = name[0];
+            if (start > 0x7F || !IsAsciiNameStart((byte)start) || start is ':')
+            {
+                return false;
+            }
+
+            first[0] = (byte)start;
+            second[0] = (byte)start;
+            for (var i = 1; i < name.Length; i++)
+            {
+                var c = name[i];
+                if (c > 0x7F || !IsAsciiNcNameChar((byte)c))
+                {
+                    return false;
+                }
+
+                first[i] = (byte)c;
+                second[i] = (byte)c;
             }
 
             return true;

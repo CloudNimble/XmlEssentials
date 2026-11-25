@@ -209,7 +209,7 @@ When reading, a read-only property can't be set, so the `Area` element in the la
 Keep these details in mind:
 
 - A property with a public `init` accessor isn't read-only: the serializer sets it. A property whose `set` or `init` accessor isn't public is read-only to the serializer, as in System.Text.Json: it is written, and it isn't set when a document is read. Mark it with `[XmlInclude]` to have the accessor used.
-- A read-only collection property, such as `public List<string> Tags { get; } = [];`, is written, and it is filled when reading: the items are added to the list it holds. `IgnoreReadOnlyProperties` doesn't leave it out, because a collection or a dictionary needs no setter. System.Text.Json makes the same exception.
+- A read-only collection property, such as `public List<string> Tags { get; } = [];`, is written. It is filled when reading only when `PreferredObjectCreationHandling`, or `[XmlObjectCreationHandling]` on the member, is `Populate`: the items are then added to the list it holds. Under the default, `Replace`, it isn't read. `IgnoreReadOnlyProperties` doesn't leave it out, because a collection or a dictionary can be populated without a setter. System.Text.Json makes the same exception.
 - `IgnoreReadOnlyProperties` also removes a read-only property that a constructor parameter sets. Don't combine the option with types that are created through a [constructor with parameters](/guides/immutable-types), unless their properties have `init` accessors, as record properties do.
 
 ## Include fields

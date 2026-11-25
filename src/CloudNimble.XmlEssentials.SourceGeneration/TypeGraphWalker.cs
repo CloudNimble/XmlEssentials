@@ -351,79 +351,191 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
-        /// Returns the <c>IsClosedTypeAttribute</c> the compiler puts on a class declared with the
-        /// <see langword="closed"/> modifier, or null.
+        /// Returns the types the compiler lists as derived from a closed type, or null when <paramref name="symbol"/> is not a closed type.
         /// </summary>
         /// <param name="symbol">A type or a member.</param>
-        /// <returns>The attribute, which lists the derived types, or null when the symbol is not a closed type.</returns>
-        internal static AttributeData? ClosedTypeAttribute(ISymbol symbol)
-        {
-            foreach (var attribute in symbol.GetAttributes())
-            {
-                if (attribute.AttributeClass is { Name: "IsClosedTypeAttribute" } attributeClass
-                    && attributeClass.ContainingNamespace.ToDisplayString() is "System.Runtime.CompilerServices")
-                {
-                    return attribute;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Adds the derived types of a closed type that an instance can have, as the runtime library infers them.
-        /// </summary>
-        /// <param name="closedType">A type, which may not be closed.</param>
-        /// <param name="found">The list the types are added to.</param>
+        /// <returns>
+        /// The derived types as they are declared: a generic one without type arguments. The list is empty for a
+        /// closed type nothing derives from.
+        /// </returns>
         /// <remarks>
-        /// A derived type that is closed itself has its own derived types added in its place. A generic derived
-        /// type is listed without type arguments and is given the arguments of the closed type; one that takes
-        /// another number of arguments, or does not derive from this closed type, is left out.
+        /// The compiler marks a closed type with <c>IsClosedTypeAttribute</c> when it writes the assembly, so the
+        /// attribute is on a type from another assembly and not on one that is being compiled. For a type in the
+        /// source, the <c>closed</c> modifier says it is closed, and its derived types are the types of the
+        /// assembly whose base type it is: the language allows no others.
         /// </remarks>
-        internal static void AddClosedDerivedTypes(INamedTypeSymbol closedType, List<ITypeSymbol> found)
+        internal static List<INamedTypeSymbol>? ClosedDerivedTypes(ISymbol symbol)
         {
-            if (ClosedTypeAttribute(closedType) is not { } attribute)
+            if (symbol is not INamedTypeSymbol type)
             {
-                return;
+                return null;
             }
 
-            foreach (var argument in attribute.NamedArguments)
+            var definition = type.OriginalDefinition;
+            foreach (var attribute in definition.GetAttributes())
             {
-                if (argument.Key != "DerivedTypes" || argument.Value.Kind is not TypedConstantKind.Array)
+                if (attribute.AttributeClass is not { Name: "IsClosedTypeAttribute" } attributeClass
+                    || attributeClass.ContainingNamespace.ToDisplayString() is not "System.Runtime.CompilerServices")
                 {
                     continue;
                 }
 
-                foreach (var listed in argument.Value.Values)
+                var listed = new List<INamedTypeSymbol>();
+                foreach (var argument in attribute.NamedArguments)
                 {
-                    if (listed.Value is not INamedTypeSymbol derived)
+                    if (argument.Key != "DerivedTypes" || argument.Value.Kind is not TypedConstantKind.Array)
                     {
                         continue;
                     }
 
-                    if (derived.IsUnboundGenericType)
+                    foreach (var value in argument.Value.Values)
                     {
-                        if (derived.Arity != closedType.TypeArguments.Length)
+                        if (value.Value is INamedTypeSymbol derived)
                         {
-                            continue;
+                            listed.Add(derived);
                         }
+                    }
+                }
 
-                        derived = derived.OriginalDefinition.Construct([.. closedType.TypeArguments]);
+                return listed;
+            }
+
+            var isDeclaredClosed = false;
+            foreach (var reference in definition.DeclaringSyntaxReferences)
+            {
+                if (reference.GetSyntax() is Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax declaration)
+                {
+                    foreach (var modifier in declaration.Modifiers)
+                    {
+                        isDeclaredClosed |= modifier.ValueText == "closed";
+                    }
+                }
+            }
+
+            if (!isDeclaredClosed)
+            {
+                return null;
+            }
+
+            var found = new List<INamedTypeSymbol>();
+            AddTypesDerivedFrom(definition, definition.ContainingAssembly.GlobalNamespace, found);
+            return found;
+        }
+
+        /// <summary>
+        /// Adds the types in a namespace or a type whose base type is <paramref name="definition"/>.
+        /// </summary>
+        /// <param name="definition">The definition of a closed type.</param>
+        /// <param name="container">The namespace or type to look in, with everything nested in it.</param>
+        /// <param name="found">The list the types are added to.</param>
+        internal static void AddTypesDerivedFrom(INamedTypeSymbol definition, INamespaceOrTypeSymbol container, List<INamedTypeSymbol> found)
+        {
+            foreach (var member in container.GetMembers())
+            {
+                if (member is INamespaceSymbol nested)
+                {
+                    AddTypesDerivedFrom(definition, nested, found);
+                }
+                else if (member is INamedTypeSymbol type)
+                {
+                    if (type.BaseType is { } baseType && SymbolEqualityComparer.Default.Equals(baseType.OriginalDefinition, definition))
+                    {
+                        found.Add(type);
                     }
 
-                    if (!DerivesFrom(derived, closedType))
-                    {
-                        continue;
-                    }
+                    AddTypesDerivedFrom(definition, type, found);
+                }
+            }
+        }
 
-                    if (ClosedTypeAttribute(derived) is not null)
-                    {
-                        AddClosedDerivedTypes(derived, found);
-                    }
-                    else
-                    {
-                        found.Add(derived);
-                    }
+        /// <summary>
+        /// Returns a derived type of a closed type with the type arguments it has for that closed type.
+        /// </summary>
+        /// <param name="closedType">The closed type, with its type arguments.</param>
+        /// <param name="listed">A derived type as the compiler lists it or as it is declared.</param>
+        /// <param name="isGeneric">When this method returns, whether the derived type was given the type arguments of <paramref name="closedType"/>.</param>
+        /// <returns>The derived type, or null when it is not a derived type of <paramref name="closedType"/> with these arguments.</returns>
+        internal static INamedTypeSymbol? ConstructClosedDerived(INamedTypeSymbol closedType, INamedTypeSymbol listed, out bool isGeneric)
+        {
+            var derived = listed;
+            isGeneric = derived.IsUnboundGenericType || (derived.IsGenericType && derived.IsDefinition);
+            if (isGeneric)
+            {
+                if (derived.Arity != closedType.TypeArguments.Length)
+                {
+                    return null;
+                }
+
+                derived = derived.OriginalDefinition.Construct([.. closedType.TypeArguments]);
+            }
+
+            return DerivesFrom(derived, closedType) ? derived : null;
+        }
+
+        /// <summary>
+        /// Adds the generic derived types of a closed type, each with the closed type it derives from.
+        /// </summary>
+        /// <param name="closedType">A type that may be closed.</param>
+        /// <param name="pairs">The list the pairs are added to: the closed type and the derived type, both with their type arguments.</param>
+        /// <remarks>
+        /// The runtime library cannot give a generic type its arguments under Native AOT, so the generated
+        /// metadata names each constructed type. A derived type that is closed itself is followed, as
+        /// <see cref="AddClosedDerivedTypes"/> follows it.
+        /// </remarks>
+        internal static void AddClosedDerivedPairs(INamedTypeSymbol closedType, List<(string Closed, string Derived)> pairs)
+        {
+            if (ClosedDerivedTypes(closedType) is not { } listedTypes)
+            {
+                return;
+            }
+
+            foreach (var listed in listedTypes)
+            {
+                if (ConstructClosedDerived(closedType, listed, out var isGeneric) is not { } derived)
+                {
+                    continue;
+                }
+
+                if (isGeneric)
+                {
+                    pairs.Add((SymbolHelpers.FullName(closedType), SymbolHelpers.FullName(derived)));
+                }
+
+                AddClosedDerivedPairs(derived, pairs);
+            }
+        }
+
+        /// <summary>
+        /// Adds the derived types of a closed type that an instance can have.
+        /// </summary>
+        /// <param name="closedType">A type that may be closed.</param>
+        /// <param name="found">The list the types are added to.</param>
+        /// <remarks>
+        /// A derived type that is closed itself cannot be created, so its own derived types are added in its
+        /// place. A generic derived type is a derived type of <paramref name="closedType"/> when it takes the same
+        /// type arguments, so it is given them.
+        /// </remarks>
+        internal static void AddClosedDerivedTypes(INamedTypeSymbol closedType, List<ITypeSymbol> found)
+        {
+            if (ClosedDerivedTypes(closedType) is not { } listedTypes)
+            {
+                return;
+            }
+
+            foreach (var listed in listedTypes)
+            {
+                if (ConstructClosedDerived(closedType, listed, out _) is not { } derived)
+                {
+                    continue;
+                }
+
+                if (ClosedDerivedTypes(derived) is not null)
+                {
+                    AddClosedDerivedTypes(derived, found);
+                }
+                else
+                {
+                    found.Add(derived);
                 }
             }
         }
@@ -974,7 +1086,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <returns><see langword="true"/> when derived types are declared on it, or may be inferred for it.</returns>
         internal static bool DeclaresDerivedTypes(ISymbol symbol)
         {
-            if (ClosedTypeAttribute(symbol) is not null)
+            if (ClosedDerivedTypes(symbol) is not null)
             {
                 return true;
             }

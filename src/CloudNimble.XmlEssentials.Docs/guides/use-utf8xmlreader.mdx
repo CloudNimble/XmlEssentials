@@ -5,7 +5,7 @@ description: "Read UTF-8 XML one token at a time with Utf8XmlReader: names, attr
 icon: "book-open"
 ---
 
-`Utf8XmlReader` is a forward-only reader for UTF-8 encoded XML. It reads one token at a time from a span or a sequence of bytes and gives you each name and value as a slice of your own input. This article shows how to use it, from the basic loop to reading a stream in blocks without allocating.
+`Utf8XmlReader` is a forward-only reader for UTF-8 encoded XML. It reads one token at a time from a span or a sequence of bytes and gives you each name and value as a slice of your own input. This article shows how to use it, from the basic loop to reading a stream in blocks and reading without allocating.
 
 Use the reader when you need the lowest overhead, when a document is too large to hold as a tree, or when you write a [custom converter](/guides/custom-converters). To map XML to your own types, use [`XmlSerializer`](/guides/deserialize). To query a document at random, use [`XmlDocument`](/guides/use-xmldocument).
 
@@ -307,7 +307,7 @@ The typed methods read the lexical forms of XML Schema, not the formats of the c
 | `byte[]` | `GetBytesFromBase64`, `TryGetBytesFromBase64` | `xs:base64Binary` |
 | `string` | `GetString` | |
 
-There's no `TryGetBoolean` and no `TryGetString`. `GetString` never returns `null`: an empty value is an empty string.
+`GetString` never returns `null`: an empty value is an empty string.
 
 `GetNil` is the one method you call on a start tag. It returns `true` when the element has an `xsi:nil` attribute, in the XML Schema instance namespace, with the value `true` or `1`. For how the serializer uses it, see [Null values and xsi:nil](/guides/null-and-nil).
 
@@ -508,10 +508,16 @@ What to notice:
 | `XmlWhitespaceHandling` | What the reader does with white-space-only text between elements |
 | --- | --- |
 | `Significant` | Reports it as a `Text` token. This is the default. |
-| `Insignificant` | Skips it. |
-| `None` | Throws an `XmlException` (`Whitespace-only text is not allowed.`). |
+| `Insignificant` | Skips it when it's indentation. |
+| `None` | Throws an `XmlException` (`Whitespace-only text is not allowed.`) where `Insignificant` would skip it. |
 
 White space inside a value is always kept. `<Name> Ada </Name>` has the value `" Ada "` under every setting. Line ends in a value are always read as a line feed, as XML requires.
+
+`Insignificant` and `None` treat white-space-only text as indentation only when it carries no content. The reader still reports it as a `Text` token, under every setting, when:
+
+- **It's the whole content of the element.** `<Code> </Code>` has the value `" "`.
+- **The element already has text before it.** In `<p>Hello <b>you</b> <i>there</i></p>`, the space between `</b>` and `<i>` is part of the sentence, and so is reported. A CDATA section counts as text.
+- **`xml:space="preserve"` is in force.** It applies to the element that has it and to everything inside, until an element sets `xml:space="default"`.
 
 <Note>
 `new XmlReaderOptions()`, `default(XmlReaderOptions)`, a reader created without options, and `new XmlReaderState()` all mean the same thing: comments and white space are reported. The serializer is different. `XmlSerializerOptions` skips comments and treats white space between elements as insignificant by default, so a [custom converter](/guides/custom-converters) sees data only.
@@ -555,6 +561,7 @@ The same bytes read differently in the two versions. U+0085 (next line) is a lin
 | --- | --- | --- |
 | U+0085 and U+2028 in text | Ordinary characters. | Line ends, read as a line feed. |
 | Control characters U+0001 to U+001F (other than tab, line feed, and carriage return) | Not allowed, even as a character reference. | Allowed only as a character reference such as `&#x1;`. |
+| Control characters U+007F to U+009F (other than U+0085) | Allowed. | Allowed only as a character reference such as `&#x7F;`. |
 | `xmlns:p=""` | An error. | Removes the binding of the prefix `p`. |
 
 The rules for the declaration itself:
@@ -562,7 +569,7 @@ The rules for the declaration itself:
 - It must be the first thing in the document, after an optional byte order mark. White space, a comment, or anything else before it is an error.
 - The version must have the form `1.x`. `1.1` selects XML 1.1. Any other version number is read as XML 1.0, as the XML 1.0 specification asks.
 - The encoding, when it's named, must be UTF-8. See [What the reader doesn't support](#what-the-reader-doesnt-support).
-- On the `XmlDeclaration` token, `ValueSpan` holds the text of the declaration after `<?xml`, as it was written. The reader has no property for `standalone`. `XmlDocument.Declaration` gives you the version, the encoding, and `standalone` as an [`XmlDeclarationInfo`](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo).
+- On the `XmlDeclaration` token, `ValueSpan` holds the pseudo-attributes as they were written, such as `version="1.0" encoding="utf-8"`. To get the version, the encoding, and `standalone` as values, parse the document with `XmlDocument` and read `XmlDocument.Declaration`, an [`XmlDeclarationInfo`](/api-reference/CloudNimble/Text/Xml/XmlDeclarationInfo).
 
 For everything the reader checks, see [XML conformance](/guides/xml-conformance).
 
@@ -615,7 +622,33 @@ Details worth knowing:
 
 - On an empty element, `Skip` does nothing, because the element is already complete.
 - Call `Skip` on a start tag. On any other token it does nothing, because only a start tag has children.
-- When you read in blocks and the element isn't all in the current block, `Skip` throws an `XmlException` (`Cannot skip: more data is required.`). Use `TrySkip` there instead. It returns `false` and puts the reader back on the start tag, as `Utf8JsonReader.TrySkip` does, so you can supply more data and try again.
+- When you read in blocks and the element isn't all in the current block, `Skip` throws an `XmlException` (`Cannot skip: more data is required.`). Use `TrySkip` there instead. It returns `false` and puts the reader back on the start tag, with its attributes, as `Utf8JsonReader.TrySkip` does.
+
+After `TrySkip` returns `false`, `BytesConsumed` and `CurrentState` describe the point just after the start tag, so a reader you create from them with more data reads the element's content one token at a time. To skip the element whole once more data has arrived, keep a copy of the reader from before the `Read` that reached the start tag, and continue from the copy instead:
+
+```csharp
+var reader = new Utf8XmlReader(block, isFinalBlock, state);
+while (true)
+{
+    var before = reader;
+    if (!reader.Read())
+    {
+        break;
+    }
+
+    if (reader.TokenType is XmlTokenType.StartElement && !reader.TrySkip())
+    {
+        // The element doesn't end in this block. The next block starts again at its start tag.
+        reader = before;
+        break;
+    }
+}
+
+state = reader.CurrentState;
+// Keep the bytes after reader.BytesConsumed for the next block.
+```
+
+This is the look-ahead that a copy allows: `reader` reads ahead inside the element that `before` is in, and is then dropped.
 
 ## Read a fragment
 
@@ -819,6 +852,7 @@ What to notice:
 - **`BytesConsumed` counts from the start of the current block.** `TokenStartIndex` and the positions on an `XmlException` count from the start of the document.
 - **The reader lives inside one pass of the loop.** Because it's a `ref struct`, it can't cross an `await`. In an `async` method, do the `await stream.ReadAsync(...)` between passes and keep the reader in a synchronous helper method that takes the buffer and the state.
 - **`CurrentState` allocates.** It copies the names of the open elements and the namespace bindings so that the state doesn't depend on a buffer you're about to overwrite. Read it once per block, not once per token.
+- **The state keeps the context of the open elements.** `xml:space`, and whether an element already has text, carry over to the next block, so white space is reported the same way as when the document is read in one piece.
 
 <Tip>
 You often don't need this loop. `XmlSerializer.DeserializeAsync` and `XmlDocument.Parse(Stream)` read from a stream for you. See [Streaming](/guides/streaming). Write the loop when the document is too large to hold in memory or when you process it as it arrives.
@@ -833,7 +867,7 @@ Reading tokens, comparing names with `u8` literals, and parsing typed values don
 - More than eight namespace declarations are in scope.
 - Elements are nested more than eight deep.
 
-Without help, the reader allocates an array for each of those, once per reader and not once per token. To avoid even that, give it a *scratch buffer*: memory that it uses before it allocates any. Two constructors take one.
+Without help, the reader allocates an array for each of those and keeps it for the tokens that follow, growing it only when a later token needs more. To avoid even that, give it a *scratch buffer*: memory that it uses before it allocates any. Two constructors take one.
 
 ```csharp
 var xml = "<Orders><Order a=\"1\" b=\"2\" c=\"3\" d=\"4\" e=\"5\" f=\"6\" g=\"7\" h=\"8\" i=\"9\"><Item>Fish &amp; chips</Item><Item>Tea &amp; toast</Item></Order></Orders>"u8;
@@ -884,13 +918,13 @@ With a scratch buffer, the reader allocated: 0 bytes
 
 How to use a scratch buffer:
 
-- **Any size is correct.** The reader takes what it can from the buffer and allocates only when the buffer runs out, so a buffer that's too small costs an allocation and never an error. In the library's benchmarks, four real documents (an RSS feed, a package index, a word-processing file, and an OpenDocument file) need between 80 bytes and about 7 KB.
+- **Any size is correct.** The reader takes what it can from the buffer and allocates only when the buffer runs out, so a buffer that's too small costs an allocation and never an error. A larger buffer covers more documents.
 - **The contents on entry don't matter.** You don't have to clear the buffer, and you can pass the same one to the reader for every block of a document, with the `(utf8Xml, scratch, isFinalBlock, state)` constructor.
-- **The buffer can come from anywhere:** `stackalloc`, a pooled array, or a field you reuse. With `stackalloc`, allocate in the method that calls the one that creates the reader, as the sample does. Allocating in the same method as the constructor measured slower.
-- **The reader may overwrite the buffer for as long as you use the reader.** Don't use it for anything else in the meantime.
-- **There's no scratch overload for a sequence.**
+- **The buffer can come from anywhere:** `stackalloc`, a pooled array, or a field you reuse.
+- **The reader may overwrite the buffer for as long as you use the reader.** Don't use it for anything else in the meantime. A copy of the reader uses the same buffer, under the rules for copies at the top of this article.
+- **The scratch constructors take a `ReadOnlySpan<byte>`.** To read a `ReadOnlySequence<byte>` with one, pass `sequence.FirstSpan` when `IsSingleSegment` is `true`.
 
-In the same benchmarks, reading each of the four documents to the end with a scratch buffer allocates 0 B, and without one between 80 B and 6,952 B. `System.Xml.XmlReader` allocates between 20,064 B and 56,017 B on the same documents and takes longer on each of them. See [Benchmarks](/benchmarks) for the table.
+For what the reader allocates on real documents, with and without a scratch buffer, see [Benchmarks](/benchmarks).
 
 ## Set limits
 
@@ -952,6 +986,8 @@ A limit that's 0 uses its default. That's why `new XmlReaderOptions()` is alread
 | `MaxDocumentByteCount` | The length of the whole document, in bytes. | No limit |
 
 `MaxDocumentByteCount` is the one limit where 0 means no limit. The reader checks it when you construct it, against the bytes read so far plus the length of the block you pass. When you read a stream in blocks, the state carries the count from block to block.
+
+The text, comment, and processing instruction limits count the bytes as they are in the document, before references are expanded. When you read in blocks, a value, a comment, or a processing instruction that is already longer than its limit throws as soon as the reader sees it, without waiting for its end, so a sender can't make you buffer a token that never ends.
 
 For how to choose limits for input you don't trust, see [Security](/guides/security).
 
@@ -1026,7 +1062,7 @@ Read 3 tokens.
 
 - **No DTDs.** A `<!DOCTYPE` declaration throws. There's no option to allow one, so a document can't define entities, and entity-expansion and external-entity attacks have nothing to work with. See [Security](/guides/security).
 - **Only the five predefined entities and character references.** `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, and references such as `&#169;` and `&#x2014;` are decoded. Any other entity, including HTML ones such as `&nbsp;`, throws.
-- **UTF-8 only.** A declaration that names another encoding throws, and so do bytes that aren't valid UTF-8. A UTF-8 byte order mark is accepted and skipped. To read a document in another encoding, transcode it to UTF-8 first, for example with `Encoding.CreateTranscodingStream`, and remove or rewrite the encoding in its declaration.
+- **UTF-8 only.** A declaration that names another encoding throws, and so do bytes that aren't valid UTF-8. UTF-16 and UTF-32 input is recognized from its first bytes and throws `XmlEssentials is UTF-8 only. The input is UTF-16 or UTF-32.` A UTF-8 byte order mark is accepted and skipped. To read a document in another encoding, transcode it to UTF-8 first, for example with `Encoding.CreateTranscodingStream`, and remove or rewrite the encoding in its declaration.
 - **No validation.** The reader checks that a document is well formed. It doesn't validate against a DTD or an XML Schema.
 - **No `Stream` or `TextReader` constructor, and no asynchronous `Read`.** Use the block loop in this article, or let `XmlSerializer` or `XmlDocument` read the stream.
 - **Forward only.** There's no way to go back. Copy the reader to look ahead, within the limits given at the top of this article.

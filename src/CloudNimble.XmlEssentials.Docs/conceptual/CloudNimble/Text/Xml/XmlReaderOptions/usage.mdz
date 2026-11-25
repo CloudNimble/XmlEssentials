@@ -11,7 +11,7 @@ var dataOnly = new XmlReaderOptions
 ```
 
 ```csharp
-var reader = new Utf8XmlReader(utf8Xml, options);
+var reader = new Utf8XmlReader(utf8Xml, dataOnly);
 ```
 
 The properties fall into three groups:

@@ -115,9 +115,9 @@ foreach (string xml in documents)
 The code produces the following output:
 
 ```text
-The root element does not match 'PurchaseOrder'.
-End tag does not match start tag.
-The value is not a valid integer.
+The root element does not match 'PurchaseOrder'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 8.
+End tag does not match start tag. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 40.
+The value is not a valid integer. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 28.
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/07_DeserializeFromXml.cs)

@@ -4,7 +4,7 @@ Set `XmlSerializerOptions.ReferenceHandler` to tell the serializer what to do wh
 | --- | --- | --- |
 | `null` (default) | A full copy. A cycle fails with `XmlException` when the writer reaches `MaxDepth`. | No |
 | `XmlReferenceHandler.Preserve` | An empty element with a `ref` attribute that points to the `id` of the first appearance. | Yes |
-| `XmlReferenceHandler.IgnoreCycles` | An empty element marked `xsi:nil="true"`. | No |
+| `XmlReferenceHandler.IgnoreCycles` | A full copy, unless it closes a cycle: an object reached again from inside itself is an empty element marked `xsi:nil="true"`. | No |
 
 ```csharp
 var options = new XmlSerializerOptions

@@ -50,9 +50,9 @@ The code produces the following output:
 
 There are three ways to get an instance:
 
-- `new XmlSerializerOptions()` for the general defaults, or `new XmlSerializerOptions(XmlSerializerDefaults.Web)` and `new XmlSerializerOptions(XmlSerializerDefaults.Strict)` for the other two sets.
+- `new XmlSerializerOptions()` for the general defaults, or `new XmlSerializerOptions(XmlSerializerDefaults.Web)`, `XmlSerializerDefaults.Strict`, or `XmlSerializerDefaults.Bcl` for the other three sets.
 - `new XmlSerializerOptions(existing)` to copy an instance and change the copy.
-- The shared, read-only instances `XmlSerializerOptions.Default`, `XmlSerializerOptions.Web`, and `XmlSerializerOptions.Strict`.
+- The shared, read-only instances `XmlSerializerOptions.Default`, `XmlSerializerOptions.Web`, `XmlSerializerOptions.Strict`, and `XmlSerializerOptions.Bcl`.
 
 An instance becomes read-only the first time it is used, or when you call `MakeReadOnly`. Every option, with its default, is listed in [Configure XmlSerializerOptions](/guides/configure-options).
 
@@ -164,11 +164,15 @@ An options instance carries a cache as well as settings, which explains most of 
 
 ### Read-only after first use
 
-Serializing, deserializing, or calling `GetTypeInfo` or `TryGetTypeInfo` makes the instance read-only. From then on every setter throws an `InvalidOperationException` with the message `This XmlSerializerOptions instance is read-only.`, and so do changes to `Converters` and `TypeInfoResolverChain`. The three static instances are read-only from the start. To change a read-only instance, copy it with `new XmlSerializerOptions(existing)`.
+Serializing, deserializing, or calling `GetTypeInfo` or `TryGetTypeInfo` makes the instance read-only. From then on every setter throws an `InvalidOperationException` with the message `This XmlSerializerOptions instance is read-only.`, and so do changes to `Converters` and `TypeInfoResolverChain`. The four static instances are read-only from the start. To change a read-only instance, copy it with `new XmlSerializerOptions(existing)`.
+
+### The resolver is given, not assumed
+
+`TypeInfoResolver` is `null` on a new instance. `GetTypeInfo` and `TryGetTypeInfo` use the resolver the instance has, and throw an `InvalidOperationException` when it has none. The members that need reflection give an instance without a resolver the reflection resolver: every `XmlSerializer` method that takes options, `GetConverter`, `MakeReadOnly(populateMissingResolver: true)`, and the four static instances. Each of them carries `RequiresUnreferencedCode` and `RequiresDynamicCode`, so a trimmed or Native AOT application gets a warning where it uses one. A copy made with `new XmlSerializerOptions(existing)` keeps a resolver you set, and not one that was only given: a copy of `XmlSerializerOptions.Web` has none, so a context you create from it becomes its resolver.
 
 ### The cache lives on the instance
 
-Each instance caches the converter and the type metadata for every type it has been used with. In the library's benchmark of a customer object with two addresses and 20 line items, a write with a new instance takes 612,933 ns and allocates 75,440 bytes, against 1,710 ns and no allocation with a cached instance. See [Benchmarks](/benchmarks). The cache is never trimmed, so an application that keeps creating instances also keeps their metadata alive for as long as it holds them.
+Each instance caches the converter and the type metadata for every type it has been used with. A call with a new instance builds that metadata again, which costs many times what the call itself costs. See [Benchmarks](/benchmarks). The cache is never trimmed, so an application that keeps creating instances also keeps their metadata alive for as long as it holds them.
 
 ### Zero means the built-in default
 
@@ -1373,8 +1377,7 @@ public CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver TypeInfoResolver 
 #### Property Value
 
 Type: `CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver?`
-The resolver that supplies [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) metadata, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if none is set and
-reflection-based serialization is disabled.
+The resolver that supplies [XmlTypeInfo](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo) metadata, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if none has been set.
 
 #### Exceptions
 
@@ -1384,9 +1387,11 @@ reflection-based serialization is disabled.
 
 #### Remarks
 
-When none has been set, this is [DefaultXmlTypeInfoResolver.Instance](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver#instance) if
-[XmlSerializer.IsReflectionEnabledByDefault](/api-reference/CloudNimble/Text/Xml/XmlSerializer#isreflectionenabledbydefault) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) and
-[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) otherwise. [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) is a view of this resolver.
+An instance that has none gets [DefaultXmlTypeInfoResolver.Instance](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver#instance) when it is first used by an
+[XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) method that takes options, or by [XmlSerializerOptions.MakeReadOnly](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#makereadonly), if
+[XmlSerializer.IsReflectionEnabledByDefault](/api-reference/CloudNimble/Text/Xml/XmlSerializer#isreflectionenabledbydefault) is [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool). Those members say that
+they need reflection, and this property does not, so reading it never brings the reflection resolver into a
+trimmed program. [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) is a view of this resolver.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeInfoResolverChain
 
@@ -1746,6 +1751,30 @@ public void MakeReadOnly()
 
 Afterwards, every property setter and any change to [XmlSerializerOptions.Converters](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#converters) or
 [XmlSerializerOptions.TypeInfoResolverChain](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolverchain) throws an [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception).
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MakeReadOnly
+
+Marks the current instance as read-only to prevent any further user modification, and optionally gives
+it the reflection-based resolver when it has none.
+
+#### Syntax
+
+```csharp
+public void MakeReadOnly(bool populateMissingResolver)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `populateMissingResolver` | `bool` | [`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to set [XmlSerializerOptions.TypeInfoResolver](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#typeinforesolver) to [DefaultXmlTypeInfoResolver.Instance](/api-reference/CloudNimble/Text/Xml/Serialization/DefaultXmlTypeInfoResolver#instance)
+when no resolver has been set and [XmlSerializer.IsReflectionEnabledByDefault](/api-reference/CloudNimble/Text/Xml/XmlSerializer#isreflectionenabledbydefault) is
+[`true`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool); [`false`](https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool) to leave it as it is. |
+
+#### Remarks
+
+This is the counterpart of `JsonSerializerOptions.MakeReadOnly(bool)` in System.Text.Json. The
+[XmlSerializer](/api-reference/CloudNimble/Text/Xml/XmlSerializer) methods that take options do the same on the first call.
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
 

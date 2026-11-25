@@ -118,7 +118,7 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void CallWithOptions_LeavesTheOptionsAsTheyWere()
+        public void CallWithOptions_GivesTheOptionsTheReflectionResolver_AndNotTheContext()
         {
             XmlSerializerGeneratorTests.RunGenerated(Model + """
                 public static class Use
@@ -129,7 +129,7 @@ namespace CloudNimble.XmlEssentials.Tests
                         var resolverBefore = options.TypeInfoResolver;
                         var xml = XmlSerializer.Serialize(new Person { Name = "Ada" }, options);
                         var read = XmlSerializer.Deserialize<Person>(xml, options);
-                        return xml + "|" + read!.Name + "|" + ReferenceEquals(resolverBefore, options.TypeInfoResolver) + "|" + options.TypeInfoResolver!.GetType().Name;
+                        return xml + "|" + read!.Name + "|" + (resolverBefore is null) + "|" + options.TypeInfoResolver!.GetType().Name;
                     }
                 }
                 """).Should().Be("<Person><Name>Ada</Name></Person>|Ada|True|DefaultXmlTypeInfoResolver");

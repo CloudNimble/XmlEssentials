@@ -58,6 +58,12 @@ namespace CloudNimble.Text.Xml.Serialization
         internal readonly XmlDiscriminatorPlacement Placement;
 
         /// <summary>
+        /// Whether the element name of a derived type is matched without regard to ASCII case, as
+        /// <see cref="XmlSerializerOptions.PropertyNameCaseInsensitive"/> says for every element a member is read from.
+        /// </summary>
+        internal bool CaseInsensitive;
+
+        /// <summary>
         /// How a runtime type that is not declared is handled.
         /// </summary>
         internal readonly XmlUnknownDerivedTypeHandling UnknownDerivedTypeHandling;
@@ -100,13 +106,17 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Returns the derived binding whose discriminator equals <paramref name="discriminator"/>.
         /// </summary>
-        /// <param name="discriminator">The discriminator value.</param>
+        /// <param name="discriminator">The UTF-8 discriminator value, as the attribute holds it.</param>
         /// <returns>The binding, or null.</returns>
-        internal XmlDerivedBinding? FindByDiscriminator(string discriminator)
+        /// <remarks>
+        /// The value is compared as the bytes it is, with the bytes each binding keeps, so a value that names a
+        /// known type is never made into a string. System.Text.Json compares a <c>$type</c> the same way.
+        /// </remarks>
+        internal XmlDerivedBinding? FindByDiscriminator(ReadOnlySpan<byte> discriminator)
         {
             foreach (var derived in Known)
             {
-                if (derived.Discriminator == discriminator)
+                if (discriminator.SequenceEqual(derived.Utf8Discriminator))
                 {
                     return derived;
                 }
@@ -115,12 +125,12 @@ namespace CloudNimble.Text.Xml.Serialization
             // The value of xsi:type is a QName. A document that binds a prefix to the namespace of its types
             // writes "p:Circle", and the prefix is whatever that document chose, so the type is found by the
             // local part. A discriminator that was declared with a colon has been matched above, as it is written.
-            if (Placement is XmlDiscriminatorPlacement.XsiType && discriminator.IndexOf(':') is > 0 and var colon)
+            if (Placement is XmlDiscriminatorPlacement.XsiType && discriminator.IndexOf((byte)':') is > 0 and var colon)
             {
-                var local = discriminator.AsSpan(colon + 1);
+                var local = discriminator[(colon + 1)..];
                 foreach (var derived in Known)
                 {
-                    if (local.SequenceEqual(derived.Discriminator))
+                    if (local.SequenceEqual(derived.Utf8Discriminator))
                     {
                         return derived;
                     }
@@ -128,6 +138,44 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Reads the discriminator of the start tag the reader is on.
+        /// </summary>
+        /// <param name="reader">The reader, on a start tag. It is on the start tag again when this method returns.</param>
+        /// <param name="unknown">
+        /// When this method returns null, the discriminator the start tag has that names no known type, or null
+        /// when the start tag has none or an empty one.
+        /// </param>
+        /// <returns>The binding of the type the discriminator names, or null.</returns>
+        internal XmlDerivedBinding? ReadDiscriminator(ref Utf8XmlReader reader, out string? unknown)
+        {
+            unknown = null;
+            if (!reader.HasAttributes)
+            {
+                return null;
+            }
+
+            XmlDerivedBinding? known = null;
+            while (reader.MoveToNextAttribute())
+            {
+                var isDiscriminator = Placement is XmlDiscriminatorPlacement.XsiType
+                    ? reader.LocalNameEquals(XmlAttributes.Type) && reader.NamespaceUriEquals(XmlNamespaces.Xsi)
+                    : Utf8DiscriminatorAttributeName.Length > 0 && reader.LocalNameEquals(Utf8DiscriminatorAttributeName) && reader.PrefixSpan.IsEmpty;
+                if (!isDiscriminator)
+                {
+                    continue;
+                }
+
+                // The last one counts, as it did when each was read as a string.
+                var value = reader.ValueSpan;
+                known = value.IsEmpty ? null : FindByDiscriminator(value);
+                unknown = known is null && !value.IsEmpty ? reader.GetString() : null;
+            }
+
+            reader.MoveToElement();
+            return known;
         }
 
         /// <summary>
@@ -139,7 +187,7 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             foreach (var derived in Known)
             {
-                if (derived.Matches(ref reader, caseInsensitive: true))
+                if (derived.Matches(ref reader, CaseInsensitive))
                 {
                     return derived;
                 }
@@ -180,7 +228,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </remarks>
         internal object? ReadDerived(ref Utf8XmlReader reader, XmlDerivedBinding derived)
         {
-            if (!IsNamed && !DeclaredType.IsAssignableFrom(derived.Type))
+            if (!IsNamed && !derived.IsOfDeclaredType)
             {
                 throw XmlException.Create($"The element identifies the type '{derived.Type}', which is not a '{DeclaredType}'.");
             }
@@ -219,18 +267,14 @@ namespace CloudNimble.Text.Xml.Serialization
         {
             if (Placement is XmlDiscriminatorPlacement.Attribute or XmlDiscriminatorPlacement.XsiType)
             {
-                var discriminator = XmlConverterHelpers.ReadDiscriminator(ref reader, Placement, Utf8DiscriminatorAttributeName);
-                if (discriminator is { Length: > 0 })
+                if (ReadDiscriminator(ref reader, out var unknown) is { } typed)
                 {
-                    if (FindByDiscriminator(discriminator) is { } typed)
-                    {
-                        return ReadDerived(ref reader, typed);
-                    }
+                    return ReadDerived(ref reader, typed);
+                }
 
-                    if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
-                    {
-                        throw XmlException.Create($"Unknown type discriminator '{discriminator}'.");
-                    }
+                if (unknown is not null && UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FailSerialization)
+                {
+                    throw XmlException.Create($"Unknown type discriminator '{unknown}'.");
                 }
 
                 return fallback.ReadElementAsObject(ref reader);
@@ -260,6 +304,12 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
             }
 
+            // A value of the declared type is the usual miss, and no base type of it can be an alternative.
+            if (runtime == DeclaredType)
+            {
+                return null;
+            }
+
             // A value of a type that derives from an alternative of a choice is written under the element of that
             // alternative, with the discriminator the alternative's own type gives it.
             for (var type = runtime.BaseType; type is not null; type = type.BaseType)
@@ -271,11 +321,6 @@ namespace CloudNimble.Text.Xml.Serialization
                         return derived;
                     }
                 }
-            }
-
-            if (runtime == DeclaredType)
-            {
-                return null;
             }
 
             if (UnknownDerivedTypeHandling is XmlUnknownDerivedTypeHandling.FallBackToBaseType)
@@ -303,25 +348,20 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
-        /// Finds the element a value is written under, and what is written inside it.
+        /// Writes a value that names its element: the element, and the value it holds inside it.
         /// </summary>
-        /// <param name="value">
-        /// The value of the member or the item. When this method returns, what is written inside the element: the
-        /// same value, or the value a <see cref="XmlNamedValue"/> holds, which may be null.
-        /// </param>
-        /// <returns>The binding, or null when the value is written under the member's own name.</returns>
+        /// <param name="writer">The writer.</param>
+        /// <param name="named">The value of the member or the item.</param>
         /// <exception cref="NotSupportedException">
-        /// The type of the value has no element; or a named value names an element the member does not have, or
-        /// holds a value that is not of the type of its element.
+        /// The value names an element the member does not have, or holds a value that is not of the type of its
+        /// element.
         /// </exception>
-        internal XmlDerivedBinding? ResolveWrite(ref object? value)
+        /// <remarks>
+        /// Only a member that holds <see cref="XmlNamedValue"/> comes here (<see cref="IsNamed"/>). Every other
+        /// value finds its element by its type, with <see cref="TryGetDerivedWrite"/>.
+        /// </remarks>
+        internal void WriteNamed(Utf8XmlWriter writer, XmlNamedValue named)
         {
-            if (!IsNamed)
-            {
-                return TryGetDerivedWrite(value!.GetType());
-            }
-
-            var named = (XmlNamedValue)value!;
             foreach (var derived in Derived)
             {
                 if (derived.Discriminator != named.Name || (named.Namespace is not null && named.Namespace != derived.Namespace))
@@ -335,8 +375,10 @@ namespace CloudNimble.Text.Xml.Serialization
                     throw new NotSupportedException($"The element '{named.Name}' holds a value of type '{derived.Type}', and the value given for it is of type '{content.GetType()}'.");
                 }
 
-                value = content;
-                return derived;
+                derived.WriteStart(writer);
+                derived.WriteContent(writer, content);
+                writer.WriteEndElement();
+                return;
             }
 
             throw new NotSupportedException($"The member has no element named '{named.Name}' for a {nameof(XmlNamedValue)}.");

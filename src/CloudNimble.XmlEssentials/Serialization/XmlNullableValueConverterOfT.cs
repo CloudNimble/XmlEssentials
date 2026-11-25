@@ -45,6 +45,18 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
+        internal override void WriteAttribute(Utf8XmlWriter writer, ReadOnlySpan<byte> local, ReadOnlySpan<byte> head, T? value, XmlSerializerOptions options)
+        {
+            _inner.WriteAttribute(writer, local, head, value.GetValueOrDefault(), options);
+        }
+
+        /// <inheritdoc />
+        internal override void WriteLeaf(Utf8XmlWriter writer, ReadOnlySpan<byte> openTag, ReadOnlySpan<byte> closeTag, T? value, XmlSerializerOptions options)
+        {
+            _inner.WriteLeaf(writer, openTag, closeTag, value.GetValueOrDefault(), options);
+        }
+
+        /// <inheritdoc />
         internal override void WriteValue(Utf8XmlWriter writer, T? value, XmlSerializerOptions options)
         {
             _inner.WriteValue(writer, value.GetValueOrDefault(), options);

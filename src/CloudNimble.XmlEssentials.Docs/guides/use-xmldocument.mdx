@@ -209,7 +209,7 @@ Attribute 'status' was not found.
 What to notice:
 
 - An attribute is an `XmlElement` too. Its `ValueKind` is `Attribute`, and you read its value with the same getters as an element.
-- The lookups search direct children only, and return the first match in document order. There is no descendant search, no parent property, and no access by index. To go deeper, chain the calls: `order.GetChild("Customer").GetChild("Name")`.
+- The lookups search direct children only, and return the first match in document order. To go deeper, chain the calls: `order.GetChild("Customer").GetChild("Name")`. To search at any depth, write a recursive method over `EnumerateChildren`.
 - Names are case-sensitive, as XML requires.
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)
@@ -307,7 +307,7 @@ What to notice:
 - Namespace declarations (`xmlns` and `xmlns:prefix`) are attributes of the element that declares them. `AttributeCount` and `EnumerateAttributes` include them.
 - `GetChild`, `TryGetChild`, and `GetAttribute` each have a namespace overload. `TryGetAttribute` has only the any-namespace form.
 
-For how namespaces work across the library, see [Use XML namespaces](/guides/namespaces).
+To list the namespaces a document declares, with their prefixes, call `XmlDocument.DiscoverNamespaces`. It reads the XML without building a document; see [Take them from an existing document](/guides/namespaces#take-them-from-an-existing-document). For how namespaces work across the library, see [Use XML namespaces](/guides/namespaces).
 
 ## Enumerate children and attributes
 
@@ -893,7 +893,7 @@ What to notice:
 - When `ParseValue` returns, the reader is on the end tag of the element (or on the element itself, for an empty-element tag), so the next `Read` moves past it.
 - The document copies what it keeps. It doesn't depend on the reader's input after `ParseValue` returns.
 - The reader's own `XmlReaderOptions` apply. `ParseValue` takes no `XmlDocumentOptions`.
-- If the reader has no element left to read, the document has no root, and `RootElement` throws an `XmlException`.
+- If the reader reaches the end of its input without finding an element, `ParseValue` throws an `XmlException` with the message "The reader is not on an element and has none left to read.".
 
 ### When the input arrives in blocks
 
@@ -1126,7 +1126,7 @@ The code produces the following output:
 <Product sku="KB-2"><Name>Keyboard</Name><Price>49.90</Price></Product>
 ```
 
-`CloneNode` returns the node type that matches the kind: an `XmlElementNode` for an element, an `XmlTextNode` for text, and so on. Clone the smallest element you need to change, because every node in the copy is a heap object. When you intend to edit the whole document, [`XmlNode.Parse`](/guides/use-xmlnode#parse-xml-into-a-tree) does the parse and the copy in one call.
+`CloneNode` returns the node type that matches the kind: an `XmlElementNode` for an element, an `XmlTextNode` for text, and so on. It makes every node under the element when it's called, and each one is a heap object, so clone the smallest element you need to change. When you parse only to edit, call [`XmlNode.Parse`](/guides/use-xmlnode#parse-xml-into-a-tree) instead: it keeps the parsed input with the tree and makes the nodes under an element only when you reach into it.
 
 ## Deserialize from a document or an element
 

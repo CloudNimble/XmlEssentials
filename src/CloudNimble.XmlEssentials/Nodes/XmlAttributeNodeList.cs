@@ -19,7 +19,7 @@ namespace CloudNimble.Text.Xml.Nodes
 
         #region Fields
 
-        private readonly List<XmlAttributeNode> _items = [];
+        private XmlNodeArray<XmlAttributeNode> _items;
         private readonly XmlNode _owner;
 
         #endregion
@@ -67,7 +67,7 @@ namespace CloudNimble.Text.Xml.Nodes
             get
             {
                 ArgumentNullException.ThrowIfNull(localName);
-                foreach (var item in _items)
+                foreach (var item in _items.AsSpan())
                 {
                     if (item.LocalName == localName)
                     {
@@ -97,7 +97,7 @@ namespace CloudNimble.Text.Xml.Nodes
             {
                 ArgumentNullException.ThrowIfNull(localName);
                 ArgumentNullException.ThrowIfNull(namespaceUri);
-                foreach (var item in _items)
+                foreach (var item in _items.AsSpan())
                 {
                     if (item.LocalName == localName && item.NamespaceUri == namespaceUri)
                     {
@@ -137,7 +137,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <inheritdoc />
         public void Clear()
         {
-            foreach (var item in _items)
+            foreach (var item in _items.AsSpan())
             {
                 Detach(item);
             }
@@ -148,7 +148,7 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <inheritdoc />
         public bool Contains(XmlAttributeNode item)
         {
-            return _items.Contains(item);
+            return _items.IndexOf(item) >= 0;
         }
 
         /// <inheritdoc />
@@ -160,7 +160,10 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <inheritdoc />
         public IEnumerator<XmlAttributeNode> GetEnumerator()
         {
-            return _items.GetEnumerator();
+            for (var i = 0; i < _items.Count; i++)
+            {
+                yield return _items[i];
+            }
         }
 
         /// <inheritdoc />
@@ -173,6 +176,9 @@ namespace CloudNimble.Text.Xml.Nodes
         public void Insert(int index, XmlAttributeNode node)
         {
             ArgumentNullException.ThrowIfNull(node);
+
+            // The position is checked before the node is given a parent, so a node that is refused keeps none.
+            ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)index, (uint)_items.Count, nameof(index));
             Attach(node);
             _items.Insert(index, node);
         }
@@ -180,11 +186,13 @@ namespace CloudNimble.Text.Xml.Nodes
         /// <inheritdoc />
         public bool Remove(XmlAttributeNode node)
         {
-            if (!_items.Remove(node))
+            var index = _items.IndexOf(node);
+            if (index < 0)
             {
                 return false;
             }
 
+            _items.RemoveAt(index);
             Detach(node);
             return true;
         }
@@ -218,6 +226,15 @@ namespace CloudNimble.Text.Xml.Nodes
             }
 
             node.SetParent(_owner);
+        }
+
+        /// <summary>
+        /// Returns the nodes in order, for a loop that allocates no enumerator.
+        /// </summary>
+        /// <returns>The nodes.</returns>
+        internal ReadOnlySpan<XmlAttributeNode> AsSpan()
+        {
+            return _items.AsSpan();
         }
 
         /// <summary>

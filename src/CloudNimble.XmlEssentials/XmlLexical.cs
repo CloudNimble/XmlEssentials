@@ -4,6 +4,7 @@ using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace CloudNimble.Text.Xml
@@ -57,11 +58,12 @@ namespace CloudNimble.Text.Xml
         /// <returns>The number of bytes written, always 10.</returns>
         public static int FormatDate(int year, int month, int day, Span<byte> destination)
         {
-            WriteDigits((uint)year, destination[..4]);
+            WriteTwoDigits((uint)year / 100, destination);
+            WriteTwoDigits((uint)year % 100, destination[2..]);
             destination[4] = (byte)'-';
-            WriteDigits((uint)month, destination.Slice(5, 2));
+            WriteTwoDigits((uint)month, destination[5..]);
             destination[7] = (byte)'-';
-            WriteDigits((uint)day, destination.Slice(8, 2));
+            WriteTwoDigits((uint)day, destination[8..]);
             return 10;
         }
 
@@ -78,6 +80,32 @@ namespace CloudNimble.Text.Xml
             FormatDate(year, month, day, destination);
             destination[10] = (byte)'T';
             return 11 + FormatTime(value.TimeOfDay.Ticks, destination[11..]);
+        }
+
+        /// <summary>
+        /// Writes <paramref name="value"/> in the <c>xs:dateTime</c> form with the time zone its
+        /// <see cref="DateTime.Kind"/> states: <c>Z</c> for <see cref="DateTimeKind.Utc"/>, the offset of the
+        /// local time zone at that moment for <see cref="DateTimeKind.Local"/>, and none for
+        /// <see cref="DateTimeKind.Unspecified"/>.
+        /// </summary>
+        /// <param name="value">The value.</param>
+        /// <param name="destination">The buffer, at least 33 bytes long.</param>
+        /// <returns>The number of bytes written.</returns>
+        public static int FormatDateTimeWithZone(DateTime value, Span<byte> destination)
+        {
+            var written = FormatDateTime(value, destination);
+            if (value.Kind is DateTimeKind.Utc)
+            {
+                destination[written] = (byte)'Z';
+                return written + 1;
+            }
+
+            if (value.Kind is DateTimeKind.Local)
+            {
+                written += FormatOffset(TimeZoneInfo.Local.GetUtcOffset(value), destination[written..]);
+            }
+
+            return written;
         }
 
         /// <summary>
@@ -183,9 +211,9 @@ namespace CloudNimble.Text.Xml
             var minutes = (int)(offset.Ticks / TimeSpan.TicksPerMinute);
             destination[0] = (byte)(minutes < 0 ? '-' : '+');
             minutes = Math.Abs(minutes);
-            WriteDigits((uint)(minutes / 60), destination.Slice(1, 2));
+            WriteTwoDigits((uint)(minutes / 60), destination[1..]);
             destination[3] = (byte)':';
-            WriteDigits((uint)(minutes % 60), destination.Slice(4, 2));
+            WriteTwoDigits((uint)(minutes % 60), destination[4..]);
             return 6;
         }
 
@@ -200,11 +228,11 @@ namespace CloudNimble.Text.Xml
         {
             var seconds = (uint)(ticks / TimeSpan.TicksPerSecond);
             var fraction = (uint)(ticks % TimeSpan.TicksPerSecond);
-            WriteDigits(seconds / 3600, destination[..2]);
+            WriteTwoDigits(seconds / 3600, destination);
             destination[2] = (byte)':';
-            WriteDigits(seconds / 60 % 60, destination.Slice(3, 2));
+            WriteTwoDigits(seconds / 60 % 60, destination[3..]);
             destination[5] = (byte)':';
-            WriteDigits(seconds % 60, destination.Slice(6, 2));
+            WriteTwoDigits(seconds % 60, destination[6..]);
             if (fraction == 0)
             {
                 return 8;
@@ -1271,6 +1299,23 @@ namespace CloudNimble.Text.Xml
                 destination[i] = (byte)('0' + (value % 10));
                 value /= 10;
             }
+        }
+
+        /// <summary>
+        /// Writes <paramref name="value"/> as two decimal digits, with a leading zero when it is under ten.
+        /// </summary>
+        /// <param name="value">The value, under 100.</param>
+        /// <param name="destination">The buffer, at least two bytes long.</param>
+        /// <remarks>
+        /// The fields of a date and a time are two digits each. Both digits come from one look in a table,
+        /// where working them out takes a division for each.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void WriteTwoDigits(uint value, Span<byte> destination)
+        {
+            "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899"u8
+                .Slice((int)value * 2, 2)
+                .CopyTo(destination);
         }
 
         #endregion

@@ -25,6 +25,11 @@ namespace CloudNimble.Text.Xml.Serialization
         private readonly bool[] _heldSlots;
 
         /// <summary>
+        /// Whether the object can be read a piece at a time: 0 until it is worked out, then 1 for yes and 2 for no.
+        /// </summary>
+        private int _resumable;
+
+        /// <summary>
         /// A values array no reader is using, or null.
         /// </summary>
         private object?[]? _spareValues;
@@ -233,6 +238,81 @@ namespace CloudNimble.Text.Xml.Serialization
         #endregion
 
         #region Private Methods
+
+        /// <summary>
+        /// Returns whether a value of this type can be read from a stream a piece at a time, going on where the
+        /// last block of input ended (<see cref="XmlResumableReader"/>).
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> when every member that is read from an element is a built-in scalar, an object
+        /// that can itself be read this way, or a collection of either, and none of them is polymorphic or
+        /// populated; and the object has no text, mixed content, extension data or derived types.
+        /// </returns>
+        /// <remarks>
+        /// The answer is worked out once. Any other object is read after all of it has arrived.
+        /// </remarks>
+        internal bool IsResumable()
+        {
+            if (_resumable == 0)
+            {
+                _resumable = IsResumable(this, []) ? 1 : 2;
+            }
+
+            return _resumable == 1;
+        }
+
+        /// <summary>
+        /// Works out whether <paramref name="binding"/> and every type its members reach can be read from a stream
+        /// a piece at a time.
+        /// </summary>
+        /// <param name="binding">The binding.</param>
+        /// <param name="visited">The bindings that are being looked at or have been found to be readable this way.</param>
+        /// <returns><see langword="true"/> when the object can be read a piece at a time.</returns>
+        /// <remarks>
+        /// A type that reaches itself is taken to be readable while its own members are looked at, which is
+        /// right: the answer is no only when some member, of any type on the way, cannot be read this way.
+        /// </remarks>
+        internal static bool IsResumable(XmlObjectBinding binding, HashSet<XmlObjectBinding> visited)
+        {
+            visited.Add(binding);
+            if (binding.Text is not null || binding.Mixed is not null || binding.ExtensionData is not null || binding.Polymorphism.IsActive)
+            {
+                return false;
+            }
+
+            foreach (var member in binding.Elements)
+            {
+                if (member.NeverStored && !member.Populates)
+                {
+                    // The element is passed over, whatever it holds.
+                    continue;
+                }
+
+                if (member.Populates || member.Polymorphism.IsActive)
+                {
+                    return false;
+                }
+
+                var isScalar = member.Collection is { } collection ? collection.HasItemValueConverter : member.HasValueConverter;
+                if (isScalar)
+                {
+                    continue;
+                }
+
+                var valueInfo = member.Collection is { } items ? items.ItemTypeInfo : member.ValueTypeInfo;
+                if (valueInfo.ResumableBinding is not { } inner)
+                {
+                    return false;
+                }
+
+                if (!visited.Contains(inner) && !IsResumable(inner, visited))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         /// <summary>
         /// Refuses to read or write from a binding that has no metadata.

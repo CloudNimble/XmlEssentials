@@ -10,11 +10,11 @@ Call `WriteStartElement`, then the attributes and namespace declarations, then t
 
 ### Attribute with a typed value
 
-For a type that `WriteAttributeString` and `WriteAttributeNumber` don't take, open the attribute with `WriteStartAttribute`, call a value method such as `WriteBooleanValue` or `WriteStringValue(DateTimeOffset)`, and close it with `WriteEndAttribute`.
+`WriteAttributeString` takes text and `WriteAttributeNumber` takes an `int`, a `long`, or a `double`. For any other type, open the attribute with `WriteStartAttribute`, call a value method such as `WriteBooleanValue` or `WriteStringValue(DateTimeOffset)`, and close it with `WriteEndAttribute`.
 
 ### One writer, many documents
 
-Create the writer once, and after each document call `Flush` and then `Reset`. Use `Reset(IBufferWriter<byte>)` or `Reset(Stream)` to send the next document somewhere else.
+Create the writer once, and after each document call `Flush` and then `Reset`. `Reset` discards anything that isn't flushed. Use `Reset(IBufferWriter<byte>)` or `Reset(Stream)` to send the next document somewhere else.
 
 ### Stream with asynchronous flushes
 

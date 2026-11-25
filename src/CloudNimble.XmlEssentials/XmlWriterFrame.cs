@@ -2,57 +2,40 @@ namespace CloudNimble.Text.Xml
 {
 
     /// <summary>
-    /// One in-progress start tag on the writer stack.
+    /// What the writer keeps about an open element until its end tag is written.
     /// </summary>
+    /// <remarks>
+    /// The state of the element that is being written (whether its start tag is open, whether it holds content,
+    /// how many attributes it has) is held by the writer itself, because only the innermost element has any.
+    /// A frame holds the name the end tag needs, and what the writer goes back to when the element ends. It
+    /// holds no references, so writing one costs the collector nothing.
+    /// </remarks>
     internal struct XmlWriterFrame
     {
 
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the number of attributes written on this start tag, including xmlns*.
-        /// </summary>
-        public int AttributeCount { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether content has been written (so the end tag cannot be empty).
-        /// </summary>
-        public bool HasContent { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether character data has been written, which turns off indentation inside the element.
-        /// </summary>
-        public bool HasText { get; set; }
-
-        /// <summary>
-        /// Gets or sets the local name.
+        /// Gets or sets where the local name is in the writer's name buffer.
         /// </summary>
         public XmlWriterName Local { get; set; }
 
         /// <summary>
-        /// Gets or sets the original local name when the start tag was written from a <see cref="string"/>.
+        /// Gets or sets the length of the writer's name buffer when the element was started. The buffer goes
+        /// back to it when the element ends.
         /// </summary>
-        /// <remarks>
-        /// BCL <c>XmlWellFormedWriter.ElementScope</c> keeps interned string names and re-emits them on
-        /// the end tag, so the writer does not copy UTF-8 into a name store for literals such as
-        /// <c>item</c> or <c>catalog</c>.
-        /// </remarks>
-        public string? LocalChars { get; set; }
+        public int NamesMark { get; set; }
 
         /// <summary>
-        /// Gets or sets the prefix, or empty when unprefixed.
+        /// Gets or sets whether the element that holds this one had character data when this one was started,
+        /// which turns off indentation inside that element.
+        /// </summary>
+        public bool ParentHasText { get; set; }
+
+        /// <summary>
+        /// Gets or sets where the prefix is in the writer's name buffer; empty when the name has no prefix.
         /// </summary>
         public XmlWriterName Prefix { get; set; }
-
-        /// <summary>
-        /// Gets or sets the original prefix when the start tag was written from a <see cref="string"/>.
-        /// </summary>
-        public string? PrefixChars { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the start tag is still open for attributes.
-        /// </summary>
-        public bool TagOpen { get; set; }
 
         #endregion
 

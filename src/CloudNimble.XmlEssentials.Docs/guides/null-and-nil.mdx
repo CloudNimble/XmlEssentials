@@ -115,9 +115,10 @@ Contact? nil = XmlSerializer.Deserialize<Contact>(
     """<Contact xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Name>Ada</Name><Nickname xsi:nil="true" /></Contact>""");
 output.WriteLine($"Nil: {Describe(nil!.Nickname)}");
 
-// An ignore condition is about members. The document still needs its root, so a null root is written.
-var omitNulls = new XmlSerializerOptions { DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
-output.WriteLine(XmlSerializer.Serialize(nobody, omitNulls) == xml);
+try
+{
+    XmlSerializer.Deserialize<Contact>("<Contact><Name>Ada</Name><Age /></Contact>");
+}
 catch (XmlException ex)
 {
     output.WriteLine($"Empty number: {ex.Message}");
@@ -132,7 +133,7 @@ The code produces the following output:
 Omitted: null
 Empty: empty string
 Nil: null
-Empty number: The value is not a valid integer.
+Empty number: The value is not a valid integer. Path: /Contact/Age | LineNumber: 1 | BytePositionInLine: 33.
 ```
 
 Keep these rules in mind when you read documents that other systems produce:
@@ -158,13 +159,13 @@ public sealed class Annotated
 
 var options = new XmlSerializerOptions { RespectNullableAnnotations = true };
 
-// Throws XmlException: The property or field 'Name' on type 'Annotated' doesn't allow setting null values.
-// Consider updating its nullability annotation.
+// Throws XmlException: The property or field 'Name' on type '<namespace>.Annotated' doesn't allow setting null values.
+// Consider updating its nullability annotation. Path: /Annotated/Name | LineNumber: 1 | BytePositionInLine: ...
 XmlSerializer.Deserialize<Annotated>(
     """<Annotated xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Name xsi:nil="true"/></Annotated>""", options);
 
-// Throws XmlException: The property or field 'Name' on type 'Annotated' doesn't allow getting null values.
-// Consider updating its nullability annotation.
+// Throws XmlException: The property or field 'Name' on type '<namespace>.Annotated' doesn't allow getting null values.
+// Consider updating its nullability annotation. Path: /Annotated.
 XmlSerializer.Serialize(new Annotated { Name = null! }, options);
 ```
 
@@ -205,10 +206,6 @@ output.WriteLine(XmlSerializer.Deserialize<Contact>(xml) is null);
 // An ignore condition is about members. The document still needs its root, so a null root is written.
 var omitNulls = new XmlSerializerOptions { DefaultIgnoreCondition = XmlIgnoreCondition.WhenWritingNull };
 output.WriteLine(XmlSerializer.Serialize(nobody, omitNulls) == xml);
-catch (InvalidOperationException ex)
-{
-    output.WriteLine(ex.Message);
-}
 ```
 
 The code produces the following output:
@@ -229,6 +226,7 @@ A document must have a document element, so an ignore condition doesn't apply to
 | --- | --- | --- | --- |
 | `Never` (default) | `<Name xsi:nil="true"/>` | Yes | You want an exact round trip, or the schema declares the element nillable. |
 | `WhenWritingNull` | Nothing | Yes, if the member starts as `null` | You want small documents and the reader treats a missing element as no value. |
+| `WhenWritingNullReference` | Nothing for a `null` reference; `<Name xsi:nil="true"/>` for a nullable value type with no value | Yes, if the member starts as `null` | You need what `System.Xml.Serialization.XmlSerializer` writes. `XmlSerializerOptions.Bcl` uses it. |
 | `WhenWritingDefault` | Nothing, and a value type that holds its default value is left out too | Yes, if the member starts as `null` | You want the smallest documents. |
 
 ## See also

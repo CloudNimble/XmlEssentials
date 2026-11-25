@@ -17,8 +17,8 @@
 
 ### Navigation
 
-- `GetChild` and `TryGetChild` search direct children and return the first match in document order. There is no descendant search, no parent, no sibling access, and no access by index.
-- `TryGetAttribute` has no overload that takes a namespace URI. `GetAttribute` does.
+- `GetChild` and `TryGetChild` search direct children and return the first match in document order. To search deeper, chain the calls or write a recursive method over `EnumerateChildren`. To reach a parent or a sibling, keep it in your own loop, or use the mutable tree, whose nodes have a `Parent`.
+- `GetChild`, `TryGetChild`, and `GetAttribute` have an overload that takes a namespace URI. `TryGetAttribute` matches the local name in any namespace.
 - `EnumerateChildren` returns every child node. With the default options that includes a `Text` node for each run of white space between elements and a `Comment` node for each comment.
 - `AttributeCount` and `EnumerateAttributes` include namespace declarations (`xmlns` and `xmlns:prefix`).
 - The enumerators are structs that work with `foreach`. They don't implement `IEnumerable<T>`, so LINQ doesn't apply.
@@ -26,7 +26,7 @@
 
 ### Allocation
 
-Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `WriteTo` don't allocate. `LocalName`, `Prefix`, `NamespaceUri`, `GetString`, `GetInnerText`, and `GetRawXml` allocate the string they return, `GetBytesFromBase64` allocates the array, and `CloneNode` allocates the copy.
+Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `WriteTo` don't allocate. `LocalName`, `Prefix`, `NamespaceUri`, `GetString`, and `GetInnerText` allocate the string they return, `GetBytesFromBase64` allocates the array, and `CloneNode` allocates the copy. `GetRawXml` writes the node with a `Utf8XmlWriter` into a buffer of its own and returns the result as a string.
 
 ### Markup
 

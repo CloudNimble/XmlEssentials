@@ -64,4 +64,4 @@ EndElement Order (depth 0)
 | `Text`, `CData` | `ValueSpan`, `GetString`, `Get*`, `TryGet*`, `ValueIsEscaped` |
 | `Comment` | `GetComment`, `ValueSpan` |
 | `ProcessingInstruction` | `LocalNameSpan` (the target), `ValueSpan` (the data) |
-| `XmlDeclaration` | `Utf8XmlReader.Version` |
+| `XmlDeclaration` | `Version`, `ValueSpan` (the pseudo-attributes as written) |

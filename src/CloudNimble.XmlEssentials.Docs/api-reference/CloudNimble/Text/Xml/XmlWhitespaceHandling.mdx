@@ -32,7 +32,11 @@ Set `XmlReaderOptions.WhitespaceHandling` to choose what a `Utf8XmlReader` does 
 | --- | --- |
 | `Significant` | Reports the text as an `XmlTokenType.Text` token. This is the default. |
 | `Insignificant` | Skips the text. |
-| `None` | Throws an `XmlException` with the message `Whitespace-only text is not allowed.` |
+| `None` | Throws an `XmlException` with the message `Whitespace-only text is not allowed.` where `Insignificant` would skip the text. |
+
+White-space-only text that is content is reported under every setting: the whole content of an element (````csharp
+ 
+````), text after other text or a CDATA section in the same element (mixed content), and anything inside an element where `xml:space="preserve"` is in force.
 
 With the default, the document below produces three `Text` tokens for the indentation inside `Order`. With `Insignificant`, they're gone:
 
@@ -93,8 +97,10 @@ indentation has no place in an object.
 - **Set `Insignificant` in a loop that only wants data.** Otherwise the token after a start tag that has child elements is usually a `Text` token that holds indentation.
 - **The serializer's default is different.** `XmlSerializerOptions.WhitespaceHandling` defaults to `Insignificant`, because indentation has no place in an object.
 - **The setting never changes a value.** White space inside an element's text is part of the value under every setting: `<Name> Ada </Name>` is `" Ada "`. The reader doesn't trim. Line ends are read as a line feed under every setting, as XML requires.
+- **Only indentation is skipped.** Under `Insignificant` and `None`, white-space-only text is still a `Text` token when it's the whole content of its element, when its element already has text or a CDATA section before it, as in the space between `</b>` and `*` in `<p>a **b** <i>c*</p>`, or when `xml:space="preserve"` applies. `xml:space="preserve"` holds for the element and everything inside it, until an element sets `xml:space="default"`.
+- **Reading in blocks doesn't change the result.** `XmlReaderState` carries `xml:space` and whether each open element has text, so a document split across blocks reports the same white space as one read whole.
 - **White space outside the root element is never reported.** The line break after the XML declaration and anything after the root's end tag are skipped under every setting.
-- **`None` rejects formatted documents.** Use it only when the producer is known to write no white space between elements and anything else is an error.
+- **`None` rejects indented documents.** Use it only when the producer is known to write no indentation and anything else is an error. It accepts the white space that is content, as listed above.
 - **`XmlDocument` uses the same enumeration.** `XmlDocumentOptions.WhitespaceHandling` also defaults to `Significant`.
 
 ## Values

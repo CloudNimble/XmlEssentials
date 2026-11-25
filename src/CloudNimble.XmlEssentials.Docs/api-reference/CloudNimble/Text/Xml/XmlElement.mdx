@@ -91,7 +91,7 @@ The members fall into these groups:
 | Identify the node | `ValueKind`, `TokenType`, `LocalName`, `Prefix`, `NamespaceUri`, `IsEmptyElement`, `IsNil` |
 | Find a node by name | `GetChild`, `TryGetChild`, `GetAttribute`, `TryGetAttribute` |
 | Visit every node | `EnumerateChildren`, `EnumerateAttributes`, `AttributeCount` |
-| Read a value | `GetString`, `GetBoolean`, `GetInt32`, `GetInt64`, `GetDecimal`, `GetDouble`, `GetDateTime`, `GetDateTimeOffset`, `GetGuid`, `GetBytesFromBase64` |
+| Read a value | `GetString`, `GetBoolean`, `GetInt32`, `GetInt64`, `GetDecimal`, `GetDouble`, `GetDateTime`, `GetDateTimeOffset`, `GetGuid`, `GetBytesFromBase64`, the other integer and floating-point getters, and a `TryGet` method for each typed getter except `GetBoolean` |
 | Read text or markup | `GetInnerText`, `GetRawXml` |
 | Write or copy the node | `WriteTo`, `CloneNode` |
 
@@ -109,7 +109,7 @@ it, in document order.
 The typed getters, such as [XmlElement.GetInt32](/api-reference/CloudNimble/Text/Xml/XmlElement#getint32), ignore leading and trailing white space in the value.
 Name lookups, enumeration, the numeric and Boolean getters, and [XmlElement.WriteTo](/api-reference/CloudNimble/Text/Xml/XmlElement#writeto) do not allocate.
 Members that return a [String](https://learn.microsoft.com/dotnet/api/system.string), a `byte[]`, or an [XmlNode](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode)
-allocate only that result.
+allocate only that result, except [XmlElement.GetRawXml](/api-reference/CloudNimble/Text/Xml/XmlElement#getrawxml), which also allocates the buffer and the writer it writes the markup with.
 
 ## Examples
 
@@ -486,8 +486,8 @@ The code produces the following output:
 
 ### Navigation
 
-- `GetChild` and `TryGetChild` search direct children and return the first match in document order. There is no descendant search, no parent, no sibling access, and no access by index.
-- `TryGetAttribute` has no overload that takes a namespace URI. `GetAttribute` does.
+- `GetChild` and `TryGetChild` search direct children and return the first match in document order. To search deeper, chain the calls or write a recursive method over `EnumerateChildren`. To reach a parent or a sibling, keep it in your own loop, or use the mutable tree, whose nodes have a `Parent`.
+- `GetChild`, `TryGetChild`, and `GetAttribute` have an overload that takes a namespace URI. `TryGetAttribute` matches the local name in any namespace.
 - `EnumerateChildren` returns every child node. With the default options that includes a `Text` node for each run of white space between elements and a `Comment` node for each comment.
 - `AttributeCount` and `EnumerateAttributes` include namespace declarations (`xmlns` and `xmlns:prefix`).
 - The enumerators are structs that work with `foreach`. They don't implement `IEnumerable<T>`, so LINQ doesn't apply.
@@ -495,7 +495,7 @@ The code produces the following output:
 
 ### Allocation
 
-Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `WriteTo` don't allocate. `LocalName`, `Prefix`, `NamespaceUri`, `GetString`, `GetInnerText`, and `GetRawXml` allocate the string they return, `GetBytesFromBase64` allocates the array, and `CloneNode` allocates the copy.
+Name lookups, enumeration, the numeric, Boolean, date, and GUID getters, and `WriteTo` don't allocate. `LocalName`, `Prefix`, `NamespaceUri`, `GetString`, and `GetInnerText` allocate the string they return, `GetBytesFromBase64` allocates the array, and `CloneNode` allocates the copy. `GetRawXml` writes the node with a `Utf8XmlWriter` into a buffer of its own and returns the result as a string.
 
 ### Markup
 

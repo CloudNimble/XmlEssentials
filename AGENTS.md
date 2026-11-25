@@ -22,6 +22,7 @@ If you create any temporary new files, scripts, or helper files for iteration, c
 * Don't generate interfaces for dependency injection unless ABSOLUTELY necessary.
 * Prefer C# 15 / modern syntax where it is clearer: collection expressions (`[]`), pattern matching, switch expressions, range expressions, `params` collections, `field` on properties when it removes a manual backing field.
 * Zero `System.Xml*` references in the runtime library and unit tests. Coverage scripts and the Performance/Migration projects may use BCL XML.
+* **Never suppress a trimming or Native AOT warning.** No `UnconditionalSuppressMessage`, no `#pragma` for an `IL` warning, and no `NoWarn` for one, in the runtime library or in generated code. Code that needs reflection says so with `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`; code a generated context reaches must need neither, and gets what it needs through `[DynamicallyAccessedMembers]` or through facts the generator writes. A warning means the path is wrong: fix the path. `spec/12-aot-and-trimming.md` has the rule and the tests that hold it.
 
 # Formatting
 

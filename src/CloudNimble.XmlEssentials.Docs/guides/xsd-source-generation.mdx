@@ -1,9 +1,14 @@
 ---
 title: "How to generate types from an XML schema"
 sidebarTitle: "Generate types from an XSD"
-description: "Add an .xsd file to your project and let the XmlEssentials generator write the classes, enumerations, and serializer context at build time."
+description: "Add an .xsd file to your project and let the XmlEssentials generator write the classes, enumerations, and serializer context at build time. This feature is in preview."
 icon: "file-code"
+tag: "Preview"
 ---
+
+<Warning>
+Generating types from a schema is a preview feature. It maps the constructs this article lists, and it doesn't yet cover all of XML Schema: see [Limitations](#limitations). The generated classes and the diagnostics can change between releases. Check the generated code against real documents before you rely on it.
+</Warning>
 
 When a partner gives you an XML Schema (XSD) file, you don't have to write the classes by hand. Add the schema to your project as an `AdditionalFiles` item, and the XmlEssentials source generator writes a class for each element and complex type, an enumeration for each enumerated simple type, and an `XmlSerializerContext` that reads and writes them. This article shows the setup and lists what the generator maps and what it doesn't.
 
@@ -278,6 +283,7 @@ The members of the generated classes have no namespace of their own, so when rea
 | `xs:duration` | `TimeSpan` |
 | `xs:base64Binary` | `byte[]` |
 | `xs:anyURI` | `Uri` |
+| A type named `guid` that the schema refers to and doesn't define, in any namespace | `Guid` |
 | A named `xs:simpleType` with `xs:enumeration` values | An `enum` with one member for each value |
 | A named or inline `xs:simpleType` that restricts another type without enumerations | The C# type of the type it restricts: an `xs:int` with a range is an `int` |
 | A named `xs:complexType` | A class |
@@ -351,9 +357,9 @@ One limitation loses information: a repeating group that holds `xs:any`, or one 
 
 ## Options and the generated context
 
-A context generated from a schema is a default-mode context: it has metadata and a write fast path for each class. It applies every `XmlSerializerOptions` setting and custom converter, as a context you declare yourself does. See [How a context applies your options](/guides/source-generation#how-a-context-applies-your-options).
+A context generated from a schema is a default-mode context: it has metadata for each class, and a write fast path for each class that can have one. A class that may hold a derived class, an element choice, mixed content, extension data, or an element in no namespace is written from its metadata. The context applies every `XmlSerializerOptions` setting and custom converter, as a context you declare yourself does. See [How a context applies your options](/guides/source-generation#how-a-context-applies-your-options).
 
-To use the generated classes with reflection instead, pass them to an `XmlSerializer` overload that takes options, and pass the options. A call that passes none is redirected to the generated context by an [interceptor](/guides/reflection-vs-source-generation#interceptors).
+The generated context is used when you pass its type info, or the context, to `XmlSerializer`. A call that passes only a value, or a value and options, maps the generated classes through reflection, as it does any other class. [Interceptors](/guides/reflection-vs-source-generation#interceptors) redirect calls only for contexts declared in your source code.
 
 ## See also
 

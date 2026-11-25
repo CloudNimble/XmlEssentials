@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace CloudNimble.Text.Xml.Serialization
 {
@@ -10,6 +11,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// The resolver builds type info from the converters of an <see cref="XmlSerializerOptions"/> instance: its
     /// <see cref="XmlSerializerOptions.Converters"/>, the <see cref="XmlConverterAttribute"/> on the type, and the built-in converters.
     /// </remarks>
+    [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
     public sealed class DefaultXmlTypeInfoResolver : IXmlTypeInfoResolver
     {
 
@@ -30,8 +32,17 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Creates the resolver.
         /// </summary>
+        /// <remarks>
+        /// Creating the resolver is what lets the serializer look at the interfaces of a type and close a generic
+        /// type at run time. A program that never creates it has none of that code, which is what the trimmer
+        /// and the Native AOT compiler need.
+        /// </remarks>
         internal DefaultXmlTypeInfoResolver()
         {
+            XmlCollectionShape.UseReflection();
+#if NET11_0_OR_GREATER
+            XmlObjectBinder.UseReflection();
+#endif
         }
 
         #endregion

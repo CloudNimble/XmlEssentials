@@ -7,7 +7,7 @@ icon: "pen-to-square"
 
 The types in the `CloudNimble.Text.Xml.Nodes` namespace are a tree of XML nodes that you can change: add an element, set an attribute, remove a comment, and write the result. Use them when you edit a document or assemble one piece by piece and a class to serialize would be more than you need.
 
-`XmlNode` is the XML counterpart of `JsonNode` in System.Text.Json: a mutable tree that sits beside a read-only document type. The shape is different, because XML isn't a property bag. An element has an ordered list of children that can mix elements, text, comments, and more, and a separate list of attributes, so there is no equivalent of `JsonObject` with one value per name.
+`XmlNode` is the XML counterpart of `JsonNode` in System.Text.Json: a mutable tree that sits beside a read-only document type. The shape is different, because XML isn't a property bag. An element has an ordered list of children that can mix elements, text, comments, and more, and a separate list of attributes, where a `JsonObject` has one value per name.
 
 ## Choose between the mutable tree and the document
 
@@ -15,7 +15,7 @@ The types in the `CloudNimble.Text.Xml.Nodes` namespace are a tree of XML nodes 
 | --- | --- | --- |
 | Can be changed | No | Yes |
 | Can be built without parsing | No | Yes |
-| Storage | Pooled buffers; an `XmlElement` is a struct that points into them | One object per node; names and values are strings |
+| Storage | Pooled buffers; an `XmlElement` is a struct that points into them | One object per node; names and values are strings. A parsed tree keeps the parsed input and makes the nodes under an element when you first reach into it |
 | Lifetime | Dispose the document; elements die with it | Ordinary objects; nothing to dispose |
 | Keeps comments and indentation inside the root | Yes | Yes |
 | Keeps `<e></e>` distinct from `<e/>` | Yes | Yes |
@@ -88,8 +88,8 @@ const string xml = """
     </Order>
     """;
 
-XmlNode? order = XmlNode.Parse(xml);
-output.WriteLine(order!.ToString());
+XmlNode order = XmlNode.Parse(xml);
+output.WriteLine(order.ToString());
 
 try
 {
@@ -119,7 +119,7 @@ The tree holds the root element and what's inside it. Compare the output with th
 - **Dropped:** the XML declaration, and the comments, processing instructions, and white space before and after the root element.
 - **Kept:** the form of an element with no content. `<Notes></Notes>` comes back as `<Notes></Notes>`, and `<Notes/>` would come back as one tag. `XmlElementNode.IsEmptyElement` holds the form, and you can set it.
 
-`Parse` returns the root as an `XmlNode`; cast the result to `XmlElementNode` to reach the element members. Input that isn't a well-formed document throws an `XmlException`. `Parse` takes no options and has no `Stream` overload. When you need limits, a tree without the white space, or a stream, parse with [`XmlDocument`](/guides/use-xmldocument) and call `CloneNode` on the element you want:
+`Parse` returns the root as an `XmlNode`; cast the result to `XmlElementNode` to reach the element members. Input that isn't a well-formed document throws an `XmlException`. `Parse` takes a `string` or UTF-8 bytes and uses the default `XmlDocumentOptions`. When you need other limits, a tree without the white space, or input from a `Stream`, parse with [`XmlDocument`](/guides/use-xmldocument) and call `CloneNode` on the element you want. The copy is complete when `CloneNode` returns, so it stays valid after the document is disposed:
 
 ```csharp
 XmlElementNode product;
@@ -143,6 +143,14 @@ The code produces the following output:
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
 
+### How a parsed tree is built
+
+`XmlNode.Parse` and `XmlNode.ParseValue` keep the parsed input with the tree, as `JsonNode.Parse` does. An element makes its attributes and child nodes the first time you reach into it, for example through `Children`, `Attributes`, or `InnerText`, or by changing it. Until then, it's written and copied straight from the parsed input.
+
+You can't tell the difference from what the tree reads or writes. A tree is written the same however much of it you have reached into, and an element you move to another tree declares the namespaces it needs either way. `DeepClone` of an element you haven't reached into gives a tree of its own: changing the copy leaves the original alone, and the other way round.
+
+The parsed input stays in memory as long as an element that you haven't reached into is reachable, including one that you moved into another tree or copied with `DeepClone`. It doesn't depend on your string, array, or reader after `Parse` or `ParseValue` returns. `XmlElement.CloneNode` works differently: it copies everything under the element at once, because you dispose the document it came from.
+
 ### Parse one element from a reader
 
 `XmlNode.ParseValue` builds a tree from the element a `Utf8XmlReader` is positioned on, and leaves the reader on that element's end tag. Use it to edit one record of a large input at a time.
@@ -155,7 +163,7 @@ while (reader.Read())
 {
     if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
     {
-        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader)!;
+        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader);
         entry.SetAttribute("read", "true");
         output.WriteLine(entry.ToString());
     }
@@ -182,7 +190,7 @@ const string xml = """
     </Order>
     """;
 
-var order = (XmlElementNode)XmlNode.Parse(xml)!;
+var order = (XmlElementNode)XmlNode.Parse(xml);
 
 output.WriteLine($"Customer: {order["Customer"]!.InnerText}");
 output.WriteLine($"Status: {order.Attributes["status"]!.Value}");
@@ -228,7 +236,7 @@ What to notice:
 `AddElement` and `Add` append. To put a node at a position, call `Insert` on the `Children` list.
 
 ```csharp
-var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item></Order>""")!;
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item></Order>""");
 
 order.AddElement("Item").InnerText = "Mouse";
 
@@ -258,7 +266,7 @@ const string xml = """
     </Order>
     """;
 
-var indented = (XmlElementNode)XmlNode.Parse(xml)!;
+var indented = (XmlElementNode)XmlNode.Parse(xml);
 indented.AddElement("Item").InnerText = "Mouse";
 output.WriteLine(indented.ToString());
 
@@ -298,7 +306,7 @@ The first result keeps the original indentation and puts the new `Item` after th
 `Remove` and `RemoveAt` take a node out of a list, and assigning to an index replaces the node at that position. A node that is removed or replaced has no parent afterward, so you can add it somewhere else.
 
 ```csharp
-var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item><Item>Mouse</Item><Item>Monitor</Item><Note>Gift</Note></Order>""")!;
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item><Item>Mouse</Item><Item>Monitor</Item><Note>Gift</Note></Order>""");
 
 order.Children.RemoveAt(0);
 
@@ -327,14 +335,14 @@ The removed node has a parent: False
 <Archive><Note>Gift</Note></Archive>
 ```
 
-`Clear` removes every node from a list. As with any `List<T>`, changing a list while a `foreach` loop is enumerating it throws `InvalidOperationException`; collect the nodes to remove first, or loop by index from the end.
+`Clear` removes every node from a list. Don't change a list while a `foreach` loop is enumerating it: collect the nodes to remove first, or loop by index from the end.
 
 ### Copy a node with DeepClone
 
 A node has at most one parent. Adding a node that already has one throws an `XmlException`; it isn't moved for you. To put the same content in two places, add a copy. `DeepClone` copies a node with its attributes and descendants, and the copy has no parent.
 
 ```csharp
-var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""")!;
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""");
 XmlElementNode item = order["Item"]!;
 var backorder = new XmlElementNode("Backorder");
 
@@ -370,7 +378,7 @@ The copy is independent: changing its `sku` left the original alone.
 `SetAttribute` changes the value of an attribute that exists and appends one that doesn't. The `Attributes` list gives you the attribute nodes themselves, to read, change, reorder, or remove.
 
 ```csharp
-var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""")!;
+var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""");
 
 order.SetAttribute("status", "shipped");
 order.SetAttribute("carrier", "Contoso Freight");
@@ -466,7 +474,7 @@ Prefixed names require a namespace URI.
 An attribute needs a prefix to be in a namespace, because an attribute without one is in no namespace. Construct an `XmlAttributeNode` with the prefix you want when `ns1` isn't acceptable. For the rules across the library, see [Use XML namespaces](/guides/namespaces).
 
 <Note>
-The tree doesn't validate as you build it. Names, prefixes, and values are checked when the tree is written. An invalid name, a duplicate attribute, a comment that contains `--`, or a CDATA section that contains `]]>` throws an `XmlException` from `ToString` or `WriteTo`, not from the call that created the node.
+The tree doesn't validate as you build it. The constructors and the name setters reject only a `null`, empty, or white-space name or processing instruction target. Everything else about names, prefixes, and values is checked when the tree is written: an invalid name, a duplicate attribute, a comment that contains `--`, or a CDATA section that contains `]]>` throws an `XmlException` from `ToString` or `WriteTo`, not from the call that created the node.
 </Note>
 
 ## Add text, CDATA, comments, and processing instructions
@@ -572,7 +580,7 @@ const string project =
     "  </ItemGroup>\n" +
     "</Project>";
 
-var root = (XmlElementNode)XmlNode.Parse(project)!;
+var root = (XmlElementNode)XmlNode.Parse(project);
 root["ItemGroup"]!["PackageReference"]!.SetAttribute("Version", "8.1.0");
 
 var options = new XmlWriterOptions
@@ -701,17 +709,18 @@ Both calls go through UTF-8: `SerializeToNode` serializes to a pooled buffer and
 The read-only document and the mutable tree store XML in different ways, and the difference matters when documents are large or frequent.
 
 - `XmlDocument` keeps one pooled copy of the input and a pooled table of rows. Parsing allocates the document object and nothing per node. See [Benchmarks](/benchmarks) for the measured numbers.
-- `XmlNode.Parse` parses into an `XmlDocument` first and then copies the root into the tree. Every element, attribute, text node, and comment becomes an object, every name and value becomes a string, and every element has two lists. The work and the memory grow with the number of nodes.
-- Writing a tree converts those strings back to UTF-8. Writing a document copies bytes it already has.
+- `XmlNode.Parse` parses into an `XmlDocument` and keeps it, outside the pool, for the tree. An element you reach into gets an object for each of its attributes and child nodes, with a string for each name and value. The elements you never reach into stay as rows of the parsed input. So the work and the memory grow with the part of the tree you look at, and the parsed input stays in memory while any of those elements is reachable.
+- `XmlElement.CloneNode` makes every node under the element at once.
+- Writing an element you have reached into converts its strings back to UTF-8. Writing an element you haven't reached into, or a document, writes from the parsed input.
 
 So:
 
 - To read values, parse with `XmlDocument` and don't build a tree.
-- To change a small part of a large document, parse with `XmlDocument` and call `CloneNode` on the element you need to change, so that only that element becomes objects.
-- To change a document throughout, or to build one, use the tree. That's what it's for.
+- To change a document, part of it or all of it, or to build one, use the tree. That's what it's for.
+- When the change needs `XmlDocumentOptions`, a `Stream`, or the typed getters of `XmlElement` to find what to change, parse with `XmlDocument` and call `CloneNode` on the element you change.
 - To produce XML with a fixed shape at high volume, write it with [`Utf8XmlWriter`](/guides/use-utf8xmlwriter) or serialize a class. Both skip the tree.
 
-The tree isn't synchronized. Don't change a tree from one thread while another thread reads or writes it.
+The tree isn't synchronized, and reading it can change it: the first time you reach into an element, it makes its attributes and child nodes. Don't use a parsed tree, or the pieces and `DeepClone` copies taken from it, from more than one thread at a time, even when every thread only reads.
 
 ## See also
 

@@ -2,11 +2,15 @@ An options instance carries a cache as well as settings, which explains most of 
 
 ### Read-only after first use
 
-Serializing, deserializing, or calling `GetTypeInfo` or `TryGetTypeInfo` makes the instance read-only. From then on every setter throws an `InvalidOperationException` with the message `This XmlSerializerOptions instance is read-only.`, and so do changes to `Converters` and `TypeInfoResolverChain`. The three static instances are read-only from the start. To change a read-only instance, copy it with `new XmlSerializerOptions(existing)`.
+Serializing, deserializing, or calling `GetTypeInfo` or `TryGetTypeInfo` makes the instance read-only. From then on every setter throws an `InvalidOperationException` with the message `This XmlSerializerOptions instance is read-only.`, and so do changes to `Converters` and `TypeInfoResolverChain`. The four static instances are read-only from the start. To change a read-only instance, copy it with `new XmlSerializerOptions(existing)`.
+
+### The resolver is given, not assumed
+
+`TypeInfoResolver` is `null` on a new instance. `GetTypeInfo` and `TryGetTypeInfo` use the resolver the instance has, and throw an `InvalidOperationException` when it has none. The members that need reflection give an instance without a resolver the reflection resolver: every `XmlSerializer` method that takes options, `GetConverter`, `MakeReadOnly(populateMissingResolver: true)`, and the four static instances. Each of them carries `RequiresUnreferencedCode` and `RequiresDynamicCode`, so a trimmed or Native AOT application gets a warning where it uses one. A copy made with `new XmlSerializerOptions(existing)` keeps a resolver you set, and not one that was only given: a copy of `XmlSerializerOptions.Web` has none, so a context you create from it becomes its resolver.
 
 ### The cache lives on the instance
 
-Each instance caches the converter and the type metadata for every type it has been used with. In the library's benchmark of a customer object with two addresses and 20 line items, a write with a new instance takes 612,933 ns and allocates 75,440 bytes, against 1,710 ns and no allocation with a cached instance. See [Benchmarks](/benchmarks). The cache is never trimmed, so an application that keeps creating instances also keeps their metadata alive for as long as it holds them.
+Each instance caches the converter and the type metadata for every type it has been used with. A call with a new instance builds that metadata again, which costs many times what the call itself costs. See [Benchmarks](/benchmarks). The cache is never trimmed, so an application that keeps creating instances also keeps their metadata alive for as long as it holds them.
 
 ### Zero means the built-in default
 

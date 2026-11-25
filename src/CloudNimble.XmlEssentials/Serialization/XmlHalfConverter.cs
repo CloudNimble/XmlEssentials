@@ -6,12 +6,19 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Converts <see cref="Half"/> in the lexical form of <c>xs:float</c>.
     /// </summary>
-    internal sealed class XmlHalfConverter : XmlValueConverter<Half>
+    internal sealed class XmlHalfConverter : XmlFormattedValueConverter<Half>
     {
 
         #region Fields
 
         internal static readonly XmlHalfConverter Instance = new();
+
+        #endregion
+
+        #region Properties
+
+        /// <inheritdoc />
+        internal override int MaxBytes => 24;
 
         #endregion
 
@@ -30,29 +37,9 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <inheritdoc />
-        internal override void WriteValue(Utf8XmlWriter writer, Half value, XmlSerializerOptions options)
+        internal override int Format(Half value, Span<byte> destination, XmlSerializerOptions options)
         {
-            if (options.NumberHandling is XmlNumberHandling.Strict && !Half.IsFinite(value))
-            {
-                throw XmlException.Create("Named floating-point literals are not allowed when NumberHandling is Strict.");
-            }
-
-            if (Half.IsNaN(value))
-            {
-                writer.WriteStringValue("NaN"u8);
-            }
-            else if (Half.IsPositiveInfinity(value))
-            {
-                writer.WriteStringValue("INF"u8);
-            }
-            else if (Half.IsNegativeInfinity(value))
-            {
-                writer.WriteStringValue("-INF"u8);
-            }
-            else
-            {
-                writer.WriteFormatted(value, default);
-            }
+            return FormatFloat(value, destination, options);
         }
 
         #endregion

@@ -21,7 +21,7 @@ namespace CloudNimble.XmlEssentials.Tests
         #region Fields
 
         private const string Nil = "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"";
-        private static readonly XmlSerializerOptions Bare = new() { OmitXmlDeclaration = true };
+        private static readonly XmlSerializerOptions Bare = new() { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance, OmitXmlDeclaration = true };
 
         #endregion
 
@@ -186,6 +186,14 @@ namespace CloudNimble.XmlEssentials.Tests
             XmlSerializer.Deserialize<Book>("<Book><Title>x</Title><Author>Ada</Author></Book>")!.Author.Should().Be("Ada");
             XmlSerializer.Deserialize<KindBook>("<KindBook kind=\"book\"><Title>x</Title></KindBook>")!.Title.Should().Be("x");
             XmlSerializer.Deserialize<KindBook>("<KindBook><Title>y</Title></KindBook>")!.Title.Should().Be("y");
+        }
+
+        [TestMethod]
+        public void EmptyDiscriminator_NamesNoType_SoTheDeclaredTypeIsRead()
+        {
+            // An attribute with nothing in it is not the name of a type, known or unknown.
+            XmlSerializer.Deserialize<KindProduct>("<KindProduct kind=\"\"><Title>x</Title></KindProduct>")!.GetType().Should().Be<KindProduct>();
+            XmlSerializer.Deserialize<KindShelf>("<KindShelf><Item kind=\"\"><Title>x</Title></Item></KindShelf>")!.Item!.GetType().Should().Be<KindProduct>();
         }
 
         [TestMethod]

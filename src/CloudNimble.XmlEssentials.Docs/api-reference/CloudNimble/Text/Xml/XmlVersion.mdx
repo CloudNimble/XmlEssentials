@@ -90,6 +90,7 @@ XML 1.1 isn't a superset of XML 1.0. The same bytes can mean different things in
 | --- | --- | --- |
 | U+0085 (next line) and U+2028 (line separator) in text | Ordinary characters. | Line ends. The reader reports them as a line feed, and the writer writes them as character references so that they're read back unchanged. |
 | Control characters U+0001 to U+001F, other than tab, line feed, and carriage return | Not allowed, even as a character reference. The writer throws. | Allowed only as a character reference. The writer writes one. |
+| Control characters U+007F to U+009F, other than U+0085 | Ordinary characters. | Allowed only as a character reference. The writer writes one. |
 | `xmlns:p=""` | An error. | Removes the binding of the prefix `p`. |
 
 Other things to know:

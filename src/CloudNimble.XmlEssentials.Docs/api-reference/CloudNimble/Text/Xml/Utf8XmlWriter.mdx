@@ -71,13 +71,16 @@ The members you use most:
 | Open and close an element | `WriteStartElement`, `WriteEndElement`, `WriteFullEndElement` |
 | Write an attribute | `WriteAttributeString`, `WriteAttributeNumber`, or `WriteStartAttribute` and `WriteEndAttribute` around a value |
 | Write a value | `WriteStringValue`, `WriteNumberValue`, `WriteBooleanValue`, `WriteBase64StringValue` |
+| Write a value from several buffers | `WriteStringValueSegment`, `WriteBase64StringSegment` |
 | Write a complete element | `WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, `WriteElementBase64String`, `WriteEmptyElement`, `WriteNilElement` |
+| Mark the open element nil | `WriteNilValue` |
 | Declare a namespace yourself | `WriteNamespaceDeclaration`, `WriteDefaultNamespace` |
 | Write other markup | `WriteComment`, `WriteCData`, `WriteProcessingInstruction`, `WriteXmlDeclaration`, `WriteRawValue` |
 | Send output on its way | `Flush`, `FlushAsync`, `Dispose`, `DisposeAsync` |
+| See where the writer is | `BytesPending`, `BytesCommitted`, `CurrentDepth` |
 | Write another document | `Reset` |
 
-Names and values can be a `string`, a `ReadOnlySpan<char>`, or UTF-8 in a `ReadOnlySpan<byte>`. Pass an [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) to the constructor to indent, to leave out the declaration, or to change a limit.
+Most methods take names and values as a `string`, a `ReadOnlySpan<char>`, or UTF-8 in a `ReadOnlySpan<byte>`, and element names also as an [`XmlEncodedText`](/api-reference/CloudNimble/Text/Xml/XmlEncodedText). Pass an [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) to the constructor to indent, to leave out the declaration, or to change a limit.
 
 For a walk through every feature, see [How to write XML with Utf8XmlWriter](/guides/use-utf8xmlwriter).
 
@@ -241,10 +244,10 @@ Second buffer: <Done/>
 - **Use the `WriteElement*` methods for elements that hold one value.** One call replaces three.
 - **Pass `u8` literals for names that are fixed.** `writer.WriteStartElement("Order"u8)` skips the conversion from UTF-16. For a name computed once at run time, keep an `XmlEncodedText`.
 - **Declare the prefixes you use often on the root element** with `WriteNamespaceDeclaration`. Otherwise the writer declares a prefix again on every element that needs it and isn't inside one that has it.
-- **Reuse a writer with `Reset` on a hot path.** A reused writer allocates nothing per document.
+- **Reuse a writer with `Reset` on a hot path.** A reused writer allocates nothing per document. Call `Flush` before `Reset`, because `Reset` discards pending bytes.
 - **Set `NewLine` when the bytes matter.** The default depends on the operating system.
-- **Write binary data with one `WriteBase64StringValue` call,** not in segments.
-- **Use `WriteRawValue` only for XML that your own code produced.** The input isn't checked or escaped.
+- **Write binary data that's in one buffer with one `WriteBase64StringValue` call.** Use `WriteBase64StringSegment` only when the data arrives in pieces.
+- **Use `WriteRawValue` only for XML that your own code produced.** The input isn't escaped. By default the writer checks that it's well formed where it goes, but well-formed input can still carry markup you didn't intend.
 - **Discard the output when the writer throws.** Part of the document may already be committed.
 
 ## Patterns
@@ -261,11 +264,11 @@ Call `WriteStartElement`, then the attributes and namespace declarations, then t
 
 ### Attribute with a typed value
 
-For a type that `WriteAttributeString` and `WriteAttributeNumber` don't take, open the attribute with `WriteStartAttribute`, call a value method such as `WriteBooleanValue` or `WriteStringValue(DateTimeOffset)`, and close it with `WriteEndAttribute`.
+`WriteAttributeString` takes text and `WriteAttributeNumber` takes an `int`, a `long`, or a `double`. For any other type, open the attribute with `WriteStartAttribute`, call a value method such as `WriteBooleanValue` or `WriteStringValue(DateTimeOffset)`, and close it with `WriteEndAttribute`.
 
 ### One writer, many documents
 
-Create the writer once, and after each document call `Flush` and then `Reset`. Use `Reset(IBufferWriter<byte>)` or `Reset(Stream)` to send the next document somewhere else.
+Create the writer once, and after each document call `Flush` and then `Reset`. `Reset` discards anything that isn't flushed. Use `Reset(IBufferWriter<byte>)` or `Reset(Stream)` to send the next document somewhere else.
 
 ### Stream with asynchronous flushes
 
@@ -297,7 +300,7 @@ A writer isn't thread safe. Use each instance from one thread at a time. See [Th
 
 ### Allocation
 
-A writer that's reused with `Reset` allocates nothing per document. In the library's benchmarks, a small document takes 55 ns and 0 B with a reused writer, against 325 ns and 7,328 B for `System.Xml.XmlWriter`. See [Benchmarks](/benchmarks).
+A writer that's reused with `Reset` allocates nothing per document. `Reset` discards bytes that are still pending, so call `Flush` first to keep them. See [Benchmarks](/benchmarks) for the measurements.
 
 ### Namespaces
 
@@ -305,7 +308,7 @@ The writer tracks the namespaces in scope and declares what's missing: a default
 
 ### Indentation
 
-With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text is written on one line, with everything in it.
+With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text, a CDATA section, or raw XML from `WriteRawValue` is written on one line, with everything in it.
 
 ### Layout
 
@@ -314,11 +317,12 @@ Every line break the writer writes is the `NewLine` of its options, including a 
 ### What isn't checked
 
 - `WriteRawValue` copies its input without escaping it. It checks that the input is well formed where it is written only when `skipInputValidation` is `false` and the writer does not have `SkipValidation` set.
+- With `SkipValidation` set, names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, and unclosed elements at `Dispose` aren't checked. Values are still escaped, and the single root, `MaxDepth`, and `MaxAttributeCount` are still enforced.
 
 ### Differences from Utf8JsonWriter
 
 - There's no property-name step. Structure comes from `WriteStartElement` and `WriteEndElement`, and attributes are written on the open start tag.
-- Validation is on by default and also covers names and namespaces. `SkipValidation` doesn't turn off the single-root check or the limits.
+- Validation is on by default and also covers names and namespaces. `SkipValidation` doesn't turn off the single-root check, `MaxDepth`, or `MaxAttributeCount`.
 - `Dispose` throws when the document is incomplete.
 
 ### Differences from System.Xml.XmlWriter

@@ -41,7 +41,7 @@ namespace CloudNimble.XmlEssentials.Tests
             options.OmitXmlDeclaration.Should().BeFalse();
             options.PropertyNamingPolicy.Should().BeNull();
             options.Converters.Should().BeEmpty();
-            options.TypeInfoResolver.Should().BeSameAs(DefaultXmlTypeInfoResolver.Instance);
+            options.TypeInfoResolver.Should().BeNull();
             options.TypeInfoResolverChain.Should().BeEmpty();
         }
 
@@ -96,7 +96,7 @@ namespace CloudNimble.XmlEssentials.Tests
             frozen.MakeReadOnly();
             frozen.IsReadOnly.Should().BeTrue();
 
-            var queried = new XmlSerializerOptions();
+            var queried = new XmlSerializerOptions { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
             queried.TryGetTypeInfo(typeof(int), out _).Should().BeTrue();
             queried.IsReadOnly.Should().BeTrue();
 
@@ -408,7 +408,7 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void TypeInfo_DescribesTheRootElement()
         {
-            var options = new XmlSerializerOptions { DefaultNamespace = "urn:x", PropertyNamingPolicy = XmlNamingPolicy.CamelCase };
+            var options = new XmlSerializerOptions { DefaultNamespace = "urn:x", PropertyNamingPolicy = XmlNamingPolicy.CamelCase, TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
             var number = options.GetTypeInfo(typeof(int));
             number.Type.Should().Be(typeof(int));
             number.Options.Should().BeSameAs(options);
@@ -431,15 +431,74 @@ namespace CloudNimble.XmlEssentials.Tests
             FluentActions.Invoking(() => XmlSerializer.Serialize(1u, nullFactory)).Should().ThrowExactly<InvalidOperationException>().Which.Message
                 .Should().Be($"Converter factory '{typeof(NullConverterFactory).FullName}' returned null for 'System.UInt32'.");
 
-            var wrongType = new XmlSerializerOptions();
+            var wrongType = new XmlSerializerOptions { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
             wrongType.Converters.Add(new UIntClaimingConverter());
             FluentActions.Invoking(() => wrongType.GetTypeInfo(typeof(uint))).Should().ThrowExactly<InvalidOperationException>().Which.Message
                 .Should().Be($"The converter '{typeof(UIntClaimingConverter).FullName}' is not compatible with the type 'System.UInt32'.");
 
-            var nested = new XmlSerializerOptions();
+            var nested = new XmlSerializerOptions { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
             nested.Converters.Add(new FactoryReturningFactory());
             FluentActions.Invoking(() => nested.GetTypeInfo(typeof(uint))).Should().ThrowExactly<InvalidOperationException>().Which.Message
                 .Should().Be($"The converter '{typeof(NullConverterFactory).FullName}' is not compatible with the type 'System.UInt32'.");
+        }
+
+        [TestMethod]
+        public void ReflectionResolver_IsGivenOnlyByTheMembersThatSayTheyNeedReflection()
+        {
+            // Reading the resolver, and asking for type info, never bring the reflection resolver in: they carry
+            // no trimming or Native AOT warning, so they may not need what such a warning is for.
+            var bare = new XmlSerializerOptions();
+            bare.TypeInfoResolver.Should().BeNull();
+            FluentActions.Invoking(() => bare.GetTypeInfo(typeof(int))).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(
+                "No TypeInfoResolver is set. Use an XmlSerializer method that takes XmlSerializerOptions, call MakeReadOnly(populateMissingResolver: true), set TypeInfoResolver, or use an overload that takes an XmlTypeInfo or XmlSerializerContext.");
+            bare.TypeInfoResolver.Should().BeNull();
+
+            var requested = new XmlSerializerOptions();
+            requested.MakeReadOnly(populateMissingResolver: true);
+            requested.IsReadOnly.Should().BeTrue();
+            requested.TypeInfoResolver.Should().BeSameAs(DefaultXmlTypeInfoResolver.Instance);
+            requested.TypeInfoResolverChain.Should().Equal(DefaultXmlTypeInfoResolver.Instance);
+            requested.GetTypeInfo(typeof(int)).Type.Should().Be(typeof(int));
+
+            var viewed = new XmlSerializerOptions();
+            var view = viewed.TypeInfoResolverChain;
+            view.Should().BeEmpty();
+            viewed.MakeReadOnly(populateMissingResolver: true);
+            view.Should().Equal(DefaultXmlTypeInfoResolver.Instance);
+
+            var notRequested = new XmlSerializerOptions();
+            notRequested.MakeReadOnly(populateMissingResolver: false);
+            notRequested.IsReadOnly.Should().BeTrue();
+            notRequested.TypeInfoResolver.Should().BeNull();
+
+            var onlyInt = new FixedTypeResolver(typeof(int), typeof(int));
+            var kept = new XmlSerializerOptions { TypeInfoResolver = onlyInt };
+            kept.MakeReadOnly(populateMissingResolver: true);
+            kept.TypeInfoResolver.Should().BeSameAs(onlyInt);
+
+            var serialized = new XmlSerializerOptions { OmitXmlDeclaration = true };
+            XmlSerializer.Serialize(1, serialized).Should().Be("<int>1</int>");
+            serialized.TypeInfoResolver.Should().BeSameAs(DefaultXmlTypeInfoResolver.Instance);
+
+            // A resolver that options were only given, because they had none, is not copied: a copy of a shared
+            // instance has no resolver, so the context it is handed to becomes its resolver. A resolver the caller
+            // set is copied, and so is one set after the options were given the default.
+            XmlSerializerOptions.Web.TypeInfoResolver.Should().BeSameAs(DefaultXmlTypeInfoResolver.Instance);
+            new XmlSerializerOptions(XmlSerializerOptions.Web).TypeInfoResolver.Should().BeNull();
+            new XmlSerializerOptions(serialized).TypeInfoResolver.Should().BeNull();
+            new XmlSerializerOptions(kept).TypeInfoResolver.Should().BeSameAs(onlyInt);
+            var given = new XmlSerializerOptions();
+            given.UseReflectionResolverIfMissing();
+            given.TypeInfoResolver = onlyInt;
+            new XmlSerializerOptions(given).TypeInfoResolver.Should().BeSameAs(onlyInt);
+            var extended = new XmlSerializerOptions();
+            extended.UseReflectionResolverIfMissing();
+            extended.TypeInfoResolverChain.Add(onlyInt);
+            new XmlSerializerOptions(extended).TypeInfoResolverChain.Should().Equal(DefaultXmlTypeInfoResolver.Instance, onlyInt);
+
+            var asked = new XmlSerializerOptions();
+            asked.GetConverter(typeof(int)).Should().BeSameAs(XmlSerializerOptions.Default.GetConverter(typeof(int)));
+            asked.TypeInfoResolver.Should().BeSameAs(DefaultXmlTypeInfoResolver.Instance);
         }
 
         [TestMethod]
@@ -479,7 +538,7 @@ namespace CloudNimble.XmlEssentials.Tests
             replaced.TypeInfoResolverChain.Should().Equal(onlyInt, onlyLong);
             replaced.TypeInfoResolver = null;
             replaced.TypeInfoResolverChain.Should().BeEmpty();
-            replaced.TypeInfoResolver.Should().BeSameAs(DefaultXmlTypeInfoResolver.Instance);
+            replaced.TypeInfoResolver.Should().BeNull();
         }
 
         [TestMethod]

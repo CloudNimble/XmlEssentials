@@ -27,7 +27,7 @@ Person? copy = XmlSerializer.Deserialize<Person>(xml);
     Install the package and read, write, and serialize your first document.
   </Card>
   <Card title="See the numbers" icon="gauge-high" href="/benchmarks">
-    Faster than `System.Xml` on all 49 benchmarks, with a fraction of the memory.
+    Faster than `System.Xml` on every row of the benchmark tables, with a fraction of the memory.
   </Card>
 </Columns>
 
@@ -70,10 +70,10 @@ It runs close to System.Text.Json too, which is remarkable for a format that dem
 
 <Columns cols={2}>
   <Card title="Source generation" icon="wand-magic-sparkles" href="/guides/source-generation">
-    Add one attribute per type and a Roslyn incremental generator writes the serialization code at build time. There's no reflection and no runtime code generation.
+    List your types on a context and a Roslyn incremental generator writes their metadata at build time. The serializer uses no reflection and generates no code at run time.
   </Card>
   <Card title="Native AOT and trimming" icon="rocket" href="/guides/native-aot">
-    Publish with `PublishAot` and it works. The repository's Native AOT test publishes and runs a real app on every build.
+    Publish with `PublishAot` and it works. A test in the suite publishes a real app with Native AOT and runs it.
   </Card>
   <Card title="XML 1.0 and XML 1.1" icon="check-double" href="/guides/xml-conformance">
     Both versions of the specification, plus Namespaces in XML, verified against the W3C conformance suite. `System.Xml` never implemented XML 1.1.
@@ -84,8 +84,8 @@ It runs close to System.Text.Json too, which is remarkable for a format that dem
   <Card title="Streaming and async" icon="water" href="/guides/streaming">
     Streams, pipes, and `IAsyncEnumerable<T>`, so you can read a huge feed one item at a time.
   </Card>
-  <Card title="Classes from your schema" icon="diagram-project" href="/guides/xsd-source-generation">
-    Add an `.xsd` file to your project and get types and a serialization context generated for you.
+  <Card title="Classes from your schema (preview)" icon="diagram-project" href="/guides/xsd-source-generation">
+    Add an `.xsd` file to your project and get types and a serialization context generated for you. In preview.
   </Card>
   <Card title="Safe by default" icon="shield-halved" href="/guides/security">
     No DTDs, no external entities, and limits on depth and size. Billion-laughs and XXE attacks have nothing to attack.
@@ -118,7 +118,7 @@ XmlEssentials is deliberately not a drop-in copy of `System.Xml`. It leaves out 
 ## Tested like a platform library
 
 - **100% line coverage and 100% branch coverage**, enforced on every build.
-- **More than 1,800 test cases**, run on both .NET 10 and .NET 11.
+- **Thousands of tests**, run on both .NET 10 and .NET 11.
 - **283 cases from the W3C XML Conformance Test Suite**, plus real documents from other parsers' test suites.
 - **Documents are read split at every byte offset**, so XML that arrives in pieces reads the same as XML that arrives whole.
 - **Every sample in these docs is compiled and tested.** If the docs show output, a test asserts it.

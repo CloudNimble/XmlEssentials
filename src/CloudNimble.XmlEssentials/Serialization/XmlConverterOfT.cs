@@ -26,7 +26,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The default is <see langword="false"/>.
         /// </value>
         /// <remarks>
-        /// When the value is <see langword="false"/>, the serializer returns <see langword="default"/> for a nil element without calling <see cref="Read"/>.
+        /// When the value is <see langword="false"/>, the serializer returns <see langword="null"/> for a nil element without calling <see cref="Read"/>,
+        /// and throws an <see cref="XmlException"/> when <typeparamref name="T"/> is a value type that cannot be <see langword="null"/>.
         /// </remarks>
         public virtual bool HandleNull => false;
 

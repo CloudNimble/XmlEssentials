@@ -64,7 +64,14 @@ stream: order 1043
 sequence: order 1043
 ```
 
-The other entry points are `TryParse`, which returns `false` where `Parse` throws an `XmlException`, and `ParseValue`, which builds a document from the element a `Utf8XmlReader` is positioned on. `Declaration` is the XML declaration that was parsed, or `null`. `WriteTo` writes the document to a `Utf8XmlWriter`.
+The other entry points are:
+
+- `ParseAsync`, which reads a `Stream` without blocking and then parses it.
+- `TryParse`, which returns `false` where `Parse` throws an `XmlException`.
+- `ParseValue`, which builds a document from the element a `Utf8XmlReader` is positioned on, and `TryParseValue`, which returns `false` and leaves the reader where it was when the element isn't all in a block that isn't the last one, or when the reader is on an end tag.
+- `DiscoverNamespaces`, which returns the prefixes and namespaces a document declares without building a document. See [Take them from an existing document](/guides/namespaces#take-them-from-an-existing-document).
+
+`Declaration` is the XML declaration that was parsed, or `null`. `WriteTo` writes the document to a `Utf8XmlWriter`.
 
 A document keeps comments and the white space between elements by default, so that parsing a document and writing it back doesn't lose its comments or its indentation. Both appear among the children of an element, so check `ValueKind` when you enumerate. To leave them out, pass an [`XmlDocumentOptions`](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) with `CommentHandling = XmlCommentHandling.Skip` and `WhitespaceHandling = XmlWhitespaceHandling.Insignificant`.
 
@@ -333,7 +340,7 @@ Monitor: 249.00
 
 ### Read here, edit there
 
-The document can't be changed. Call `XmlElement.CloneNode` on the element you need to edit, change the copy in the mutable tree, and write the copy. See [How to build and change XML with XmlNode](/guides/use-xmlnode).
+The document can't be changed. Call `XmlElement.CloneNode` on the element you need to edit, change the copy in the mutable tree, and write the copy. `CloneNode` copies everything under the element at once, so the copy stays valid after the document is disposed. When you parse only to edit, `XmlNode.Parse` gives you the tree directly. See [How to build and change XML with XmlNode](/guides/use-xmlnode).
 
 ### Copy part of a document into new output
 
@@ -376,7 +383,7 @@ A document doesn't change after it's parsed, so several threads can read it at t
 
 ### Differences from other APIs
 
-- Unlike `System.Xml.XmlDocument` and `XDocument`, this type is read-only and has no XPath, no LINQ, and no node objects. For a tree you can change, see `CloudNimble.Text.Xml.Nodes.XmlNode`.
+- Unlike `System.Xml.XmlDocument` and `XDocument`, this type is read-only, and its nodes are `XmlElement` cursors into the document's buffers rather than objects. You query it with the `XmlElement` lookups and enumerators. For a tree you can change, see `CloudNimble.Text.Xml.Nodes.XmlNode`, and for the full comparison, [Migrate from XDocument and System.Xml.XmlDocument](/guides/migrate/from-xdocument).
 - Unlike `JsonDocument`, the root can be preceded by a declaration, comments, and processing instructions, which the document keeps for writing.
 
 ## Constructors

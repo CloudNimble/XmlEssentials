@@ -8,8 +8,9 @@
 | `WhenWriting` | Never written. Still read. |
 | `WhenReading` | Never read. Still written. |
 | `WhenWritingNull` | Left out when its value is `null`. |
+| `WhenWritingNullReference` | Left out when its value is a `null` reference. A nullable value type with no value, such as an `int?` that is `null`, is still written, as an element marked `xsi:nil="true"`. This is what `System.Xml.Serialization.XmlSerializer` does, and what `XmlSerializerOptions.Bcl` uses. |
 
-The following example serializes one object with each of the three values that make sense as a default:
+The following example serializes one object with three of the values that make sense as a default:
 
 ```csharp
 var order = new PurchaseOrder { Id = 1042 };

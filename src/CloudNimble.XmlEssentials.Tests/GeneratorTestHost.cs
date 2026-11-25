@@ -58,6 +58,8 @@ namespace CloudNimble.XmlEssentials.Tests
                 optionsProvider: optionsProvider);
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
             var generated = output.SyntaxTrees.Where(tree => tree != compilation.SyntaxTrees.First()).ToImmutableArray();
+            // Whatever a test is about, nothing the generators emit may use a member that needs reflection.
+            GeneratedCodeChecks.MustNeedNoReflection(output, generated);
             return (output, diagnostics.AddRange(output.GetDiagnostics()), generated);
         }
 

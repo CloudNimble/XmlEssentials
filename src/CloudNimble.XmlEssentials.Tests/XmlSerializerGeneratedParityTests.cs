@@ -331,6 +331,140 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void MixedContent_HeldInAnArray_IsReadAndWrittenAsTheReflectionResolverDoesIt()
+        {
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public sealed class Para
+                {
+                    [XmlMixed]
+                    public XmlMixedContentItem[] Content { get; set; } = [];
+                }
+
+                [XmlSerializable<Para>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Para para) => string.Join("|", para.Content.Select(static item => item is XmlMixedText text ? "T:" + text.Text : "E:" + ((XmlMixedElement)item).Element!.LocalName));
+                        var para = new Para { Content = [new XmlMixedText("a "), new XmlMixedElement(new XmlElementNode("b")), new XmlMixedText(" c")] };
+                        return Both.Write(para, o => new AppXmlContext(o).Para, Show);
+                    }
+                }
+                """ + Compare).Should().Be("<Para>a <b/> c</Para>\nsame\nT:a |E:b|T: c\nT:a |E:b|T: c");
+        }
+
+        [TestMethod]
+        public void MetadataMode_FollowsTheConvertersTheCallerSupplies()
+        {
+            // A context that holds metadata only applies a converter from the options, one on a type and one on a
+            // member, as the reflection resolver does.
+            XmlSerializerGeneratorTests.RunGenerated(Usings + """
+                public enum Color
+                {
+                    Red,
+                    Green,
+                }
+
+                public enum Size
+                {
+                    Small,
+                    Large,
+                }
+
+                [XmlConverter<FitConverter>]
+                public enum Fit
+                {
+                    Slim,
+                    Loose,
+                }
+
+                public sealed class SizeConverter : XmlConverter<Size>
+                {
+                    public override Size Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        var value = Size.Small;
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                            value = reader.GetString() == "L" ? Size.Large : Size.Small;
+                        }
+
+                        return value;
+                    }
+
+                    public override void Write(Utf8XmlWriter writer, Size value, XmlSerializerOptions options) => writer.WriteStringValue(value is Size.Large ? "L" : "S");
+                }
+
+                public sealed class FitConverter : XmlConverter<Fit>
+                {
+                    public override Fit Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        var value = Fit.Slim;
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                            value = reader.GetString() == "loose fit" ? Fit.Loose : Fit.Slim;
+                        }
+
+                        return value;
+                    }
+
+                    public override void Write(Utf8XmlWriter writer, Fit value, XmlSerializerOptions options) => writer.WriteStringValue(value is Fit.Loose ? "loose fit" : "slim fit");
+                }
+
+                public sealed class Shouting : XmlConverter<Color>
+                {
+                    public override Color Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+                    {
+                        var value = Color.Red;
+                        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+                        {
+                            value = Enum.Parse<Color>(reader.GetString()!, ignoreCase: true);
+                        }
+
+                        return value;
+                    }
+
+                    public override void Write(Utf8XmlWriter writer, Color value, XmlSerializerOptions options) => writer.WriteStringValue(value.ToString().ToUpperInvariant());
+                }
+
+                public sealed class Shirt
+                {
+                    public Color Color { get; set; }
+
+                    [XmlConverter<SizeConverter>]
+                    public Size Size { get; set; }
+
+                    public Size Tag { get; set; }
+
+                    public Fit Fit { get; set; }
+                }
+
+                [XmlSourceGenerationOptions(GenerationMode = XmlSourceGenerationMode.Metadata)]
+                [XmlSerializable<Shirt>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    public static string Run()
+                    {
+                        static string Show(Shirt shirt) => shirt.Color + "," + shirt.Size + "," + shirt.Tag + "," + shirt.Fit;
+                        var shirt = new Shirt { Color = Color.Green, Size = Size.Large, Tag = Size.Large, Fit = Fit.Loose };
+                        return string.Join("\n",
+                            Both.Write(shirt, o => new AppXmlContext(o).Shirt, Show),
+                            Both.Write(shirt, o => new AppXmlContext(o).Shirt, Show, o => o.Converters.Add(new Shouting())));
+                    }
+                }
+                """ + Compare).Should().Be(
+                "<Shirt><Color>Green</Color><Size>L</Size><Tag>Large</Tag><Fit>loose fit</Fit></Shirt>\nsame\nGreen,Large,Large,Loose\nGreen,Large,Large,Loose\n" +
+                "<Shirt><Color>GREEN</Color><Size>L</Size><Tag>Large</Tag><Fit>loose fit</Fit></Shirt>\nsame\nGreen,Large,Large,Loose\nGreen,Large,Large,Loose");
+        }
+
+        [TestMethod]
         public void ChainedContexts_WriteWithTheOptionsThatHoldTheChain()
         {
             // Each context has options of its own, with other settings. The options that hold the chain decide.

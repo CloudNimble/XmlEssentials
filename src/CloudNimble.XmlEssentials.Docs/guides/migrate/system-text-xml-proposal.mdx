@@ -7,7 +7,7 @@ icon: "table"
 
 This article compares XmlEssentials with the `System.Text.Xml` API proposed in [dotnet/runtime issue 125299](https://github.com/dotnet/runtime/issues/125299). It goes through the proposal section by section and gives, for each proposed type and member, the XmlEssentials name and a status. It's for readers who know the proposal and want to see how much of it this library implements, and where it differs.
 
-The comparison is against the proposal text as of November 2026 and the XmlEssentials 1.0 source. Each row was checked against the source.
+The comparison is against the proposal text as of November 2026 and the current XmlEssentials source. Each row was checked against the source.
 
 ## How to read the tables
 
@@ -32,8 +32,8 @@ The proposal names its types with `XmlData` (`XmlDataSerializer`, `Utf8XmlDataRe
 | Reader options and state | Renamed. Every proposed member exists. The default comment handling differs. |
 | Reader | Renamed. Every proposed member exists. The constructors have a different shape. |
 | Writer options | Renamed. Every proposed member exists. |
-| Writer | Renamed. Every proposed method group exists. Three groups have fewer overloads than proposed. |
-| Mapping attributes | Seven of twelve exist. One has a different shape. Four are not implemented. |
+| Writer | Renamed. Every proposed method group exists. One group, `WriteAttributeString`, has one overload fewer than proposed. |
+| Mapping attributes | Seven of twelve are renamed. Three have a different shape. Two are not implemented. |
 | Serializer options | Renamed. Every proposed member exists. `TypeInfoResolver` has a different type. |
 | Serializer | Renamed. Every proposed overload exists. |
 | Converters | Renamed. Every proposed member exists. |
@@ -119,7 +119,7 @@ The state holds more than `JsonReaderState` does. To resume inside a document, t
 | `BytesCommitted`, `BytesPending`, `CurrentDepth`, `Options` | The same names | Same. |
 | `Dispose()`, `DisposeAsync()`, `Flush()`, `FlushAsync(CancellationToken)`, `Reset()`, `Reset(IBufferWriter<byte>)`, `Reset(Stream)` | The same names | Same. |
 | `WriteXmlDeclaration()` | `WriteXmlDeclaration()` | Same. The declaration is also written before the first content when you don't call it, unless `OmitXmlDeclaration` is `true`. |
-| `WriteStartElement`, 8 overloads: a local name, a local name with a namespace URI, and a prefix with both, as UTF-8, characters, or strings | The same 8 overloads | Same. |
+| `WriteStartElement`, 8 overloads: a local name, and a local name with a namespace URI, each as UTF-8, characters, or a string; and a prefix with both, as UTF-8 or strings | The same 8 overloads | Same. |
 | | `WriteStartElement(XmlEncodedText)` | Added. |
 | `WriteEndElement()`, `WriteFullEndElement()` | The same names | Same. |
 | `WriteElementString`, 18 overloads: a name as UTF-8, characters, or a string, with a value as UTF-8, characters, a string, `DateTime`, `DateTimeOffset`, or `Guid` | The same 18 overloads, the same 6 values with a name as `XmlEncodedText`, and `(string localName, string? namespaceUri, string? value)` | Same. 7 overloads added. |
@@ -153,10 +153,10 @@ The proposed attributes are in `System.Text.Xml.Serialization` and are named `Xm
 | `XmlDataIgnoreAttribute` | [`XmlIgnoreAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlIgnoreAttribute) | Renamed. Adds `Condition`, as `JsonIgnoreAttribute` has. |
 | `XmlDataTypeAttribute` with `TypeName`, `Namespace` | | Not implemented. |
 | `XmlDataIncludeAttribute(Type)` with `TypeName`, `Namespace` | [`XmlDerivedTypeAttribute<T>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlDerivedTypeAttribute) with a discriminator argument and `Namespace` | Different shape. A generic attribute named after `JsonDerivedTypeAttribute`. `[XmlPolymorphic]` chooses whether the discriminator is the element name, an attribute, or `xsi:type`. |
-| `XmlDataNamespaceDeclarationAttribute(prefix, namespaceUri)` | | Not implemented. The writer declares a namespace on the first element that uses it and doesn't take a prefix from the type. |
+| `XmlDataNamespaceDeclarationAttribute(prefix, namespaceUri)` with `Prefix`, `NamespaceUri` | [`XmlNamespaceDeclarationAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlNamespaceDeclarationAttribute) | Renamed. It declares the prefix on the document element when the type is serialized as a document. `XmlSerializerOptions.Namespaces` does the same for every type. |
 | `XmlDataCDataAttribute` | [`XmlCDataAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlCDataAttribute) | Renamed. |
 | `XmlDataDefaultValueAttribute(object?)` | | Not implemented. `[XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingDefault)]` leaves out a member that has the default value of its type. |
-| `XmlDataEnumAttribute` with `Name` | | Not implemented. An enum is written with its member name, or as a number. |
+| `XmlDataEnumAttribute` with `Name` | [`XmlPropertyNameAttribute`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyNameAttribute) on the enum member | Different shape. The attribute that renames a member also renames an enum value, as `JsonStringEnumMemberNameAttribute` does. See [Enumeration values](/guides/customize-names#enumeration-values). |
 | | `XmlArrayItemAttribute`, `XmlArrayItemAttribute<T>` | Added. Names the item elements of a collection. |
 | | `XmlPropertyNameAttribute`, `XmlPropertyOrderAttribute`, `XmlRequiredAttribute`, `XmlConstructorAttribute`, `XmlConverterAttribute`, `XmlExtensionDataAttribute`, `XmlPolymorphicAttribute` | Added. Counterparts of the System.Text.Json attributes with the same names. |
 | | `XmlIncludeAttribute` | Added, with a different meaning from the proposed `XmlDataIncludeAttribute`: it includes a non-public member, as `JsonIncludeAttribute` does. |
@@ -178,9 +178,10 @@ One default differs from what the proposal's examples show. A collection member 
 | `DefaultNamespace` | `DefaultNamespace` | Same. |
 | `IList<XmlDataConverter> Converters` | `IList<XmlConverter> Converters` | Renamed. |
 | `XmlDataSerializerContext? TypeInfoResolver` | `IXmlTypeInfoResolver? TypeInfoResolver` | Different shape. The property takes the interface that `XmlSerializerContext` implements, as `JsonSerializerOptions.TypeInfoResolver` takes `IJsonTypeInfoResolver`. `TypeInfoResolverChain` combines several. |
-| | `Default`, `Web`, `Strict`, the constructors that take `XmlSerializerDefaults` or another options instance, `MakeReadOnly`, `IsReadOnly`, `GetTypeInfo`, `TryGetTypeInfo`, `GetConverter` | Added. Counterparts of the `JsonSerializerOptions` members. |
-| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DictionaryKeyPolicy`, `PropertyNameCaseInsensitive`, `DefaultIgnoreCondition`, `ReferenceHandler`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`, `AllowDuplicateProperties`, `ReadCommentHandling`, `DefaultBufferSize` | Added. Counterparts of the `JsonSerializerOptions` members. |
-| | `DefaultPropertyMapping`, `EnumHandling`, `InferClosedTypePolymorphism`, `WhitespaceHandling`, `XmlVersion`, `EmitByteOrderMark`, `EmptyElementStyle`, `AttributeStyle`, `AttributesPerLine`, `MaxAttributeCount`, `MaxCommentByteCount`, `MaxDocumentByteCount`, `MaxNameByteCount`, `MaxTextByteCount` | Added. XML-specific settings and input limits. |
+| | `Default`, `Web`, `Strict`, the constructors that take `XmlSerializerDefaults` or another options instance, `MakeReadOnly`, `IsReadOnly`, `GetTypeInfo`, `TryGetTypeInfo`, `GetConverter`, `TypeInfoResolverChain` | Added. Counterparts of the `JsonSerializerOptions` members. |
+| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DictionaryKeyPolicy`, `PropertyNameCaseInsensitive`, `DefaultIgnoreCondition`, `ReferenceHandler`, `RespectNullableAnnotations`, `RespectRequiredConstructorParameters`, `AllowDuplicateProperties`, `ReadCommentHandling`, `DefaultBufferSize`, `PreferredObjectCreationHandling`, `UnknownTypeHandling` | Added. Counterparts of the `JsonSerializerOptions` members. |
+| | `Bcl` | Added. Read-only options that write what `System.Xml.Serialization.XmlSerializer` writes. |
+| | `DefaultPropertyMapping`, `DefaultCollectionMapping`, `EnumHandling`, `CharHandling`, `UtcOffsetHandling`, `MemberOrder`, `Namespaces`, `InferClosedTypePolymorphism`, `WhitespaceHandling`, `XmlVersion`, `EmitByteOrderMark`, `EmptyElementStyle`, `AttributeStyle`, `AttributesPerLine`, `MaxAttributeCount`, `MaxCommentByteCount`, `MaxDocumentByteCount`, `MaxNameByteCount`, `MaxTextByteCount` | Added. XML-specific settings and input limits. |
 
 ## Serializer
 
@@ -228,7 +229,7 @@ The overloads that take options use reflection and are marked with `RequiresUnre
 | `abstract XmlTypeInfo? GetTypeInfo(Type type)` | The same member | Same. |
 | `XmlDataSerializableAttribute(Type)` with `TypeInfoPropertyName` | `XmlSerializableAttribute<T>` with `TypeInfoPropertyName` | Renamed, and the type is a type argument, not a constructor argument. Adds `GenerationMode`. |
 | `XmlDataSourceGenerationOptionsAttribute` with `WriteIndented`, `OmitXmlDeclaration`, `DefaultNamespace`, `IncludeFields`, `IgnoreReadOnlyProperties`, `IgnoreReadOnlyFields` | `XmlSourceGenerationOptionsAttribute` with the same six properties | Renamed. |
-| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `EmitByteOrderMark`, `EnumHandling`, `GenerationMode`, `MaxDepth`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `XmlVersion` on the options attribute | Added. |
+| | `PropertyNamingPolicy`, `ElementNamingPolicy`, `AttributeNamingPolicy`, `DefaultIgnoreCondition`, `DefaultPropertyMapping`, `DefaultCollectionMapping`, `CharHandling`, `EmitByteOrderMark`, `EnumHandling`, `GenerationMode`, `MaxDepth`, `MemberOrder`, `PreferredObjectCreationHandling`, `PropertyNameCaseInsensitive`, `RespectNullableAnnotations`, `UnknownTypeHandling`, `UtcOffsetHandling`, `XmlVersion` on the options attribute | Added. |
 | | `XmlSourceGenerationMode`, `XmlKnownNamingPolicy`, `XmlMetadataServices`, `DefaultXmlTypeInfoResolver`, `XmlPropertyInfo` | Added. |
 
 ## Beyond the proposal
@@ -345,7 +346,7 @@ Token: EndElement, Depth: 0, Consumed: 20
 
 ### Namespace-aware mapping
 
-The proposal's example uses `XmlDataNamespaceDeclaration` to choose the prefix `addr`, and `XmlDataType` to put the members of `Address` in a namespace. Neither exists here, so the mapping names the namespace on each member:
+The proposal's example uses `XmlDataNamespaceDeclaration` to choose the prefix `addr`, and `XmlDataType` to put the members of `Address` in a namespace. `XmlDataType` has no counterpart, so this mapping names the namespace on each member, and it leaves the prefix to the writer:
 
 ```csharp Employee.cs
 [XmlRoot("Person", Namespace = "http://example.com/person")]
@@ -395,7 +396,7 @@ The code produces the following output:
 </Person>
 ```
 
-Every element has the same namespace as in the proposal's expected output. The spelling is different: the address namespace is the default namespace of the `Address` element, where the proposal's output declares the prefix `addr` on the root. `Address` comes before `FullName` because the class declares `HomeAddress` first.
+Every element has the same namespace as in the proposal's expected output. The spelling is different: the address namespace is the default namespace of the `Address` element, where the proposal's output declares the prefix `addr` on the root. To declare that prefix on the document element, add `[XmlNamespaceDeclaration("addr", "http://example.com/address")]` to `Employee`. `Address` comes before `FullName` because the class declares `HomeAddress` first.
 
 ### Polymorphic collections
 

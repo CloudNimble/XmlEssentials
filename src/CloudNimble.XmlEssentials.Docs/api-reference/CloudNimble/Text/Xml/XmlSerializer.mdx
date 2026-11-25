@@ -189,9 +189,9 @@ foreach (string xml in documents)
 The code produces the following output:
 
 ```text
-The root element does not match 'PurchaseOrder'.
-End tag does not match start tag.
-The value is not a valid integer.
+The root element does not match 'PurchaseOrder'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 8.
+End tag does not match start tag. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 40.
+The value is not a valid integer. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 28.
 ```
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/07_DeserializeFromXml.cs)
@@ -306,11 +306,11 @@ Keep the following in mind when you choose overloads and when you compare `XmlSe
 
 ### Reflection and trimming
 
-The overloads that take `XmlSerializerOptions` find members and constructors through reflection. They are annotated with `RequiresUnreferencedCode` and `RequiresDynamicCode`, so the compiler warns when a trimmed or Native AOT application calls them. The overloads that take an `XmlTypeInfo<TValue>` or an `XmlSerializerContext` aren't annotated. `XmlSerializer.IsReflectionEnabledByDefault` reports whether options with no resolver fall back to reflection. When it is `false` and no resolver is set, the reflection overloads throw an `InvalidOperationException`.
+The overloads that take `XmlSerializerOptions` find members and constructors through reflection. They are annotated with `RequiresUnreferencedCode` and `RequiresDynamicCode`, so the compiler warns when a trimmed or Native AOT application calls them. The overloads that take an `XmlTypeInfo<TValue>` or an `XmlSerializerContext` aren't annotated. Options that have no resolver are given the reflection resolver by the first of these overloads that uses them, when `XmlSerializer.IsReflectionEnabledByDefault` is `true`. When it is `false` and no resolver is set, the reflection overloads throw an `InvalidOperationException`.
 
 ### Cost of the first call
 
-The first call for a type with a given options instance builds the type's XML mapping. In the library's benchmark of a customer object with two addresses and 20 line items, that first write takes 612,933 ns and allocates 75,440 bytes. Later writes with the same options take 1,710 ns and allocate nothing. The cached `System.Xml.Serialization.XmlSerializer` takes 4,089 ns and allocates 8,648 bytes for the same object, and `System.Text.Json` takes 1,502 ns for the equivalent JSON. See [Benchmarks](/benchmarks).
+The first call for a type with a given options instance builds the type's XML mapping and caches it on the instance. That call costs many times what later calls with the same instance cost, so create the options once and reuse them. See [Benchmarks](/benchmarks).
 
 ### Buffering
 
@@ -322,8 +322,7 @@ The first call for a type with a given options instance builds the type's XML ma
 ### Differences from System.Text.Json
 
 - `Serialize<object>(value)` writes the value as the type it has, and names the document element after that type. `Deserialize<object>` returns an `XmlElement`.
-- Constructor parameters are matched to members with case unless `PropertyNameCaseInsensitive` is `true`. See [Immutable types](/guides/immutable-types).
-- `RespectRequiredConstructorParameters` defaults to `true`.
+- `RespectRequiredConstructorParameters` defaults to `true`, so a document that lacks a value for a constructor parameter with no default value is rejected. See [Immutable types](/guides/immutable-types).
 - A `null` member is written as an element marked `xsi:nil="true"` by default, because XML has no `null` literal.
 - A collection is written as repeated elements, and a document has exactly one root element.
 
@@ -331,7 +330,7 @@ The first call for a type with a given options instance builds the type's XML ma
 
 - There is no instance to construct and cache per type.
 - Only the attributes in `CloudNimble.Text.Xml.Serialization` are read. Attributes from `System.Xml.Serialization`, `IXmlSerializable`, and data contract attributes are ignored.
-- Collections have no wrapper element unless you add `[XmlArray]`.
+- Collections have no wrapper element unless you add `[XmlArray]` or set `DefaultCollectionMapping` to `Wrapped`. `XmlSerializerOptions.Bcl` sets that and the other settings that write what the old serializer writes.
 - Input and output are UTF-8. The library doesn't reference `System.Xml`.
 
 See [Migrate from XmlSerializer](/guides/migrate/from-xmlserializer).

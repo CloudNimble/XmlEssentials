@@ -79,13 +79,15 @@ The code produces the following output:
 - A name set here isn't converted by a naming policy.
 - `Order` follows the rules of `[XmlPropertyOrder]`: values of zero or more are written first in ascending order, and a negative value, the default, means the order isn't set.
 - A member can't be both an element and something else. `[XmlElement]` together with `[XmlAttribute]`, `[XmlText]`, or `[XmlCData]` throws a `NotSupportedException` the first time the type is used.
-- More than one `[XmlElement]` on a member is for choosing an element name by run-time type. See [Polymorphism](/guides/polymorphism).
+- Several `[XmlElement<T>]` on one member make a choice of elements: each element name stands for a type, a value is written under the element of its type, and an element is read as the type of its name. On a collection, each item is written under the element of its own type. A value of the member's own type is written under the member's name. When two elements hold the same type, declare the member as `XmlNamedValue`, or a collection of it, so each value carries the name of its element. See [Polymorphism](/guides/polymorphism).
+- A member can have one `[XmlElement]` without a type argument. A second one, or one next to `[XmlElement<T>]`, throws a `NotSupportedException` the first time the type is used.
 
 ## Constructors
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
 
-Initializes a new instance of the `XmlElementAttribute`1` class that uses the member name as the element name.
+Initializes a new instance of the `XmlElementAttribute`1` class that uses the default element name:
+the member name, or the element name of *T* when the member has more than one of these attributes.
 
 #### Syntax
 

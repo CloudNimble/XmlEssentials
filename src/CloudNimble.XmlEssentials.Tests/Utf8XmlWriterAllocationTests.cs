@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using CloudNimble.Text.Xml;
 using FluentAssertions;
@@ -78,6 +79,54 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow("\n", DisplayName = "line breaks written as they are")]
+        [DataRow("\r\n", DisplayName = "line breaks written as CR LF, which takes the escaping path")]
+        public void Reset_WriteLongEscapedText_DoesNotAllocate(string newLine)
+        {
+            // Text that is longer than any buffer on the stack, with characters that are escaped, characters
+            // outside ASCII, and line breaks: it is transcoded a part at a time and nothing is allocated for it.
+            var text = string.Concat(Enumerable.Repeat("Leave at the back door & ring twice: café \U0001F600 <open>\n", 400));
+            var buffer = new ArrayBufferWriter<byte>(262_144);
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { NewLine = newLine, OmitXmlDeclaration = true });
+            for (var i = 0; i < 3; i++)
+            {
+                writer.Reset();
+                buffer.Clear();
+                WriteLongText(writer, text);
+            }
+
+            writer.Reset();
+            buffer.Clear();
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            WriteLongText(writer, text);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void Reset_WriteValidatedRawValue_DoesNotAllocate()
+        {
+            // The raw value is read to check it, inside a copy of the element that is open. The copy is built in
+            // an array from the pool, so a writer that has checked one raw value allocates nothing for the next.
+            var raw = System.Text.Encoding.UTF8.GetBytes(string.Concat(Enumerable.Range(0, 200).Select(i => $"<item id=\"{i}\"><name>Widget</name></item>")));
+            var buffer = new ArrayBufferWriter<byte>(65_536);
+            using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+            for (var i = 0; i < 3; i++)
+            {
+                writer.Reset();
+                buffer.Clear();
+                WriteRaw(writer, raw);
+            }
+
+            writer.Reset();
+            buffer.Clear();
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            WriteRaw(writer, raw);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            allocated.Should().Be(0);
+        }
+
+        [TestMethod]
         public void WriteCatalogNumbers_AllocatesOnlyTheWriter()
         {
             var buffer = new ArrayBufferWriter<byte>(32_768);
@@ -148,6 +197,28 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             using var writer = new Utf8XmlWriter(buffer, options);
             WriteCatalog(writer);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void WriteLongText(Utf8XmlWriter writer, string text)
+        {
+            writer.WriteStartElement("notes");
+            writer.WriteAttributeString("first", text);
+            writer.WriteElementString("note", text);
+            writer.WriteStartElement("note");
+            writer.WriteStringValue(text.AsSpan());
+            writer.WriteEndElement();
+            writer.WriteEndElement();
+            writer.Flush();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void WriteRaw(Utf8XmlWriter writer, byte[] raw)
+        {
+            writer.WriteStartElement("catalog");
+            writer.WriteRawValue(raw);
+            writer.WriteEndElement();
+            writer.Flush();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
