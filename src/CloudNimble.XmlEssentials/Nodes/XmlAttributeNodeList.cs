@@ -157,13 +157,21 @@ namespace CloudNimble.Text.Xml.Nodes
             _items.CopyTo(array, arrayIndex);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Returns an enumerator that iterates through the attributes in order.
+        /// </summary>
+        /// <returns>
+        /// An enumerator for the list.
+        /// </returns>
+        /// <remarks>
+        /// The list must not change while it is enumerated. After an attribute is added, inserted, removed, or
+        /// replaced, or the list is cleared, the next call to <see cref="IEnumerator.MoveNext"/> throws an
+        /// <see cref="InvalidOperationException"/>. To change the list in a loop, enumerate a copy of it.
+        /// </remarks>
         public IEnumerator<XmlAttributeNode> GetEnumerator()
         {
-            for (var i = 0; i < _items.Count; i++)
-            {
-                yield return _items[i];
-            }
+            // The version is taken here, not when the first attribute is asked for.
+            return Enumerate(_items.Version);
         }
 
         /// <inheritdoc />
@@ -244,6 +252,25 @@ namespace CloudNimble.Text.Xml.Nodes
         internal void Detach(XmlAttributeNode node)
         {
             node.SetParent(null);
+        }
+
+        /// <summary>
+        /// Returns the attributes in order, for as long as the list is as it was when the enumeration started.
+        /// </summary>
+        /// <param name="version">The version of the list when the enumeration started.</param>
+        /// <returns>The attributes.</returns>
+        private IEnumerator<XmlAttributeNode> Enumerate(int version)
+        {
+            for (var i = 0; ; i++)
+            {
+                _items.ThrowIfChanged(version);
+                if (i >= _items.Count)
+                {
+                    yield break;
+                }
+
+                yield return _items[i];
+            }
         }
 
         #endregion

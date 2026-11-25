@@ -9,7 +9,7 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
 {
 
     /// <summary>
-    /// Runs samples 40 to 45 and compares what each returns with the output the migration guides show.
+    /// Runs samples 40 to 46 and compares what each returns with the output the migration guides and the conversion guide show.
     /// </summary>
     [TestClass]
     public class MigrationSampleTests
@@ -402,6 +402,84 @@ namespace CloudNimble.XmlEssentials.Tests.Samples
                 "<root xmlns:ns=\"http://example.com\" xmlns=\"http://example.com/default\">\n" +
                 "  <ns:Child ns:id=\"42\">Hello</ns:Child>\n" +
                 "</root>");
+        }
+
+        [TestMethod]
+        public void Sample46_ConvertBetweenXmlAndJson()
+        {
+            SampleOutput.Capture(ConvertBetweenXmlAndJson.Run).Should().Be(
+                "{\n" +
+                "  \"carrier\": \"Contoso Freight\",\n" +
+                "  \"id\": 1042,\n" +
+                "  \"items\": [\n" +
+                "    \"Keyboard\",\n" +
+                "    \"Mouse\"\n" +
+                "  ],\n" +
+                "  \"signed\": true,\n" +
+                "  \"weight\": 2.5\n" +
+                "}");
+        }
+
+        [TestMethod]
+        public void Sample46_ConvertBetweenXmlAndJson_JsonToXml()
+        {
+            SampleOutput.Capture(ConvertBetweenXmlAndJson.JsonToXml).Should().Be(
+                "<delivery id=\"1042\">\n" +
+                "  <carrier>Contoso Freight</carrier>\n" +
+                "  <item>Keyboard</item>\n" +
+                "  <item>Mouse</item>\n" +
+                "  <signed>true</signed>\n" +
+                "  <weight>2.5</weight>\n" +
+                "</delivery>");
+        }
+
+        [TestMethod]
+        public void Sample46_ConvertBetweenXmlAndJson_SourceGenerated()
+        {
+            SampleOutput.Capture(ConvertBetweenXmlAndJson.SourceGenerated).Should().Be(
+                "{\"carrier\":\"Contoso Freight\",\"id\":1042,\"items\":[\"Keyboard\",\"Mouse\"],\"signed\":true,\"weight\":2.5}\n" +
+                "<delivery id=\"1042\"><carrier>Contoso Freight</carrier><item>Keyboard</item><item>Mouse</item><signed>true</signed><weight>2.5</weight></delivery>");
+        }
+
+        [TestMethod]
+        public void Sample46_ConvertBetweenXmlAndJson_TreeToJson()
+        {
+            SampleOutput.Capture(ConvertBetweenXmlAndJson.TreeToJson).Should().Be(
+                "{\n" +
+                "  \"delivery\": {\n" +
+                "    \"@id\": \"1042\",\n" +
+                "    \"carrier\": \"Contoso Freight\",\n" +
+                "    \"item\": [\n" +
+                "      \"Keyboard\",\n" +
+                "      \"Mouse\"\n" +
+                "    ],\n" +
+                "    \"signed\": \"true\",\n" +
+                "    \"weight\": \"2.5\"\n" +
+                "  }\n" +
+                "}");
+        }
+
+        [TestMethod]
+        public void Sample46_ConvertBetweenXmlAndJson_TreeToXml()
+        {
+            SampleOutput.Capture(ConvertBetweenXmlAndJson.TreeToXml).Should().Be(
+                "<delivery>\n" +
+                "  <carrier>Contoso Freight</carrier>\n" +
+                "  <id>1042</id>\n" +
+                "  <items>Keyboard</items>\n" +
+                "  <items>Mouse</items>\n" +
+                "  <signed>true</signed>\n" +
+                "  <weight>2.5</weight>\n" +
+                "</delivery>");
+        }
+
+        [TestMethod]
+        public void Sample46_ConvertBetweenXmlAndJson_TreeRoundTrip()
+        {
+            SampleOutput.Capture(ConvertBetweenXmlAndJson.TreeRoundTrip).Should().Be(
+                "{\"id\":1042,\"signed\":true,\"items\":[\"Keyboard\"],\"note\":null}\n" +
+                "<delivery><id>1042</id><signed>true</signed><items>Keyboard</items><note/></delivery>\n" +
+                "{\"id\":\"1042\",\"signed\":\"true\",\"items\":\"Keyboard\",\"note\":null}");
         }
 
         #endregion

@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Nodes;
@@ -111,6 +112,115 @@ namespace CloudNimble.XmlEssentials.Tests
             ReferenceEquals(attribute.Parent, element).Should().BeTrue();
             ReferenceEquals(child.Parent, element).Should().BeTrue();
             element.ToString().Should().Be("<e a=\"1\"><c/></e>");
+        }
+
+        [TestMethod]
+        public void Children_ChangedWhileTheyAreEnumerated_EndTheEnumeration()
+        {
+            // The rule of JsonArray, which is the rule of List<T>: any change to the list ends an enumeration
+            // of it, at the next node that is asked for.
+            const string message = "Collection was modified; enumeration operation may not execute.";
+            Action<XmlNodeList>[] changes =
+            [
+                list => list.Add(new XmlTextNode("x")),
+                list => list.Insert(0, new XmlTextNode("x")),
+                list => list.RemoveAt(0),
+                list => list.Remove(list[1]),
+                list => list[0] = new XmlTextNode("x"),
+                list => list.Clear(),
+            ];
+            foreach (var change in changes)
+            {
+                var list = XmlNode.Parse("<e><a/><b/><c/></e>").Should().BeOfType<XmlElementNode>().Subject.Children;
+                using var enumerator = list.GetEnumerator();
+                enumerator.MoveNext().Should().BeTrue();
+                change(list);
+                ((Action)(() => enumerator.MoveNext())).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+            }
+
+            // The enumeration is of the list as it was when the enumerator was asked for, and it is over only
+            // when the list has been found unchanged at its end.
+            var element = new XmlElementNode("e");
+            var first = element.AddElement("a");
+            using var early = element.Children.GetEnumerator();
+            using var late = element.Children.GetEnumerator();
+            late.MoveNext().Should().BeTrue();
+            element.AddElement("b");
+            ((Action)(() => early.MoveNext())).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+            ((Action)(() => late.MoveNext())).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+            ((Action)(() =>
+            {
+                foreach (var child in element)
+                {
+                    element.Children.Remove(child);
+                }
+            })).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+            element.ToString().Should().Be("<e><b/></e>");
+
+            // What changes nothing ends nothing: a node that is not in the list, and the node already in place.
+            var kept = element.Children[0];
+            using var unchanged = element.Children.GetEnumerator();
+            unchanged.MoveNext().Should().BeTrue();
+            element.Children.Remove(first).Should().BeFalse();
+            element.Children[0] = kept;
+            unchanged.MoveNext().Should().BeFalse();
+
+            // A copy is what a loop that changes the list goes through.
+            element.AddElement("c");
+            foreach (var child in element.Children.ToArray())
+            {
+                element.Children.Remove(child);
+            }
+
+            element.ToString().Should().Be("<e/>");
+        }
+
+        [TestMethod]
+        public void Attributes_ChangedWhileTheyAreEnumerated_EndTheEnumeration()
+        {
+            const string message = "Collection was modified; enumeration operation may not execute.";
+            Action<XmlAttributeNodeList>[] changes =
+            [
+                list => list.Add(new XmlAttributeNode("x", "1")),
+                list => list.Insert(0, new XmlAttributeNode("x", "1")),
+                list => list.RemoveAt(0),
+                list => list.Remove(list[1]),
+                list => list[0] = new XmlAttributeNode("x", "1"),
+                list => list.Clear(),
+            ];
+            foreach (var change in changes)
+            {
+                var list = XmlNode.Parse("<e a=\"1\" b=\"2\" c=\"3\"/>").Should().BeOfType<XmlElementNode>().Subject.Attributes;
+                using var enumerator = list.GetEnumerator();
+                enumerator.MoveNext().Should().BeTrue();
+                change(list);
+                ((Action)(() => enumerator.MoveNext())).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+            }
+
+            var element = new XmlElementNode("e");
+            var first = element.SetAttribute("a", "1");
+            using var early = element.Attributes.GetEnumerator();
+            using var late = element.Attributes.GetEnumerator();
+            late.MoveNext().Should().BeTrue();
+            element.SetAttribute("b", "2");
+            ((Action)(() => early.MoveNext())).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+            ((Action)(() => late.MoveNext())).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(message);
+
+            // Setting the value of an attribute changes the attribute, not the list it is in.
+            using var unchanged = element.Attributes.GetEnumerator();
+            unchanged.MoveNext().Should().BeTrue();
+            element.SetAttribute("a", "9");
+            element.Attributes.Remove(new XmlAttributeNode("z", "0")).Should().BeFalse();
+            element.Attributes[0] = first;
+            unchanged.MoveNext().Should().BeTrue();
+            unchanged.MoveNext().Should().BeFalse();
+
+            foreach (var attribute in element.Attributes.ToArray())
+            {
+                element.Attributes.Remove(attribute);
+            }
+
+            element.ToString().Should().Be("<e/>");
         }
 
         [TestMethod]

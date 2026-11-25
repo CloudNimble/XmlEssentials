@@ -882,21 +882,39 @@ namespace CloudNimble.Text.Xml
         /// <param name="index">The row index of the element.</param>
         /// <param name="names">The table of name strings made so far.</param>
         /// <param name="source">The source the child elements keep, or null to make their own content now.</param>
+        /// <remarks>
+        /// The lists are filled before the element is given them, so that a second thread reading the element
+        /// never finds one half made (<see cref="XmlElementNode.SetContent"/>). An element with no attributes or
+        /// no children is given no list for them, and makes an empty one if it is asked.
+        /// </remarks>
         internal void FillElement(XmlElementNode element, int index, string?[] names, XmlNodeSource? source)
         {
             ref var row = ref _rows[index];
             var end = row.EndIndex;
             var attributeEnd = index + 1 + row.AttributeCount;
-            for (var a = index + 1; a < attributeEnd; a++)
+            XmlAttributeNodeList? attributes = null;
+            if (row.AttributeCount > 0)
             {
-                element.Attributes.Add((XmlAttributeNode)CloneRow(a, names, null));
+                attributes = new XmlAttributeNodeList(element);
+                for (var a = index + 1; a < attributeEnd; a++)
+                {
+                    attributes.Add((XmlAttributeNode)CloneRow(a, names, null));
+                }
             }
 
-            for (var c = attributeEnd; c < end; c = NextSiblingIndex(c))
+            XmlNodeList? children = null;
+            if (attributeEnd < end)
             {
-                element.Add(CloneRow(c, names, source));
+                children = new XmlNodeList(element);
+                for (var c = attributeEnd; c < end; c = NextSiblingIndex(c))
+                {
+                    children.Add(CloneRow(c, names, source));
+                }
             }
+
+            element.SetContent(attributes, children);
         }
+
         /// <summary>
         /// Makes room for <paramref name="count"/> more rows.
         /// </summary>

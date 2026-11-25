@@ -137,12 +137,13 @@ The numbers below come from the graph benchmark in the repository: a `Customer` 
 
 | Operation | Reflection, first call | Reflection, later calls | Source generation | `System.Xml` serializer | System.Text.Json |
 | --- | --- | --- | --- | --- | --- |
-| Read | 594,483 ns, 78,608 B | 3,358 ns, 3,168 B | 3,092 ns, 3,104 B | 8,648 ns, 16,496 B | 2,946 ns, 3,576 B |
-| Write | 612,933 ns, 75,440 B | 1,710 ns, 0 B | 1,257 ns, 0 B | 4,089 ns, 8,648 B | 1,502 ns, 312 B |
+| Read | 621,000 ns, 82,432 B | 2,637 ns, 3,168 B | 2,593 ns, 3,168 B | 8,667 ns, 16,496 B | 2,868 ns, 3,576 B |
+| Write | 570,683 ns, 79,248 B | 1,418 ns, 0 B | 1,209 ns, 0 B | 4,303 ns, 8,648 B | 1,407 ns, 312 B |
 
 What to notice:
 
-- **The first reflection call costs about 0.6 ms and 75 KB** for this graph. That's the time the serializer spends binding the type's members. It's paid once for each type and each `XmlSerializerOptions` instance, which is why you create one options instance and reuse it.
+- **The first reflection call costs about 0.6 ms and 80 KB** for this graph. That's the time the serializer spends binding the type's members. It's paid once for each type and each `XmlSerializerOptions` instance, which is why you create one options instance and reuse it.
+- **Both approaches are about three times as fast as the `System.Xml` serializer** on this graph: 3.3× to read, and 3.0× to 3.6× to write.
 - **After the first call, both approaches read with the same engine.** A generated context needs no reflection, is safe for trimming and Native AOT, and in the `Default` mode has a write fast path. Neither approach allocates when writing.
 - **The benchmark doesn't measure a first call through a generated context.** On that call, the serializer creates the type info from the generated metadata, and it reflects over no members to do so.
 

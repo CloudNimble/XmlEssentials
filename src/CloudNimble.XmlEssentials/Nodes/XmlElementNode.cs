@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace CloudNimble.Text.Xml.Nodes
 {
@@ -41,7 +42,13 @@ namespace CloudNimble.Text.Xml.Nodes
             get
             {
                 Materialize();
-                return _attributes ??= new XmlAttributeNodeList(this);
+                if (_attributes is null)
+                {
+                    // Two threads that ask at the same moment are both given the list that is kept.
+                    Interlocked.CompareExchange(ref _attributes, new XmlAttributeNodeList(this), null);
+                }
+
+                return _attributes;
             }
         }
 
@@ -56,7 +63,13 @@ namespace CloudNimble.Text.Xml.Nodes
             get
             {
                 Materialize();
-                return _children ??= new XmlNodeList(this);
+                if (_children is null)
+                {
+                    // Two threads that ask at the same moment are both given the list that is kept.
+                    Interlocked.CompareExchange(ref _children, new XmlNodeList(this), null);
+                }
+
+                return _children;
             }
         }
 
@@ -448,6 +461,32 @@ namespace CloudNimble.Text.Xml.Nodes
         #region Private Methods
 
         /// <summary>
+        /// Gives this element the attributes and the children that were made for it from a parsed document,
+        /// unless it has been given them already.
+        /// </summary>
+        /// <param name="attributes">The attributes, or null when the element has none.</param>
+        /// <param name="children">The children, or null when the element has none.</param>
+        /// <remarks>
+        /// Each list is whole before it is put in place, and a list that is in place is never replaced: of two
+        /// threads that made the same content, both go on with the lists of the one that came first. The
+        /// source is let go of last, so a thread that finds no source finds both lists.
+        /// </remarks>
+        internal void SetContent(XmlAttributeNodeList? attributes, XmlNodeList? children)
+        {
+            if (attributes is not null)
+            {
+                Interlocked.CompareExchange(ref _attributes, attributes, null);
+            }
+
+            if (children is not null)
+            {
+                Interlocked.CompareExchange(ref _children, children, null);
+            }
+
+            Volatile.Write(ref _source, null);
+        }
+
+        /// <summary>
         /// Writes the attributes and the children of this element into the element that
         /// <paramref name="writer"/> has open, without this element's own tags.
         /// </summary>
@@ -488,20 +527,23 @@ namespace CloudNimble.Text.Xml.Nodes
         /// Makes the attributes and the children of an element that still has them only in the parsed document.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Everything that looks at or changes what is under the element, or changes its name, comes here first.
         /// The child elements that are made keep the document in their turn, so only the part of a tree that
         /// is looked at is ever made.
+        /// </para>
+        /// <para>
+        /// Looking is something several threads may do at once, as they may with a <c>JsonNode</c>. Each thread
+        /// that finds the source still here makes the content for itself, and <see cref="SetContent"/> keeps
+        /// the first to arrive, so no thread sees a list that is still being filled.
+        /// </para>
         /// </remarks>
         private void Materialize()
         {
-            if (_source is not { } source)
+            if (Volatile.Read(ref _source) is { } source)
             {
-                return;
+                source.Document.FillElement(this, _sourceIndex, source.Names, source);
             }
-
-            // The source is let go of first: filling the element goes through its lists, which come back here.
-            _source = null;
-            source.Document.FillElement(this, _sourceIndex, source.Names, source);
         }
 
         /// <summary>

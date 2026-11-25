@@ -1,7 +1,7 @@
 ---
-title: "XmlEssentials: modern XML for .NET"
+title: "XmlEssentials: The XML API .NET developers begged for"
 sidebarTitle: "Welcome"
-description: "The XML API you've been begging for: System.Text.Json-shaped, UTF-8 first, source generated, Native AOT ready, with XML 1.0 and 1.1 support."
+description: "System.Text.Json-shaped, UTF-8 first, 3x faster, 85% less memorysource generated, Native AOT ready, with XML 1.0 and 1.1 support."
 icon: "house"
 ---
 
@@ -27,7 +27,7 @@ Person? copy = XmlSerializer.Deserialize<Person>(xml);
     Install the package and read, write, and serialize your first document.
   </Card>
   <Card title="See the numbers" icon="gauge-high" href="/benchmarks">
-    Faster than `System.Xml` on every row of the benchmark tables, with a fraction of the memory.
+    3.0× faster than `System.Xml` on average, with 85% less memory allocated.
   </Card>
 </Columns>
 
@@ -50,13 +50,13 @@ Coming from JSON? [Start with what's different about XML](/guides/migrate/from-s
 
 ## Lightning fast, and light on memory
 
-XmlEssentials reads and writes UTF-8 directly. There's no transcoding to UTF-16, no string for every name, and no object for every node.
+XmlEssentials reads and writes UTF-8 directly. There's no transcoding to UTF-16, no string for every name, and no object for every node. Across 67 like-for-like benchmarks against `System.Xml`, it's 3.0× faster on average and allocates 85% less memory.
 
 <Columns cols={3}>
   <Card title="Up to 19× faster" icon="bolt" href="/benchmarks">
-    Reading a value takes 55 ns. `System.Xml` takes 1,037 ns.
+    Reading a value takes 56 ns. `System.Xml` takes 1,068 ns.
   </Card>
-  <Card title="2.4× to 2.9× faster parsing" icon="file-code" href="/benchmarks">
+  <Card title="3.1× to 3.4× faster parsing" icon="file-code" href="/benchmarks">
     Real documents into a DOM, in 104 bytes instead of hundreds of kilobytes.
   </Card>
   <Card title="Zero-allocation writes" icon="memory" href="/benchmarks">
@@ -64,11 +64,11 @@ XmlEssentials reads and writes UTF-8 directly. There's no transcoding to UTF-16,
   </Card>
 </Columns>
 
-It runs close to System.Text.Json too, which is remarkable for a format that demands much more of a parser. The [benchmarks page](/benchmarks) shows every row, including the ones where JSON still wins.
+On lists and graphs of objects it runs level with System.Text.Json, which is remarkable for a format that demands much more of a parser. The [benchmarks page](/benchmarks) shows every row, including the ones where JSON still wins and the one where `System.Xml` does.
 
 ## Built for how you ship .NET today
 
-<Columns cols={2}>
+<Columns cols={4}>
   <Card title="Source generation" icon="wand-magic-sparkles" href="/guides/source-generation">
     List your types on a context and a Roslyn incremental generator writes their metadata at build time. The serializer uses no reflection and generates no code at run time.
   </Card>

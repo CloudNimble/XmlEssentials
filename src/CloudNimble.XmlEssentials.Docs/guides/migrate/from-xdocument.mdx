@@ -9,6 +9,8 @@ This article is for developers who load XML into `XDocument` and `XElement` (LIN
 
 XmlEssentials has two document models where `System.Xml` has one for each API, and they follow System.Text.Json: `XmlDocument` and `XmlElement` correspond to `JsonDocument` and `JsonElement`, and the `XmlNode` types in `CloudNimble.Text.Xml.Nodes` correspond to `JsonNode`.
 
+Which one you choose matters for speed. In the project's [benchmarks](/benchmarks#parse-into-a-dom), the read-only `XmlDocument` parses four real documents 3.1× to 3.4× faster than `System.Xml.XmlDocument` and allocates 104 bytes for each. The mutable tree parses 1.5× faster than `System.Xml.XmlDocument` and `XDocument`, but `XDocument` is faster at [parsing, changing, and writing](/benchmarks#change-a-document) a whole document.
+
 <Note>
 `CloudNimble.Text.Xml.XmlDocument`, `XmlElement`, and `Nodes.XmlNode` share their names with types in `System.Xml`. A file that imports both namespaces needs an alias or a fully qualified name. During a migration, move one file at a time and remove `using System.Xml;` from it.
 </Note>

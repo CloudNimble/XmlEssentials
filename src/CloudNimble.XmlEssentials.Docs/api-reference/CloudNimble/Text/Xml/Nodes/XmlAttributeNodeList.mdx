@@ -63,7 +63,7 @@ The list does not check for duplicate names.
 - The list doesn't check for duplicate names. Two attributes with the same name throw "Duplicate attribute." when the element is written. `XmlElementNode.SetAttribute` updates an existing attribute instead of adding a second one.
 - The list of a parsed element includes its namespace declarations (`xmlns` and `xmlns:prefix`), so `Count` can be larger than the number of attributes you think of as data.
 - The name indexers search the list from the start each time. That's the right trade for the handful of attributes a typical element has.
-- Don't change the list while a `foreach` loop enumerates it. Collect the attributes to remove first, or loop by index from the end.
+- Don't change the list while a `foreach` loop enumerates it. After a change, the loop's next step throws an `InvalidOperationException` ("Collection was modified; enumeration operation may not execute."), as a `List<T>` or a `JsonArray` does. Loop over a copy (`list.ToArray()`), or loop by index from the end. Setting an attribute's `Value` changes the attribute, not the list.
 
 ## Constructors
 
@@ -258,6 +258,8 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetEnumerator
 
+Returns an enumerator that iterates through the attributes in order.
+
 #### Syntax
 
 ```csharp
@@ -267,6 +269,13 @@ public System.Collections.Generic.IEnumerator<CloudNimble.Text.Xml.Nodes.XmlAttr
 #### Returns
 
 Type: `System.Collections.Generic.IEnumerator<CloudNimble.Text.Xml.Nodes.XmlAttributeNode>`
+An enumerator for the list.
+
+#### Remarks
+
+The list must not change while it is enumerated. After an attribute is added, inserted, removed, or
+replaced, or the list is cleared, the next call to [MoveNext](https://learn.microsoft.com/dotnet/api/system.collections.ienumerator.movenext) throws an
+[InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception). To change the list in a loop, enumerate a copy of it.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

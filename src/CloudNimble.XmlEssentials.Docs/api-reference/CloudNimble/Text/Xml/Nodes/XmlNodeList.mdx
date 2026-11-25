@@ -71,7 +71,7 @@ parent throws an [XmlException](/api-reference/CloudNimble/Text/Xml/XmlException
 - A node belongs to one list at a time. `Add`, `Insert`, and the index setter throw an `XmlException` ("The node already has a parent.") for a node that has a parent. Remove it first to move it, or add a `DeepClone` to copy it.
 - `Remove`, `RemoveAt`, `Clear`, and replacing through the index setter set the `Parent` of the node that leaves the list to `null`. `Remove` returns `false` when the node isn't in the list.
 - In a tree parsed from an indented document, the list holds a text node for each run of white space between elements. Don't assume that an index holds an element.
-- Don't change the list while a `foreach` loop enumerates it. Collect the nodes to remove first, or loop by index from the end.
+- Don't change the list while a `foreach` loop enumerates it. After a change, the loop's next step throws an `InvalidOperationException` ("Collection was modified; enumeration operation may not execute."), as a `List<T>` or a `JsonArray` does. Loop over a copy (`list.ToArray()`), or loop by index from the end.
 - The list accepts the kinds of node that can be content: elements, text, CDATA sections, comments, and processing instructions. Adding an `XmlAttributeNode` or an `XmlDeclarationNode` throws an `XmlException`. When an assignment to an index is refused, the node that was there stays.
 
 ## Constructors
@@ -224,6 +224,8 @@ Type: `bool`
 
 ### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetEnumerator
 
+Returns an enumerator that iterates through the nodes in order.
+
 #### Syntax
 
 ```csharp
@@ -233,6 +235,13 @@ public System.Collections.Generic.IEnumerator<CloudNimble.Text.Xml.Nodes.XmlNode
 #### Returns
 
 Type: `System.Collections.Generic.IEnumerator<CloudNimble.Text.Xml.Nodes.XmlNode>`
+An enumerator for the list.
+
+#### Remarks
+
+The list must not change while it is enumerated. After a node is added, inserted, removed, or
+replaced, or the list is cleared, the next call to [MoveNext](https://learn.microsoft.com/dotnet/api/system.collections.ienumerator.movenext) throws an
+[InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception). To change the list in a loop, enumerate a copy of it.
 
 ### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

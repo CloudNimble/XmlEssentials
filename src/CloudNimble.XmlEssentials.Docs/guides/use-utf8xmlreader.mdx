@@ -924,7 +924,7 @@ How to use a scratch buffer:
 - **The reader may overwrite the buffer for as long as you use the reader.** Don't use it for anything else in the meantime. A copy of the reader uses the same buffer, under the rules for copies at the top of this article.
 - **The scratch constructors take a `ReadOnlySpan<byte>`.** To read a `ReadOnlySequence<byte>` with one, pass `sequence.FirstSpan` when `IsSingleSegment` is `true`.
 
-For what the reader allocates on real documents, with and without a scratch buffer, see [Benchmarks](/benchmarks).
+On four real documents, the reader is 1.5× to 2.3× faster than `System.Xml.XmlReader`, and with a scratch buffer it allocates nothing. For the numbers, with and without a scratch buffer, see [Benchmarks](/benchmarks#read-real-documents).
 
 ## Set limits
 

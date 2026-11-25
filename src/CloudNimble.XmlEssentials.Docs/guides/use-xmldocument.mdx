@@ -1203,8 +1203,8 @@ Dispose the document that `SerializeToDocument` returns. `SerializeToElement` re
 
 `XmlDocument` stores one row per node in a pooled array, and names and values as offsets into its pooled copy of the input. It doesn't create an object per node. In the project's benchmarks against `System.Xml.XmlDocument`, on four real documents (an RSS feed, an OpenDocument file, a WordprocessingML file, and RPM metadata):
 
-- Parsing takes 0.34 to 0.42 of the time and allocates about 104 bytes, which is the `XmlDocument` object, where `System.Xml.XmlDocument` allocates 127 KB to 709 KB.
-- Writing a parsed document takes 0.54 to 0.77 of the time and allocates nothing.
+- Parsing is 3.1× to 3.4× faster and allocates about 104 bytes, which is the `XmlDocument` object, where `System.Xml.XmlDocument` allocates 127 KB to 709 KB.
+- Writing a parsed document is 1.4× to 1.7× faster and allocates nothing.
 
 See [Benchmarks](/benchmarks) for the tables and the method. These numbers compare `XmlDocument` with `System.Xml` only. They say nothing about `JsonDocument`.
 

@@ -13,6 +13,8 @@ namespace CloudNimble.Text.Xml.Nodes
     /// <remarks>
     /// This class is the XML counterpart of <c>JsonNode</c> in System.Text.Json. Unlike
     /// <see cref="XmlDocument"/>, the tree can be changed, uses no pooled memory, and does not need to be disposed.
+    /// A tree that no thread is changing can be read from several threads at once. Changes are not
+    /// synchronized: while one thread changes a tree, no other thread can use it.
     /// </remarks>
     public abstract class XmlNode
     {

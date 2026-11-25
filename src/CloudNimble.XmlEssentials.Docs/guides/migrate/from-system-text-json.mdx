@@ -7,7 +7,7 @@ icon: "code"
 
 This article is for developers who know System.Text.Json and are picking up XML. XmlEssentials is shaped like System.Text.Json on purpose, so most of what you know carries over under a different prefix. The first half of this article is the map from one API to the other. The second half covers what the map can't: the parts of XML that JSON has no word for.
 
-This isn't a migration in the usual sense. You don't replace `JsonSerializer` with `XmlSerializer`; you use the one that matches the format on the wire. Many applications use both, with the same model types.
+This isn't a migration in the usual sense. You don't replace `JsonSerializer` with `XmlSerializer`; you use the one that matches the format on the wire. Many applications use both, with the same model types. To turn a document of one format into the other, see [Convert between XML and JSON](/guides/convert-xml-and-json).
 
 ## Start with what you know
 
@@ -391,7 +391,7 @@ A few things you may reach for don't apply:
 - **DTDs and custom entities.** XmlEssentials rejects a document that has a `<!DOCTYPE`. See [Security](/guides/security).
 
 <Note>
-XmlEssentials is faster than `System.Xml` on every row of the [benchmark tables](/benchmarks). It isn't faster than System.Text.Json on most rows: XML takes more work to parse and write than JSON does. Choose the format for what's on the wire, not for speed.
+On the [benchmarks page](/benchmarks), XmlEssentials reads and writes objects at about the speed System.Text.Json does: of 47 comparisons it's ahead in 10, level in 19, and behind in 18. It's behind on single values and on the mutable tree, where XML takes more work to parse and write than JSON does. Choose the format for what's on the wire, not for speed.
 </Note>
 
 ## See also

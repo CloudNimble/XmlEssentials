@@ -335,7 +335,19 @@ The removed node has a parent: False
 <Archive><Note>Gift</Note></Archive>
 ```
 
-`Clear` removes every node from a list. Don't change a list while a `foreach` loop is enumerating it: collect the nodes to remove first, or loop by index from the end.
+`Clear` removes every node from a list.
+
+Don't change a list while a `foreach` loop is enumerating it. After a node is added, removed, or replaced, the loop's next step throws an `InvalidOperationException` ("Collection was modified; enumeration operation may not execute."), which is what a `List<T>` and a `JsonArray` do. Loop over a copy, or loop by index from the end:
+
+```csharp
+foreach (XmlNode child in order.Children.ToArray())
+{
+    if (child is XmlCommentNode)
+    {
+        order.Children.Remove(child);
+    }
+}
+```
 
 ### Copy a node with DeepClone
 
@@ -708,7 +720,7 @@ Both calls go through UTF-8: `SerializeToNode` serializes to a pooled buffer and
 
 The read-only document and the mutable tree store XML in different ways, and the difference matters when documents are large or frequent.
 
-- `XmlDocument` keeps one pooled copy of the input and a pooled table of rows. Parsing allocates the document object and nothing per node. See [Benchmarks](/benchmarks) for the measured numbers.
+- `XmlDocument` keeps one pooled copy of the input and a pooled table of rows. Parsing allocates the document object and nothing per node. See [Benchmarks](/benchmarks#change-a-document) for the measured numbers of both, beside `System.Xml.XmlDocument`, `XDocument`, and `JsonNode`.
 - `XmlNode.Parse` parses into an `XmlDocument` and keeps it, outside the pool, for the tree. An element you reach into gets an object for each of its attributes and child nodes, with a string for each name and value. The elements you never reach into stay as rows of the parsed input. So the work and the memory grow with the part of the tree you look at, and the parsed input stays in memory while any of those elements is reachable.
 - `XmlElement.CloneNode` makes every node under the element at once.
 - Writing an element you have reached into converts its strings back to UTF-8. Writing an element you haven't reached into, or a document, writes from the parsed input.
@@ -720,7 +732,7 @@ So:
 - When the change needs `XmlDocumentOptions`, a `Stream`, or the typed getters of `XmlElement` to find what to change, parse with `XmlDocument` and call `CloneNode` on the element you change.
 - To produce XML with a fixed shape at high volume, write it with [`Utf8XmlWriter`](/guides/use-utf8xmlwriter) or serialize a class. Both skip the tree.
 
-The tree isn't synchronized, and reading it can change it: the first time you reach into an element, it makes its attributes and child nodes. Don't use a parsed tree, or the pieces and `DeepClone` copies taken from it, from more than one thread at a time, even when every thread only reads.
+Several threads can read a tree at once while no thread is changing it, as they can a `JsonNode` tree. A parsed tree makes an element's attributes and child nodes the first time something reaches into it, and threads that reach in at the same moment all get the same nodes. Changes aren't synchronized: while one thread changes a tree, no other thread can use it. See [Thread safety](/guides/thread-safety#xmlnode).
 
 ## See also
 

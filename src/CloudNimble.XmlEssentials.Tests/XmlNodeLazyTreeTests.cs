@@ -1,7 +1,9 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Nodes;
 using FluentAssertions;
@@ -174,6 +176,146 @@ namespace CloudNimble.XmlEssentials.Tests
             }
 
             Encoding.UTF8.GetString(buffer.WrittenSpan).Should().Be("<host><p:b xmlns:p=\"urn:p\"><p:c>t</p:c></p:b></host>");
+        }
+
+        [TestMethod]
+        public void Tree_ReadFromSeveralThreadsAtOnce_GivesEveryThreadTheSameNodes()
+        {
+            // Reading a parsed tree makes it. Threads that reach the same element at the same moment must all
+            // come away with the one set of nodes that stays in the tree, whole, and the tree must still be
+            // written as it was parsed.
+            const int items = 200;
+            var builder = new StringBuilder("<root xmlns:k=\"urn:k\">");
+            for (var i = 0; i < items; i++)
+            {
+                builder.Append($"<item id=\"{i}\" k:kind=\"x\"><name>n{i}</name><qty>{i}</qty><none/></item>");
+            }
+
+            var xml = builder.Append("</root>").ToString();
+            for (var round = 0; round < 40; round++)
+            {
+                var root = (XmlElementNode)XmlNode.Parse(xml);
+                var walks = ReadOnThreads(8, _ => Walk(root, []));
+
+                // The root and each of its 200 items: an element and its two lists, the two attributes, and
+                // three children that are an element and its two lists each, two of them with a text node.
+                walks[0].Count.Should().Be(3 + 1 + (items * 16));
+                foreach (var walk in walks)
+                {
+                    walk.SequenceEqual(walks[0], ReferenceEqualityComparer.Instance).Should().BeTrue();
+                }
+
+                root.ToString().Should().Be(xml);
+            }
+        }
+
+        [TestMethod]
+        public void Lists_OfAnElement_FirstAskedForBySeveralThreadsAtOnce_AreTheSameLists()
+        {
+            // An element makes each of its lists when the list is first asked for. A thread that was handed a
+            // list of its own would add to something the element does not hold.
+            var elements = new XmlElementNode[20_000];
+            for (var i = 0; i < elements.Length; i++)
+            {
+                elements[i] = new XmlElementNode("e");
+            }
+
+            var reads = ReadOnThreads(8, _ =>
+            {
+                var lists = new List<object>(elements.Length * 2);
+                foreach (var element in elements)
+                {
+                    lists.Add(element.Children);
+                    lists.Add(element.Attributes);
+                }
+
+                return lists;
+            });
+
+            foreach (var read in reads)
+            {
+                read.SequenceEqual(reads[0], ReferenceEqualityComparer.Instance).Should().BeTrue();
+            }
+
+            for (var i = 0; i < elements.Length; i++)
+            {
+                ReferenceEquals(elements[i].Children, reads[0][i * 2]).Should().BeTrue();
+                ReferenceEquals(elements[i].Attributes, reads[0][(i * 2) + 1]).Should().BeTrue();
+            }
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Runs <paramref name="read"/> on several threads that all start at the same moment.
+        /// </summary>
+        /// <param name="threadCount">The number of threads.</param>
+        /// <param name="read">What each thread does, given its number.</param>
+        /// <returns>What each thread returned.</returns>
+        private static List<object>[] ReadOnThreads(int threadCount, Func<int, List<object>> read)
+        {
+            var results = new List<object>[threadCount];
+            var failures = new Exception?[threadCount];
+            using var barrier = new Barrier(threadCount);
+            var threads = new Thread[threadCount];
+            for (var t = 0; t < threadCount; t++)
+            {
+                var number = t;
+                threads[t] = new Thread(() =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        results[number] = read(number);
+                    }
+                    catch (Exception exception)
+                    {
+                        failures[number] = exception;
+                    }
+                });
+                threads[t].Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            failures.Should().Equal(new Exception?[threadCount]);
+            return results;
+        }
+
+        /// <summary>
+        /// Reads everything under <paramref name="element"/>, in document order.
+        /// </summary>
+        /// <param name="element">The element.</param>
+        /// <param name="seen">The element, its lists, its attributes and everything under its children.</param>
+        /// <returns><paramref name="seen"/>.</returns>
+        private static List<object> Walk(XmlElementNode element, List<object> seen)
+        {
+            seen.Add(element);
+            seen.Add(element.Attributes);
+            seen.Add(element.Children);
+            foreach (var attribute in element.Attributes)
+            {
+                seen.Add(attribute);
+            }
+
+            foreach (var child in element.Children)
+            {
+                if (child is XmlElementNode inner)
+                {
+                    Walk(inner, seen);
+                }
+                else
+                {
+                    seen.Add(child);
+                }
+            }
+
+            return seen;
         }
 
         #endregion

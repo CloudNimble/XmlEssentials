@@ -21,7 +21,7 @@ The serializer is built to be called from many threads with shared options, as `
 | `Utf8XmlWriter` | No | One thread at a time. Create one for each document, or call `Reset`. |
 | `Utf8XmlReader` | No | A `ref struct`. The compiler keeps it on one stack. |
 | `XmlDocument`, `XmlElement` | Reads only, and never during `Dispose` | See [XmlDocument](#xmldocument-and-xmlelement). |
-| `XmlNode` and the node types | No | A mutable tree with no locking. |
+| `XmlNode` and the node types | Reads only | A mutable tree with no locking. See [XmlNode](#xmlnode). |
 
 ## XmlSerializer and XmlSerializerOptions
 
@@ -155,10 +155,11 @@ See [Use XmlDocument](/guides/use-xmldocument).
 
 ## XmlNode
 
-The node types in `CloudNimble.Text.Xml.Nodes` (`XmlNode`, `XmlElementNode`, `XmlAttributeNode`, and the others) form a mutable tree with no locking. Treat a tree like a `List<T>`:
+The node types in `CloudNimble.Text.Xml.Nodes` (`XmlNode`, `XmlElementNode`, `XmlAttributeNode`, and the others) form a mutable tree with no locking. Treat a tree like a `JsonNode` tree:
 
-- A tree that no thread is changing can be read from several threads, once every node has been built. A tree from `XmlNode.Parse` builds each element's attributes and children the first time they are read, which writes to the tree, so two threads reading a part of a parsed tree that hasn't been read yet can race. Walk the whole tree once on one thread, reading each element's `Attributes` and `Children`, before you share it. Writing a tree out doesn't build it, so it isn't enough.
+- A tree that no thread is changing can be read from several threads at once. A tree from `XmlNode.Parse` builds each element's attributes and children the first time they are read. That is safe from several threads: each element's lists are put in place whole, and threads that read the same element at the same moment all get the same nodes. Reading includes `ToString`, `WriteTo`, and `DeepClone`.
 - While any thread adds, removes, or changes a node, no other thread can use that tree, not even to read it. Use your own lock.
+- A `foreach` over `Children` or `Attributes` throws an `InvalidOperationException` when the list changes under it. That catches a loop that changes its own list. It isn't a substitute for a lock.
 
 See [Use XmlNode](/guides/use-xmlnode).
 

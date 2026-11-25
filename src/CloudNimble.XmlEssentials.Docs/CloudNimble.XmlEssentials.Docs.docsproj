@@ -43,6 +43,7 @@
                 guides/preserve-references;
                 guides/mixed-content;
                 guides/streaming;
+                guides/convert-xml-and-json;
                 guides/configure-options
               </Pages>
             </Group>

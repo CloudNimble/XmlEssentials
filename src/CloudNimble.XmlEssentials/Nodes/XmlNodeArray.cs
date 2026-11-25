@@ -20,6 +20,7 @@ namespace CloudNimble.Text.Xml.Nodes
 
         private int _count;
         private T[]? _items;
+        private int _version;
 
         #endregion
 
@@ -47,8 +48,18 @@ namespace CloudNimble.Text.Xml.Nodes
             {
                 ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint)index, (uint)_count, nameof(index));
                 _items![index] = value;
+                _version++;
             }
         }
+
+        /// <summary>
+        /// Gets a number that is different after every change to the nodes.
+        /// </summary>
+        /// <remarks>
+        /// An enumeration keeps the number it started with, and stops when the number has moved on
+        /// (<see cref="ThrowIfChanged"/>).
+        /// </remarks>
+        internal readonly int Version => _version;
 
         #endregion
 
@@ -79,6 +90,7 @@ namespace CloudNimble.Text.Xml.Nodes
         {
             _items.AsSpan(0, _count).Clear();
             _count = 0;
+            _version++;
         }
 
         /// <summary>
@@ -129,6 +141,7 @@ namespace CloudNimble.Text.Xml.Nodes
 
             items[index] = item;
             _count++;
+            _version++;
         }
 
         /// <summary>
@@ -142,6 +155,23 @@ namespace CloudNimble.Text.Xml.Nodes
             _count--;
             _items.AsSpan(index + 1, _count - index).CopyTo(_items.AsSpan(index));
             _items![_count] = null!;
+            _version++;
+        }
+
+        /// <summary>
+        /// Stops an enumeration of nodes that have changed since it started.
+        /// </summary>
+        /// <param name="version">The <see cref="Version"/> the enumeration started with.</param>
+        /// <exception cref="InvalidOperationException">The nodes have changed since then.</exception>
+        /// <remarks>
+        /// This is the rule, and the message, of <c>List&lt;T&gt;</c>, which is what <c>JsonArray</c> enumerates.
+        /// </remarks>
+        internal readonly void ThrowIfChanged(int version)
+        {
+            if (version != _version)
+            {
+                throw new InvalidOperationException("Collection was modified; enumeration operation may not execute.");
+            }
         }
 
         #endregion

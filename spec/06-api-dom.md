@@ -265,6 +265,11 @@ public sealed class XmlDeclarationNode : XmlNode
 
 `XmlNodeList` / `XmlAttributeNodeList` are our types in `CloudNimble.Text.Xml.Nodes`, not BCL.
 
+**Enumeration and threads follow `JsonNode`** (decision 86 in [doc findings](24-doc-findings-resolution.md)).
+
+- A list that changes while it is enumerated ends the enumeration: the next `MoveNext` throws `InvalidOperationException` with the message of `List<T>`, "Collection was modified; enumeration operation may not execute." `Add`, `Insert`, `RemoveAt`, a `Remove` that finds its node, `Clear`, and an index assignment of a different node are changes. A `Remove` that finds nothing and the assignment of the node already in place are not. The version is taken when `GetEnumerator` is called.
+- A tree that no thread is changing may be read from several threads at once, including a parsed tree whose elements have not been looked at. An element's lists are built aside and put in place with a compare-and-exchange, the parsed source is let go of last, and the list getters make an empty list the same way, so every thread gets the same lists and nodes. Changes are not synchronized.
+
 Serializer integration: a property of type `XmlNode` / `XmlElementNode` is an XML island.
 
 ---

@@ -303,6 +303,12 @@ Five tests pinned what decisions 80 and 81 changed, and each was changed, not de
     - *Tests that changed because what they pinned was the implicit default:* `NewOptions_HaveTheDocumentedDefaults`, `ResolverChain_IsAViewOfTheResolver`, `CallWithOptions_LeavesTheOptionsAsTheyWere` (now `CallWithOptions_GivesTheOptionsTheReflectionResolver_AndNotTheContext`), and the tests that asked options with no resolver for type info, which now set the resolver or go through `XmlSerializer`.
     - *Left as it was:* generated contexts begin with `#pragma warning disable` for six nullable-reference warnings (CS8600 to CS8625). It hides no trimming or AOT warning; whether generated code should be free of it is the owner's call.
 
+86. **Node lists and concurrent reads follow `JsonNode`** (2026-11-25, at the owner's direction; probed on .NET 11). `XmlNodeList` and `XmlAttributeNodeList` went on enumerating a list that was changed under them, and a parsed tree could not be read from two threads, because an element let go of its source before its lists were filled and made an empty list with `??=`.
+    - *Enumeration.* A change to a list ends an enumeration of it with `InvalidOperationException`, "Collection was modified; enumeration operation may not execute.", at the next `MoveNext`. The version lives in `XmlNodeArray`, in what was padding, so a list is no larger.
+    - *Reads.* `XmlDocument.FillElement` builds both lists aside and `XmlElementNode.SetContent` puts each in place with a compare-and-exchange, then lets go of the source with a volatile write. `Attributes` and `Children` make an empty list the same way. Threads that reach an element together get the same lists and nodes. Changes stay unsynchronized.
+    - *Tests.* `XmlNodeLazyTreeTests` reads one parsed tree and 20,000 new elements from eight threads and compares what each thread got by reference; both tests failed before the change. `XmlNodeTreeRulesTests` pins each change that ends an enumeration and the two that do not.
+    - *Measured.* The full run of 2026-11-25 shows no cost: `ParseTree` 35.5 µs and `ChangeTree` 108.4 µs, against 38.1 µs and 114.0 µs in the run before ([optimization](23-optimization.md)).
+
 ---
 
 [Index](README.md) · [Previous: Optimization](23-optimization.md) · [Next: Single engine](25-single-engine-metadata.md)

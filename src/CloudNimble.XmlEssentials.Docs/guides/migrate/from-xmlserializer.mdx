@@ -9,6 +9,8 @@ This article is for developers who have types and code written for `System.Xml.S
 
 The two serializers share a class name and most attribute names, and that is on purpose: most mapped types need a different `using` directive and little else. The API around the types is different. The XmlEssentials `XmlSerializer` is a static class with generic methods and an options object, the same shape as `JsonSerializer` in System.Text.Json.
 
+The move also buys speed. In the project's [benchmarks](/benchmarks#serialize-and-deserialize), reading and writing objects is 1.8× to 5.9× faster than the old serializer, and writing into a buffer you own allocates nothing.
+
 <Note>
 XmlEssentials doesn't read `System.Xml.Serialization` attributes. A type that still carries the old attributes compiles, and is serialized as if it had none. Change the `using` directive on every file that declares a mapped type. A source-generated context that lists a type with the old `[XmlInclude(typeof(T))]` reports error `XMLESS007`.
 </Note>

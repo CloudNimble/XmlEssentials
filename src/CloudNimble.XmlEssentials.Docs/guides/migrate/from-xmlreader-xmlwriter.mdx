@@ -9,6 +9,8 @@ This article is for developers who read XML with `System.Xml.XmlReader` or write
 
 `Utf8XmlReader` and `Utf8XmlWriter` are the XML counterparts of `Utf8JsonReader` and `Utf8JsonWriter` in System.Text.Json. If you've used those, you already know the model: a `ref struct` reader over UTF-8 bytes, and a writer over an `IBufferWriter<byte>` or a `Stream`.
 
+In the project's [benchmarks](/benchmarks#read-real-documents), `Utf8XmlReader` reads four real documents 1.5× to 2.3× faster than `XmlReader`, and a reused `Utf8XmlWriter` writes a 200-item catalog 2.0× faster than `XmlWriter` while allocating nothing.
+
 ## Table of differences
 
 | Feature | `System.Xml` | XmlEssentials | More information |

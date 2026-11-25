@@ -733,7 +733,7 @@ Every row is under the BCL, and every allocation is at or under what it was. Sti
 
 ## Final pass (2026-11-25, net11.0, Hyper-V)
 
-The goal of this pass was every row under the BCL and under System.Text.Json. The numbers below are from a direct loop over the benchmark methods (each method warmed, then five interleaved rounds, minimum taken), not from BenchmarkDotNet: the full suite was not run, and **the tables above have not been regenerated**. A direct loop moves by about 5% between runs, so a row within 5% of its target is not settled until BenchmarkDotNet says so. Two rows were confirmed with a filtered BenchmarkDotNet run: `AttributesPerLine` 12,568 ns against 24,321 (0.52), and `RawValue` checked 18,784 ns against 12,438 for the BCL and 9,432 for System.Text.Json.
+The goal of this pass was every row under the BCL and under System.Text.Json. The numbers below are from a direct loop over the benchmark methods (each method warmed, then five interleaved rounds, minimum taken), not from BenchmarkDotNet: the full suite was not run in this pass. It was run afterwards: see [Full run](#full-run-2026-11-25-net110-shortrun-hyper-v), which is the current standing. A direct loop moves by about 5% between runs, so a row within 5% of its target is not settled until BenchmarkDotNet says so. Two rows were confirmed with a filtered BenchmarkDotNet run: `AttributesPerLine` 12,568 ns against 24,321 (0.52), and `RawValue` checked 18,784 ns against 12,438 for the BCL and 9,432 for System.Text.Json.
 
 ### What was found
 
@@ -811,18 +811,167 @@ Time / allocated bytes for XmlEssentials; the ratio is to the target named.
 | ReadOrderSequence | 482,400 ns / 246,620 B | 304,221 ns / 240,888 B | STJ 362,648 / 235,216 B | 0.84 time, 1.02 bytes |
 | WriteOrderSequence | 254,100 ns / 940 B | 195,655 ns / 184 B | STJ 200,070 / 688 B | 0.98 |
 
-**Every row with a BCL baseline is under it on time.** `ReadTypedDrawing` (1.10) and `AttributesPerLine` (1.05) were the two that were over, and `ResumedDrain` now allocates less than the BCL. One BCL comparison is still over: `ChangeTree` allocates 257 KB against 196 KB.
+**Every row with a BCL baseline was under it on time in the direct loop.** The full run that followed found one that is not (`ChangeTree` against `XDocument`), and that the BCL's `RawValue` row checks nothing. `ReadTypedDrawing` (1.10) and `AttributesPerLine` (1.05) were the two that were over, and `ResumedDrain` now allocates less than the BCL. One BCL comparison is still over: `ChangeTree` allocates 257 KB against 196 KB.
 
 ### What is still over System.Text.Json, and why
 
 - **Rows where the document is the cost.** `<int>42</int>` after a declaration is 55 bytes where JSON writes `42`. `WriteInt32` is 0.7 ns per byte written against 12 for System.Text.Json, and it allocates more because what it returns is longer. The scalar root rows, `EncodedNames` (13.8 µs for about 14 KB against 10.9 µs for about 10 KB, so about 1.0 against 1.1 ns per byte), `WriteSequence` and `WriteDictionary` are of this kind. They can be brought closer and not under.
-- **`IndentedWrite` was not a like-for-like row.** The XML side wrote a comment before each item and the JSON side wrote none. Since 2026-11-25 the JSON side writes the same comment (`Utf8JsonWriter.WriteCommentValue`); the row above was measured before that, so its System.Text.Json figure is too low until the table is regenerated. A direct-loop run after the change: 14,096 ns for System.Text.Json and 19,404 ns for XmlEssentials.
-- **The object rows gave System.Text.Json a writer the benchmark reuses**, and gave XmlEssentials the overload that takes a buffer writer and rents a writer for each call. That was the 35 ns between `WriteOrder` and one order of `WriteOrders`. Since 2026-11-25 `XmlSerializerObjectBenchmarks` writes through a reused `Utf8XmlWriter` (`Reset`, `Serialize(writer, value)`, `Flush`), as the JSON side does; the two shapes write the same bytes. The rows above were measured before that.
+- **`IndentedWrite` was not a like-for-like row.** The XML side wrote a comment before each item and the JSON side wrote none. Since 2026-11-25 the JSON side writes the same comment (`Utf8JsonWriter.WriteCommentValue`); the row above was measured before that. The full run has it at 16.0 µs for System.Text.Json and 21.5 µs for XmlEssentials.
+- **The object rows gave System.Text.Json a writer the benchmark reuses**, and gave XmlEssentials the overload that takes a buffer writer and rents a writer for each call. That was the 35 ns between `WriteOrder` and one order of `WriteOrders`. Since 2026-11-25 `XmlSerializerObjectBenchmarks` writes through a reused `Utf8XmlWriter` (`Reset`, `Serialize(writer, value)`, `Flush`), as the JSON side does; the two shapes write the same bytes. The rows above were measured before that; the full run has the rows as they are now.
 - **Attributes.** `WriteReadings` and `ReadReadings` are four attributes per element. A third of the write is formatting a `double`, which is the same code in both libraries. What is left is that each attribute is recorded and compared with the others on the element, which JSON has no need to do for a property.
 - **`RawValue`, checked** is one pass of the reader over the fragment, so it is as fast as the reader is.
 - **`Preserve`** is as it was: an id string and a table entry for each object.
-- **`ParseTree` and `ChangeTree`** were not worked on in this pass beyond what the reader and writer gave them.
+- **`ParseTree` and `ChangeTree`** were not worked on in this pass beyond what the reader and writer gave them. Their rows were measured before the node lists were given a version and an element's lists were put in place with a compare-and-exchange (2026-11-25, [DOM](06-api-dom.md)); the full run shows no cost from either.
 - **Source generation, write.** Generated code writes a scalar member as three calls (`WriteLeafStart`, the value, `WriteLeafEnd`). The one-call form needs no new public member: `Utf8XmlWriter.WriteElementNumber`, `WriteElementString` and `WriteElementBoolean` take a UTF-8 name. It was tried on 2026-11-25 and taken out again. `Write_Default` went from 1,003 ns to about 970 ns in the direct loop, which is inside the noise of that harness, and the path of an error changed: a value with an illegal character was reported at `/Order/Lines/Line/Label` by the generated fast path and at `/Order/Lines/Line` by the metadata and reflection paths (`ExceptionPaths_AreTheSameFromAGeneratedContext`). So no helper was added to `XmlMetadataServices`. What the fast path still pays for is elsewhere: an object member is written with a name given as a string (`WriteStartElement("Billing")`), and a nested object goes through its type info and converter (`XmlMetadataServices.Write<T>`) before it reaches its own generated method.
+
+## Full run (2026-11-25, net11.0 ShortRun, Hyper-V)
+
+One BenchmarkDotNet run of the whole suite (229 benchmarks, 26 minutes 45 seconds), made after the final pass, after the two benchmark changes recorded under it, and after the node lists were given a version and concurrent reads were made safe ([DOM](06-api-dom.md)). **This table is the current standing.** The sections above keep the tables of their own runs. The documentation (`benchmarks.mdx`, the cards of `index.mdx`, the cost table of `reflection-vs-source-generation.mdx`, the README) was regenerated from this run.
+
+Time / allocated bytes. The fifth column is the BCL time over ours (above 1 is faster than the BCL). The sixth is our time over System.Text.Json's (under 1 is faster than it), marked where the difference is inside the sum of the two error columns: a ShortRun is three iterations, and its error is wide.
+
+| Test | BCL | STJ | XmlEssentials | BCL ÷ XmlEssentials | XmlEssentials ÷ STJ |
+| --- | --- | --- | --- | --- | --- |
+| Word document (WordprocessingML, 11 KB) | 19.7 µs / 25,144 B |  | 12.9 µs / 944 B | 1.54 |  |
+| RPM package metadata (21 KB) | 31.3 µs / 20,064 B |  | 15.3 µs / 80 B | 2.04 |  |
+| OpenDocument text (57 KB) | 79.8 µs / 56,017 B |  | 43.9 µs / 6,952 B | 1.82 |  |
+| RSS feed (198 KB) | 191.9 µs / 47,137 B |  | 82.4 µs / 1,441 B | 2.33 |  |
+| Word document, scratch buffer |  |  | 12.8 µs / 0 B |  |  |
+| RPM package metadata, scratch buffer |  |  | 15.2 µs / 0 B |  |  |
+| OpenDocument text, scratch buffer |  |  | 43.3 µs / 0 B |  |  |
+| RSS feed, scratch buffer |  |  | 83.0 µs / 0 B |  |  |
+| Word document (11 KB) | 52.9 µs / 127,176 B |  | 17.0 µs / 104 B | 3.12 |  |
+| RPM package metadata (21 KB) | 72.8 µs / 170,953 B |  | 21.3 µs / 104 B | 3.42 |  |
+| OpenDocument text (57 KB) | 198.4 µs / 353,889 B |  | 59.1 µs / 104 B | 3.36 |  |
+| RSS feed (198 KB) | 345.4 µs / 709,083 B |  | 108.8 µs / 105 B | 3.18 |  |
+| Word document (11 KB) | 28.8 µs / 11,032 B |  | 20.6 µs / 0 B | 1.40 |  |
+| RPM package metadata (21 KB) | 32.6 µs / 8,016 B |  | 21.5 µs / 0 B | 1.51 |  |
+| OpenDocument text (57 KB) | 97.7 µs / 23,273 B |  | 68.0 µs / 0 B | 1.44 |  |
+| RSS feed (198 KB) | 148.8 µs / 8,017 B |  | 89.6 µs / 0 B | 1.66 |  |
+| Write the tiny document | 326 ns / 7,328 B |  | 33 ns / 0 B | 9.89 |  |
+| Read the tiny document | 325 ns / 2,472 B |  | 63 ns / 0 B | 5.18 |  |
+| Parse the tiny document into a DOM | 645 ns / 5,176 B |  | 114 ns / 104 B | 5.65 |  |
+| Write the catalog | 33.4 µs / 13,728 B |  | 16.4 µs / 0 B | 2.04 |  |
+| Read the catalog | 25.9 µs / 15,088 B |  | 17.3 µs / 0 B | 1.50 |  |
+| Read the catalog and parse its integers | 30.4 µs / 35,808 B |  | 18.6 µs / 0 B | 1.63 |  |
+| Read the catalog with namespaces | 21.0 µs / 15,200 B |  | 14.6 µs / 0 B | 1.44 |  |
+| Parse the catalog into a DOM | 55.8 µs / 136,128 B |  | 25.8 µs / 104 B | 2.16 |  |
+| Parse the catalog with namespaces into a DOM | 44.6 µs / 110,760 B |  | 20.0 µs / 104 B | 2.24 |  |
+| Navigate the parsed catalog | 3.56 µs / 0 B |  | 2.84 µs / 0 B | 1.25 |  |
+| Write the parsed catalog | 28.3 µs / 7,368 B |  | 15.5 µs / 0 B | 1.83 |  |
+| Read a catalog from a stream, in blocks | 261.1 µs / 27,603 B |  | 190.6 µs / 17,042 B | 1.37 |  |
+| Skip the content of every item in a catalog | 197.7 µs / 27,738 B |  | 172.4 µs / 42 B | 1.15 |  |
+| Read one element with 1,000 attributes | 69.4 µs / 344,281 B |  | 16.1 µs / 73,320 B | 4.30 |  |
+| Read one element with 5,000 attributes | 1.67 ms / 1,755,804 B |  | 119.2 µs / 589,936 B | 14.03 |  |
+| Read the same input as one block |  |  | 194.3 µs / 114 B |  |  |
+| TrySkip across blocks |  |  | 187.9 µs / 6,506 B |  |  |
+| Indented output | 44.7 µs / 13,784 B | 16.0 µs / 0 B | 21.5 µs / 0 B | 2.08 | 1.35 |
+| Indented, one attribute per line | 26.3 µs / 7,384 B |  | 15.8 µs / 0 B | 1.66 |  |
+| Names encoded once and reused | 32.2 µs / 13,728 B | 11.9 µs / 0 B | 14.8 µs / 0 B | 2.18 | 1.24 |
+| 60 KB of binary as Base64, in segments | 27.5 µs / 9,448 B | 1.68 µs / 0 B | 1.78 µs / 0 B | 15.50 | 1.06 (within error) |
+| One long text value, in segments | 31.9 µs / 7,328 B | 50.6 µs / 0 B | 7.56 µs / 0 B | 4.21 | 0.15 |
+| Text with line breaks, rewritten as CR LF | 310.1 µs / 7,332 B |  | 103.6 µs / 0 B | 2.99 |  |
+| Same names, given as strings |  |  | 14.4 µs / 0 B |  |  |
+| Text with line breaks, CR LF, XML 1.1 |  |  | 104.1 µs / 0 B |  |  |
+| Text with line breaks, written as they are |  |  | 24.8 µs / 0 B |  |  |
+| Raw fragment, checked |  | 9.55 µs / 0 B | 17.5 µs / 0 B |  | 1.83 |
+| Raw fragment, not checked | 6.75 µs / 7,328 B | 54 ns / 0 B | 82 ns / 0 B | 82.40 | 1.51 |
+| Parse into a tree, against XmlDocument | 54.6 µs / 135,296 B | 18.2 µs / 48,936 B | 35.5 µs / 87,544 B | 1.54 | 1.95 |
+| Parse into a tree, against XDocument | 52.9 µs / 105,049 B | 18.2 µs / 48,936 B | 35.5 µs / 87,544 B | 1.49 | 1.95 |
+| Parse, change, and write, against XmlDocument | 119.6 µs / 195,729 B | 71.3 µs / 226,537 B | 108.4 µs / 257,193 B | 1.10 | 1.52 |
+| Parse, change, and write, against XDocument | 92.2 µs / 136,297 B | 71.3 µs / 226,537 B | 108.4 µs / 257,193 B | 0.85 | 1.52 |
+| Read an int | 1.07 µs / 5,968 B | 27 ns / 0 B | 56 ns / 0 B | 19.06 | 2.06 |
+| Read an int from a stream | 1.07 µs / 5,968 B |  | 68 ns / 0 B | 15.62 |  |
+| Read a DateTime | 1.10 µs / 6,040 B |  | 74 ns / 0 B | 14.99 |  |
+| Read an enum | 828 ns / 4,480 B |  | 62 ns / 0 B | 13.27 |  |
+| Read a string | 1.25 µs / 6,120 B | 77 ns / 96 B | 125 ns / 96 B | 9.96 | 1.63 |
+| Write an int to a buffer | 345 ns / 7,648 B |  | 35 ns / 0 B | 10.00 |  |
+| Write an int to a byte array | 333 ns / 7,728 B | 28 ns / 32 B | 49 ns / 80 B | 6.78 | 1.76 |
+| Write an int to a string | 352 ns / 7,784 B | 32 ns / 32 B | 58 ns / 136 B | 6.08 | 1.84 |
+| Write a string | 360 ns / 7,888 B | 66 ns / 80 B | 83 ns / 128 B | 4.32 | 1.27 |
+| Write a DateTime | 368 ns / 7,784 B |  | 58 ns / 104 B | 6.36 |  |
+| Write an enum | 365 ns / 7,744 B |  | 52 ns / 96 B | 7.00 |  |
+| Write a nullable int | 604 ns / 8,024 B |  | 75 ns / 144 B | 8.03 |  |
+| Read an order | 2.14 µs / 7,368 B | 311 ns / 232 B | 363 ns / 232 B | 5.90 | 1.17 |
+| Write an order | 1.05 µs / 8,192 B | 179 ns / 0 B | 207 ns / 0 B | 5.10 | 1.15 |
+| Read a customer | 8.75 µs / 16,496 B | 2.97 µs / 3,576 B | 2.67 µs / 3,168 B | 3.28 | 0.90 (within error) |
+| Write a customer | 4.26 µs / 8,648 B | 1.43 µs / 312 B | 1.33 µs / 0 B | 3.21 | 0.93 (within error) |
+| Read 1,000 orders | 771.2 µs / 567,312 B | 325.8 µs / 249,076 B | 320.3 µs / 248,604 B | 2.41 | 0.98 (within error) |
+| Write 1,000 orders | 425.1 µs / 214,508 B | 202.1 µs / 314 B | 201.1 µs / 0 B | 2.11 | 1.00 (within error) |
+| Read 1,000 objects mapped as attributes | 353.1 µs / 267,716 B | 156.2 µs / 105,074 B | 157.2 µs / 104,602 B | 2.25 | 1.01 (within error) |
+| Write 1,000 objects mapped as attributes | 209.4 µs / 131,138 B | 108.2 µs / 313 B | 110.3 µs / 0 B | 1.90 | 1.02 (within error) |
+| Read 1,000 objects of three derived types | 208.6 µs / 130,866 B | 142.6 µs / 117,914 B | 100.4 µs / 90,793 B | 2.08 | 0.70 |
+| Write 1,000 objects of three derived types | 131.2 µs / 30,098 B | 79.8 µs / 313 B | 61.5 µs / 0 B | 2.13 | 0.77 |
+| Read 1,000 objects with a decimal amount | 262.4 µs / 146,252 B | 88.9 µs / 89,073 B | 87.9 µs / 88,601 B | 2.98 | 0.99 (within error) |
+| Write 1,000 objects with a decimal amount | 82.6 µs / 48,009 B | 50.4 µs / 312 B | 47.2 µs / 0 B | 1.75 | 0.94 (within error) |
+| Read 1,000 positional records |  | 170.1 µs / 240,274 B | 141.7 µs / 143,802 B |  | 0.83 (within error) |
+| Write 1,000 positional records |  | 56.3 µs / 312 B | 50.6 µs / 0 B |  | 0.90 |
+| Read a dictionary of 100 integers |  | 3.48 µs / 13,392 B | 4.10 µs / 13,392 B |  | 1.18 (within error) |
+| Write a dictionary of 100 integers |  | 928 ns / 0 B | 1.79 µs / 0 B |  | 1.93 |
+| Read a customer written by System.Xml, Bcl preset | 4.65 µs / 10,704 B |  | 1.66 µs / 1,320 B | 2.80 |  |
+| Write a customer as System.Xml writes it, Bcl preset | 2.27 µs / 8,224 B |  | 747 ns / 0 B | 3.04 |  |
+| Read a feed of 200 episodes in four namespaces | 169.0 µs / 197,882 B |  | 122.5 µs / 153,585 B | 1.38 |  |
+| Write a feed of 200 episodes in four namespaces | 85.0 µs / 15,009 B |  | 64.2 µs / 0 B | 1.32 |  |
+| Read 1,000 objects marked with xsi:type | 234.0 µs / 228,570 B |  | 197.8 µs / 90,798 B | 1.18 |  |
+| Write 1,000 objects marked with xsi:type | 164.9 µs / 30,506 B |  | 96.1 µs / 0 B | 1.72 |  |
+| Read 200 customers |  | 206.8 µs / 254,338 B | 195.2 µs / 266,666 B |  | 0.94 (within error) |
+| Write 200 customers |  | 107.2 µs / 313 B | 101.4 µs / 0 B |  | 0.95 |
+| Read 200 customers, references preserved |  | 366.3 µs / 385,516 B | 368.8 µs / 494,396 B |  | 1.01 (within error) |
+| Write 200 customers, references preserved |  | 167.1 µs / 150,666 B | 199.6 µs / 148,578 B |  | 1.19 |
+| Write 200 customers, cycles ignored |  | 116.1 µs / 425 B | 112.4 µs / 360 B |  | 0.97 (within error) |
+| Read 1,000 objects with a type discriminator |  | 150.8 µs / 117,914 B | 133.5 µs / 90,794 B |  | 0.89 (within error) |
+| Write 1,000 objects with a type discriminator |  | 79.6 µs / 313 B | 76.7 µs / 0 B |  | 0.96 (within error) |
+| Read 1,000 integers as a stream | 42.4 µs / 61,152 B | 26.5 µs / 8,968 B | 21.0 µs / 9,224 B | 2.02 | 0.79 |
+| Write 1,000 integers as a stream | 33.4 µs / 30,408 B | 13.7 µs / 376 B | 18.5 µs / 184 B | 1.80 | 1.36 |
+| Read 1,000 orders as a stream |  | 462.6 µs / 235,220 B | 340.3 µs / 240,892 B |  | 0.74 |
+| Write 1,000 orders as a stream |  | 225.5 µs / 690 B | 214.1 µs / 186 B |  | 0.95 (within error) |
+| Read a customer | 8.67 µs / 16,496 B | 2.87 µs / 3,576 B | 2.64 µs / 3,168 B | 3.29 | 0.92 |
+| Read, source generated |  |  | 2.59 µs / 3,168 B |  |  |
+| Read, first call |  |  | 621.0 µs / 82,432 B |  |  |
+| Write a customer | 4.30 µs / 8,648 B | 1.41 µs / 312 B | 1.42 µs / 0 B | 3.04 | 1.01 (within error) |
+| Write, source generated |  |  | 1.21 µs / 0 B |  |  |
+| Write, first call |  |  | 570.7 µs / 79,248 B |  |  |
+| Read, default mode |  | 2.88 µs / 3,576 B | 2.54 µs / 3,168 B |  | 0.88 (within error) |
+| Read, metadata mode |  | 2.83 µs / 3,576 B | 2.56 µs / 3,168 B |  | 0.91 |
+| Read, reflection |  |  | 2.66 µs / 3,168 B |  |  |
+| Write, default mode |  | 856 ns / 0 B | 1.07 µs / 0 B |  | 1.25 |
+| Write, serialization mode |  | 853 ns / 0 B | 1.12 µs / 0 B |  | 1.31 |
+| Write, metadata mode |  | 1.41 µs / 312 B | 1.31 µs / 0 B |  | 0.93 |
+| Write, default mode, other options |  |  | 1.34 µs / 0 B |  |  |
+| Write, reflection |  |  | 1.38 µs / 0 B |  |  |
+| Read an int: reader alone |  |  | 42 ns / 0 B |  |  |
+| Read an int: serializer |  |  | 52 ns / 0 B |  |  |
+| Read an int: serializer, type info supplied |  |  | 49 ns / 0 B |  |  |
+| Read an int with a declaration: reader alone |  |  | 48 ns / 0 B |  |  |
+| Read an int with a declaration: serializer |  |  | 63 ns / 0 B |  |  |
+
+### Against the BCL
+
+Counted over every row where the BCL does the same work: **67 comparisons, faster in 66, 3.00 times faster as a geometric mean** (median 2.25, range 0.85 to 19.1). Allocation: **85.1% less as a mean of each row's reduction**, over the 66 rows where the BCL allocates; 68.4% less when the bytes of all rows are summed (6,846,332 against 2,162,447), because the large rows return the objects they read; 0 B in 32 of the 67.
+
+- The tree rows count twice, against `XmlDocument` and against `XDocument`.
+- **The raw rows are not counted.** `XmlWriter.WriteRaw` checks nothing, so the row the earlier sections compared with it, `RawValue` checked, was never like for like. Unchecked against unchecked is 82 ns against 6.75 µs, with the BCL transcoding a string; that is too unlike to put in an average either.
+- **The sequence rows are not counted.** The BCL has no streamed read or write, and its rows are an array read and written whole.
+- **The one row the BCL wins is `ChangeTree` against `XDocument`** (0.85, which is itself inside the error of the two rows; the documentation gives it to the BCL). Both `ChangeTree` rows are the only ones that allocate more than the BCL (257 KB against 196 KB and 136 KB).
+- The smallest wins are `ChangeTree` against `XmlDocument` (1.10, inside the error), `Skip` (1.15) and `ReadTypedDrawing` (1.18).
+- An earlier readout of this run paired the BCL's `NewLineText` row, which writes CR LF, with our LF row (12.5). The pair is the CR LF row: 3.0.
+
+### Against System.Text.Json
+
+47 rows have a System.Text.Json figure: **ahead in 10, inside the error in 19, behind in 18.** We allocate the same or less in 38.
+
+- **Ahead:** the derived-type drawings (0.70 read, 0.77 write), `ReadOrderSequence` (0.74), `ReadSequence` (0.79), `StringSegments` (0.15), `WriteMembers`, `WriteCustomers`, the graph read, and the metadata-mode rows of the generator.
+- **Inside the error:** the customer, the 1,000 orders, the readings, the money rows and the tagged drawings, read and written; `ReadMembers`; `ReadCustomers` with and without `Preserve`; `IgnoreCycles`; `WriteOrderSequence`; `Base64Segments`; `ReadDictionary`.
+- **Behind:** the scalar roots (1.27 to 2.06), `ParseTree` (1.95) and `ChangeTree` (1.52), `WriteDictionary` (1.93), `RawValue` checked (1.83) and unchecked (1.51), `WriteSequence` (1.36), `IndentedWrite` (1.35), generated write in the default and serialization modes (1.25 and 1.31), `EncodedNames` (1.24), `WriteCustomers` with `Preserve` (1.19), and one order read (1.17) and written (1.15).
+
+### What this run settled, and what it opened
+
+- **The node-list version and the compare-and-exchange cost nothing that shows.** `ParseTree` was 38,140 ns and `ChangeTree` 113,960 ns in the run of 2026-11-24; they are 35,500 ns and 108,400 ns.
+- **`IndentedWrite` is like for like** since the JSON side writes the same comment: 21.5 µs against 16.0 µs.
+- **The object rows use a reused writer on both sides.** `WriteOrder` is 207 ns against 179 ns.
+- **Open: `WriteDictionary` is 1,792 ns.** It was 1,662 ns in the run of 2026-11-24 and about 1,390 ns in the direct loop of the final pass. The benchmark was moved to a reused writer in between. The cause has not been looked for.
+- **Open: `WriteSequence` is 18.5 µs against 13.7 µs** (1.36), where the direct loop gave 1.08.
+- The two first-call rows have an error larger than their mean. Three iterations cannot measure a call that happens once.
 
 ---
 

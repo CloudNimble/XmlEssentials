@@ -77,6 +77,8 @@ The tree keeps the root element with its comments and indentation, and `<Notes><
 
 This class is the XML counterpart of `JsonNode` in System.Text.Json. Unlike
 [XmlDocument](/api-reference/CloudNimble/Text/Xml/XmlDocument), the tree can be changed, uses no pooled memory, and does not need to be disposed.
+A tree that no thread is changing can be read from several threads at once. Changes are not
+synchronized: while one thread changes a tree, no other thread can use it.
 
 ## Examples
 
