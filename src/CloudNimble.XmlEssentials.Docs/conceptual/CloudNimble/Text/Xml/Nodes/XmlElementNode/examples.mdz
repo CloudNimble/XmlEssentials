@@ -1,0 +1,81 @@
+### Add and insert children
+
+```csharp
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item>Keyboard</Item></Order>""")!;
+
+order.AddElement("Item").InnerText = "Mouse";
+
+var customer = new XmlElementNode("Customer");
+customer.InnerText = "Ada Lovelace";
+order.Children.Insert(0, customer);
+
+order.Children.Insert(1, new XmlCommentNode(" items "));
+
+output.WriteLine(order.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Order><Customer>Ada Lovelace</Customer><!-- items --><Item>Keyboard</Item><Item>Mouse</Item></Order>
+```
+
+### Set, change, and remove attributes
+
+```csharp
+var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""")!;
+
+order.SetAttribute("status", "shipped");
+order.SetAttribute("carrier", "Contoso Freight");
+order.Attributes["id"]!.Value = "1043";
+
+XmlAttributeNode draft = order.Attributes["draft"]!;
+order.Attributes.Remove(draft);
+
+output.WriteLine(order.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Order id="1043" status="shipped" carrier="Contoso Freight"/>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
+
+### Put elements and attributes in namespaces
+
+```csharp
+const string atom = "http://www.w3.org/2005/Atom";
+const string dc = "http://purl.org/dc/elements/1.1/";
+
+var feed = new XmlElementNode("feed", atom);
+feed.AddElement("title", atom).InnerText = "Release notes";
+
+var creator = new XmlElementNode("creator", dc, "dc");
+creator.InnerText = "Ada Lovelace";
+feed.Add(creator);
+
+XmlElementNode link = feed.AddElement("link", atom);
+link.SetAttribute("href", "https://example.com/");
+link.Attributes.Add(new XmlAttributeNode("language", "en", dc, "dc"));
+
+output.WriteLine(feed.ToString());
+
+feed.Attributes.Add(new XmlAttributeNode("dc", dc, XmlNamespaces.Xmlns, "xmlns"));
+output.WriteLine(feed.ToString());
+
+output.WriteLine($"{creator.Prefix}:{creator.LocalName} is in {creator.NamespaceUri}");
+```
+
+The code produces the following output:
+
+```text
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Release notes</title><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Ada Lovelace</dc:creator><link href="https://example.com/" xmlns:dc="http://purl.org/dc/elements/1.1/" dc:language="en"/></feed>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/"><title>Release notes</title><dc:creator>Ada Lovelace</dc:creator><link href="https://example.com/" dc:language="en"/></feed>
+dc:creator is in http://purl.org/dc/elements/1.1/
+```
+
+The writer declares each namespace where a name first needs it. Adding an `xmlns:dc` declaration attribute to the root, as the second half does, declares the prefix once.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

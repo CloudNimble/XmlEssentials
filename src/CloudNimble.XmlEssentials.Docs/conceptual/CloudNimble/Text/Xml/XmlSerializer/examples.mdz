@@ -1,0 +1,123 @@
+The following examples come from the serialization samples, and each shows the output the code produces.
+
+### Serialize an object graph with indentation
+
+```csharp
+var invoice = new Invoice
+{
+    Number = 7,
+    BillTo = new InvoiceCustomer { Name = "Contoso", Email = "ap@contoso.example" },
+    Lines =
+    [
+        new InvoiceLine { Sku = "KB-101", Quantity = 2 },
+        new InvoiceLine { Sku = "MS-220", Quantity = 1 },
+    ],
+};
+
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+
+string xml = XmlSerializer.Serialize(invoice, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Invoice>
+  <Number>7</Number>
+  <BillTo>
+    <Name>Contoso</Name>
+    <Email>ap@contoso.example</Email>
+  </BillTo>
+  <Lines>
+    <Sku>KB-101</Sku>
+    <Quantity>2</Quantity>
+  </Lines>
+  <Lines>
+    <Sku>MS-220</Sku>
+    <Quantity>1</Quantity>
+  </Lines>
+</Invoice>
+```
+
+### Serialize to UTF-8 bytes
+
+```csharp
+var customer = new InvoiceCustomer { Name = "Contoso", Email = "ap@contoso.example" };
+
+byte[] utf8 = XmlSerializer.SerializeToUtf8Bytes(customer);
+
+output.WriteLine($"{utf8.Length} bytes");
+output.WriteLine(Encoding.UTF8.GetString(utf8));
+```
+
+The code produces the following output:
+
+```text
+126 bytes
+<?xml version="1.0" encoding="utf-8"?><InvoiceCustomer><Name>Contoso</Name><Email>ap@contoso.example</Email></InvoiceCustomer>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/06_SerializeToXml.cs)
+
+### Deserialize from a string
+
+```csharp
+const string xml = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <PurchaseOrder>
+      <Id>1042</Id>
+      <Customer>Contoso</Customer>
+      <Placed>2026-03-14</Placed>
+      <Total>129.90</Total>
+    </PurchaseOrder>
+    """;
+
+PurchaseOrder? order = XmlSerializer.Deserialize<PurchaseOrder>(xml);
+
+output.WriteLine($"Order {order!.Id} for {order.Customer}");
+output.WriteLine($"Placed {order.Placed:yyyy-MM-dd}");
+output.WriteLine($"Total is 129.90: {order.Total == 129.90m}");
+```
+
+The code produces the following output:
+
+```text
+Order 1042 for Contoso
+Placed 2026-03-14
+Total is 129.90: True
+```
+
+### Handle XML that doesn't fit the type
+
+```csharp
+string[] documents =
+[
+    "<Order><Id>1042</Id></Order>",
+    "<PurchaseOrder><Id>1042</PurchaseOrder>",
+    "<PurchaseOrder><Id>ten</Id></PurchaseOrder>",
+];
+
+foreach (string xml in documents)
+{
+    try
+    {
+        XmlSerializer.Deserialize<PurchaseOrder>(xml);
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine(ex.Message);
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+The root element does not match 'PurchaseOrder'. Path: /PurchaseOrder | LineNumber: 1 | BytePositionInLine: 8.
+End tag does not match start tag. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 40.
+The value is not a valid integer. Path: /PurchaseOrder/Id | LineNumber: 1 | BytePositionInLine: 28.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/07_DeserializeFromXml.cs)

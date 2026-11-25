@@ -1,0 +1,239 @@
+### Enumerate children and attributes
+
+A document keeps the white space between elements and the comments, so a loop over the children skips what isn't an element.
+
+```csharp
+const string xml = """
+    <Order id="1042" status="open">
+      <Item sku="KB-1">Keyboard</Item>
+      <Item sku="MS-2">Mouse</Item>
+      <Note/>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"{order.AttributeCount} attributes");
+foreach (XmlElement attribute in order.EnumerateAttributes())
+{
+    output.WriteLine($"  {attribute.LocalName} = {attribute.GetString()}");
+}
+
+foreach (XmlElement child in order.EnumerateChildren())
+{
+    if (child.ValueKind is not (XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil))
+    {
+        continue;
+    }
+
+    if (child.TryGetAttribute("sku", out XmlElement sku))
+    {
+        output.WriteLine($"{child.LocalName} {sku.GetString()}: {child.GetString()}");
+    }
+    else
+    {
+        output.WriteLine($"{child.LocalName} ({child.ValueKind})");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+2 attributes
+  id = 1042
+  status = open
+Item KB-1: Keyboard
+Item MS-2: Mouse
+Note (EmptyElement)
+```
+
+### Find names in a namespace
+
+The one-argument lookups match a local name in any namespace. Pass a namespace URI to match one namespace, or an empty string for a name in no namespace.
+
+```csharp
+const string xml = """
+    <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <title>Release notes</title>
+      <dc:title>Notes de version</dc:title>
+      <link href="https://example.com/" dc:language="fr"/>
+    </feed>
+    """;
+
+const string atom = "http://www.w3.org/2005/Atom";
+const string dc = "http://purl.org/dc/elements/1.1/";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement feed = document.RootElement;
+
+output.WriteLine($"Atom title: {feed.GetChild("title", atom).GetString()}");
+output.WriteLine($"Dublin Core title: {feed.GetChild("title", dc).GetString()}");
+output.WriteLine($"First title in any namespace: {feed.GetChild("title").GetString()}");
+
+XmlElement dcTitle = feed.GetChild("title", dc);
+output.WriteLine($"Prefix '{dcTitle.Prefix}', local name '{dcTitle.LocalName}', namespace '{dcTitle.NamespaceUri}'");
+
+XmlElement link = feed.GetChild("link", atom);
+output.WriteLine($"href: {link.GetAttribute("href", "").GetString()}");
+output.WriteLine($"language: {link.GetAttribute("language", dc).GetString()}");
+
+output.WriteLine($"feed has {feed.AttributeCount} attributes:");
+foreach (XmlElement attribute in feed.EnumerateAttributes())
+{
+    string name = attribute.Prefix.Length == 0 ? attribute.LocalName : $"{attribute.Prefix}:{attribute.LocalName}";
+    output.WriteLine($"  {name} = {attribute.GetString()}");
+}
+```
+
+The code produces the following output:
+
+```text
+Atom title: Release notes
+Dublin Core title: Notes de version
+First title in any namespace: Release notes
+Prefix 'dc', local name 'title', namespace 'http://purl.org/dc/elements/1.1/'
+href: https://example.com/
+language: fr
+feed has 2 attributes:
+  xmlns = http://www.w3.org/2005/Atom
+  xmlns:dc = http://purl.org/dc/elements/1.1/
+```
+
+### Read typed values
+
+```csharp
+const string xml = """
+    <Shipment id="7c9e6679-7425-40de-944b-e07fc1f90ae7" express="1">
+      <Parcels> 3 </Parcels>
+      <WeightKg>12.5</WeightKg>
+      <Cost>49.90</Cost>
+      <TrackingNumber>940011189922</TrackingNumber>
+      <ShippedOn>2026-03-14T09:30:00Z</ShippedOn>
+      <Signature>SGVsbG8=</Signature>
+      <Carrier>Contoso Freight</Carrier>
+    </Shipment>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement shipment = document.RootElement;
+
+Guid id = shipment.GetAttribute("id").GetGuid();
+bool express = shipment.GetAttribute("express").GetBoolean();
+int parcels = shipment.GetChild("Parcels").GetInt32();
+double weight = shipment.GetChild("WeightKg").GetDouble();
+decimal cost = shipment.GetChild("Cost").GetDecimal();
+long tracking = shipment.GetChild("TrackingNumber").GetInt64();
+DateTimeOffset shippedOn = shipment.GetChild("ShippedOn").GetDateTimeOffset();
+byte[] signature = shipment.GetChild("Signature").GetBytesFromBase64();
+
+output.WriteLine($"id: {id}");
+output.WriteLine($"express: {express}");
+output.WriteLine($"parcels: {parcels} (the string is '{shipment.GetChild("Parcels").GetString()}')");
+output.WriteLine($"weight: {weight.ToString(CultureInfo.InvariantCulture)}");
+output.WriteLine($"cost: {cost.ToString(CultureInfo.InvariantCulture)}");
+output.WriteLine($"tracking: {tracking}");
+output.WriteLine($"shipped on: {shippedOn.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture)}");
+output.WriteLine($"signature: {signature.Length} bytes");
+
+try
+{
+    shipment.GetChild("Carrier").GetInt32();
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Carrier as an integer: {ex.Message}");
+}
+```
+
+The code produces the following output:
+
+```text
+id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+express: True
+parcels: 3 (the string is ' 3 ')
+weight: 12.5
+cost: 49.90
+tracking: 940011189922
+shipped on: 2026-03-14 09:30 +00:00
+signature: 5 bytes
+Carrier as an integer: The value is not a valid integer.
+```
+
+### Compare GetString, GetInnerText, and GetRawXml
+
+```csharp
+const string xml = """<Note priority="high">Ship <b>today</b>, <![CDATA[before 5 & not later]]>.<?audit checked?></Note>""";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement note = document.RootElement;
+
+output.WriteLine($"GetString:    {note.GetString()}");
+output.WriteLine($"GetInnerText: {note.GetInnerText()}");
+output.WriteLine($"GetRawXml:    {note.GetRawXml()}");
+
+foreach (XmlElement child in note.EnumerateChildren())
+{
+    if (child.ValueKind is XmlValueKind.ProcessingInstruction)
+    {
+        output.WriteLine($"On the processing instruction, GetString is '{child.GetString()}' and GetInnerText is '{child.GetInnerText()}'");
+    }
+}
+
+output.WriteLine($"GetRawXml on an attribute is empty: {note.GetAttribute("priority").GetRawXml().Length == 0}");
+```
+
+The code produces the following output:
+
+```text
+GetString:    Ship today, before 5 & not later.
+GetInnerText: Ship today, before 5 & not later.
+GetRawXml:    <Note priority="high">Ship <b>today</b>, <![CDATA[before 5 & not later]]>.<?audit checked?></Note>
+On the processing instruction, GetString is 'checked' and GetInnerText is ''
+GetRawXml on an attribute is empty: True
+```
+
+### Read a nil element
+
+```csharp
+const string xml = """
+    <Order xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <ShippedOn xsi:nil="true"/>
+      <Total>129.90</Total>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement shippedOn = document.RootElement.GetChild("ShippedOn");
+
+output.WriteLine($"ValueKind: {shippedOn.ValueKind}");
+output.WriteLine($"IsNil: {shippedOn.IsNil}");
+output.WriteLine($"GetString returns null: {shippedOn.GetString() is null}");
+output.WriteLine($"GetInnerText returns an empty string: {shippedOn.GetInnerText().Length == 0}");
+
+try
+{
+    shippedOn.GetDateTimeOffset();
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+XmlElement nil = shippedOn.GetAttribute(XmlAttributes.Nil, XmlNamespaces.Xsi);
+output.WriteLine($"{nil.Prefix}:{nil.LocalName} = {nil.GetBoolean()}");
+```
+
+The code produces the following output:
+
+```text
+ValueKind: Nil
+IsNil: True
+GetString returns null: True
+GetInnerText returns an empty string: True
+The element is nil and has no value.
+xsi:nil = True
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)

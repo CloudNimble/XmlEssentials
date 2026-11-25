@@ -1,0 +1,59 @@
+Set `XmlWriterOptions.EmptyElementStyle`, or `XmlSerializerOptions.EmptyElementStyle`, to choose how an element with no content is written.
+
+| Value | An element with no content is written as |
+| --- | --- |
+| `SelfClosing` | `<Notes/>`. This is the default. |
+| `SelfClosingWithSpace` | `<Notes />`, the form the writers in `System.Xml` use. |
+| `StartAndEndTag` | `<Notes></Notes>`. |
+
+The sample writes one document three times. The first two use `SelfClosingWithSpace` and the third uses `StartAndEndTag`:
+
+```csharp
+var asSystemXml = new XmlWriterOptions
+{
+    EmptyElementStyle = XmlEmptyElementStyle.SelfClosingWithSpace,
+    Indented = true,
+    NewLine = "\n",
+    OmitXmlDeclaration = true,
+};
+var onePerLine = asSystemXml with { AttributeStyle = XmlAttributeStyle.PerLine };
+var twoPerLine = onePerLine with { AttributesPerLine = 2, EmptyElementStyle = XmlEmptyElementStyle.StartAndEndTag };
+
+foreach (XmlWriterOptions options in new[] { asSystemXml, onePerLine, twoPerLine })
+{
+    var buffer = new ArrayBufferWriter<byte>();
+    using (var writer = new Utf8XmlWriter(buffer, options))
+    {
+        writer.WriteStartElement("Order");
+        writer.WriteAttributeString("id", "1042");
+        writer.WriteAttributeString("status", "open");
+        writer.WriteAttributeString("region", "EU");
+        writer.WriteElementString("Customer", "Ada Lovelace");
+        writer.WriteStartElement("Notes");
+        writer.WriteEndElement();
+        writer.WriteEndElement();
+    }
+
+    output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+}
+```
+
+```xml
+<Order id="1042" status="open" region="EU">
+  <Customer>Ada Lovelace</Customer>
+  <Notes />
+</Order>
+<Order id="1042"
+       status="open"
+       region="EU">
+  <Customer>Ada Lovelace</Customer>
+  <Notes />
+</Order>
+<Order id="1042" status="open"
+       region="EU">
+  <Customer>Ada Lovelace</Customer>
+  <Notes></Notes>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)

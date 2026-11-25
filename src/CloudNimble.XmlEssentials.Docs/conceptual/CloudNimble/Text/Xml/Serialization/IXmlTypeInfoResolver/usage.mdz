@@ -1,0 +1,32 @@
+A resolver answers one question for the serializer: what is the contract for this type? `XmlSerializerOptions.TypeInfoResolver` holds the resolver an options instance uses. The library has two implementations, and most applications use only these:
+
+- `DefaultXmlTypeInfoResolver`, which builds contracts with reflection at run time.
+- Every source-generated `XmlSerializerContext`, which builds type info from the metadata the generator wrote.
+
+When you don't set a resolver, the first `XmlSerializer` call that takes the options gives them `DefaultXmlTypeInfoResolver.Instance`. The following example prints the resolver that built the contract for a type no context lists:
+
+```csharp
+var receipt = new Receipt { Number = 77, Paid = 129.90m };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(receipt, options);
+output.WriteLine(xml);
+
+Receipt? copy = XmlSerializer.Deserialize<Receipt>(xml, options);
+output.WriteLine($"Receipt {copy!.Number}: {copy.Paid}");
+output.WriteLine(options.TypeInfoResolver!.GetType().Name);
+```
+
+The code produces the following output:
+
+```text
+<Receipt><Number>77</Number><Paid>129.90</Paid></Receipt>
+Receipt 77: 129.90
+DefaultXmlTypeInfoResolver
+```
+
+A resolver returns `null` for a type it doesn't handle. `XmlSerializerOptions.TypeInfoResolverChain` is a list view of the resolver: the options ask each entry in order and use the first answer that isn't `null`.
+
+The interface is the counterpart of `IJsonTypeInfoResolver` in System.Text.Json.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/31_ReflectionVsSourceGeneration.cs)

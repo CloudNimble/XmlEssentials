@@ -1,0 +1,5 @@
+- With the default condition, `Always`, the member isn't part of the type's XML mapping at all. An element for it in incoming XML is an unmapped member: skipped by default, and an error when `UnmappedMemberHandling` is `Disallow`.
+- With `WhenWritingNull`, `WhenWritingDefault`, or `WhenWriting`, the member is still read when the XML has it. Those conditions affect writing only. `WhenReading` is the other way round: the member is written and never read.
+- The attribute overrides `XmlSerializerOptions.DefaultIgnoreCondition` for the member. `[XmlIgnore(Condition = XmlIgnoreCondition.Never)]` keeps a member in every document when the option would leave it out.
+- Ignoring a positional record property with `[property: XmlIgnore]` leaves its constructor parameter with no member to bind to, and the record can no longer be deserialized.
+- To leave out every `null` member at once, set `DefaultIgnoreCondition` on the options.

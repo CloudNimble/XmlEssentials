@@ -1,0 +1,35 @@
+`XmlValueKind` says what kind of node an `XmlElement` or an `XmlNode` is. Read it from `XmlElement.ValueKind` or `XmlNode.ValueKind` before you treat a node as an element or read its value.
+
+```csharp
+const string xml = """
+    <Order xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- packed by hand --><Item>Keyboard</Item><Gift/><Coupon xsi:nil="true"/>Leave at the door<![CDATA[<b>fragile</b>]]><?print label?></Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+
+foreach (XmlElement child in document.RootElement.EnumerateChildren())
+{
+    string description = child.ValueKind switch
+    {
+        XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil => $"<{child.LocalName}>",
+        XmlValueKind.ProcessingInstruction => $"target '{child.LocalName}', data '{child.GetString()}'",
+        _ => $"'{child.GetString()}'",
+    };
+
+    output.WriteLine($"{child.ValueKind,-21} {child.TokenType,-21} {description}");
+}
+```
+
+The code produces the following output. The first column is the `ValueKind`, and the second is the matching `XmlTokenType`.
+
+```text
+Comment               Comment               ' packed by hand '
+Element               StartElement          <Item>
+EmptyElement          StartElement          <Gift>
+Nil                   StartElement          <Coupon>
+Text                  Text                  'Leave at the door'
+CData                 CData                 '<b>fragile</b>'
+ProcessingInstruction ProcessingInstruction target 'print', data 'label'
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)

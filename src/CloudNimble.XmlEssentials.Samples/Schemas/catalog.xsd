@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns="urn:example:catalog"
+           targetNamespace="urn:example:catalog"
+           elementFormDefault="qualified">
+
+  <xs:simpleType name="Availability">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="InStock"/>
+      <xs:enumeration value="BackOrder"/>
+      <xs:enumeration value="Discontinued"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="Supplier">
+    <xs:annotation>
+      <xs:documentation>The company a product is bought from.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string"/>
+      <xs:element name="Country" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="Catalog">
+    <xs:annotation>
+      <xs:documentation>The products a shop sells.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Product" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Name" type="xs:string"/>
+              <xs:element name="Price" type="xs:decimal"/>
+              <xs:element name="Availability" type="Availability"/>
+              <xs:element name="Weight" type="xs:double" nillable="true"/>
+              <xs:element name="Supplier" type="Supplier"/>
+            </xs:sequence>
+            <xs:attribute name="sku" type="xs:string"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="published" type="xs:date"/>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

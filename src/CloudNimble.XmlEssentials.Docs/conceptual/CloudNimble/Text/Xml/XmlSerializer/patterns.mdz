@@ -1,0 +1,91 @@
+`XmlSerializer` works together with the reader, the writer, and the document types, so an object can be one part of a larger XML document.
+
+### Embed serialized objects in a document you write yourself
+
+Open a [`Utf8XmlWriter`](/api-reference/CloudNimble/Text/Xml/Utf8XmlWriter), write the parts that aren't objects, and let the serializer write each object as one element.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var writerOptions = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+
+using (var writer = new Utf8XmlWriter(buffer, writerOptions))
+{
+    writer.WriteStartElement("Customers");
+    XmlSerializer.Serialize(writer, new InvoiceCustomer { Name = "Contoso", Email = "ap@contoso.example" });
+    XmlSerializer.Serialize(writer, new InvoiceCustomer { Name = "Fabrikam", Email = "billing@fabrikam.example" });
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Customers>
+  <InvoiceCustomer>
+    <Name>Contoso</Name>
+    <Email>ap@contoso.example</Email>
+  </InvoiceCustomer>
+  <InvoiceCustomer>
+    <Name>Fabrikam</Name>
+    <Email>billing@fabrikam.example</Email>
+  </InvoiceCustomer>
+</Customers>
+```
+
+### Deserialize the interesting elements of a large document
+
+Walk the document with a [`Utf8XmlReader`](/api-reference/CloudNimble/Text/Xml/Utf8XmlReader) and hand the serializer only the elements you want as objects. The reader is left on the end tag of the element that was read.
+
+```csharp
+ReadOnlySpan<byte> utf8 = """
+    <Customers exported="2026-03-14">
+      <InvoiceCustomer><Name>Contoso</Name><Email>ap@contoso.example</Email></InvoiceCustomer>
+      <InvoiceCustomer><Name>Fabrikam</Name><Email>billing@fabrikam.example</Email></InvoiceCustomer>
+    </Customers>
+    """u8;
+
+var reader = new Utf8XmlReader(utf8);
+while (reader.Read())
+{
+    if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("InvoiceCustomer"u8))
+    {
+        InvoiceCustomer? customer = XmlSerializer.Deserialize<InvoiceCustomer>(ref reader);
+        output.WriteLine($"{customer!.Name} <{customer.Email}>");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+Contoso <ap@contoso.example>
+Fabrikam <billing@fabrikam.example>
+```
+
+### Query first, then map
+
+Parse with [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument), find an element, and deserialize that element.
+
+```csharp
+const string xml = """
+    <Response status="ok">
+      <InvoiceCustomer><Name>Contoso</Name><Email>ap@contoso.example</Email></InvoiceCustomer>
+    </Response>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement element = document.RootElement.GetChild("InvoiceCustomer");
+
+InvoiceCustomer? customer = XmlSerializer.Deserialize<InvoiceCustomer>(element);
+
+output.WriteLine($"{customer!.Name} <{customer.Email}>");
+```
+
+The code produces the following output:
+
+```text
+Contoso <ap@contoso.example>
+```

@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net11.0;net10.0</TargetFrameworks>
+		<IsAotCompatible>true</IsAotCompatible>
+		<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+		<RootNamespace>CloudNimble.Text.Xml</RootNamespace>
+		<AssemblyName>CloudNimble.XmlEssentials</AssemblyName>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+  <PropertyGroup>
+    <Title>XmlEssentials: System.Text.Json-style XML for .NET</Title>
+    <Description>The System.Text.Json equivalent for XML that .NET developers have been begging for! A modern XML serializer, UTF-8 reader and writer, and DOM for .NET, with a Roslyn source generator and full Native AOT and trimming support. A fast, low-allocation alternative to XmlSerializer, XmlReader, XmlWriter, and XDocument: 3x faster than System.Xml on average with 85% less memory allocated. Supports XML 1.0 and 1.1, has no dependency on System.Xml, and rejects DTDs by default.</Description>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
+		                  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\CloudNimble.XmlEssentials.SourceGeneration\bin\$(Configuration)\netstandard2.0\CloudNimble.XmlEssentials.SourceGeneration.dll"
+		      Pack="true"
+		      PackagePath="analyzers/dotnet/cs"
+		      Visible="false" />
+		<None Include="build\XmlEssentials.props"
+		      Pack="true"
+		      PackagePath="build;buildTransitive"
+		      Visible="false" />
+	</ItemGroup>
+
+</Project>

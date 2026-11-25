@@ -1,0 +1,3 @@
+- White space inside a run is kept exactly, including the spaces next to a child element. A run that is only white space is dropped when reading unless `XmlSerializerOptions.WhitespaceHandling` is `XmlWhitespaceHandling.Significant`.
+- A CDATA section is read as an `XmlMixedText`. It is written back as escaped text, not as CDATA.
+- `Text` is never `null` on an item the serializer creates, and its default is the empty string.

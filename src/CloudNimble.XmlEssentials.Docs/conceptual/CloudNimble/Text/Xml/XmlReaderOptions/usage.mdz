@@ -1,0 +1,25 @@
+Create the options, set the properties you need, and pass the value to a `Utf8XmlReader` constructor. The reader copies the options, so later changes to your variable don't affect it.
+
+The most common use is a reader that reports data only, without comments and without the white space between elements:
+
+```csharp
+var dataOnly = new XmlReaderOptions
+{
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
+};
+```
+
+```csharp
+var reader = new Utf8XmlReader(utf8Xml, dataOnly);
+```
+
+The properties fall into three groups:
+
+| Group | Properties |
+| --- | --- |
+| What the reader reports | `CommentHandling`, `WhitespaceHandling` |
+| What counts as a document | `AllowMultipleRoots` |
+| Limits | `MaxDepth`, `MaxAttributeCount`, `MaxNameByteCount`, `MaxTextByteCount`, `MaxCommentByteCount`, `MaxDocumentByteCount` |
+
+When you read in blocks, the options travel in the [`XmlReaderState`](/api-reference/CloudNimble/Text/Xml/XmlReaderState): `new XmlReaderState(options)`.

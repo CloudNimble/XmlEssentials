@@ -1,0 +1,97 @@
+### Switch on the kind of each child
+
+Content you don't control can hold any kind of node. A `switch` on `ValueKind` handles each one.
+
+```csharp
+const string xml = """
+    <Order xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><!-- packed by hand --><Item>Keyboard</Item><Gift/><Coupon xsi:nil="true"/>Leave at the door<![CDATA[<b>fragile</b>]]><?print label?></Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+
+foreach (XmlElement child in document.RootElement.EnumerateChildren())
+{
+    string description = child.ValueKind switch
+    {
+        XmlValueKind.Element or XmlValueKind.EmptyElement or XmlValueKind.Nil => $"<{child.LocalName}>",
+        XmlValueKind.ProcessingInstruction => $"target '{child.LocalName}', data '{child.GetString()}'",
+        _ => $"'{child.GetString()}'",
+    };
+
+    output.WriteLine($"{child.ValueKind,-21} {child.TokenType,-21} {description}");
+}
+```
+
+The code produces the following output:
+
+```text
+Comment               Comment               ' packed by hand '
+Element               StartElement          <Item>
+EmptyElement          StartElement          <Gift>
+Nil                   StartElement          <Coupon>
+Text                  Text                  'Leave at the door'
+CData                 CData                 '<b>fragile</b>'
+ProcessingInstruction ProcessingInstruction target 'print', data 'label'
+```
+
+### Copy an element into the mutable tree
+
+`CloneNode` returns a copy that owns its data and outlives the document.
+
+```csharp
+XmlElementNode product;
+
+using (XmlDocument document = XmlDocument.Parse("""<Catalog><Product sku="KB-1"><Name>Keyboard</Name></Product></Catalog>"""))
+{
+    product = (XmlElementNode)document.RootElement.GetChild("Product").CloneNode();
+}
+
+product.SetAttribute("sku", "KB-2");
+product.AddElement("Price").InnerText = "49.90";
+
+output.WriteLine(product.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Product sku="KB-2"><Name>Keyboard</Name><Price>49.90</Price></Product>
+```
+
+### Write an element inside new markup
+
+`WriteTo` writes the node and everything in it. The writer adds a declaration for any namespace that an ancestor outside the copied part declared.
+
+```csharp
+const string xml = """<c:Catalog xmlns:c="urn:example:catalog"><c:Product sku="KB-1">Keyboard</c:Product><c:Product sku="MS-2">Mouse</c:Product></c:Catalog>""";
+
+using XmlDocument document = XmlDocument.Parse(xml);
+
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Picked");
+    foreach (XmlElement product in document.RootElement.EnumerateChildren())
+    {
+        if (product.GetAttribute("sku").GetString() == "MS-2")
+        {
+            product.WriteTo(writer);
+        }
+    }
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+The code produces the following output:
+
+```xml
+<Picked>
+  <c:Product xmlns:c="urn:example:catalog" sku="MS-2">Mouse</c:Product>
+</Picked>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/28_WriteAndConvertXmlDocument.cs)

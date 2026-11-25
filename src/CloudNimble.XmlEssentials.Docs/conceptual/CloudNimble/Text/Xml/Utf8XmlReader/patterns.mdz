@@ -1,0 +1,25 @@
+These are the shapes that code using the reader takes most often.
+
+### Token loop
+
+`while (reader.Read())` with a `switch` on `TokenType` is the basic shape, as with `Utf8JsonReader`. Handle `StartElement` and check `IsEmptyElement` before you expect content or an end tag.
+
+### Attribute walk
+
+On a start tag, call `MoveToNextAttribute` until it returns `false`. While the reader is on an attribute, `TokenType` is `Attribute` and the name and value members describe the attribute. Namespace declarations are part of the walk. `MoveToElement` returns to the start tag, and `Read` continues after the start tag whether or not you call it.
+
+### Element with a value
+
+After a start tag that you know holds text, call `Read` once and use a `Get*` or `TryGet*` method. For an element that can be empty, check that the token is `Text` or `CData` first.
+
+### Look ahead
+
+Copy the reader (`var lookahead = reader;`), read ahead with the copy inside the current element, and then drop the copy or carry on with it. A copy shares working memory with the original, so don't advance both in turn.
+
+### Read in blocks
+
+Construct a reader for each block with `isFinalBlock` and the state from the previous reader. When `Read` returns `false`, save `CurrentState`, keep the bytes after `BytesConsumed`, and add more data. The complete loop is in the example for [`XmlReaderState`](/api-reference/CloudNimble/Text/Xml/XmlReaderState).
+
+### Custom converter
+
+`XmlConverter<T>.Read` receives the reader by reference, positioned on the value to convert. See [Custom converters](/guides/custom-converters).

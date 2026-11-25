@@ -1,0 +1,6 @@
+- **Start with the highest-level API that does the job.** Use `XmlSerializer` for your own types, `XmlDocument` to look inside a document whose shape you don't control, and the reader and writer when you need to stream or to control every byte.
+- **Keep XML as UTF-8.** Every type in this namespace works on UTF-8 bytes. Read and write `byte[]`, spans, streams, and `u8` literals, and convert to `string` only at the edges of your application.
+- **Know which defaults keep everything.** `Utf8XmlReader` and `XmlDocument` report comments and the white space between elements by default, so that XML that's read and written back is unchanged. `XmlSerializer` skips both. In a hand-written read loop that only wants data, set `CommentHandling` to `Skip` and `WhitespaceHandling` to `Insignificant`.
+- **Dispose what's disposable.** `XmlDocument` returns pooled memory when you dispose it, and `Utf8XmlWriter` flushes when you dispose it.
+- **Leave the limits on for input you don't trust.** A limit of 0 selects a safe default, not "no limit". See [Security](/guides/security).
+- **Catch `CloudNimble.Text.Xml.XmlException`.** It isn't related to `System.Xml.XmlException`.

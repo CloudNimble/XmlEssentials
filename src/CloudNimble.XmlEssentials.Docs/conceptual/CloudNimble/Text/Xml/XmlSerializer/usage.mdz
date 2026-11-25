@@ -1,0 +1,37 @@
+`XmlSerializer` converts .NET objects to XML and back. It is a static class with the same shape as `JsonSerializer` in System.Text.Json: there is no instance to create or cache, and every method takes the value or the XML plus an optional [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions).
+
+Call `Serialize` to get a `string`:
+
+```csharp
+var order = new PurchaseOrder
+{
+    Id = 1042,
+    Customer = "Contoso",
+    Placed = new DateOnly(2026, 3, 14),
+    Total = 129.90m,
+};
+
+string xml = XmlSerializer.Serialize(order);
+output.WriteLine(xml);
+```
+
+Call `Deserialize<TValue>` to turn XML into an object:
+
+```csharp
+PurchaseOrder? order = XmlSerializer.Deserialize<PurchaseOrder>(xml);
+```
+
+The methods come in families. Each family has overloads for reflection (`XmlSerializerOptions`), for a type known only at run time (`Type`), and for source generation (`XmlTypeInfo<TValue>` or `XmlSerializerContext`).
+
+| To write to | Call | To read from | Call |
+| --- | --- | --- | --- |
+| A `string` | `Serialize` | A `string` or `ReadOnlySpan<char>` | `Deserialize` |
+| A `byte[]` of UTF-8 | `SerializeToUtf8Bytes` | A `ReadOnlySpan<byte>` or `ReadOnlySequence<byte>` of UTF-8 | `Deserialize` |
+| An `IBufferWriter<byte>` | `Serialize` | | |
+| A `Stream` | `Serialize`, `SerializeAsync` | A `Stream` | `Deserialize`, `DeserializeAsync` |
+| A `PipeWriter` | `SerializeAsync` | A `PipeReader` | `DeserializeAsync` |
+| An open `Utf8XmlWriter` | `Serialize` | A `Utf8XmlReader` on a start tag | `Deserialize` |
+| An `XmlDocument`, `XmlElement`, or `XmlNode` | `SerializeToDocument`, `SerializeToElement`, `SerializeToNode` | An `XmlDocument`, `XmlElement`, or `XmlNode` | `Deserialize` |
+| A stream, one item at a time | `SerializeAsyncEnumerable` | A stream, one item at a time | `DeserializeAsyncEnumerable` |
+
+For a walk through each destination and source, see [Serialize](/guides/serialize) and [Deserialize](/guides/deserialize).

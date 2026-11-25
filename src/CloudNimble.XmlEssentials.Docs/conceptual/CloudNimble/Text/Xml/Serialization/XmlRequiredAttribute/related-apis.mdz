@@ -1,0 +1,4 @@
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.Serialization.XmlConstructorAttribute
+CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling

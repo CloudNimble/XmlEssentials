@@ -1,0 +1,9 @@
+An `XmlMixedText` is a run of text inside mixed content. Its `Text` property holds the characters after entity and character references have been resolved, so `&lt;` in the document is `<` in the property.
+
+The serializer creates one item for each run of text between child elements. To add text yourself, create an item and add it to the list:
+
+```csharp
+paragraph.Content.Add(new XmlMixedText(" "));
+```
+
+When the list is written, the text is escaped as needed. See `XmlMixedContentItem` for an example that reads text runs.

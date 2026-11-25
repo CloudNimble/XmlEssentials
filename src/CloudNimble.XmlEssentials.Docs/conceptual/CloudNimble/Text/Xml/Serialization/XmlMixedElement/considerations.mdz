@@ -1,0 +1,3 @@
+- An item whose `Element` is `null` is skipped when the list is written.
+- The element is a DOM node, not a typed object. To turn it into an object, pass the node to `XmlSerializer.Deserialize<T>(XmlNode)`.
+- The node is mutable. Changes you make to it are written the next time you serialize.

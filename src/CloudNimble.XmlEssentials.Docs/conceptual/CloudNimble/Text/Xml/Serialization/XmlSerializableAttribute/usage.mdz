@@ -1,0 +1,36 @@
+Apply `[XmlSerializable]` to a partial class that derives from `XmlSerializerContext`, once for each type you pass to the serializer. The source generator reads the attributes at compile time and adds a matching `XmlTypeInfo<T>` property to the class.
+
+```csharp
+[XmlSerializable<Order>]
+public partial class OrderXmlContext : XmlSerializerContext
+{
+}
+```
+
+List the root types only. The generator follows the properties of each type, so listing `Order` also covers the `OrderLine` type of its `Lines` property, and the context gets an `OrderLine` property too.
+
+The generated property is named after the type. Set `TypeInfoPropertyName` to choose another name, for example when two listed types have the same name in different namespaces:
+
+```csharp
+[XmlSerializable<OrderLine>(TypeInfoPropertyName = "Line")]
+public partial class OrderLineXmlContext : XmlSerializerContext
+{
+}
+```
+
+```csharp
+var line = new OrderLine { Sku = "KB-01", Quantity = 1 };
+
+string xml = XmlSerializer.Serialize(line, OrderLineXmlContext.Default.Line);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?><OrderLine><Quantity>1</Quantity><Sku>KB-01</Sku></OrderLine>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/32_UseSourceGeneration.cs)
+
+The attribute is the counterpart of `JsonSerializableAttribute` in System.Text.Json.

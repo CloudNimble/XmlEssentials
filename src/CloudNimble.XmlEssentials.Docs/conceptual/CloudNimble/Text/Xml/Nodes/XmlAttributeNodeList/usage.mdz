@@ -1,0 +1,24 @@
+`XmlAttributeNodeList` is the type of `XmlElementNode.Attributes`. It's an `IList<XmlAttributeNode>` in document order, with two indexers that find an attribute by name: `Attributes["id"]` matches a local name in any namespace, and `Attributes["language", namespaceUri]` matches one namespace. Both return `null` when there is no such attribute.
+
+```csharp
+var order = (XmlElementNode)XmlNode.Parse("""<Order id="1042" status="open" draft="true"/>""")!;
+
+order.SetAttribute("status", "shipped");
+order.SetAttribute("carrier", "Contoso Freight");
+order.Attributes["id"]!.Value = "1043";
+
+XmlAttributeNode draft = order.Attributes["draft"]!;
+order.Attributes.Remove(draft);
+
+output.WriteLine(order.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Order id="1043" status="shipped" carrier="Contoso Freight"/>
+```
+
+You don't create a list. Every `XmlElementNode` has one.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)

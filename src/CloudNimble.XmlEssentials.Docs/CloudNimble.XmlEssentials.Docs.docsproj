@@ -1,0 +1,91 @@
+<Project Sdk="DotNetDocs.Sdk/2.0.1">
+
+  <PropertyGroup>
+    <DocumentationType>Mintlify</DocumentationType>
+    <GenerateDocumentation>true</GenerateDocumentation>
+    <NamespaceMode>Folder</NamespaceMode>
+    <ShowDocumentationStats>true</ShowDocumentationStats>
+
+    <ConceptualDocsEnabled>true</ConceptualDocsEnabled>
+    <ShowPlaceholders>false</ShowPlaceholders>
+
+    <MintlifyTemplate>
+      <Name>XmlEssentials</Name>
+      <Theme>maple</Theme>
+      <Colors>
+        <Primary>#419AC5</Primary>
+        <Light>#419AC5</Light>
+        <Dark>#3CD0E2</Dark>
+      </Colors>
+      <Navigation Mode="Unified">
+        <Pages>
+          <Groups>
+            <Group Name="Getting Started" Icon="stars">
+              <Pages>
+                index;
+                why-xmlessentials;
+                quickstart;
+                benchmarks
+              </Pages>
+            </Group>
+            <Group Name="Serialize and Deserialize" Icon="arrows-rotate">
+              <Pages>
+                guides/serialize;
+                guides/deserialize;
+                guides/customize-names;
+                guides/ignore-properties;
+                guides/required-properties;
+                guides/immutable-types;
+                guides/collections;
+                guides/namespaces;
+                guides/null-and-nil;
+                guides/polymorphism;
+                guides/preserve-references;
+                guides/mixed-content;
+                guides/streaming;
+                guides/convert-xml-and-json;
+                guides/configure-options
+              </Pages>
+            </Group>
+            <Group Name="Read and Write XML Directly" Icon="file-code">
+              <Pages>
+                guides/use-utf8xmlreader;
+                guides/use-utf8xmlwriter;
+                guides/use-xmldocument;
+                guides/use-xmlnode
+              </Pages>
+            </Group>
+            <Group Name="Source Generation and AOT" Icon="wand-magic-sparkles">
+              <Pages>
+                guides/reflection-vs-source-generation;
+                guides/source-generation;
+                guides/source-generation-modes;
+                guides/native-aot;
+                guides/custom-converters;
+                guides/xsd-source-generation
+              </Pages>
+            </Group>
+            <Group Name="Migrate" Icon="right-left">
+              <Pages>
+                guides/migrate/from-xmlserializer;
+                guides/migrate/from-xmlreader-xmlwriter;
+                guides/migrate/from-xdocument;
+                guides/migrate/from-system-text-json;
+                guides/migrate/system-text-xml-proposal
+              </Pages>
+            </Group>
+            <Group Name="Reference" Icon="book">
+              <Pages>
+                guides/supported-types;
+                guides/xml-conformance;
+                guides/security;
+                guides/thread-safety
+              </Pages>
+            </Group>
+          </Groups>
+        </Pages>
+      </Navigation>
+    </MintlifyTemplate>
+  </PropertyGroup>
+
+</Project>

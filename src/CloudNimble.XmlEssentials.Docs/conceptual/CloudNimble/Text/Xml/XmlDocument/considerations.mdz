@@ -1,0 +1,37 @@
+### Lifetime and memory
+
+- The document owns a pooled copy of the UTF-8 input and a pooled table with one row per node. Names and values are offsets into that copy. Only values that had entity or character references expanded, and namespace URIs, are stored a second time.
+- `Dispose` clears the buffers and returns them to `ArrayPool<T>.Shared`. After that, the document and every `XmlElement` from it throw `ObjectDisposedException`.
+- Parsing allocates the `XmlDocument` object and, in the usual case, nothing else. In the project's benchmarks, parsing four real documents is 3.1× to 3.4× faster than `System.Xml.XmlDocument` and allocates about 104 bytes, where `System.Xml.XmlDocument` allocates 127 KB to 709 KB. See [Benchmarks](/benchmarks).
+- The whole document is in memory. For input that is too large for that, read it with `Utf8XmlReader` and use `ParseValue` for the parts that need random access.
+- `ParseAsync` reads the stream asynchronously and then parses it in one pass.
+
+### What is kept
+
+The defaults aim at no surprises on a round trip, for example when a file is edited and saved back to source control.
+
+- Comments are kept by default (`XmlCommentHandling.Allow`). Set `XmlDocumentOptions.CommentHandling` to `Skip` to leave them out of the document, or to `Disallow` to reject them.
+- White space that is the only text between two tags inside the root element, such as indentation, is kept by default (`XmlWhitespaceHandling.Significant`). Each run is a `Text` node among the children, and it's part of the text of the element that contains it. Set `XmlDocumentOptions.WhitespaceHandling` to `Insignificant` to leave it out.
+- Comments and processing instructions before and after the root element are kept for `WriteTo`. They aren't reachable from `RootElement`.
+- The declaration is kept as an `XmlDeclarationInfo`. Its encoding is always reported as `utf-8`.
+- White space outside the root element isn't kept: after the declaration, around comments in the prolog, and the final line break.
+
+### What is rejected
+
+`Parse` throws an `XmlException` for input that isn't well formed, has no root element or more than one, declares an encoding other than UTF-8, contains a document type declaration (`<!DOCTYPE ...>`), or exceeds a limit in the options.
+
+### Writing
+
+- `WriteTo` keeps comments, white space between elements, namespace declarations where they were, attribute order, and the difference between `<e/>` and `<e></e>`.
+- The result has the same content but isn't always the same bytes. Attribute values are written with double quotes, and a character reference such as `&#65;` is written as the character. White space inside a tag isn't kept: the attributes are laid out as `XmlWriterOptions.AttributeStyle` says (one space before each, by default), and an empty-element tag has the form `EmptyElementStyle` says (`<e/>` by default, so `<e />` is written `<e/>`). Every line end is written as `NewLine`, which defaults to `Environment.NewLine`.
+- A parsed declaration is written with the parsed version and `encoding="utf-8"`, even when the writer's `OmitXmlDeclaration` is `true`. When the document has no declaration, the writer decides: a `Utf8XmlWriter` adds one unless `XmlWriterOptions.OmitXmlDeclaration` is `true`.
+- Writing a parsed document doesn't allocate.
+
+### Thread safety
+
+A document doesn't change after it's parsed, so several threads can read it at the same time. Don't dispose it while another thread is reading.
+
+### Differences from other APIs
+
+- Unlike `System.Xml.XmlDocument` and `XDocument`, this type is read-only, and its nodes are `XmlElement` cursors into the document's buffers rather than objects. You query it with the `XmlElement` lookups and enumerators. For a tree you can change, see `CloudNimble.Text.Xml.Nodes.XmlNode`, and for the full comparison, [Migrate from XDocument and System.Xml.XmlDocument](/guides/migrate/from-xdocument).
+- Unlike `JsonDocument`, the root can be preceded by a declaration, comments, and processing instructions, which the document keeps for writing.

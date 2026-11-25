@@ -1,0 +1,75 @@
+### Write every enumeration in kebab case
+
+The factory in the usage section creates one of these converters for each enumeration:
+
+```csharp
+public sealed class KebabCaseEnumConverter<TEnum> : XmlConverter<TEnum>
+    where TEnum : struct, Enum
+{
+    public override TEnum Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+    {
+        TEnum value = default;
+        if (reader.IsEmptyElement)
+        {
+            return value;
+        }
+
+        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+        {
+            if (reader.TokenType is XmlTokenType.Text)
+            {
+                value = Parse(reader.GetString()!);
+            }
+        }
+
+        return value;
+    }
+
+    public override void Write(Utf8XmlWriter writer, TEnum value, XmlSerializerOptions options)
+    {
+        writer.WriteStringValue(XmlNamingPolicy.KebabCaseLower.ConvertName(value.ToString()));
+    }
+
+    private static TEnum Parse(string text)
+    {
+        foreach (TEnum candidate in Enum.GetValues<TEnum>())
+        {
+            if (XmlNamingPolicy.KebabCaseLower.ConvertName(candidate.ToString()) == text)
+            {
+                return candidate;
+            }
+        }
+
+        throw new XmlException($"'{text}' is not a value of {typeof(TEnum).Name}.");
+    }
+}
+```
+
+With the factory registered, both enumeration members of `OrderTracking` use it:
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+options.Converters.Add(new KebabCaseEnumConverterFactory());
+
+var tracking = new OrderTracking
+{
+    OrderId = 1042,
+    Status = OrderStatus.ReadyToShip,
+    Priority = Priority.Rush,
+};
+
+string xml = XmlSerializer.Serialize(tracking, options);
+output.WriteLine(xml);
+
+OrderTracking? copy = XmlSerializer.Deserialize<OrderTracking>(xml, options);
+output.WriteLine($"Order {copy!.OrderId}: {copy.Status}, {copy.Priority}");
+```
+
+The code produces the following output:
+
+```text
+<OrderTracking><OrderId>1042</OrderId><Priority>rush</Priority><Status>ready-to-ship</Status></OrderTracking>
+Order 1042: ReadyToShip, Rush
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)

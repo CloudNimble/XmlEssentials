@@ -1,0 +1,9 @@
+- `XmlDocumentOptions` is a struct. `default(XmlDocumentOptions)` and `new XmlDocumentOptions()` are the same options: `CommentHandling` is `Allow` and `WhitespaceHandling` is `Significant` in both.
+- `XmlReaderOptions` has the same two defaults, so a `Utf8XmlReader` reports comments and white-space-only text as well. `XmlSerializer` skips both. A document keeps them so that `XmlDocument.WriteTo` reproduces the comments and the layout that were parsed.
+- Because white space is kept, `XmlElement.EnumerateChildren` on an indented document returns a `Text` node for each run of indentation, and the text of an element that has child elements includes it. Lookups by name and the values of leaf elements aren't affected.
+- `WhitespaceHandling` applies only to text that is nothing but white space between two tags. White space inside a value, such as `<Item> Keyboard </Item>`, is always kept.
+- White space outside the root element isn't stored under any setting.
+- A limit of 0 means the default limit in the table under Usage, except `MaxDocumentByteCount`, where 0 means no limit.
+- `MaxDocumentByteCount` counts UTF-8 bytes. For the `string` and `ReadOnlySpan<char>` overloads of `Parse`, it applies to the size after conversion to UTF-8.
+- `XmlDocument.ParseValue` doesn't take these options. The `XmlReaderOptions` of the reader you pass apply.
+- `XmlNode.Parse` takes no options. It keeps comments and white space and uses the default limits. To build a mutable tree with other options, parse with `XmlDocument` and call `XmlElement.CloneNode`.

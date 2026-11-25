@@ -1,0 +1,5 @@
+- **Cast the result of `Parse` to `XmlElementNode`.** `Parse` and `ParseValue` return the base type, and the element members (`Children`, `Attributes`, the indexers) are on `XmlElementNode`.
+- **Catch `XmlException` around `Parse` for input you don't control.** For a Boolean result instead, call `XmlDocument.TryParse` and then `CloneNode`.
+- **Use a type pattern to tell nodes apart.** `child is XmlElementNode element` tests and casts in one step. `ValueKind` gives the same answer without the cast.
+- **Parse through `XmlDocument` when you need options.** `XmlNode.Parse` takes none. `XmlDocument.Parse` with an `XmlDocumentOptions`, followed by `RootElement.CloneNode()`, gives you limits, a tree without white space, and stream input.
+- **Read `Value` to inspect a text node or an attribute.** `ToString` throws for a node that can't stand alone as markup.

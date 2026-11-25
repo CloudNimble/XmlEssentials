@@ -1,0 +1,31 @@
+`XmlElementNode` is an element in the mutable tree. It has a name (`LocalName`, `Prefix`, `NamespaceUri`), a list of `Attributes`, and a list of `Children` that can hold any kind of node.
+
+The members you use most:
+
+- `SetAttribute` adds an attribute or changes the value of one that exists.
+- `AddElement` creates a child element, appends it, and returns it.
+- `Add` appends any node.
+- The indexer (`order["Item"]`) returns the first child element with a local name, or `null`.
+- `InnerText` gets the text inside the element, or replaces the element's children with one text node.
+
+```csharp
+var order = new XmlElementNode("Order");
+order.SetAttribute("id", "1042");
+
+XmlElementNode customer = order.AddElement("Customer");
+customer.Add(new XmlTextNode("Ada Lovelace"));
+
+order.AddElement("Item").InnerText = "Keyboard";
+order.AddElement("Item").InnerText = "Mouse & pad";
+order.AddElement("Notes");
+
+output.WriteLine(order.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Order id="1042"><Customer>Ada Lovelace</Customer><Item>Keyboard</Item><Item>Mouse &amp; pad</Item><Notes/></Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

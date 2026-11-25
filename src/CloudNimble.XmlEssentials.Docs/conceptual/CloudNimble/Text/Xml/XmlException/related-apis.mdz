@@ -1,0 +1,6 @@
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlWriterOptions
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.XmlSerializer

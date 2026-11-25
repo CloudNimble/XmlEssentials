@@ -1,0 +1,8 @@
+- **Cost.** `Preserve` makes writing slower than no handler: each object costs a dictionary lookup, an identifier string, and a namespaced attribute.
+- **What gets an identifier.** Objects with members do. Strings, numbers, other simple values, and collections do not.
+- **Where `Preserve` replaces an object.** A repeated object is replaced by a reference wherever it appears: as the document element, as the value of a member, and as an item of a collection.
+- **`IgnoreCycles` replaces only a cycle.** It writes nil in place of an object that is reached again from inside itself. An object held in two places without a cycle, such as two members or two items of a list, is written in full each time, as `ReferenceHandler.IgnoreCycles` does in System.Text.Json.
+- **Custom handlers.** A class derived from `XmlReferenceHandler` supplies the resolver for each call, for writing as well as reading. When writing, the identifiers your resolver returns from `GetReference` are written as the `id` and `ref` attributes.
+- **Sequences.** `SerializeAsyncEnumerable` and `DeserializeAsyncEnumerable` apply the handler. In the wrapped form, the values of one document share one set of references, so an object that two values hold is written once. With `topLevelValues: true`, each value is a document of its own, with references of its own.
+- **Source generation.** A source-generated context in the default mode or in `Metadata` mode applies the handler as the reflection resolver does.
+- **Thread safety.** `Preserve` and `IgnoreCycles` are stateless singletons. Each call to `Serialize` or `Deserialize` gets its own resolver, so options that use them can be shared between threads.

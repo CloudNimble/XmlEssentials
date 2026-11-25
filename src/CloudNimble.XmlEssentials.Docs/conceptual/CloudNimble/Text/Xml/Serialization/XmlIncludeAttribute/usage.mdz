@@ -1,0 +1,26 @@
+By default, the serializer maps public properties, and public fields when `XmlSerializerOptions.IncludeFields` is `true`. Put `[XmlInclude]` on a property or field that isn't public to serialize it as well. It is the counterpart of `[JsonInclude]`.
+
+```csharp
+public sealed class Account
+{
+    public string? Name { get; set; }
+
+    [XmlInclude]
+    internal string? LedgerCode { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var account = new Account { Name = "Operations", LedgerCode = "OPS-17" };
+
+output.WriteLine(XmlSerializer.Serialize(account, options));
+```
+
+The code produces the following output:
+
+```xml
+<Account><Name>Operations</Name><LedgerCode>OPS-17</LedgerCode></Account>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)

@@ -1,0 +1,10 @@
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlReaderState
+CloudNimble.Text.Xml.XmlTokenType
+CloudNimble.Text.Xml.XmlCommentHandling
+CloudNimble.Text.Xml.XmlWhitespaceHandling
+CloudNimble.Text.Xml.XmlVersion
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.Serialization.XmlConverter

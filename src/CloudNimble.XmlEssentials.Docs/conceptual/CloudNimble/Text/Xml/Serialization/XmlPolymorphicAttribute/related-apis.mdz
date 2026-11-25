@@ -1,0 +1,5 @@
+CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute
+CloudNimble.Text.Xml.Serialization.XmlUnknownDerivedTypeHandling
+CloudNimble.Text.Xml.XmlDiscriminatorPlacement
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlSerializerOptions

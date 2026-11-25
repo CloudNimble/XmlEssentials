@@ -1,0 +1,5 @@
+- **Use the same options to read and to write.** The converted names are the ones the serializer looks for when it reads.
+- **Prefer a policy to many attributes** when a whole format follows one convention, and use `[XmlPropertyName]` for the exceptions. A name set by an attribute isn't converted.
+- **Make `ConvertName` deterministic.** The serializer calls it for the members of a type when it first uses the type and caches the result with the options, so a policy that returns different names over time gives inconsistent XML between options instances.
+- **Return valid XML names** from a custom policy: no spaces, and no leading digit.
+- **Don't apply a policy to dictionary keys unless the reader expects the converted keys.** The conversion happens when writing and can't be undone when reading.

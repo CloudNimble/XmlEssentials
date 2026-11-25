@@ -1,0 +1,16 @@
+An `XmlTypeInfo` is the serializer's contract for one type: the converter that reads and writes it, the name of its document element, and the options it was built for. `XmlTypeInfo<T>` is the typed form you pass to `XmlSerializer`.
+
+You don't create type info. You get it from one of two places:
+
+- A property of a source-generated context, such as `OrderXmlContext.Default.Order`.
+- An options instance that has a resolver, with `XmlSerializerOptions.GetTypeInfo<T>()`, `GetTypeInfo(Type)`, or `TryGetTypeInfo`.
+
+Pass it to an `XmlSerializer` overload. These overloads use no reflection, so they're safe in trimmed and Native AOT applications:
+
+```csharp
+string xml = XmlSerializer.Serialize(order, OrderXmlContext.Default.Order);
+
+Order? copy = XmlSerializer.Deserialize(xml, OrderXmlContext.Default.Order);
+```
+
+The classes correspond to `JsonTypeInfo` and `JsonTypeInfo<T>` in System.Text.Json.

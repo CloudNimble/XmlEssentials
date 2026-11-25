@@ -1,0 +1,6 @@
+- The member must be of type `XmlExtensionData`. On a member of any other type, the serializer throws `NotSupportedException` when it builds the type's metadata. A dictionary is not accepted.
+- A type can have one extension data member. A second one also throws `NotSupportedException`.
+- The member isn't written as an element of its own. Its content is written directly into the containing element.
+- If the document has no unmapped content, the member isn't assigned. If the member already holds an object when content is captured, the content is added to that object, so a get-only member that the type initializes works too.
+- A type with an extension data member accepts unmapped content even when `UnmappedMemberHandling` is `Disallow`.
+- Don't combine it with `[XmlMixed]` on the same type. In a mixed-content type every child element goes to the mixed list, so no element reaches the extension data.

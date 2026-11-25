@@ -1,0 +1,34 @@
+`XmlDiscriminatorPlacement` is the type of `XmlPolymorphicAttribute.DiscriminatorPlacement`. It decides how a document says which derived type an element holds.
+
+| Value | The derived type is identified by | Example |
+| --- | --- | --- |
+| `ElementName` (default) | The name of the element | `<Book>...</Book>` |
+| `Attribute` | An attribute named by `TypeDiscriminatorPropertyName` | `<Payment kind="card">...</Payment>` |
+| `XsiType` | The `xsi:type` attribute | `<Vehicle xsi:type="Truck">...</Vehicle>` |
+
+The following base type identifies its derived types with a `kind` attribute:
+
+```csharp
+[XmlPolymorphic(DiscriminatorPlacement = XmlDiscriminatorPlacement.Attribute, TypeDiscriminatorPropertyName = "kind")]
+[XmlDerivedType<CardPayment>("card")]
+[XmlDerivedType<BankTransfer>("transfer")]
+public class Payment
+{
+    public decimal Amount { get; set; }
+}
+```
+
+A `Checkout` object whose `Payment` member holds a `CardPayment` is written as follows:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Checkout>
+  <OrderId>1042</OrderId>
+  <Payment kind="card">
+    <Amount>59.90</Amount>
+    <LastFour>4242</LastFour>
+  </Payment>
+</Checkout>
+```
+
+For complete examples of each placement, see [Serialize derived classes](/guides/polymorphism) and the [polymorphism sample](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs).

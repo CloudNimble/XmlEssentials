@@ -1,0 +1,47 @@
+`XmlEncodedText` holds an element name as UTF-8 bytes, so that a `Utf8XmlWriter` can write the name many times without converting it from a `string` each time. It's the counterpart of `JsonEncodedText`.
+
+Create a value once with `XmlEncodedText.Encode` and keep it in a static field:
+
+```csharp
+private static readonly XmlEncodedText ItemName = XmlEncodedText.Encode("Item");
+
+private static readonly XmlEncodedText SoldOutName = XmlEncodedText.Encode("SoldOut"u8);
+```
+
+Then pass it to `Utf8XmlWriter.WriteStartElement` or `Utf8XmlWriter.WriteEmptyElement`:
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+string?[] items = ["Keyboard", "Mouse", null];
+
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true }))
+{
+    writer.WriteStartElement("Items"u8);
+    foreach (var item in items)
+    {
+        if (item is null)
+        {
+            writer.WriteEmptyElement(SoldOutName);
+            continue;
+        }
+
+        writer.WriteStartElement(ItemName);
+        writer.WriteStringValue(item);
+        writer.WriteEndElement();
+    }
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+output.WriteLine($"{ItemName} is {ItemName.EncodedUtf8Bytes.Length} bytes");
+```
+
+```text
+<Items><Item>Keyboard</Item><Item>Mouse</Item><SoldOut/></Items>
+Item is 4 bytes
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)
+
+`Encode` accepts a `string`, a `ReadOnlySpan<char>`, or UTF-8 bytes. `EncodedUtf8Bytes` returns the stored bytes, and `ToString` returns the name as a string.

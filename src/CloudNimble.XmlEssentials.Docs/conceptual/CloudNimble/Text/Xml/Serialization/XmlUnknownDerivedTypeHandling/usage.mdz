@@ -1,0 +1,33 @@
+`XmlUnknownDerivedTypeHandling` is the type of `XmlPolymorphicAttribute.UnknownDerivedTypeHandling`. It decides what the serializer does with a runtime type that the base type doesn't declare with `[XmlDerivedType<T>]`, and with a discriminator in a document that names no declared type.
+
+| Value | Writing a type that isn't declared | Reading a discriminator that isn't declared |
+| --- | --- | --- |
+| `FailSerialization` (default) | Throws `NotSupportedException`. | Throws `XmlException`. |
+| `FallBackToBaseType` | Writes the object as the declared base type. | Reads the element as the declared base type. |
+| `FallBackToNearestAncestor` | Writes the object as the closest base class that is declared, or as the declared base type if none is. | Reads the element as the declared base type. |
+
+With the default, serializing a `Catalog` that holds an undeclared `Ebook` fails:
+
+```csharp
+var catalog = new Catalog
+{
+    Products = [new Ebook { Title = "Refactoring", Author = "Martin Fowler", Format = "EPUB" }],
+};
+
+try
+{
+    XmlSerializer.Serialize(catalog);
+}
+catch (NotSupportedException ex)
+{
+    output.WriteLine(ex.Message);
+}
+```
+
+The code produces the following output:
+
+```text
+The type 'CloudNimble.XmlEssentials.Samples.Models.Shapes.Ebook' is not a declared derived type of 'CloudNimble.XmlEssentials.Samples.Models.Shapes.Product'.
+```
+
+For an example of `FallBackToNearestAncestor`, see [Handle a type that isn't declared](/guides/polymorphism#handle-a-type-that-isnt-declared) and the [polymorphism sample](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs).

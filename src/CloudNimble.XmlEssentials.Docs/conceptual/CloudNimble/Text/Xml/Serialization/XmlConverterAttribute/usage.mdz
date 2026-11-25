@@ -1,0 +1,39 @@
+Apply `[XmlConverter]` to a class, struct, or enumeration to name the converter the serializer uses for it. Every `XmlSerializerOptions` instance then uses that converter, with nothing to register. Apply it to a property or field instead to convert that one member.
+
+```csharp
+[XmlConverter<GeoPointConverter>]
+public readonly struct GeoPoint
+{
+    public GeoPoint(double latitude, double longitude)
+    {
+        Latitude = latitude;
+        Longitude = longitude;
+    }
+
+    public double Latitude { get; }
+
+    public double Longitude { get; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var warehouse = new Warehouse { Name = "North", Location = new GeoPoint(47.61, -122.33) };
+
+string xml = XmlSerializer.Serialize(warehouse, options);
+output.WriteLine(xml);
+
+Warehouse? copy = XmlSerializer.Deserialize<Warehouse>(xml, options);
+output.WriteLine($"{copy!.Name}: {copy.Location.Latitude}, {copy.Location.Longitude}");
+```
+
+The code produces the following output:
+
+```text
+<Warehouse><Location><Lat>47.61</Lat><Lon>-122.33</Lon></Location><Name>North</Name></Warehouse>
+North: 47.61, -122.33
+```
+
+The converter type must derive from `XmlConverter<T>` or `XmlConverterFactory` and have a public parameterless constructor. The attribute is the counterpart of `JsonConverterAttribute` in System.Text.Json.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)

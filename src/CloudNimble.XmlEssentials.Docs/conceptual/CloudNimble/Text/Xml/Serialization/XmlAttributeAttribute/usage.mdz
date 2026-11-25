@@ -1,0 +1,42 @@
+Apply `[XmlAttribute]` to a property or field to write it as an XML attribute of the element that represents the object, instead of as a child element. Pass a name to the constructor to name the attribute, and set `Namespace` to put it in a namespace.
+
+```csharp
+public sealed class Price
+{
+    [XmlAttribute]
+    public string? Currency { get; set; }
+
+    [XmlText]
+    public decimal Amount { get; set; }
+}
+
+public sealed class Listing
+{
+    public string? Name { get; set; }
+
+    public Price? Price { get; set; }
+}
+```
+
+```csharp
+var listing = new Listing
+{
+    Name = "Keyboard",
+    Price = new Price { Currency = "USD", Amount = 49.95m },
+};
+
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(listing, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Listing><Name>Keyboard</Name><Price Currency="USD">49.95</Price></Listing>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
+
+To write every simple member as an attribute without annotating each one, set `XmlSerializerOptions.DefaultPropertyMapping` to `XmlPropertyMapping.Attribute`.

@@ -1,0 +1,43 @@
+Know the following about the defaults and what each group of options does.
+
+### Defaults
+
+| Property | Default |
+| --- | --- |
+| `Indented` | `false` |
+| `IndentSize` | 0, which means 2 |
+| `IndentCharacter` | A space |
+| `NewLine` | `Environment.NewLine` |
+| `EmptyElementStyle` | `XmlEmptyElementStyle.SelfClosing`, which writes `<e/>` |
+| `AttributeStyle` | `XmlAttributeStyle.Inline` |
+| `AttributesPerLine` | 0, which means 1. Read only when `AttributeStyle` is `PerLine` |
+| `OmitXmlDeclaration` | `false` |
+| `Standalone` | `null`, which leaves `standalone` out of the declaration |
+| `Version` | `XmlVersion.Version10` |
+| `EmitByteOrderMark` | `false` |
+| `SkipValidation` | `false` |
+| `MaxDepth` | 0, which means 64 |
+| `MaxAttributeCount` | 0, which means 1,000 |
+| `MaxNameByteCount` | 0, which means 1,024 bytes |
+
+### new and default behave the same
+
+`XmlWriterOptions` is a struct. `default(XmlWriterOptions)` leaves `IndentCharacter` as the null character and `NewLine` as `null`, and the writer treats both as their documented defaults. That's why the `options` parameter of the `Utf8XmlWriter` constructors can be omitted.
+
+### Limits
+
+A limit of 0 selects its default. There's no value that turns a limit off, but `SkipValidation` skips the `MaxNameByteCount` check along with the name checks. `MaxAttributeCount` includes namespace declarations, including the ones the writer adds. `MaxNameByteCount` applies to element names, attribute names, and prefixes. The writer has no limit on text or on the size of the document.
+
+### What indentation does
+
+`Indented` adds a line break and indentation before elements, comments, and processing instructions. An element that holds text, a CDATA section, or raw XML is written on one line, with any child elements, so that no value changes. `IndentCharacter` accepts a space or a tab; any other character throws `ArgumentOutOfRangeException`.
+
+### What the layout options do
+
+- `NewLine` is written for every line break: the ones `Indented` and `XmlAttributeStyle.PerLine` add, and the ones inside text, CDATA sections, comments, and processing instructions. It accepts `"\n"` and `"\r\n"`; any other string throws `ArgumentOutOfRangeException`. No value changes, because a reader gives a carriage return followed by a line feed back as one line feed. A carriage return that is part of a value is written as `&#xD;`, and a line break in an attribute value as `&#xA;`.
+- `EmptyElementStyle` sets the form of an element with no content: `<e/>`, `<e />`, or `<e></e>`. It applies to `WriteEndElement` on an element with no content, to `WriteEmptyElement`, and to `WriteElementString` with a `null` string. `WriteFullEndElement` always writes an end tag.
+- `AttributeStyle` set to `PerLine` puts `AttributesPerLine` attributes on each line, with or without `Indented`. Each line after the first is indented so that its first attribute is under the first attribute of the tag. Namespace declarations and `xsi:nil` count as attributes.
+
+### What SkipValidation skips
+
+With `SkipValidation` set, the writer doesn't check names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, or that every element is closed when the writer is disposed. It also doesn't check `WriteRawValue` input. It still escapes values and rejects characters XML doesn't allow in them, allows only one root element, rejects text and CDATA sections at the document level, rejects `--` in a comment, `]]>` in a CDATA section, and `?>` in processing instruction data, and enforces `MaxDepth` and `MaxAttributeCount`.

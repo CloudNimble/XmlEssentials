@@ -1,0 +1,27 @@
+An `XmlPropertyInfo` describes how one member of an object is mapped: its XML name, whether it's an attribute, an element, or the text of its parent, whether it's required, and the type info of its value. You read these objects from `XmlTypeInfo.Properties`. You don't create them.
+
+```csharp
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Root element: {metadata.RootName.LocalName}");
+foreach (XmlPropertyInfo property in metadata.Properties)
+{
+    string kind = property.IsAttribute ? "attribute" : "element";
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+}
+```
+
+The code produces the following output:
+
+```text
+Root element: Order
+Id: attribute, Int32
+Customer: element, String
+Line: element, List`1
+```
+
+`Name` is the XML name, after attributes and naming policies: the `Lines` property appears as `Line` because of `[XmlElement("Line")]`. `Order` is the explicit order of the member among its siblings, or `-1` when it has none.
+
+The list is filled for a type that the serializer maps member by member, whether the type info comes from the reflection resolver or from a source-generated context in the default mode or in `Metadata` mode. It's empty for type info from a context in `Serialization` mode. The class is read-only. Unlike `JsonPropertyInfo` in System.Text.Json, it can't be used to change a contract.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)

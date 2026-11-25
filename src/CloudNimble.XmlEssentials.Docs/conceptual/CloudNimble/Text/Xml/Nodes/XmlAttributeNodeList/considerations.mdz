@@ -1,0 +1,6 @@
+- Attributes are written in list order. `Insert` and the index setter let you control that order.
+- `Add`, `Insert`, and the index setter throw an `XmlException` when the attribute already belongs to an element. `Remove`, `RemoveAt`, `Clear`, and replacing through the index setter clear the parent of the attribute that leaves the list.
+- The list doesn't check for duplicate names. Two attributes with the same name throw "Duplicate attribute." when the element is written. `XmlElementNode.SetAttribute` updates an existing attribute instead of adding a second one.
+- The list of a parsed element includes its namespace declarations (`xmlns` and `xmlns:prefix`), so `Count` can be larger than the number of attributes you think of as data.
+- The name indexers search the list from the start each time. That's the right trade for the handful of attributes a typical element has.
+- Don't change the list while a `foreach` loop enumerates it. After a change, the loop's next step throws an `InvalidOperationException` ("Collection was modified; enumeration operation may not execute."), as a `List<T>` or a `JsonArray` does. Loop over a copy (`list.ToArray()`), or loop by index from the end. Setting an attribute's `Value` changes the attribute, not the list.

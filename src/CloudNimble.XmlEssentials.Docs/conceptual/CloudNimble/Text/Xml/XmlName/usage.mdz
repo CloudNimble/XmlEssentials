@@ -1,0 +1,11 @@
+An `XmlName` is a qualified XML name: a local name, a namespace URI, and an optional prefix. The library uses it wherever a name has to carry its namespace, for example `XmlTypeInfo.RootName`, `XmlPropertyInfo.Name`, and the keys of `XmlExtensionData.Attributes`.
+
+Create a name with the local name alone, or add the namespace URI and the prefix:
+
+```csharp
+var written = new XmlName("Invoice", "urn:example:billing", "b");
+var expected = new XmlName("Invoice", "urn:example:billing");
+var unqualified = new XmlName("Invoice");
+```
+
+Two names are equal when their local names and namespace URIs are equal. The prefix is kept so that a name can be written the way it was read, and it plays no part in equality or in hash codes.

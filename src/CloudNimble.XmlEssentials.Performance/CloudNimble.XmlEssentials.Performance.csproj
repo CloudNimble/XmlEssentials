@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>$(StandardTestTfms)</TargetFrameworks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="BenchmarkDotNet" Version="0.*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials\CloudNimble.XmlEssentials.csproj" />
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false"
+		                  GlobalPropertiesToRemove="PublishAot" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\CloudNimble.XmlEssentials.Tests\Fixtures\quick-xml\*.xml;..\CloudNimble.XmlEssentials.Tests\Fixtures\quick-xml\*.fodt" Link="Fixtures\quick-xml\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+</Project>

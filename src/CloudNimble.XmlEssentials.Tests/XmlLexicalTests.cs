@@ -1,0 +1,770 @@
+using System;
+using System.Text;
+using CloudNimble.Text.Xml;
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace CloudNimble.XmlEssentials.Tests
+{
+
+    /// <summary>
+    /// XML Schema 1.0 lexical forms, checked through <see cref="XmlLexical"/>, <see cref="Utf8XmlReader"/>,
+    /// and <see cref="XmlElement"/> so the three can never disagree.
+    /// </summary>
+    [TestClass]
+    public class XmlLexicalTests
+    {
+
+        #region Public Methods
+
+        [TestMethod]
+        [DataRow("true", true)]
+        [DataRow("1", true)]
+        [DataRow("false", false)]
+        [DataRow("0", false)]
+        [DataRow(" \t\r\ntrue\n ", true)]
+        public void Boolean_Valid(string text, bool expected)
+        {
+            XmlLexical.TryParseBoolean(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be(expected);
+            ReaderText(text).GetBoolean().Should().Be(expected);
+            using var document = Document(text);
+            document.RootElement.GetBoolean().Should().Be(expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("TRUE")]
+        [DataRow("True")]
+        [DataRow("yes")]
+        [DataRow("2")]
+        [DataRow("tr ue")]
+        [DataRow("01")]
+        public void Boolean_Invalid(string text)
+        {
+            XmlLexical.TryParseBoolean(Utf8(text), out _).Should().BeFalse();
+            DomThrows(text, e => e.GetBoolean());
+        }
+
+        [TestMethod]
+        [DataRow("0", 0L)]
+        [DataRow("-0", 0L)]
+        [DataRow("+0", 0L)]
+        [DataRow("42", 42L)]
+        [DataRow(" 42 ", 42L)]
+        [DataRow("\n\t42\r\n", 42L)]
+        [DataRow("+5", 5L)]
+        [DataRow("-5", -5L)]
+        [DataRow("007", 7L)]
+        [DataRow("9223372036854775807", long.MaxValue)]
+        [DataRow("-9223372036854775808", long.MinValue)]
+        [DataRow("0000000000000000000000000000009223372036854775807", long.MaxValue)]
+        [DataRow("00000000000000000000000", 0L)]
+        public void Int64_Valid(string text, long expected)
+        {
+            XmlLexical.TryParseInt64(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be(expected);
+            ReaderText(text).GetInt64().Should().Be(expected);
+            using var document = Document(text);
+            document.RootElement.GetInt64().Should().Be(expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(" ")]
+        [DataRow("+")]
+        [DataRow("-")]
+        [DataRow("+-1")]
+        [DataRow("--1")]
+        [DataRow("1 2")]
+        [DataRow("1.0")]
+        [DataRow("1e3")]
+        [DataRow("1,000")]
+        [DataRow("0x10")]
+        [DataRow("12a")]
+        [DataRow("١")]
+        [DataRow("9223372036854775808")]
+        [DataRow("-9223372036854775809")]
+        [DataRow("18446744073709551616")]
+        [DataRow("99999999999999999999")]
+        [DataRow("100000000000000000000")]
+        public void Int64_Invalid(string text)
+        {
+            XmlLexical.TryParseInt64(Utf8(text), out _).Should().BeFalse();
+            ReaderText(text).TryGetInt64(out _).Should().BeFalse();
+            DomThrows(text, e => e.GetInt64());
+        }
+
+        [TestMethod]
+        [DataRow("0", "0")]
+        [DataRow("-0", "0")]
+        [DataRow("+0", "0")]
+        [DataRow(" 42 ", "42")]
+        [DataRow("\n\t-42\r\n", "-42")]
+        [DataRow("007", "7")]
+        [DataRow("170141183460469231731687303715884105727", "170141183460469231731687303715884105727")]
+        [DataRow("-170141183460469231731687303715884105728", "-170141183460469231731687303715884105728")]
+        [DataRow("340282366920938463463374607431768211455", "340282366920938463463374607431768211455")]
+        [DataRow("-340282366920938463463374607431768211456", "-340282366920938463463374607431768211456")]
+        [DataRow("123456789012345678901234567890123456789012345678901234567890", "123456789012345678901234567890123456789012345678901234567890")]
+        public void WideIntegers_Valid(string text, string expected)
+        {
+            // The three types share one lexical form, xs:integer. Each accepts what fits in it.
+            var value = System.Numerics.BigInteger.Parse(expected);
+            XmlLexical.TryParseBigInteger(Utf8(text), out var big).Should().BeTrue();
+            big.Should().Be(value);
+            var fitsSigned = value >= (System.Numerics.BigInteger)Int128.MinValue && value <= (System.Numerics.BigInteger)Int128.MaxValue;
+            XmlLexical.TryParseInt128(Utf8(text), out var signed).Should().Be(fitsSigned);
+            signed.Should().Be(fitsSigned ? (Int128)value : default);
+            var fitsUnsigned = value >= 0 && value <= (System.Numerics.BigInteger)UInt128.MaxValue;
+            XmlLexical.TryParseUInt128(Utf8(text), out var unsigned).Should().Be(fitsUnsigned);
+            unsigned.Should().Be(fitsUnsigned ? (UInt128)value : default);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(" ")]
+        [DataRow("+")]
+        [DataRow("-")]
+        [DataRow("+-1")]
+        [DataRow("--1")]
+        [DataRow("1 2")]
+        [DataRow("1.0")]
+        [DataRow("1e3")]
+        [DataRow("1,000")]
+        [DataRow("0x10")]
+        [DataRow("12a")]
+        [DataRow("١")]
+        [DataRow("(1)")]
+        public void WideIntegers_Invalid(string text)
+        {
+            XmlLexical.TryParseBigInteger(Utf8(text), out var big).Should().BeFalse();
+            big.Should().Be(System.Numerics.BigInteger.Zero);
+            XmlLexical.TryParseInt128(Utf8(text), out var signed).Should().BeFalse();
+            signed.Should().Be(Int128.Zero);
+            XmlLexical.TryParseUInt128(Utf8(text), out var unsigned).Should().BeFalse();
+            unsigned.Should().Be(UInt128.Zero);
+        }
+
+        [TestMethod]
+        [DataRow("0", 0d)]
+        [DataRow("1.5", 1.5d)]
+        [DataRow(" +2.5 ", 2.5d)]
+        [DataRow("-1e1", -10d)]
+        [DataRow("INF", double.PositiveInfinity)]
+        [DataRow("-INF", double.NegativeInfinity)]
+        [DataRow("NaN", double.NaN)]
+        [DataRow("65504", 65504d)]
+        [DataRow("1.000488281250000000001", 1.0009765625d)]
+        [DataRow("1e9", double.PositiveInfinity)]
+        public void Half_Valid(string text, double expected)
+        {
+            XmlLexical.TryParseHalf(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be((Half)expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("one")]
+        [DataRow("1,5")]
+        [DataRow("Infinity")]
+        [DataRow("0x1")]
+        public void Half_Invalid(string text)
+        {
+            XmlLexical.TryParseHalf(Utf8(text), out var value).Should().BeFalse();
+            value.Should().Be(default(Half));
+        }
+
+        [TestMethod]
+        public void Integers_RangeBoundaries()
+        {
+            XmlLexical.TryParseInt32(Utf8("2147483647"), out var maxInt).Should().BeTrue();
+            maxInt.Should().Be(int.MaxValue);
+            XmlLexical.TryParseInt32(Utf8("-2147483648"), out var minInt).Should().BeTrue();
+            minInt.Should().Be(int.MinValue);
+            XmlLexical.TryParseInt32(Utf8("2147483648"), out _).Should().BeFalse();
+            XmlLexical.TryParseInt32(Utf8("-2147483649"), out _).Should().BeFalse();
+
+            XmlLexical.TryParseInt16(Utf8("32767"), out var maxShort).Should().BeTrue();
+            maxShort.Should().Be(short.MaxValue);
+            XmlLexical.TryParseInt16(Utf8("-32768"), out var minShort).Should().BeTrue();
+            minShort.Should().Be(short.MinValue);
+            XmlLexical.TryParseInt16(Utf8("32768"), out _).Should().BeFalse();
+            XmlLexical.TryParseInt16(Utf8("-32769"), out _).Should().BeFalse();
+
+            XmlLexical.TryParseSByte(Utf8("127"), out var maxSByte).Should().BeTrue();
+            maxSByte.Should().Be(sbyte.MaxValue);
+            XmlLexical.TryParseSByte(Utf8("-128"), out var minSByte).Should().BeTrue();
+            minSByte.Should().Be(sbyte.MinValue);
+            XmlLexical.TryParseSByte(Utf8("128"), out _).Should().BeFalse();
+            XmlLexical.TryParseSByte(Utf8("-129"), out _).Should().BeFalse();
+
+            XmlLexical.TryParseUInt64(Utf8("18446744073709551615"), out var maxULong).Should().BeTrue();
+            maxULong.Should().Be(ulong.MaxValue);
+            XmlLexical.TryParseUInt64(Utf8("+7"), out var plusULong).Should().BeTrue();
+            plusULong.Should().Be(7UL);
+            XmlLexical.TryParseUInt64(Utf8("-0"), out var negativeZero).Should().BeTrue();
+            negativeZero.Should().Be(0UL);
+            XmlLexical.TryParseUInt64(Utf8("-1"), out _).Should().BeFalse();
+            XmlLexical.TryParseUInt64(Utf8("18446744073709551616"), out _).Should().BeFalse();
+
+            XmlLexical.TryParseUInt32(Utf8("4294967295"), out var maxUInt).Should().BeTrue();
+            maxUInt.Should().Be(uint.MaxValue);
+            XmlLexical.TryParseUInt32(Utf8("4294967296"), out _).Should().BeFalse();
+            XmlLexical.TryParseUInt16(Utf8("65535"), out var maxUShort).Should().BeTrue();
+            maxUShort.Should().Be(ushort.MaxValue);
+            XmlLexical.TryParseUInt16(Utf8("65536"), out _).Should().BeFalse();
+            XmlLexical.TryParseByte(Utf8("255"), out var maxByte).Should().BeTrue();
+            maxByte.Should().Be(byte.MaxValue);
+            XmlLexical.TryParseByte(Utf8("256"), out _).Should().BeFalse();
+            XmlLexical.TryParseByte(Utf8("x"), out _).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void Reader_IntegerGetters_UseTheSharedRules()
+        {
+            ReaderText(" +12 ").GetInt32().Should().Be(12);
+            ReaderText(" +12 ").GetInt16().Should().Be(12);
+            ReaderText(" +12 ").GetSByte().Should().Be(12);
+            ReaderText(" +12 ").GetByte().Should().Be(12);
+            ReaderText(" +12 ").GetUInt16().Should().Be(12);
+            ReaderText(" +12 ").GetUInt32().Should().Be(12U);
+            ReaderText(" +12 ").GetUInt64().Should().Be(12UL);
+            ReaderText("1e3").TryGetInt32(out _).Should().BeFalse();
+            ReaderText("300").TryGetByte(out _).Should().BeFalse();
+            using var document = XmlDocument.Parse("<e a=\" +12 \"> -3 </e>");
+            document.RootElement.GetAttribute("a").GetInt32().Should().Be(12);
+            document.RootElement.GetInt32().Should().Be(-3);
+            DomThrows("2147483648", e => e.GetInt32());
+        }
+
+        [TestMethod]
+        [DataRow("0", "0")]
+        [DataRow("1.5", "1.5")]
+        [DataRow("-1.5", "-1.5")]
+        [DataRow("+1.5", "1.5")]
+        [DataRow(" 12.50 ", "12.50")]
+        [DataRow(".5", "0.5")]
+        [DataRow("5.", "5")]
+        [DataRow("-.25", "-0.25")]
+        [DataRow("79228162514264337593543950335", "79228162514264337593543950335")]
+        public void Decimal_Valid(string text, string expected)
+        {
+            var expectedValue = decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture);
+            XmlLexical.TryParseDecimal(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be(expectedValue);
+            ReaderText(text).GetDecimal().Should().Be(expectedValue);
+            using var document = Document(text);
+            document.RootElement.GetDecimal().Should().Be(expectedValue);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(".")]
+        [DataRow("+")]
+        [DataRow("-")]
+        [DataRow("+-1")]
+        [DataRow("1e2")]
+        [DataRow("1E+2")]
+        [DataRow("1,000")]
+        [DataRow("1.2.3")]
+        [DataRow("1 000")]
+        [DataRow("INF")]
+        [DataRow("NaN")]
+        [DataRow("$1")]
+        [DataRow("79228162514264337593543950336")]
+        public void Decimal_Invalid(string text)
+        {
+            XmlLexical.TryParseDecimal(Utf8(text), out _).Should().BeFalse();
+            ReaderText(text).TryGetDecimal(out _).Should().BeFalse();
+            DomThrows(text, e => e.GetDecimal());
+        }
+
+        [TestMethod]
+        [DataRow("0", 0d)]
+        [DataRow("-0", -0d)]
+        [DataRow("3.5", 3.5d)]
+        [DataRow("+3.5", 3.5d)]
+        [DataRow(" 3.5 ", 3.5d)]
+        [DataRow(".5", 0.5d)]
+        [DataRow("5.", 5d)]
+        [DataRow("1e3", 1000d)]
+        [DataRow("1E3", 1000d)]
+        [DataRow("1.5e-3", 0.0015d)]
+        [DataRow("-1.5E+3", -1500d)]
+        [DataRow("INF", double.PositiveInfinity)]
+        [DataRow("-INF", double.NegativeInfinity)]
+        [DataRow("NaN", double.NaN)]
+        [DataRow("inf", double.PositiveInfinity)]
+        [DataRow("-Inf", double.NegativeInfinity)]
+        [DataRow("nan", double.NaN)]
+        [DataRow("1.7976931348623157E308", double.MaxValue)]
+        [DataRow("1e400", double.PositiveInfinity, DisplayName = "too large for a double: infinity, as XmlConvert.ToDouble reads it")]
+        [DataRow("-1e400", double.NegativeInfinity, DisplayName = "too large and negative: negative infinity")]
+        [DataRow("1e-400", 0d, DisplayName = "too small for a double: zero")]
+        public void Double_Valid(string text, double expected)
+        {
+            XmlLexical.TryParseDouble(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be(expected);
+            double.IsNegative(value).Should().Be(double.IsNegative(expected), "negative zero and zero are different values");
+            ReaderText(text).GetDouble().Should().Be(expected);
+            using var document = Document(text);
+            document.RootElement.GetDouble().Should().Be(expected);
+            XmlLexical.TryParseSingle(Utf8(text), out var single).Should().BeTrue();
+            single.Should().Be((float)expected);
+            ReaderText(text).GetSingle().Should().Be((float)expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(".")]
+        [DataRow("e3")]
+        [DataRow("1e")]
+        [DataRow("1e+")]
+        [DataRow("1e1.5")]
+        [DataRow("+-1")]
+        [DataRow("+INF")]
+        [DataRow("Infinity")]
+        [DataRow("-Infinity")]
+        [DataRow("∞")]
+        [DataRow("1,5")]
+        [DataRow("0x1p3")]
+        [DataRow("1 e3")]
+        public void Double_Invalid(string text)
+        {
+            XmlLexical.TryParseDouble(Utf8(text), out var refused).Should().BeFalse();
+            refused.Should().Be(0d, "a value that is refused is the default, not what the check for a named literal left");
+            XmlLexical.TryParseSingle(Utf8(text), out var refusedSingle).Should().BeFalse();
+            refusedSingle.Should().Be(0f);
+            ReaderText(text).TryGetDouble(out _).Should().BeFalse();
+            ReaderText(text).TryGetSingle(out _).Should().BeFalse();
+            DomThrows(text, e => e.GetDouble());
+        }
+
+        [TestMethod]
+        [DataRow("2020-01-02T03:04:05", 2020, 1, 2, 3, 4, 5, 0, DateTimeKind.Unspecified)]
+        [DataRow(" 2020-01-02T03:04:05 ", 2020, 1, 2, 3, 4, 5, 0, DateTimeKind.Unspecified)]
+        [DataRow("2020-01-02T03:04:05Z", 2020, 1, 2, 3, 4, 5, 0, DateTimeKind.Utc)]
+        [DataRow("2020-01-02T03:04:05+00:00", 2020, 1, 2, 3, 4, 5, 0, DateTimeKind.Utc)]
+        [DataRow("2020-01-02T03:04:05.5", 2020, 1, 2, 3, 4, 5, 5_000_000, DateTimeKind.Unspecified)]
+        [DataRow("2020-01-02T03:04:05.1234567", 2020, 1, 2, 3, 4, 5, 1_234_567, DateTimeKind.Unspecified)]
+        [DataRow("2020-01-02T03:04:05.12345678999", 2020, 1, 2, 3, 4, 5, 1_234_567, DateTimeKind.Unspecified)]
+        [DataRow("2020-02-29T23:59:59", 2020, 2, 29, 23, 59, 59, 0, DateTimeKind.Unspecified)]
+        [DataRow("2020-12-31T24:00:00", 2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)]
+        [DataRow("0001-01-01T00:00:00", 1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)]
+        [DataRow("9999-12-31T23:59:59.9999999", 9999, 12, 31, 23, 59, 59, 9_999_999, DateTimeKind.Unspecified)]
+        public void DateTime_Valid(string text, int year, int month, int day, int hour, int minute, int second, int fractionTicks, DateTimeKind kind)
+        {
+            var expected = new DateTime(year, month, day, hour, minute, second, kind).AddTicks(fractionTicks);
+            XmlLexical.TryParseDateTime(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be(expected);
+            value.Kind.Should().Be(kind);
+            ReaderText(text).GetDateTime().Should().Be(expected);
+            using var document = Document(text);
+            document.RootElement.GetDateTime().Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void DateTime_WithOffset_IsTheSameInstant()
+        {
+            var expected = new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.FromHours(5.5));
+            XmlLexical.TryParseDateTime(Utf8("2020-01-02T03:04:05+05:30"), out var local).Should().BeTrue();
+            local.Kind.Should().Be(DateTimeKind.Local);
+            local.ToUniversalTime().Should().Be(expected.UtcDateTime);
+            XmlLexical.TryParseDateTimeOffset(Utf8("2020-01-02T03:04:05+05:30"), out var offset).Should().BeTrue();
+            offset.Should().Be(expected);
+            offset.Offset.Should().Be(TimeSpan.FromHours(5.5));
+            XmlLexical.TryParseDateTimeOffset(Utf8("2020-01-02T03:04:05-14:00"), out var west).Should().BeTrue();
+            west.Offset.Should().Be(TimeSpan.FromHours(-14));
+            XmlLexical.TryParseDateTimeOffset(Utf8("2020-01-02T03:04:05Z"), out var utc).Should().BeTrue();
+            utc.Should().Be(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero));
+            XmlLexical.TryParseDateTimeOffset(Utf8("2020-01-02T03:04:05"), out var unzoned).Should().BeTrue();
+            unzoned.DateTime.Should().Be(new DateTime(2020, 1, 2, 3, 4, 5));
+            unzoned.Offset.Should().Be(TimeZoneInfo.Local.GetUtcOffset(new DateTime(2020, 1, 2, 3, 4, 5)));
+            ReaderText("2020-01-02T03:04:05+05:30").GetDateTimeOffset().Should().Be(expected);
+            using var document = Document("2020-01-02T03:04:05+05:30");
+            document.RootElement.GetDateTimeOffset().Should().Be(expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("March 5, 2020")]
+        [DataRow("2020-01-02")]
+        [DataRow("2020-01-02 03:04:05")]
+        [DataRow("2020-01-02t03:04:05")]
+        [DataRow("2020-1-2T03:04:05")]
+        [DataRow("20-01-02T03:04:05")]
+        [DataRow("2020/01/02T03:04:05")]
+        [DataRow("2020-01-02T3:04:05")]
+        [DataRow("2020-01-02T03:04")]
+        [DataRow("2020-01-02T03:04:05.")]
+        [DataRow("2020-01-02T03:04:05z")]
+        [DataRow("2020-01-02T03:04:05+5:30")]
+        [DataRow("2020-01-02T03:04:05+0530")]
+        [DataRow("2020-01-02T03:04:05+14:01")]
+        [DataRow("2020-01-02T03:04:05+15:00")]
+        [DataRow("2020-01-02T03:04:05+05:60")]
+        [DataRow("2020-01-02T03:04:05 Z")]
+        [DataRow("2020-13-01T00:00:00")]
+        [DataRow("2020-00-01T00:00:00")]
+        [DataRow("2020-01-32T00:00:00")]
+        [DataRow("2020-01-00T00:00:00")]
+        [DataRow("2021-02-29T00:00:00")]
+        [DataRow("0000-01-01T00:00:00")]
+        [DataRow("-2020-01-01T00:00:00")]
+        [DataRow("12020-01-01T00:00:00")]
+        [DataRow("2020-01-02T24:00:01")]
+        [DataRow("2020-01-02T24:00:00.1")]
+        [DataRow("2020-01-02T25:00:00")]
+        [DataRow("2020-01-02T03:60:00")]
+        [DataRow("2020-01-02T03:04:60")]
+        [DataRow("9999-12-31T24:00:00")]
+        [DataRow("0001-01-01T00:00:00+14:00")]
+        [DataRow("9999-12-31T23:59:59-14:00")]
+        public void DateTime_Invalid(string text)
+        {
+            XmlLexical.TryParseDateTime(Utf8(text), out _).Should().BeFalse();
+            XmlLexical.TryParseDateTimeOffset(Utf8(text), out _).Should().BeFalse();
+            ReaderText(text).TryGetDateTime(out _).Should().BeFalse();
+            ReaderText(text).TryGetDateTimeOffset(out _).Should().BeFalse();
+            DomThrows(text, e => e.GetDateTime());
+            DomThrows(text, e => e.GetDateTimeOffset());
+        }
+
+        [TestMethod]
+        public void DateOnly_And_TimeOnly()
+        {
+            XmlLexical.TryParseDateOnly(Utf8(" 2020-02-29 "), out var date).Should().BeTrue();
+            date.Should().Be(new DateOnly(2020, 2, 29));
+            XmlLexical.TryParseDateOnly(Utf8("2020-02-29Z"), out var zonedDate).Should().BeTrue();
+            zonedDate.Should().Be(new DateOnly(2020, 2, 29));
+            XmlLexical.TryParseDateOnly(Utf8("2020-02-29-05:00"), out var offsetDate).Should().BeTrue();
+            offsetDate.Should().Be(new DateOnly(2020, 2, 29));
+            ReaderText("2020-02-29").GetDateOnly().Should().Be(new DateOnly(2020, 2, 29));
+            foreach (var invalid in new[] { "", "2020-02-30", "2020-2-29", "2020-02-29T00:00:00", "02/29/2020", "2020-02-29+5" })
+            {
+                XmlLexical.TryParseDateOnly(Utf8(invalid), out _).Should().BeFalse(invalid);
+                ReaderText(invalid).TryGetDateOnly(out _).Should().BeFalse(invalid);
+            }
+
+            XmlLexical.TryParseTimeOnly(Utf8(" 13:20:00 "), out var time).Should().BeTrue();
+            time.Should().Be(new TimeOnly(13, 20, 0));
+            XmlLexical.TryParseTimeOnly(Utf8("13:20:00.25Z"), out var fractional).Should().BeTrue();
+            fractional.Should().Be(new TimeOnly(13, 20, 0, 250));
+            XmlLexical.TryParseTimeOnly(Utf8("24:00:00"), out var endOfDay).Should().BeTrue();
+            endOfDay.Should().Be(TimeOnly.MinValue);
+            XmlLexical.TryParseTimeOnly(Utf8("23:59:59+02:00"), out var zonedTime).Should().BeTrue();
+            zonedTime.Should().Be(new TimeOnly(23, 59, 59));
+            ReaderText("13:20:00").GetTimeOnly().Should().Be(new TimeOnly(13, 20, 0));
+            foreach (var invalid in new[] { "", "13:20", "1:20:00", "13:20:00.", "24:00:01", "25:00:00", "13:60:00", "13:20:60", "13:20:00 PM", "13-20-00" })
+            {
+                XmlLexical.TryParseTimeOnly(Utf8(invalid), out _).Should().BeFalse(invalid);
+                ReaderText(invalid).TryGetTimeOnly(out _).Should().BeFalse(invalid);
+            }
+        }
+
+        [TestMethod]
+        [DataRow("PT1S", 0, 0, 0, 1, 0)]
+        [DataRow(" PT1S ", 0, 0, 0, 1, 0)]
+        [DataRow("P1D", 1, 0, 0, 0, 0)]
+        [DataRow("PT1H", 0, 1, 0, 0, 0)]
+        [DataRow("PT1M", 0, 0, 1, 0, 0)]
+        [DataRow("P1DT2H3M4S", 1, 2, 3, 4, 0)]
+        [DataRow("P1DT4S", 1, 0, 0, 4, 0)]
+        [DataRow("PT2H4S", 0, 2, 0, 4, 0)]
+        [DataRow("PT1.5S", 0, 0, 0, 1, 5_000_000)]
+        [DataRow("PT0.0000001S", 0, 0, 0, 0, 1)]
+        [DataRow("PT90M", 0, 0, 90, 0, 0)]
+        [DataRow("P0D", 0, 0, 0, 0, 0)]
+        public void Duration_Valid(string text, int days, int hours, int minutes, int seconds, int fractionTicks)
+        {
+            var expected = new TimeSpan(days, hours, minutes, seconds) + TimeSpan.FromTicks(fractionTicks);
+            XmlLexical.TryParseDuration(Utf8(text), out var value).Should().BeTrue();
+            value.Should().Be(expected);
+            ReaderText(text).GetTimeSpan().Should().Be(expected);
+            XmlLexical.TryParseDuration(Utf8("-" + text.Trim()), out var negative).Should().BeTrue();
+            negative.Should().Be(-expected);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("P")]
+        [DataRow("-")]
+        [DataRow("-P")]
+        [DataRow("PT")]
+        [DataRow("P1DT")]
+        [DataRow("1D")]
+        [DataRow("p1d")]
+        [DataRow("P1Y")]
+        [DataRow("P1M")]
+        [DataRow("P0Y")]
+        [DataRow("P1H")]
+        [DataRow("P1S")]
+        [DataRow("PT1D")]
+        [DataRow("PT1Y")]
+        [DataRow("PT1X")]
+        [DataRow("P1D2H")]
+        [DataRow("PT1M1H")]
+        [DataRow("PT1S1M")]
+        [DataRow("PT1H1H")]
+        [DataRow("PT1.5H")]
+        [DataRow("PT1.5M")]
+        [DataRow("PT1.S")]
+        [DataRow("PT.5S")]
+        [DataRow("PT1.2.3S")]
+        [DataRow("P1.5D")]
+        [DataRow("PT1")]
+        [DataRow("P-1D")]
+        [DataRow("+P1D")]
+        [DataRow("-P10675200D", DisplayName = "below the smallest TimeSpan")]
+        [DataRow("-P10675199DT2H48M5.4775809S", DisplayName = "one tick below the smallest TimeSpan")]
+        [DataRow("P1D T1H")]
+        [DataRow("P9999999999999999D")]
+        [DataRow("P999999999999999D")]
+        [DataRow("PT999999999999999H")]
+        public void Duration_Invalid(string text)
+        {
+            XmlLexical.TryParseDuration(Utf8("x" + text + "x")[1..^1], out _).Should().BeFalse();
+            if (text.Trim() == text)
+            {
+                ReaderText(text).TryGetTimeSpan(out _).Should().BeFalse();
+            }
+        }
+
+        [TestMethod]
+        public void Guid_Formats()
+        {
+            var expected = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
+            foreach (var text in new[]
+            {
+                "00112233-4455-6677-8899-aabbccddeeff",
+                " 00112233-4455-6677-8899-AABBCCDDEEFF ",
+                "00112233445566778899aabbccddeeff",
+                "{00112233-4455-6677-8899-aabbccddeeff}",
+                "(00112233-4455-6677-8899-aabbccddeeff)",
+            })
+            {
+                XmlLexical.TryParseGuid(Utf8(text), out var value).Should().BeTrue(text);
+                value.Should().Be(expected);
+                ReaderText(text).GetGuid().Should().Be(expected);
+                using var document = Document(text);
+                document.RootElement.GetGuid().Should().Be(expected);
+            }
+
+            foreach (var text in new[]
+            {
+                "",
+                "00112233-4455-6677-8899-aabbccddeef",
+                "00112233-4455-6677-8899-aabbccddeeffa",
+                "0011223344556677-8899-aabbccddeeff000",
+                "{00112233-4455-6677-8899-aabbccddeeff)",
+                "{0x00112233,0x4455,0x6677,{0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff}}",
+                "gg112233-4455-6677-8899-aabbccddeeff",
+            })
+            {
+                XmlLexical.TryParseGuid(Utf8(text), out _).Should().BeFalse(text);
+                ReaderText(text).TryGetGuid(out _).Should().BeFalse(text);
+                DomThrows(text, e => e.GetGuid());
+            }
+        }
+
+        [TestMethod]
+        public void Base64_Forms()
+        {
+            XmlLexical.TryDecodeBase64(Utf8(""), out var empty).Should().BeTrue();
+            empty.Should().BeEmpty();
+            XmlLexical.TryDecodeBase64(Utf8("  "), out var blank).Should().BeTrue();
+            blank.Should().BeEmpty();
+            XmlLexical.TryDecodeBase64(Utf8("AQID"), out var exact).Should().BeTrue();
+            exact.Should().Equal(1, 2, 3);
+            XmlLexical.TryDecodeBase64(Utf8(" YQ== "), out var padded).Should().BeTrue();
+            padded.Should().Equal((byte)'a');
+            XmlLexical.TryDecodeBase64(Utf8("AQ\r\n  ID"), out var wrapped).Should().BeTrue();
+            wrapped.Should().Equal(1, 2, 3);
+            ReaderText("AQID").GetBytesFromBase64().Should().Equal(1, 2, 3);
+            using var document = Document("AQID");
+            document.RootElement.GetBytesFromBase64().Should().Equal(1, 2, 3);
+            foreach (var invalid in new[] { "!!!!", "AQI", "A", "AQID=", "=AQID" })
+            {
+                XmlLexical.TryDecodeBase64(Utf8(invalid), out _).Should().BeFalse(invalid);
+                ReaderText(invalid).TryGetBytesFromBase64(out _).Should().BeFalse(invalid);
+                DomThrows(invalid, e => e.GetBytesFromBase64());
+            }
+        }
+
+        [TestMethod]
+        public void Dom_Getters_ReadEveryTypeByTheSharedRules()
+        {
+            DomReads<byte>(" +255 ", (XmlElement e, out byte v) => e.TryGetByte(out v), e => e.GetByte(), byte.MaxValue);
+            DomRefuses<byte>("256", (XmlElement e, out byte v) => e.TryGetByte(out v), e => e.GetByte(), "The value is not a valid integer.");
+            DomReads<short>(" -32768 ", (XmlElement e, out short v) => e.TryGetInt16(out v), e => e.GetInt16(), short.MinValue);
+            DomRefuses<short>("32768", (XmlElement e, out short v) => e.TryGetInt16(out v), e => e.GetInt16(), "The value is not a valid integer.");
+            DomReads<int>(" +2147483647 ", (XmlElement e, out int v) => e.TryGetInt32(out v), e => e.GetInt32(), int.MaxValue);
+            DomRefuses<int>("1e3", (XmlElement e, out int v) => e.TryGetInt32(out v), e => e.GetInt32(), "The value is not a valid integer.");
+            DomReads<long>("-9223372036854775808", (XmlElement e, out long v) => e.TryGetInt64(out v), e => e.GetInt64(), long.MinValue);
+            DomRefuses<long>("9223372036854775808", (XmlElement e, out long v) => e.TryGetInt64(out v), e => e.GetInt64(), "The value is not a valid integer.");
+            DomReads<sbyte>("-128", (XmlElement e, out sbyte v) => e.TryGetSByte(out v), e => e.GetSByte(), sbyte.MinValue);
+            DomRefuses<sbyte>("128", (XmlElement e, out sbyte v) => e.TryGetSByte(out v), e => e.GetSByte(), "The value is not a valid integer.");
+            DomReads<ushort>("65535", (XmlElement e, out ushort v) => e.TryGetUInt16(out v), e => e.GetUInt16(), ushort.MaxValue);
+            DomRefuses<ushort>("-1", (XmlElement e, out ushort v) => e.TryGetUInt16(out v), e => e.GetUInt16(), "The value is not a valid integer.");
+            DomReads<uint>("4294967295", (XmlElement e, out uint v) => e.TryGetUInt32(out v), e => e.GetUInt32(), uint.MaxValue);
+            DomRefuses<uint>("4294967296", (XmlElement e, out uint v) => e.TryGetUInt32(out v), e => e.GetUInt32(), "The value is not a valid integer.");
+            DomReads<ulong>("18446744073709551615", (XmlElement e, out ulong v) => e.TryGetUInt64(out v), e => e.GetUInt64(), ulong.MaxValue);
+            DomRefuses<ulong>("18446744073709551616", (XmlElement e, out ulong v) => e.TryGetUInt64(out v), e => e.GetUInt64(), "The value is not a valid integer.");
+            DomReads<decimal>(" 12.50 ", (XmlElement e, out decimal v) => e.TryGetDecimal(out v), e => e.GetDecimal(), 12.50m);
+            DomRefuses<decimal>("1e2", (XmlElement e, out decimal v) => e.TryGetDecimal(out v), e => e.GetDecimal(), "The value is not a valid decimal.");
+            DomReads<double>("-INF", (XmlElement e, out double v) => e.TryGetDouble(out v), e => e.GetDouble(), double.NegativeInfinity);
+            DomRefuses<double>("Infinity", (XmlElement e, out double v) => e.TryGetDouble(out v), e => e.GetDouble(), "The value is not a valid double.");
+            DomReads<float>(" 0.25 ", (XmlElement e, out float v) => e.TryGetSingle(out v), e => e.GetSingle(), 0.25f);
+            DomRefuses<float>("e3", (XmlElement e, out float v) => e.TryGetSingle(out v), e => e.GetSingle(), "The value is not a valid float.");
+            DomReads<Guid>("{00112233-4455-6677-8899-aabbccddeeff}", (XmlElement e, out Guid v) => e.TryGetGuid(out v), e => e.GetGuid(), Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"));
+            DomRefuses<Guid>("gg112233-4455-6677-8899-aabbccddeeff", (XmlElement e, out Guid v) => e.TryGetGuid(out v), e => e.GetGuid(), "The value is not a valid GUID.");
+            DomReads<DateTime>("2020-01-02T03:04:05Z", (XmlElement e, out DateTime v) => e.TryGetDateTime(out v), e => e.GetDateTime(), new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc));
+            DomRefuses<DateTime>("March 5, 2020", (XmlElement e, out DateTime v) => e.TryGetDateTime(out v), e => e.GetDateTime(), "The value is not a valid dateTime.");
+            DomReads<DateTimeOffset>("2020-01-02T03:04:05-08:00", (XmlElement e, out DateTimeOffset v) => e.TryGetDateTimeOffset(out v), e => e.GetDateTimeOffset(), new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.FromHours(-8)));
+            DomRefuses<DateTimeOffset>("2020-13-02T03:04:05Z", (XmlElement e, out DateTimeOffset v) => e.TryGetDateTimeOffset(out v), e => e.GetDateTimeOffset(), "The value is not a valid dateTime.");
+        }
+
+        [TestMethod]
+        public void Dom_TryGetBytesFromBase64_DecodesOrReturnsFalse()
+        {
+            using var valid = Document(" AQ\r\n  ID ");
+            valid.RootElement.TryGetBytesFromBase64(out var bytes).Should().BeTrue();
+            bytes.Should().Equal(1, 2, 3);
+            using var invalid = Document("AQI");
+            invalid.RootElement.TryGetBytesFromBase64(out var none).Should().BeFalse();
+            none.Should().BeNull();
+        }
+
+        [TestMethod]
+        public void Dom_TryGetters_ReadAnAttributeValue()
+        {
+            using var document = XmlDocument.Parse("<e a=\" +12 \" b=\"x\"/>");
+            document.RootElement.GetAttribute("a").TryGetInt16(out var value).Should().BeTrue();
+            value.Should().Be(12);
+            document.RootElement.GetAttribute("b").TryGetInt16(out var none).Should().BeFalse();
+            none.Should().Be(0);
+        }
+
+        [TestMethod]
+        public void Dom_TryGetters_ThrowForANilElementAndForNoElement_AsTheGettersDo()
+        {
+            using var document = XmlDocument.Parse("<e xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/>");
+            var nil = document.RootElement;
+            foreach (var read in new Action<XmlElement>[]
+            {
+                e => e.TryGetByte(out _),
+                e => e.TryGetBytesFromBase64(out _),
+                e => e.TryGetDateTime(out _),
+                e => e.TryGetDateTimeOffset(out _),
+                e => e.TryGetDecimal(out _),
+                e => e.TryGetDouble(out _),
+                e => e.TryGetGuid(out _),
+                e => e.TryGetInt16(out _),
+                e => e.TryGetInt32(out _),
+                e => e.TryGetInt64(out _),
+                e => e.TryGetSByte(out _),
+                e => e.TryGetSingle(out _),
+                e => e.TryGetUInt16(out _),
+                e => e.TryGetUInt32(out _),
+                e => e.TryGetUInt64(out _),
+                e => e.GetByte(),
+                e => e.GetInt16(),
+                e => e.GetSByte(),
+                e => e.GetSingle(),
+                e => e.GetUInt16(),
+                e => e.GetUInt32(),
+                e => e.GetUInt64(),
+            })
+            {
+                FluentActions.Invoking(() => read(nil)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be("The element is nil and has no value.");
+                FluentActions.Invoking(() => read(default)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The XML element is empty.");
+            }
+        }
+
+        [TestMethod]
+        public void GetString_KeepsWhitespace_ThatTypedGettersCollapse()
+        {
+            ReaderText(" 42 ").GetString().Should().Be(" 42 ");
+            using var document = Document(" 42 ");
+            document.RootElement.GetString().Should().Be(" 42 ");
+            document.RootElement.GetInt32().Should().Be(42);
+            XmlLexical.Collapse(Utf8(" \t\r\n")).IsEmpty.Should().BeTrue();
+            XmlLexical.Collapse(Utf8("a b")).SequenceEqual("a b"u8).Should().BeTrue();
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        private static XmlDocument Document(string text)
+        {
+            return XmlDocument.Parse("<e>" + Escape(text) + "</e>", new XmlDocumentOptions { WhitespaceHandling = XmlWhitespaceHandling.Significant });
+        }
+
+        private static void DomReads<T>(string text, TryRead<T> tryGet, Func<XmlElement, T> get, T expected)
+        {
+            using var document = Document(text);
+            tryGet(document.RootElement, out var value).Should().BeTrue("the DOM must read '{0}'", text);
+            value.Should().Be(expected);
+            get(document.RootElement).Should().Be(expected);
+        }
+
+        private static void DomRefuses<T>(string text, TryRead<T> tryGet, Func<XmlElement, T> get, string message)
+        {
+            using var document = Document(text);
+            var root = document.RootElement;
+            tryGet(root, out var value).Should().BeFalse("the DOM must refuse '{0}'", text);
+            value.Should().Be(default(T));
+            FluentActions.Invoking(() => get(root)).Should().ThrowExactly<XmlException>().Which.Message.Should().Be(message);
+        }
+
+        private static void DomThrows(string text, Action<XmlElement> read)
+        {
+            using var document = Document(text);
+            var threw = false;
+            try
+            {
+                read(document.RootElement);
+            }
+            catch (XmlException)
+            {
+                threw = true;
+            }
+
+            threw.Should().BeTrue("the DOM must reject '{0}'", text);
+        }
+
+        private static string Escape(string text)
+        {
+            return text.Replace("&", "&amp;", StringComparison.Ordinal)
+                .Replace("<", "&lt;", StringComparison.Ordinal)
+                .Replace("\r", "&#13;", StringComparison.Ordinal);
+        }
+
+        private static Utf8XmlReader ReaderText(string text)
+        {
+            var reader = new Utf8XmlReader(Utf8("<e a=\"\">" + Escape(text) + "</e>"), new XmlReaderOptions { WhitespaceHandling = XmlWhitespaceHandling.Significant });
+            reader.Read();
+            if (text.Length > 0)
+            {
+                reader.Read();
+            }
+            else
+            {
+                reader.MoveToNextAttribute();
+            }
+
+            return reader;
+        }
+
+        private static byte[] Utf8(string text)
+        {
+            return Encoding.UTF8.GetBytes(text);
+        }
+
+        #endregion
+
+    }
+
+}

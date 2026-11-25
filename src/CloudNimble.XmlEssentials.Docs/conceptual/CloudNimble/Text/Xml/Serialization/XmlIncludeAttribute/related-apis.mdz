@@ -1,0 +1,3 @@
+CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute
+CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute
+CloudNimble.Text.Xml.XmlSerializerOptions

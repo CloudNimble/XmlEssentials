@@ -1,0 +1,7 @@
+- **Set `NewLine` when the bytes matter.** The default is `Environment.NewLine`, which differs between Windows and Linux. Choose `"\n"` or `"\r\n"` when the output is compared, hashed, signed, or checked in. The value is used for every line break, including the ones inside text, so it matters for output that isn't indented too.
+- **Set `EmptyElementStyle` and `AttributeStyle` to match a file you edit.** A document or a node that is written back then differs from its source only where you changed it. `SelfClosingWithSpace` gives the `<e />` form that the writers in `System.Xml` use.
+- **Don't indent output that only programs read.** Indentation makes the output larger and changes nothing a parser cares about.
+- **Use `OmitXmlDeclaration` for fragments** that go inside another document or message.
+- **Leave `SkipValidation` off** until a measurement shows that you need it, and then only for code whose output you test. With it on, the writer can produce XML that no reader accepts.
+- **Leave `EmitByteOrderMark` off** unless a consumer asks for the byte order mark. UTF-8 doesn't need one.
+- **Keep `Version` at XML 1.0** unless your data holds control characters that only XML 1.1 can carry.

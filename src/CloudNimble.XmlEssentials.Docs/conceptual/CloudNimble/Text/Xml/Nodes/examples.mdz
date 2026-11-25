@@ -1,0 +1,77 @@
+### Parse a document and read from the tree
+
+```csharp
+const string xml = """
+    <Order id="1042" status="open">
+      <Customer>Ada Lovelace</Customer>
+      <Item sku="KB-1">Keyboard</Item>
+      <Item sku="MS-2">Mouse</Item>
+    </Order>
+    """;
+
+var order = (XmlElementNode)XmlNode.Parse(xml);
+
+output.WriteLine($"Customer: {order["Customer"]!.InnerText}");
+output.WriteLine($"Status: {order.Attributes["status"]!.Value}");
+output.WriteLine($"Discount element found: {order["Discount"] is not null}");
+output.WriteLine($"{order.Children.Count} child nodes, {order.OfType<XmlElementNode>().Count()} of them elements, {order.Attributes.Count} attributes");
+
+foreach (XmlNode child in order.Children)
+{
+    if (child is XmlElementNode { LocalName: "Item" } item)
+    {
+        output.WriteLine($"{item.Attributes["sku"]!.Value}: {item.InnerText}");
+    }
+}
+
+XmlNode first = order.Children[0];
+output.WriteLine($"The first child is a {first.ValueKind} node, and its parent is <{((XmlElementNode)first.Parent!).LocalName}>");
+```
+
+The code produces the following output:
+
+```text
+Customer: Ada Lovelace
+Status: open
+Discount element found: False
+7 child nodes, 3 of them elements, 2 attributes
+KB-1: Keyboard
+MS-2: Mouse
+The first child is a Text node, and its parent is <Order>
+```
+
+Four of the seven child nodes are the white space between the elements, which the tree keeps.
+
+### Add each kind of node
+
+```csharp
+var note = new XmlElementNode("Note");
+note.Add(new XmlCommentNode(" reviewed "));
+note.Add(new XmlTextNode("Use <b> & </b> for bold. "));
+note.Add(new XmlCDataNode("<b>Raw</b> & unescaped"));
+note.Add(new XmlProcessingInstructionNode("print", "copies=\"2\""));
+note.AddElement("Signature");
+
+output.WriteLine(note.ToString());
+
+foreach (XmlNode child in note.Children)
+{
+    output.WriteLine($"{child.GetType().Name}: {child.ValueKind}");
+}
+
+output.WriteLine($"InnerText: {note.InnerText}");
+```
+
+The code produces the following output:
+
+```text
+<Note><!-- reviewed -->Use &lt;b> &amp; &lt;/b> for bold. <![CDATA[<b>Raw</b> & unescaped]]><?print copies="2"?><Signature/></Note>
+XmlCommentNode: Comment
+XmlTextNode: Text
+XmlCDataNode: CData
+XmlProcessingInstructionNode: ProcessingInstruction
+XmlElementNode: Element
+InnerText: Use <b> & </b> for bold. <b>Raw</b> & unescaped
+```
+
+[View sample 29](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs) and [sample 30](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs) on GitHub.

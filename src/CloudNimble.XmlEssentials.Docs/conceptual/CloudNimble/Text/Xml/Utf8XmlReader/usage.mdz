@@ -1,0 +1,59 @@
+Create a reader over UTF-8 bytes (a `u8` literal, a `byte[]`, a `ReadOnlySpan<byte>`, or a `ReadOnlySequence<byte>`) and call `Read` until it returns `false`. After each call, `TokenType` says what the reader is on.
+
+```csharp
+ReadOnlySpan<byte> xml = """
+    <Order id="1042">
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+      <Total>129.90</Total>
+    </Order>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType is not XmlTokenType.StartElement)
+    {
+        continue;
+    }
+
+    if (reader.LocalNameEquals("Order"u8))
+    {
+        while (reader.MoveToNextAttribute())
+        {
+            if (reader.LocalNameEquals("id"u8))
+            {
+                output.WriteLine($"Order {reader.GetInt32()}");
+            }
+        }
+
+        reader.MoveToElement();
+    }
+    else if (reader.LocalNameEquals("Item"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Item: {reader.GetString()}");
+    }
+    else if (reader.LocalNameEquals("Total"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Total: {reader.GetDecimal()}");
+    }
+}
+```
+
+The members you use most:
+
+| To | Use |
+| --- | --- |
+| Move to the next token | `Read` |
+| Identify an element or attribute | `LocalNameEquals`, `NamespaceUriEquals`, `LocalNameSpan`, `PrefixSpan`, `NamespaceUriSpan` |
+| Visit the attributes of a start tag | `MoveToNextAttribute`, `MoveToElement`, `AttributeCount` |
+| Tell `<e/>` from `<e></e>` | `IsEmptyElement` |
+| Read a value | `ValueSpan`, `GetString`, the `Get*` and `TryGet*` methods, `ValueTextEquals`, `CopyString` |
+| Pass over an element | `Skip`, `TrySkip` |
+| Read in blocks | The `isFinalBlock` constructors, `CurrentState`, `BytesConsumed` |
+
+Pass an [`XmlReaderOptions`](/api-reference/CloudNimble/Text/Xml/XmlReaderOptions) to the constructor to leave out comments and the white space between elements, to read a fragment, or to change a limit. By default the reader reports both, so that a document can be written back unchanged. The loop above isn't affected, because it acts only on start tags.
+
+For a walk through every feature, see [How to read XML with Utf8XmlReader](/guides/use-utf8xmlreader).

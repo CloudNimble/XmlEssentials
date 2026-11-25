@@ -1,0 +1,15 @@
+`XmlObjectCreationHandling` says what happens to the value a member already holds when the member is read. Use it in two places: [`[XmlObjectCreationHandling]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectCreationHandlingAttribute), for one member or one type, and `XmlSerializerOptions.PreferredObjectCreationHandling`, for every member. It is the counterpart of `JsonObjectCreationHandling`, with the same values and rules.
+
+| Value | When the member is read |
+| --- | --- |
+| `Replace` | The member is given a new value. A member with no setter isn't read. This is the default. |
+| `Populate` | The value the member holds is kept. Items are added to a collection, entries to a dictionary, and the members of an object are set on it. |
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    PreferredObjectCreationHandling = XmlObjectCreationHandling.Populate,
+};
+```
+
+See [Populate a collection that already holds a value](/guides/collections#populate-a-collection-that-already-holds-a-value) for what can and can't be populated.

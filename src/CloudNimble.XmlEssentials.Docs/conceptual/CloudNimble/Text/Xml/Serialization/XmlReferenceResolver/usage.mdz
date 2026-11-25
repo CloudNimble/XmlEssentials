@@ -1,0 +1,85 @@
+An `XmlReferenceResolver` maps objects to identifiers and back for one call to `Serialize` or `Deserialize`. The serializer gets it from `XmlReferenceHandler.CreateResolver`. Derive from both classes to control how the identifiers in a document are resolved. The class corresponds to `ReferenceResolver` in System.Text.Json.
+
+| Method | Called when |
+| --- | --- |
+| `AddReference(referenceId, value)` | Reading: an element has an `id` attribute. Store the object under that identifier. |
+| `ResolveReference(referenceId)` | Reading: an element has a `ref` attribute. Return the object, or `null` if the identifier is unknown, in which case the serializer throws `XmlException`. |
+| `GetReference(value, out alreadyExists)` | Writing: an object is about to be written. Return its identifier, and report whether the object was seen before. |
+
+The following resolver keeps the objects in a dictionary that its handler owns, so the caller can look them up after the document has been read.
+
+```csharp
+private sealed class DirectoryReferenceHandler : XmlReferenceHandler
+{
+    public Dictionary<string, object> Directory { get; } = new(StringComparer.Ordinal);
+
+    public override XmlReferenceResolver CreateResolver()
+    {
+        return new DirectoryReferenceResolver(Directory);
+    }
+}
+
+private sealed class DirectoryReferenceResolver(Dictionary<string, object> directory) : XmlReferenceResolver
+{
+    public override void AddReference(string referenceId, object value)
+    {
+        directory[referenceId] = value;
+    }
+
+    public override string GetReference(object value, out bool alreadyExists)
+    {
+        foreach (KeyValuePair<string, object> pair in directory)
+        {
+            if (ReferenceEquals(pair.Value, value))
+            {
+                alreadyExists = true;
+                return pair.Key;
+            }
+        }
+
+        alreadyExists = false;
+        string id = $"object-{directory.Count + 1}";
+        directory[id] = value;
+        return id;
+    }
+
+    public override object? ResolveReference(string referenceId)
+    {
+        return directory.TryGetValue(referenceId, out object? value) ? value : null;
+    }
+}
+```
+
+Reading a document with this handler resolves its references and fills the dictionary:
+
+```csharp
+string xml = """
+    <Project xmlns:r="urn:CloudNimble.Text.Xml:refs" r:id="atlas">
+      <Name>Atlas</Name>
+      <Owner r:id="dana">
+        <Name>Dana Birkby</Name>
+      </Owner>
+      <Reviewer r:ref="dana" />
+    </Project>
+    """;
+
+var handler = new DirectoryReferenceHandler();
+var options = new XmlSerializerOptions { ReferenceHandler = handler };
+
+Project? project = XmlSerializer.Deserialize<Project>(xml, options);
+output.WriteLine(ReferenceEquals(project!.Owner, project.Reviewer));
+
+var dana = (Employee)handler.Directory["dana"];
+output.WriteLine(dana.Name);
+output.WriteLine(string.Join(", ", handler.Directory.Keys));
+```
+
+The code produces the following output:
+
+```text
+True
+Dana Birkby
+atlas, dana
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/17_PreserveReferences.cs)

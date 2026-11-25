@@ -1,0 +1,136 @@
+Each example is a sample in the repository whose output is checked by a test.
+
+### Write complete elements
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteElementNumber("Quantity", 2);
+    writer.WriteElementNumber("Total", 129.90m);
+    writer.WriteElementBoolean("Rush", true);
+    writer.WriteElementString("Placed", new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc));
+    writer.WriteElementBase64String("Signature", [0x58, 0x4D, 0x4C, 0x21]);
+    writer.WriteElementString("Comment", (string?)null);
+    writer.WriteEmptyElement("Gift");
+    writer.WriteNilElement("Discount");
+
+    writer.WriteStartElement("Notes");
+    writer.WriteFullEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+```xml
+<Order>
+  <Item>Keyboard</Item>
+  <Quantity>2</Quantity>
+  <Total>129.90</Total>
+  <Rush>true</Rush>
+  <Placed>2026-03-14T09:30:00Z</Placed>
+  <Signature>WE1MIQ==</Signature>
+  <Comment/>
+  <Gift/>
+  <Discount xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+  <Notes></Notes>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+### Write namespaces
+
+Pass the namespace URI, and the writer chooses or declares the prefix.
+
+```csharp
+const string atom = "http://www.w3.org/2005/Atom";
+const string dublinCore = "http://purl.org/dc/elements/1.1/";
+const string shop = "urn:example:shop";
+
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    // The writer declares the default namespace because nothing in scope is bound to it.
+    writer.WriteStartElement("feed", atom);
+
+    // Declare a prefix on the root so that every descendant can use it.
+    writer.WriteNamespaceDeclaration("dc", dublinCore);
+
+    // The namespace is the default one in scope, so the element needs no prefix.
+    writer.WriteElementString("title", atom, "Orders");
+
+    // The namespace is bound to dc, so the writer uses that prefix.
+    writer.WriteElementString("creator", dublinCore, "Ada");
+
+    // A prefix and a namespace that are not in scope: the writer declares them on this element.
+    writer.WriteStartElement("s", "order", shop);
+    writer.WriteAttributeString("s", "id", shop, "1042");
+    writer.WriteEndElement();
+
+    // An attribute in a namespace that has no prefix in scope gets a generated one.
+    writer.WriteStartElement("entry", atom);
+    writer.WriteAttributeString("priority", shop, "high");
+    writer.WriteAttributeString("lang", "en");
+    writer.WriteEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+```xml
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title>Orders</title>
+  <dc:creator>Ada</dc:creator>
+  <s:order xmlns:s="urn:example:shop" s:id="1042"/>
+  <entry xmlns:ns1="urn:example:shop" ns1:priority="high" lang="en"/>
+</feed>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+### Reuse one writer for several documents
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+using var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { OmitXmlDeclaration = true });
+
+string[] items = ["Keyboard", "Mouse", "Monitor"];
+foreach (var item in items)
+{
+    writer.WriteStartElement("Item");
+    writer.WriteStringValue(item);
+    writer.WriteEndElement();
+    writer.Flush();
+
+    output.WriteLine($"{Encoding.UTF8.GetString(buffer.WrittenSpan)} ({writer.BytesCommitted} bytes)");
+
+    buffer.ResetWrittenCount();
+    writer.Reset();
+}
+
+var other = new ArrayBufferWriter<byte>();
+writer.Reset(other);
+writer.WriteEmptyElement("Done");
+writer.Flush();
+output.WriteLine($"Second buffer: {Encoding.UTF8.GetString(other.WrittenSpan)}");
+```
+
+```text
+<Item>Keyboard</Item> (21 bytes)
+<Item>Mouse</Item> (18 bytes)
+<Item>Monitor</Item> (20 bytes)
+Second buffer: <Done/>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/25_ManageWriterLifetime.cs)

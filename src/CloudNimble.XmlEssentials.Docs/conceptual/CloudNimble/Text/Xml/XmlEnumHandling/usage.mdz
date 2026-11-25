@@ -1,0 +1,27 @@
+`XmlEnumHandling` is the type of `XmlSerializerOptions.EnumHandling`. It decides whether an enumeration value is written as the name of its member or as its number. The default is `Name`.
+
+```csharp
+var ticket = new Ticket { Id = 311, Priority = TicketPriority.High };
+
+var byName = new XmlSerializerOptions { OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(ticket, byName));
+
+var byNumber = new XmlSerializerOptions { OmitXmlDeclaration = true, EnumHandling = XmlEnumHandling.Integer };
+string xml = XmlSerializer.Serialize(ticket, byNumber);
+output.WriteLine(xml);
+
+Ticket? copy = XmlSerializer.Deserialize<Ticket>(xml);
+output.WriteLine(copy!.Priority);
+```
+
+The code produces the following output:
+
+```text
+<Ticket><Id>311</Id><Priority>High</Priority></Ticket>
+<Ticket><Id>311</Id><Priority>2</Priority></Ticket>
+High
+```
+
+The last call reads the numeric document with the default options, which shows that a number is accepted when reading even though `EnumHandling` is `Name`.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/15_NullAndNil.cs)

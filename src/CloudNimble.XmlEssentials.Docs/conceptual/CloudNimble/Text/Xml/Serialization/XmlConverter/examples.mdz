@@ -1,0 +1,83 @@
+### Register converters in the options
+
+The following example registers `MoneyConverter` and a second converter that replaces the built-in converter of `DateOnly`. `Issued` is mapped as an attribute, so it's written by the date converter's `WriteAsAttribute` method.
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+options.Converters.Add(new MoneyConverter());
+options.Converters.Add(new CompactDateConverter());
+
+var invoice = new Invoice
+{
+    Number = "INV-204",
+    Issued = new DateOnly(2026, 11, 23),
+    Due = new DateOnly(2026, 12, 23),
+    Total = new Money(129.9m, "USD"),
+};
+
+string xml = XmlSerializer.Serialize(invoice, options);
+output.WriteLine(xml);
+
+Invoice? copy = XmlSerializer.Deserialize<Invoice>(xml, options);
+output.WriteLine($"{copy!.Number}: {copy.Total.Amount} {copy.Total.Currency}, issued {copy.Issued:yyyy-MM-dd}, due {copy.Due:yyyy-MM-dd}");
+```
+
+The code produces the following output:
+
+```text
+<Invoice Issued="20261123"><Due>20261223</Due><Number>INV-204</Number><Total>129.90 USD</Total></Invoice>
+INV-204: 129.90 USD, issued 2026-11-23, due 2026-12-23
+```
+
+### Convert a built-in type in elements, attributes, and text
+
+```csharp
+public sealed class CompactDateConverter : XmlConverter<DateOnly>
+{
+    private const string Format = "yyyyMMdd";
+
+    public override DateOnly Read(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+    {
+        DateOnly value = default;
+        if (reader.IsEmptyElement)
+        {
+            return value;
+        }
+
+        while (reader.Read() && reader.TokenType is not XmlTokenType.EndElement)
+        {
+            if (reader.TokenType is XmlTokenType.Text)
+            {
+                value = ReadLexical(reader.ValueSpan, options);
+            }
+        }
+
+        return value;
+    }
+
+    public override DateOnly ReadAsAttribute(ref Utf8XmlReader reader, Type typeToConvert, XmlSerializerOptions options)
+    {
+        return ReadLexical(reader.ValueSpan, options);
+    }
+
+    public override DateOnly ReadLexical(ReadOnlySpan<byte> utf8, XmlSerializerOptions options)
+    {
+        string text = Encoding.UTF8.GetString(utf8);
+        return DateOnly.TryParseExact(text, Format, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly value)
+            ? value
+            : throw new XmlException($"'{text}' is not a date in the form {Format}.");
+    }
+
+    public override void Write(Utf8XmlWriter writer, DateOnly value, XmlSerializerOptions options)
+    {
+        writer.WriteStringValue(value.ToString(Format, CultureInfo.InvariantCulture));
+    }
+
+    public override void WriteAsAttribute(Utf8XmlWriter writer, XmlName name, DateOnly value, XmlSerializerOptions options)
+    {
+        writer.WriteAttributeString(name.LocalName, value.ToString(Format, CultureInfo.InvariantCulture));
+    }
+}
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/35_CustomConverters.cs)

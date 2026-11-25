@@ -1,0 +1,34 @@
+Put `[XmlCData]` on a member to make it the text of its containing element, written as a CDATA section. A CDATA section holds characters such as `<` and `&` without escaping, which keeps embedded code or markup readable.
+
+```csharp
+public sealed class Script
+{
+    [XmlAttribute("language")]
+    public string? Language { get; set; }
+
+    [XmlCData]
+    public string? Code { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+var script = new Script { Language = "js", Code = "if (a < b && b > 0) { run(); }" };
+
+string xml = XmlSerializer.Serialize(script, options);
+output.WriteLine(xml);
+
+Script? copy = XmlSerializer.Deserialize<Script>(xml, options);
+output.WriteLine(copy!.Code);
+```
+
+The code produces the following output:
+
+```text
+<Script language="js"><![CDATA[if (a < b && b > 0) { run(); }]]></Script>
+if (a < b && b > 0) { run(); }
+```
+
+The member doesn't get an element of its own: `Code` is the content of `<Script>`. The other members of the type are attributes.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)

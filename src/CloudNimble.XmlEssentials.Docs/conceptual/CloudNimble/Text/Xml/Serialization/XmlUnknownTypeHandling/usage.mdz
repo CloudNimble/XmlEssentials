@@ -1,0 +1,15 @@
+`XmlUnknownTypeHandling` is the type of `XmlSerializerOptions.UnknownTypeHandling`. It says what an element is read as when the declared type is `object`, where the XML can't say which type wrote it. It is the counterpart of `JsonUnknownTypeHandling`.
+
+| Value | A value declared as `object` is read as |
+| --- | --- |
+| `XmlElement` | An [`XmlElement`](/api-reference/CloudNimble/Text/Xml/XmlElement), which is read-only. This is the default. |
+| `XmlNode` | An [`XmlNode`](/api-reference/CloudNimble/Text/Xml/Nodes/XmlNode) that can be changed. The node is an `XmlElementNode`. |
+
+```csharp
+var options = new XmlSerializerOptions
+{
+    UnknownTypeHandling = XmlUnknownTypeHandling.XmlNode,
+};
+```
+
+The option applies to a member, an item of a collection, a value of a dictionary, and the document root. An element marked `xsi:nil="true"` is read as `null` under both values. Writing isn't affected.

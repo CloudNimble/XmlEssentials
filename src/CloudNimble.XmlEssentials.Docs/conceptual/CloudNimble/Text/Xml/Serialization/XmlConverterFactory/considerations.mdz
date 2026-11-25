@@ -1,0 +1,6 @@
+- **The returned converter must match the type exactly.** If `CreateConverter` returns `null`, the serializer throws `InvalidOperationException`. It also throws when the converter returned is for another type.
+- **`CreateConverter` runs once for each type and options instance.** The serializer keeps the converter it returns, so the work of creating it isn't repeated.
+- **Order in the `Converters` list matters.** The first converter or factory whose `CanConvert` returns `true` is used. Put a converter for one specific type before a factory that also covers it.
+- **Reflection in a factory isn't safe for Native AOT.** A factory that calls `MakeGenericType` or `Activator.CreateInstance` on a constructed type needs code the ahead-of-time compiler may not have produced. In an AOT application, construct the converters directly, for example in a `switch` on `typeToConvert`.
+- **Source generation.** A source-generated context in the default mode or in `Metadata` mode uses a factory as the reflection resolver does. A factory in `XmlSerializerOptions.Converters` applies to every type it covers: enumerations, classes, and structs.
+- **A factory makes `CanConvert` broad, so keep it precise.** A factory that returns `true` for types it can't handle hides the built-in converter for those types.

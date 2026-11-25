@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net11.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>CloudNimble.XmlEssentials.Samples.Cli</RootNamespace>
+		<AssemblyName>xmlessentials</AssemblyName>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<PublishAot>true</PublishAot>
+		<NoWarn>$(NoWarn);IL2026;IL3050;IL2104</NoWarn>
+		<SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+		<IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
+		<Description>Command-line XML parse and serialize sample using XmlEssentials and McMaster.Extensions.CommandLineUtils. Publishable with Native AOT.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<RuntimeHostConfigurationOption Include="CloudNimble.Text.Xml.XmlSerializer.IsReflectionEnabledByDefault" Value="false" Trim="true" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="5.*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials\CloudNimble.XmlEssentials.csproj" />
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false"
+		                  GlobalPropertiesToRemove="PublishAot" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<CompilerVisibleProperty Include="PublishAot" />
+	</ItemGroup>
+
+	<Import Project="..\CloudNimble.XmlEssentials\build\XmlEssentials.props" />
+
+</Project>

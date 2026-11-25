@@ -1,0 +1,47 @@
+### Round-trip content the type doesn't declare
+
+The `Settings` type maps only `Theme`. The document also has two attributes and two elements, one of each in a namespace. They are captured, and written back after the mapped member changes.
+
+```csharp
+string xml = """
+    <Settings version="2" xmlns:ui="urn:example:ui" ui:density="compact">
+      <Theme>Dark</Theme>
+      <Telemetry enabled="false" />
+      <ui:Font size="14">Cascadia Code</ui:Font>
+    </Settings>
+    """;
+
+Settings? settings = XmlSerializer.Deserialize<Settings>(xml);
+output.WriteLine($"Theme: {settings!.Theme}");
+
+foreach (KeyValuePair<XmlName, string> attribute in settings.Extra!.Attributes)
+{
+    output.WriteLine($"Attribute: {attribute.Key} = {attribute.Value}");
+}
+
+foreach (XmlElementNode element in settings.Extra.Elements)
+{
+    output.WriteLine($"Element: {element.LocalName}");
+}
+
+settings.Theme = "Light";
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+output.WriteLine(XmlSerializer.Serialize(settings, options));
+```
+
+The code produces the following output:
+
+```text
+Theme: Dark
+Attribute: version = 2
+Attribute: ui:density = compact
+Element: Telemetry
+Element: Font
+<Settings version="2" xmlns:ui="urn:example:ui" ui:density="compact">
+  <Theme>Light</Theme>
+  <Telemetry enabled="false"/>
+  <ui:Font size="14">Cascadia Code</ui:Font>
+</Settings>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs)

@@ -1,0 +1,59 @@
+Create a writer over an `IBufferWriter<byte>` or a `Stream`, write the document with one call per start tag, attribute, value, and end tag, and dispose the writer to flush it.
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+
+    writer.WriteStartElement("Customer");
+    writer.WriteStringValue("Ada Lovelace");
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Total");
+    writer.WriteAttributeString("currency", "EUR");
+    writer.WriteNumberValue(129.90m);
+    writer.WriteEndElement();
+
+    writer.WriteStartElement("Notes");
+    writer.WriteEndElement();
+
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Customer>Ada Lovelace</Customer>
+  <Total currency="EUR">129.90</Total>
+  <Notes/>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/23_WriteElementsAndValues.cs)
+
+The members you use most:
+
+| To | Use |
+| --- | --- |
+| Open and close an element | `WriteStartElement`, `WriteEndElement`, `WriteFullEndElement` |
+| Write an attribute | `WriteAttributeString`, `WriteAttributeNumber`, or `WriteStartAttribute` and `WriteEndAttribute` around a value |
+| Write a value | `WriteStringValue`, `WriteNumberValue`, `WriteBooleanValue`, `WriteBase64StringValue` |
+| Write a value from several buffers | `WriteStringValueSegment`, `WriteBase64StringSegment` |
+| Write a complete element | `WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, `WriteElementBase64String`, `WriteEmptyElement`, `WriteNilElement` |
+| Mark the open element nil | `WriteNilValue` |
+| Declare a namespace yourself | `WriteNamespaceDeclaration`, `WriteDefaultNamespace` |
+| Write other markup | `WriteComment`, `WriteCData`, `WriteProcessingInstruction`, `WriteXmlDeclaration`, `WriteRawValue` |
+| Send output on its way | `Flush`, `FlushAsync`, `Dispose`, `DisposeAsync` |
+| See where the writer is | `BytesPending`, `BytesCommitted`, `CurrentDepth` |
+| Write another document | `Reset` |
+
+Most methods take names and values as a `string`, a `ReadOnlySpan<char>`, or UTF-8 in a `ReadOnlySpan<byte>`, and element names also as an [`XmlEncodedText`](/api-reference/CloudNimble/Text/Xml/XmlEncodedText). Pass an [`XmlWriterOptions`](/api-reference/CloudNimble/Text/Xml/XmlWriterOptions) to the constructor to indent, to leave out the declaration, or to change a limit.
+
+For a walk through every feature, see [How to write XML with Utf8XmlWriter](/guides/use-utf8xmlwriter).

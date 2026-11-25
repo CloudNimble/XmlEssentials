@@ -1,0 +1,48 @@
+Set `XmlReaderOptions.CommentHandling` to choose what a `Utf8XmlReader` does when it reads a comment.
+
+| Value | The reader |
+| --- | --- |
+| `Allow` | Reports the comment as an `XmlTokenType.Comment` token. Read its text with `Utf8XmlReader.GetComment`. This is the default. |
+| `Skip` | Reads past the comment and reports nothing. |
+| `Disallow` | Throws an `XmlException` with the message `Comments are not allowed.` |
+
+The sample reads one document twice, first with the default options and then with comments skipped (and white space between elements left out):
+
+```csharp
+var xml = "<?xml-stylesheet href=\"order.xsl\"?>\n<Order>\n  <!-- rush -->\n  <Note><![CDATA[a < b]]></Note>\n</Order>"u8;
+
+output.WriteLine("Default options:");
+PrintTokens(xml, new XmlReaderOptions(), output);
+
+var dataOnly = new XmlReaderOptions
+{
+    CommentHandling = XmlCommentHandling.Skip,
+    WhitespaceHandling = XmlWhitespaceHandling.Insignificant,
+};
+
+output.WriteLine("Comments skipped and white space insignificant:");
+PrintTokens(xml, dataOnly, output);
+```
+
+```text
+Default options:
+  ProcessingInstruction target=xml-stylesheet data="href="order.xsl""
+  StartElement Order
+  Text "\n  "
+  Comment " rush "
+  Text "\n  "
+  StartElement Note
+  CData "a < b"
+  EndElement Note
+  Text "\n"
+  EndElement Order
+Comments skipped and white space insignificant:
+  ProcessingInstruction target=xml-stylesheet data="href="order.xsl""
+  StartElement Order
+  StartElement Note
+  CData "a < b"
+  EndElement Note
+  EndElement Order
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)

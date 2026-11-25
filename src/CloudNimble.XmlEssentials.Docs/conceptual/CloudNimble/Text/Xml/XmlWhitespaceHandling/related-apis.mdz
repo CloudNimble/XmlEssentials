@@ -1,0 +1,5 @@
+CloudNimble.Text.Xml.XmlReaderOptions
+CloudNimble.Text.Xml.XmlDocumentOptions
+CloudNimble.Text.Xml.XmlTokenType
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.XmlCommentHandling

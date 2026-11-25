@@ -1,0 +1,7 @@
+CloudNimble.Text.Xml.Serialization.IXmlTypeInfoResolver
+CloudNimble.Text.Xml.Serialization.XmlSerializerContext
+CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+CloudNimble.Text.Xml.Serialization.XmlConverter
+CloudNimble.Text.Xml.Serialization.XmlConverterAttribute
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.XmlSerializer

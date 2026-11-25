@@ -1,0 +1,85 @@
+The example is a sample in the repository whose output is checked by a test.
+
+### Read a stream in blocks
+
+The loop reads a block from a stream, gives it to a reader with the state of the previous reader, and keeps the bytes that the reader didn't consume for the next pass. The buffer is 16 bytes so that the sample has to refill it and grow it.
+
+```csharp
+using var stream = new MemoryStream(Encoding.UTF8.GetBytes(
+    "<Orders><Order id=\"1042\"><Item>Keyboard</Item><Item>Mouse &amp; pad</Item></Order><Order id=\"1043\"><Item>Monitor stand</Item></Order></Orders>"));
+
+// The buffer is small so that the sample has to refill it and grow it. Use 4096 bytes or more in an application.
+var buffer = new byte[16];
+var buffered = 0;
+var isFinalBlock = false;
+var state = new XmlReaderState(new XmlReaderOptions());
+
+// What the application knows about its place in the document. The reader does not keep this between blocks.
+var inItem = false;
+var blocks = 0;
+
+while (!isFinalBlock)
+{
+    var read = stream.Read(buffer, buffered, buffer.Length - buffered);
+    buffered += read;
+    isFinalBlock = read == 0;
+    blocks++;
+
+    var reader = new Utf8XmlReader(buffer.AsSpan(0, buffered), isFinalBlock, state);
+    while (reader.Read())
+    {
+        switch (reader.TokenType)
+        {
+            case XmlTokenType.StartElement when reader.LocalNameEquals("Order"u8):
+                while (reader.MoveToNextAttribute())
+                {
+                    if (reader.LocalNameEquals("id"u8))
+                    {
+                        output.WriteLine($"Order {reader.GetInt32()}");
+                    }
+                }
+
+                break;
+
+            case XmlTokenType.StartElement:
+                inItem = reader.LocalNameEquals("Item"u8);
+                break;
+
+            case XmlTokenType.Text when inItem:
+                output.WriteLine($"  Item: {reader.GetString()}");
+                break;
+
+            case XmlTokenType.EndElement:
+                inItem = false;
+                break;
+        }
+    }
+
+    // Keep the bytes the reader did not consume. They are the start of a token that is not complete yet.
+    state = reader.CurrentState;
+    var consumed = (int)reader.BytesConsumed;
+    buffer.AsSpan(consumed, buffered - consumed).CopyTo(buffer);
+    buffered -= consumed;
+
+    // A full buffer with nothing consumed means the next token is larger than the buffer.
+    if (buffered == buffer.Length)
+    {
+        Array.Resize(ref buffer, buffer.Length * 2);
+    }
+}
+
+output.WriteLine($"Read {stream.Length} bytes in {blocks} blocks. The buffer grew to {buffer.Length} bytes.");
+```
+
+```text
+Order 1042
+  Item: Keyboard
+  Item: Mouse & pad
+Order 1043
+  Item: Monitor stand
+Read 142 bytes in 8 blocks. The buffer grew to 32 bytes.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/22_ReadFromSequencesAndStreams.cs)
+
+[How to read XML with Utf8XmlReader](/guides/use-utf8xmlreader#read-a-stream-in-blocks) explains each step.

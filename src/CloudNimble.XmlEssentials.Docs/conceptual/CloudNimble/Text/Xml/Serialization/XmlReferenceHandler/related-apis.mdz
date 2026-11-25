@@ -1,0 +1,4 @@
+CloudNimble.Text.Xml.Serialization.XmlReferenceResolver
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.XmlNamespaces
+CloudNimble.Text.Xml.Serialization.XmlIgnoreAttribute

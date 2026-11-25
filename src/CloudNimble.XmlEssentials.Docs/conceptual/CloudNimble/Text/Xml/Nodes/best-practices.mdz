@@ -1,0 +1,8 @@
+- **Use the tree to change or build XML, and `XmlDocument` to read it.** The tree has an object for every node it makes and a string for every name and value in it. The document doesn't.
+- **Reach into only what you edit.** A tree from `XmlNode.Parse` makes the nodes under an element when you first reach into it, through `Children`, `Attributes`, `InnerText`, an indexer, or a change. An element you never reach into is written from the parsed input.
+- **Clone the element you edit when you parse with `XmlDocument`.** `XmlElement.CloneNode` copies everything under the element at once, so clone the smallest element that changes.
+- **Find elements by name or type, not by position.** A tree parsed from an indented document has a text node for each run of indentation, so `Children[0]` is often white space.
+- **Use `SetAttribute` to add or change an attribute.** It updates an attribute that exists. `Attributes.Add` doesn't check for a duplicate, and a duplicate fails when the tree is written.
+- **Give every namespaced element its namespace.** A child doesn't inherit the namespace of its parent.
+- **Copy with `DeepClone` to use a node in two places.** A node has one parent, and adding a node that already has one throws.
+- **Write to a `Utf8XmlWriter` for anything but a quick look.** `ToString` builds a string with no declaration and no indentation of its own. `WriteTo` writes UTF-8 to a stream or a buffer with the options you choose.

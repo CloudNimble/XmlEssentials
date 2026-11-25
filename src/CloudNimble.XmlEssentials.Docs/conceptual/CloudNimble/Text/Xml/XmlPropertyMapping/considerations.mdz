@@ -1,0 +1,5 @@
+- The setting applies to every type serialized with the options, so the simple members of nested objects become XML attributes too.
+- A mapping attribute on a member always wins. With `Attribute` as the default, mark a member with `[XmlElement]` to keep it as an element.
+- An XML attribute can't be marked nil. A member that is `null` and mapped to an attribute is left out, so with `Attribute` a `null` value and a missing value look the same in the XML.
+- Attribute names come from `AttributeNamingPolicy`, or from `PropertyNamingPolicy` when that is `null`.
+- Use the same options to read the XML back. A member that is mapped to an attribute isn't read from an element of the same name.

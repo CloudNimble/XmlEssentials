@@ -1,0 +1,139 @@
+Each example is a sample in the repository whose output is checked by a test.
+
+### Serialize and deserialize an object
+
+```csharp
+var person = new Person { Name = "Ada", Age = 36 };
+
+string xml = XmlSerializer.Serialize(person);
+output.WriteLine(xml);
+
+Person? copy = XmlSerializer.Deserialize<Person>(xml);
+output.WriteLine($"{copy!.Name} is {copy.Age}");
+```
+
+```text
+<?xml version="1.0" encoding="utf-8"?><Person><Name>Ada</Name><Age>36</Age></Person>
+Ada is 36
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/01_SerializeAndDeserialize.cs)
+
+### Read a document with Utf8XmlReader
+
+```csharp
+ReadOnlySpan<byte> xml = """
+    <Order id="1042">
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+      <Total>129.90</Total>
+    </Order>
+    """u8;
+
+var reader = new Utf8XmlReader(xml);
+while (reader.Read())
+{
+    if (reader.TokenType is not XmlTokenType.StartElement)
+    {
+        continue;
+    }
+
+    if (reader.LocalNameEquals("Order"u8))
+    {
+        while (reader.MoveToNextAttribute())
+        {
+            if (reader.LocalNameEquals("id"u8))
+            {
+                output.WriteLine($"Order {reader.GetInt32()}");
+            }
+        }
+
+        reader.MoveToElement();
+    }
+    else if (reader.LocalNameEquals("Item"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Item: {reader.GetString()}");
+    }
+    else if (reader.LocalNameEquals("Total"u8))
+    {
+        reader.Read();
+        output.WriteLine($"Total: {reader.GetDecimal()}");
+    }
+}
+```
+
+```text
+Order 1042
+Item: Keyboard
+Item: Mouse
+Total: 129.90
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/02_ReadWithUtf8XmlReader.cs)
+
+### Write a document with Utf8XmlWriter
+
+```csharp
+var buffer = new ArrayBufferWriter<byte>();
+var options = new XmlWriterOptions { Indented = true, NewLine = "\n" };
+
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteElementString("Item", "Mouse & pad");
+    writer.WriteElementNumber("Total", 129.90m);
+    writer.WriteEndElement();
+}
+
+output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Order id="1042">
+  <Item>Keyboard</Item>
+  <Item>Mouse &amp; pad</Item>
+  <Total>129.90</Total>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/03_WriteWithUtf8XmlWriter.cs)
+
+### Query a document with XmlDocument
+
+```csharp
+const string xml = """
+    <Order id="1042">
+      <Item>Keyboard</Item>
+      <Item>Mouse</Item>
+      <Total>129.90</Total>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"Order {order.GetAttribute("id").GetInt32()}");
+
+foreach (XmlElement child in order.EnumerateChildren())
+{
+    if (child.ValueKind is XmlValueKind.Element && child.LocalName == "Item")
+    {
+        output.WriteLine($"Item: {child.GetString()}");
+    }
+}
+
+output.WriteLine($"Total: {order.GetChild("Total").GetDecimal()}");
+```
+
+```text
+Order 1042
+Item: Keyboard
+Item: Mouse
+Total: 129.90
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/04_QueryWithXmlDocument.cs)

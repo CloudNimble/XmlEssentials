@@ -1,0 +1,6 @@
+- The setting is on the options and applies to every type in the object graph. There is no attribute that sets it for one type.
+- Namespace declarations, `xsi:nil`, `xsi:type`, and the attributes the serializer itself writes for polymorphism and preserved references are never treated as unmapped.
+- A member marked `[XmlIgnore]` isn't mapped, so with `Disallow` an element for it is an error.
+- When the type has an `[XmlExtensionData]` member, unmapped elements and attributes are collected there, and `Disallow` doesn't reject them.
+- Names are matched with case unless `PropertyNameCaseInsensitive` is `true`, so with `Disallow` an element that differs from a member only by case is an error.
+- `XmlSerializerOptions.Strict` sets `Disallow`.

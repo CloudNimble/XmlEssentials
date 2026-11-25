@@ -1,0 +1,5 @@
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.XmlNamingPolicy
+CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
+CloudNimble.Text.Xml.Serialization.XmlElementAttribute

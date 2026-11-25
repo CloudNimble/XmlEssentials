@@ -1,0 +1,36 @@
+Know the following before you build on the reader.
+
+### It's a ref struct
+
+A reader can't be stored in a field of a class, captured by a lambda, or used across an `await` or a `yield return`. Passing it by value copies it. It isn't thread safe.
+
+### Lifetime of spans
+
+`ValueSpan`, `LocalNameSpan`, `PrefixSpan`, and `NamespaceUriSpan` point into your input, or into a buffer that the reader reuses for the next decoded value. They're valid until the reader moves. On a start tag or an end tag, `ValueSpan` is empty.
+
+### Allocation
+
+Reading tokens, comparing names, and parsing typed values don't allocate. `GetString`, `GetComment`, and `GetBytesFromBase64` return new objects. The reader allocates working memory, which it keeps for the tokens that follow, when a value has to be decoded, when a start tag has more than eight attributes, when more than eight namespace declarations are in scope, or when elements nest more than eight deep. The constructors that take a `scratch` buffer use that buffer first. A sequence of more than one segment is copied into one array before it's read, and `CurrentState` allocates.
+
+### What it checks
+
+The reader checks that the document is well formed as it reads, including names, characters, matching end tags, duplicate attributes, and namespace declarations. It doesn't validate against a DTD or a schema. An error is thrown when the reader reaches it, which can be after your code has handled the tokens before it.
+
+### What it rejects
+
+A document type declaration, an encoding other than UTF-8, and any entity other than the five predefined ones throw an `XmlException`. See [XML conformance](/guides/xml-conformance).
+
+### Differences from Utf8JsonReader
+
+- An empty element is one token with `IsEmptyElement` set. There's no end token for it.
+- Attributes aren't tokens in the `Read` sequence. You visit them with `MoveToNextAttribute`.
+- The value is always in `ValueSpan`. A multi-segment sequence is copied into one buffer before it is read.
+- A copy of a reader shares working memory with the original.
+- `XmlReaderState` holds the open elements and namespace bindings, so taking it allocates.
+
+### Differences from System.Xml.XmlReader
+
+- The input is UTF-8 bytes in memory, not a stream or a `TextReader`, and there's no asynchronous `Read`.
+- DTDs are always rejected, and there's no validation, no entity resolution, and no `XmlResolver`.
+- Names and values are spans of bytes. Strings are created only when you ask for one.
+- The defaults are alike: both readers report comments and white space between elements unless you turn them off.

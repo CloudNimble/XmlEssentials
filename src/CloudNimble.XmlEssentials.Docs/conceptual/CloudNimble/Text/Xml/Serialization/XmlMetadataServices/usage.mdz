@@ -1,0 +1,16 @@
+`XmlMetadataServices` is infrastructure for source-generated code. The code that the XmlEssentials generator writes into your `XmlSerializerContext` classes calls these methods to create type info from generated metadata, to write members through type info in the write fast path, and to write the start and end tags of simple elements from bytes prepared at compile time.
+
+`CreateObjectInfo` turns an `XmlObjectInfoValues<T>` into type info. The serializer then reads and writes the type from that metadata with the engine the reflection resolver uses, and with no reflection over the members of the type. `CanUseSerializeHandler` tells a context whether its write fast path agrees with a given options instance.
+
+The class isn't meant to be called from application code. Its methods are public because generated code lives in your assembly and has to reach them, and most of them are hidden from IntelliSense. `WriteLeafStart` and `WriteLeafEnd` write a tag as raw bytes and rely on the generator to pass a well-formed one. A resolver you write by hand can call `CreateObjectInfo` and the other `Create` methods, as a generated context does.
+
+To do the same things in application code, use the public entry points instead:
+
+| Instead of | Use |
+| --- | --- |
+| `CreateObjectInfo`, `CreateValueInfo` | A context's `XmlTypeInfo<T>` property, or `XmlSerializerOptions.GetTypeInfo<T>()`. |
+| `Read`, `ReadAttribute` | `XmlSerializer.Deserialize` with type info, or `Utf8XmlReader` directly. |
+| `Write`, `WriteAttribute` | `XmlSerializer.Serialize` with type info, or `Utf8XmlWriter` directly. |
+| `WriteLeafStart`, `WriteLeafEnd` | `Utf8XmlWriter.WriteStartElement` and `WriteEndElement`. |
+
+The class is the counterpart of `JsonMetadataServices` in System.Text.Json. To see how generated code is produced and used, see [How to use source generation](/guides/source-generation).

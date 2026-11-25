@@ -1,0 +1,9 @@
+- **Keep the document alive while you use its elements.** Don't return an `XmlElement` from a method that disposes the document or store one in a field that outlives it. Copy the value, or call `CloneNode`.
+- **Test for all three element kinds.** An element's `ValueKind` is `Element`, `EmptyElement` (for `<e/>`), or `Nil`. A check for `Element` alone skips the other two.
+- **Check `ValueKind` when you enumerate.** A document keeps comments and the white space between elements by default, so the children of an indented element include `Text` nodes for the indentation, as well as any CDATA sections, comments, and processing instructions.
+- **Read values from leaf elements.** `GetString` and `GetInnerText` on an element that has child elements include the white space between them.
+- **Use the `Try` lookups for optional names** and the `Get` lookups for names the document must have, so that a missing required name fails with a message that names it.
+- **Pass the namespace URI when a document mixes vocabularies.** The one-argument lookups return the first match in any namespace.
+- **Check `IsNil` before a typed getter** on an element that can carry `xsi:nil`. A typed getter on a nil element throws.
+- **Use `GetDateTimeOffset` for values with a time zone.** `GetDateTime` converts an offset other than `Z` to local time.
+- **Prefer a typed getter to parsing `GetString` yourself.** The getters apply the XML Schema lexical rules, don't depend on the current culture, and don't allocate a string.

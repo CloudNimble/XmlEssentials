@@ -1,0 +1,97 @@
+### Parse one element from a reader
+
+`ParseValue` leaves the reader on the end tag of the element it read, so the loop continues with the next one.
+
+```csharp
+ReadOnlySpan<byte> feed = """<Feed><Entry id="1"><Title>First post</Title></Entry><Entry id="2"><Title>Second post</Title></Entry></Feed>"""u8;
+
+var reader = new Utf8XmlReader(feed);
+while (reader.Read())
+{
+    if (reader.TokenType is XmlTokenType.StartElement && reader.LocalNameEquals("Entry"u8))
+    {
+        var entry = (XmlElementNode)XmlNode.ParseValue(ref reader);
+        entry.SetAttribute("read", "true");
+        output.WriteLine(entry.ToString());
+    }
+}
+```
+
+The code produces the following output:
+
+```xml
+<Entry id="1" read="true"><Title>First post</Title></Entry>
+<Entry id="2" read="true"><Title>Second post</Title></Entry>
+```
+
+### Copy a node with DeepClone
+
+```csharp
+var order = (XmlElementNode)XmlNode.Parse("""<Order><Item sku="KB-1">Keyboard</Item></Order>""");
+XmlElementNode item = order["Item"]!;
+var backorder = new XmlElementNode("Backorder");
+
+try
+{
+    backorder.Add(item);
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+var copy = (XmlElementNode)item.DeepClone();
+copy.SetAttribute("sku", "KB-1B");
+backorder.Add(copy);
+
+output.WriteLine(order.ToString());
+output.WriteLine(backorder.ToString());
+```
+
+The code produces the following output:
+
+```text
+The node already has a parent.
+<Order><Item sku="KB-1">Keyboard</Item></Order>
+<Backorder><Item sku="KB-1B">Keyboard</Item></Backorder>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/30_ChangeWithXmlNode.cs)
+
+### Call ToString on nodes that aren't elements
+
+```csharp
+output.WriteLine(new XmlCommentNode(" reviewed ").ToString());
+output.WriteLine(new XmlProcessingInstructionNode("print", "copies=\"2\"").ToString());
+output.WriteLine(new XmlDeclarationNode { Version = "1.1" }.ToString());
+
+try
+{
+    new XmlTextNode("Keyboard").ToString();
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Text: {ex.Message}");
+}
+
+try
+{
+    new XmlAttributeNode("id", "1042").ToString();
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Attribute: {ex.Message}");
+}
+```
+
+The code produces the following output:
+
+```text
+<!-- reviewed -->
+<?print copies="2"?>
+<?xml version="1.1" encoding="utf-8"?>
+Text: Text is not allowed at the document level.
+Attribute: Attributes must be written on an open start tag.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

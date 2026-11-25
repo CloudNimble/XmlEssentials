@@ -1,0 +1,83 @@
+### Serialize a list of a base type
+
+Each derived type is written under its own element name, and is read back as the same type. An object of the base type keeps the member's element name.
+
+```csharp
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n" };
+var catalog = new Catalog
+{
+    Products =
+    [
+        new Book { Title = "Clean Code", Author = "Robert C. Martin" },
+        new Dvd { Title = "The Matrix", Runtime = 136 },
+        new Product { Title = "Gift card" },
+    ],
+};
+
+string xml = XmlSerializer.Serialize(catalog, options);
+output.WriteLine(xml);
+
+Catalog? copy = XmlSerializer.Deserialize<Catalog>(xml, options);
+foreach (Product product in copy!.Products)
+{
+    output.WriteLine($"{product.GetType().Name}: {product.Title}");
+}
+```
+
+The code produces the following output:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Catalog>
+  <Book>
+    <Title>Clean Code</Title>
+    <Author>Robert C. Martin</Author>
+  </Book>
+  <Disc>
+    <Title>The Matrix</Title>
+    <Runtime>136</Runtime>
+  </Disc>
+  <Products>
+    <Title>Gift card</Title>
+  </Products>
+</Catalog>
+Book: Clean Code
+Dvd: The Matrix
+Product: Gift card
+```
+
+### Use xsi:type and fall back to an ancestor
+
+```csharp
+[XmlPolymorphic(DiscriminatorPlacement = XmlDiscriminatorPlacement.XsiType, UnknownDerivedTypeHandling = XmlUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
+[XmlDerivedType<Car>]
+[XmlDerivedType<Truck>]
+public class Vehicle
+{
+    public string? Make { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+Vehicle truck = new Truck { Make = "Northwind", Payload = 12000 };
+output.WriteLine(XmlSerializer.Serialize(truck, options));
+
+Vehicle sportsCar = new SportsCar { Make = "Contoso", Doors = 2, TopSpeed = 310 };
+string xml = XmlSerializer.Serialize(sportsCar, options);
+output.WriteLine(xml);
+
+Vehicle? copy = XmlSerializer.Deserialize<Vehicle>(xml, options);
+output.WriteLine(copy!.GetType().Name);
+```
+
+`SportsCar` derives from `Car` and isn't declared, so it is written as a `Car`. The code produces the following output:
+
+```text
+<Vehicle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Truck"><Make>Northwind</Make><Payload>12000</Payload></Vehicle>
+<Vehicle xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Car"><Make>Contoso</Make><Doors>2</Doors></Vehicle>
+Car
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/16_Polymorphism.cs)

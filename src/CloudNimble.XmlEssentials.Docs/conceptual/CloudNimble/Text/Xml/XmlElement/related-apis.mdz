@@ -1,0 +1,10 @@
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.XmlValueKind
+CloudNimble.Text.Xml.XmlTokenType
+CloudNimble.Text.Xml.XmlAttributes
+CloudNimble.Text.Xml.XmlNamespaces
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.Nodes.XmlNode
+CloudNimble.Text.Xml.Nodes.XmlElementNode

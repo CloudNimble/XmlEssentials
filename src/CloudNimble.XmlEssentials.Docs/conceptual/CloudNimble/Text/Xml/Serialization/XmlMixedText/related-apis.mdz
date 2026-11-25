@@ -1,0 +1,4 @@
+CloudNimble.Text.Xml.Serialization.XmlMixedContentItem
+CloudNimble.Text.Xml.Serialization.XmlMixedElement
+CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
+CloudNimble.Text.Xml.XmlWhitespaceHandling

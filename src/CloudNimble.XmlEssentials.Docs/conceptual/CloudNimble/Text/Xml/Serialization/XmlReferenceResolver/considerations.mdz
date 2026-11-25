@@ -1,0 +1,5 @@
+- A custom resolver takes effect when reading and when writing. When writing, the identifier `GetReference` returns is written as the `id` attribute of an object's first appearance and as the `ref` attribute of each later one.
+- When writing, `GetReference` can be called twice for one object: once by the member that holds it and once when the object itself is written. Return the same identifier both times.
+- Compare objects by reference, not with `Equals`. Two different objects that happen to be equal must not share an identifier. `ReferenceEqualityComparer.Instance` does this for a dictionary or a set.
+- A resolver is used for one operation and isn't called from more than one thread during it. If your handler shares state between resolvers, as the example does, that state needs its own protection when the options are used from several threads.
+- An object that is created through a constructor with parameters is passed to `AddReference` after the constructor runs. A `ref` to it from inside its own content can't be resolved.

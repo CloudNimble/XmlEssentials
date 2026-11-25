@@ -1,0 +1,28 @@
+Apply `[XmlSourceGenerationOptions]` to a source-generated context to set the options its `Default` instance uses and the mode the generator works in.
+
+```csharp
+[XmlSourceGenerationOptions(
+    OmitXmlDeclaration = true,
+    PropertyNamingPolicy = XmlKnownNamingPolicy.CamelCase)]
+[XmlSerializable<Order>]
+public partial class CamelCaseOrderXmlContext : XmlSerializerContext
+{
+}
+```
+
+```csharp
+string xml = XmlSerializer.Serialize(CreateOrder(), CamelCaseOrderXmlContext.Default.Order);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<order id="1042"><customer>Ada</customer><Line><quantity>1</quantity><sku>KB-01</sku></Line><Line><quantity>2</quantity><sku>MS-02</sku></Line></order>
+```
+
+The attribute seeds the options of `Default` and of a context created with the parameterless constructor. A context created with `new CamelCaseOrderXmlContext(options)` uses the options you pass instead.
+
+The attribute is the counterpart of `JsonSourceGenerationOptionsAttribute` in System.Text.Json. An attribute argument must be a constant, so naming policies are chosen with the `XmlKnownNamingPolicy` enumeration and not with an `XmlNamingPolicy` instance.
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/32_UseSourceGeneration.cs)

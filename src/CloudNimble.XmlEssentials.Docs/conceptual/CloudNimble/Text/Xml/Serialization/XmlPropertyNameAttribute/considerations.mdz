@@ -1,0 +1,5 @@
+- The name takes precedence over a name set in `[XmlElement]`, `[XmlAttribute]`, or `[XmlArray]` on the same member, and a naming policy doesn't convert it.
+- The attribute sets the local name only. To set a namespace, use the `Namespace` property of `[XmlElement]`, `[XmlAttribute]`, or `[XmlArray]`.
+- On a collection with no `[XmlArray]`, the name applies to each repeated item. With `[XmlArray]`, it names the wrapper element.
+- Two members of one type can't have the same attribute name, and two element members can't have the same element name in the same namespace. The serializer throws an `InvalidOperationException` the first time it uses such a type.
+- On an enumeration member, the attribute sets the name the value is written as, such as `[XmlPropertyName("next-day")]` on `NextDay`. When reading, that name is matched exactly, while the other member names are matched in any case. See [Enumeration values](/guides/customize-names#enumeration-values).

@@ -1,0 +1,8 @@
+`XmlNumberHandling` says whether the XML Schema names for the floating-point values that aren't numbers are allowed: `INF`, `-INF`, and `NaN`. Set it through `XmlSerializerOptions.NumberHandling`. It applies to `float` and `double` values.
+
+| Value | Behavior |
+| --- | --- |
+| `AllowNamedFloatingPointLiterals` (default) | `double.PositiveInfinity` is written as `INF`, `double.NegativeInfinity` as `-INF`, and `double.NaN` as `NaN`, and those names are accepted when reading. |
+| `Strict` | Writing one of those values, or reading one of those names, throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). |
+
+Use `Strict` when the consumer of the XML treats the element as a plain decimal number and would fail on a name.

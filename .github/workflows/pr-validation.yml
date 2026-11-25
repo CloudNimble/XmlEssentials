@@ -1,0 +1,119 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'src/CloudNimble.XmlEssentials.Docs/**'
+      - 'spec/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  DOTNET_VERSION: '11.0.x'
+  SOLUTION_FILE: 'src/CloudNimble.XmlEssentials.slnx'
+  # RWM: On Windows runners the C: OS drive is much slower than D:, where the workspace lives. Keep the SDK and the NuGet caches on D:.
+  DOTNET_INSTALL_DIR: 'D:\dotnet'
+  DOTNET_ROOT: 'D:\dotnet'
+  NUGET_PACKAGES: 'D:\nuget\packages'
+  NUGET_HTTP_CACHE_PATH: 'D:\nuget\http-cache'
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Install .NET versions
+      shell: pwsh
+      run: |
+        Write-Host "Installing .NET versions..."
+        Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile "dotnet-install.ps1"
+        $installDir = $env:DOTNET_INSTALL_DIR
+
+        Write-Host "Installing .NET 10.0..."
+        ./dotnet-install.ps1 -Channel 10.0 -InstallDir $installDir
+
+        Write-Host "Installing .NET 11.0..."
+        ./dotnet-install.ps1 -Channel 11.0 -InstallDir $installDir
+
+        echo $installDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        dotnet --list-sdks
+
+    - name: Get version variables
+      id: version
+      shell: pwsh
+      run: |
+        # PRs into main build the current release line from VERSION_*; PRs into dev (and manual runs) build the next one from DEV_VERSION_*.
+        if ("${{ github.base_ref }}" -eq "main") {
+          $majorVersion = "${{ vars.VERSION_MAJOR }}"
+          $minorVersion = "${{ vars.VERSION_MINOR }}"
+        }
+        else {
+          $majorVersion = "${{ vars.DEV_VERSION_MAJOR }}"
+          $minorVersion = "${{ vars.DEV_VERSION_MINOR }}"
+        }
+        if ([string]::IsNullOrEmpty($majorVersion)) { $majorVersion = "1" }
+        if ([string]::IsNullOrEmpty($minorVersion)) { $minorVersion = "0" }
+
+        $timestamp = Get-Date -Format "yyyyMMdd-HHmmss" -AsUTC
+        $version = "$majorVersion.$minorVersion.0-CI-$timestamp"
+
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        Write-Host "PR validation version: $version"
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release /p:Version=${{ steps.version.outputs.VERSION }} /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+
+    - name: Test net10.0
+      working-directory: src
+      run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net10.0
+
+    - name: Test net11.0 with coverage
+      working-directory: src
+      run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
+
+    - name: Coverage gate
+      working-directory: src
+      run: dotnet run coverage-gate.cs -- "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
+
+    - name: Publish AOT CLI sample
+      working-directory: src
+      run: dotnet publish CloudNimble.XmlEssentials.Samples.Cli/CloudNimble.XmlEssentials.Samples.Cli.csproj -c Release
+
+    - name: Run AOT CLI serialize
+      working-directory: src
+      run: ./CloudNimble.XmlEssentials.Samples.Cli/bin/Release/net11.0/win-x64/publish/xmlessentials.exe serialize --name Ada --age 36
+
+    - name: Pack
+      run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration Release --no-build --output ./artifacts /p:PackageVersion=${{ steps.version.outputs.VERSION }}
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: nuget-packages-pr
+        path: |
+          ./artifacts/*.nupkg
+          ./artifacts/*.snupkg
+        retention-days: 7
+
+    - name: Validate packages
+      shell: pwsh
+      run: |
+        Write-Host "Validating NuGet packages..."
+        Get-ChildItem ./artifacts -Include *.nupkg, *.snupkg -File -Recurse | ForEach-Object {
+          Write-Host "Found package: $($_.Name)"
+        }
+        Write-Host "PR validation completed successfully"

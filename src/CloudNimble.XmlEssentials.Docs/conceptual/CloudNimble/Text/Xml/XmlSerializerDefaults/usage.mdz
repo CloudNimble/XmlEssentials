@@ -1,0 +1,18 @@
+`XmlSerializerDefaults` names a starting set of option values. Pass a value to the [`XmlSerializerOptions`](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions) constructor, then set whatever else you need. It is the counterpart of `JsonSerializerDefaults`.
+
+| Value | Differences from `General` | Ready-made instance |
+| --- | --- | --- |
+| `General` | None. Names are unchanged, the XML declaration is written, and `null` is written as `xsi:nil="true"`. | `XmlSerializerOptions.Default` |
+| `Web` | `PropertyNamingPolicy` is `XmlNamingPolicy.CamelCase` and `OmitXmlDeclaration` is `true`. | `XmlSerializerOptions.Web` |
+| `Strict` | `AllowDuplicateProperties` is `false`, `RespectNullableAnnotations` is `true`, `ReadCommentHandling` is `XmlCommentHandling.Disallow`, and `UnmappedMemberHandling` is `XmlUnmappedMemberHandling.Disallow`. | `XmlSerializerOptions.Strict` |
+| `Bcl` | The settings that write what `System.Xml.Serialization.XmlSerializer` writes: `CharHandling` is `Number`, `DefaultCollectionMapping` is `Wrapped`, `DefaultIgnoreCondition` is `WhenWritingNullReference`, `EmptyElementStyle` is `SelfClosingWithSpace`, `IgnoreReadOnlyProperties` and `IncludeFields` are `true`, `MemberOrder` is `FieldsFirst`, `Namespaces` declares the `xsi` and `xsd` prefixes, `PreferredObjectCreationHandling` is `Populate`, `UtcOffsetHandling` is `WriteZ`, and `WriteIndented` is `true`. | `XmlSerializerOptions.Bcl` |
+
+```csharp
+var web = new XmlSerializerOptions(XmlSerializerDefaults.Web)
+{
+    WriteIndented = true,
+    NewLine = "\n",
+};
+```
+
+When you need a set of defaults exactly as it is, use the ready-made instance instead of creating your own. It is shared and already read-only.

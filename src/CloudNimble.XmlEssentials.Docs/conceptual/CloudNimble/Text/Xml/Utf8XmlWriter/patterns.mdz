@@ -1,0 +1,29 @@
+These are the shapes that code using the writer takes most often.
+
+### Element with attributes and content
+
+Call `WriteStartElement`, then the attributes and namespace declarations, then the content, then `WriteEndElement`. The start tag closes when you write the first content, and attributes aren't accepted after that.
+
+### Leaf element
+
+`WriteElementString`, `WriteElementNumber`, `WriteElementBoolean`, and `WriteElementBase64String` write a start tag, a value, and an end tag in one call. `WriteEmptyElement` writes an element with no content, `<e/>` unless `XmlWriterOptions.EmptyElementStyle` says otherwise, and `WriteNilElement` writes an empty element with `xsi:nil="true"`.
+
+### Attribute with a typed value
+
+`WriteAttributeString` takes text and `WriteAttributeNumber` takes an `int`, a `long`, or a `double`. For any other type, open the attribute with `WriteStartAttribute`, call a value method such as `WriteBooleanValue` or `WriteStringValue(DateTimeOffset)`, and close it with `WriteEndAttribute`.
+
+### One writer, many documents
+
+Create the writer once, and after each document call `Flush` and then `Reset`. `Reset` discards anything that isn't flushed. Use `Reset(IBufferWriter<byte>)` or `Reset(Stream)` to send the next document somewhere else.
+
+### Stream with asynchronous flushes
+
+Write with the synchronous methods, which only fill the writer's buffer, and call `await writer.FlushAsync()` at points where a batch is complete. Dispose with `await using`.
+
+### Copy a parsed document
+
+`XmlDocument.WriteTo` and `XmlElement.WriteTo` write a parsed document, or one element of it, into a writer. See [How to use XmlDocument](/guides/use-xmldocument).
+
+### Custom converter
+
+`XmlConverter<T>.Write` receives the writer, positioned where the value goes. See [Custom converters](/guides/custom-converters).

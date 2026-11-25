@@ -1,0 +1,66 @@
+Each example is a sample in the repository whose output is checked by a test.
+
+### Indentation
+
+`WriteParagraph` writes the same small document with the options it's given.
+
+```csharp
+output.WriteLine("Not indented:");
+output.WriteLine(WriteParagraph(new XmlWriterOptions { OmitXmlDeclaration = true }));
+
+output.WriteLine("Indented:");
+output.WriteLine(WriteParagraph(new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, NewLine = "\n" }));
+
+output.WriteLine("Indented with four spaces:");
+output.WriteLine(WriteParagraph(new XmlWriterOptions { OmitXmlDeclaration = true, Indented = true, IndentSize = 4, NewLine = "\n" }));
+```
+
+```text
+Not indented:
+<Order><Item><Name>Keyboard</Name></Item><Note>Leave with <b>Ada</b> only.</Note></Order>
+Indented:
+<Order>
+  <Item>
+    <Name>Keyboard</Name>
+  </Item>
+  <Note>Leave with <b>Ada</b> only.</Note>
+</Order>
+Indented with four spaces:
+<Order>
+    <Item>
+        <Name>Keyboard</Name>
+    </Item>
+    <Note>Leave with <b>Ada</b> only.</Note>
+</Order>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)
+
+### The XML declaration
+
+`WriteOrder` writes one empty element with the options it's given.
+
+```csharp
+output.WriteLine(WriteOrder(new XmlWriterOptions()));
+output.WriteLine(WriteOrder(new XmlWriterOptions { OmitXmlDeclaration = true }));
+output.WriteLine(WriteOrder(new XmlWriterOptions { Standalone = true }));
+output.WriteLine(WriteOrder(new XmlWriterOptions { Version = XmlVersion.Version11 }));
+
+var buffer = new ArrayBufferWriter<byte>();
+using (var writer = new Utf8XmlWriter(buffer, new XmlWriterOptions { EmitByteOrderMark = true }))
+{
+    writer.WriteEmptyElement("Order");
+}
+
+output.WriteLine($"With a byte order mark, the output starts with: {Convert.ToHexString(buffer.WrittenSpan[..3])}");
+```
+
+```text
+<?xml version="1.0" encoding="utf-8"?><Order/>
+<Order/>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><Order/>
+<?xml version="1.1" encoding="utf-8"?><Order/>
+With a byte order mark, the output starts with: EFBBBF
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/24_WriteNamespacesAndMarkup.cs)

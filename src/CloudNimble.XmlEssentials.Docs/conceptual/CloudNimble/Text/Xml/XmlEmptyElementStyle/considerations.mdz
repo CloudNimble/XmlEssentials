@@ -1,0 +1,8 @@
+- **`SelfClosing` is the zero value, and the default.** `new XmlWriterOptions()`, `default(XmlWriterOptions)`, a writer created without options, and `new XmlSerializerOptions()` all write `<e/>`.
+- **The three forms mean the same thing to a reader.** The setting changes how the output looks, not what it holds.
+- **It is one rule for all output.** Your own calls to the writer, the serializer, a generated context, `XmlDocument.WriteTo` and `XmlNode.WriteTo` write an element with no content the same way.
+- **It applies when an element is ended with nothing in it.** That is `WriteEndElement` before any content is written, the `WriteEmptyElement` methods, and `WriteElementString` with a `null` string. An element with attributes and no content counts: `<e a="1" />`.
+- **`WriteFullEndElement` always writes an end tag,** whatever the setting is.
+- **An empty string is content.** `WriteElementString("e", "")`, and a `string` member that holds `""`, are written as `<e></e>` under every value. That keeps an empty string apart from an element given nothing and from one marked `xsi:nil`.
+- **A document or a node keeps an end tag it read.** An element that was parsed as `<e></e>` is written as `<e></e>` under every value. An element that was parsed as `<e/>` or `<e />` takes the form the setting asks for. For a node, `XmlElementNode.IsEmptyElement` holds which of the two it is.
+- **Indentation puts nothing between the two tags** of `<e></e>`, because white space there would be content.

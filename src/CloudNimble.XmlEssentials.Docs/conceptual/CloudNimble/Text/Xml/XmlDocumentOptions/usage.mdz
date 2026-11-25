@@ -1,0 +1,60 @@
+Pass an `XmlDocumentOptions` to `XmlDocument.Parse`, `ParseAsync`, `TryParse`, or `DiscoverNamespaces` to choose what the parser keeps and what it rejects. `default`, `new XmlDocumentOptions()`, and a call to `Parse` without options all mean the same options.
+
+The defaults are chosen so that there are no surprises on a round trip: a document that is parsed and written back with `XmlDocument.WriteTo` keeps its comments and the white space between its elements. When you only read values and don't want either in the document:
+
+- Set `CommentHandling` to `XmlCommentHandling.Skip` to leave comments out. `Disallow` rejects a document that contains one.
+- Set `WhitespaceHandling` to `XmlWhitespaceHandling.Insignificant` to leave out text that is only white space between elements. `None` rejects a document that contains it.
+
+```csharp
+const string xml = "<Order><!-- rush --><Item>Keyboard</Item></Order>";
+
+using (XmlDocument kept = XmlDocument.Parse(xml))
+{
+    output.WriteLine($"Allow (the default): {CountChildren(kept.RootElement)} children");
+    foreach (XmlElement child in kept.RootElement.EnumerateChildren())
+    {
+        output.WriteLine($"  {child.ValueKind}: '{child.GetString()}'");
+    }
+}
+
+var skip = new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Skip };
+using (XmlDocument skipped = XmlDocument.Parse(xml, skip))
+{
+    output.WriteLine($"Skip: {CountChildren(skipped.RootElement)} child");
+}
+
+var disallow = new XmlDocumentOptions { CommentHandling = XmlCommentHandling.Disallow };
+try
+{
+    using XmlDocument rejected = XmlDocument.Parse(xml, disallow);
+}
+catch (XmlException ex)
+{
+    output.WriteLine($"Disallow: {ex.Message}");
+}
+```
+
+`CountChildren` is a helper in the sample that counts the nodes `EnumerateChildren` returns. The code produces the following output:
+
+```text
+Allow (the default): 2 children
+  Comment: ' rush '
+  Element: 'Keyboard'
+Skip: 1 child
+Disallow: Comments are not allowed.
+```
+
+The options are:
+
+| Property | Controls | Default |
+| --- | --- | --- |
+| `CommentHandling` | Whether comments are kept, dropped, or rejected | `Allow` (kept) |
+| `WhitespaceHandling` | What happens to white space that is the only text between two tags | `Significant` (kept) |
+| `MaxDepth` | How deeply elements nest | 0, which means 64 |
+| `MaxAttributeCount` | Attributes on one element, namespace declarations included | 0, which means 1,000 |
+| `MaxNameByteCount` | One element or attribute name, in UTF-8 bytes | 0, which means 1,024 |
+| `MaxTextByteCount` | One text node, CDATA section, attribute value, or processing instruction's data, in UTF-8 bytes | 0, which means 16,777,216 |
+| `MaxCommentByteCount` | One comment, in UTF-8 bytes | 0, which means 1,048,576 |
+| `MaxDocumentByteCount` | The whole document, in UTF-8 bytes | 0, which means no limit |
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/26_ParseWithXmlDocument.cs)

@@ -1,0 +1,36 @@
+Apply `[XmlArray]` to a collection property or field to write its items inside one wrapper element. Without the attribute, the items are written as repeated elements named after the member, with no wrapper. Pair it with [`[XmlArrayItem]`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlArrayItemAttribute) to name the items.
+
+```csharp
+public sealed class Album
+{
+    public string? Title { get; set; }
+
+    [XmlArray("Tracks")]
+    [XmlArrayItem("Track")]
+    public List<string>? Tracks { get; set; }
+}
+```
+
+```csharp
+var album = new Album { Title = "Kind of Blue", Tracks = ["So What", "Freddie Freeloader"] };
+var options = new XmlSerializerOptions { WriteIndented = true, NewLine = "\n", OmitXmlDeclaration = true };
+
+string xml = XmlSerializer.Serialize(album, options);
+output.WriteLine(xml);
+```
+
+The code produces the following output:
+
+```xml
+<Album>
+  <Title>Kind of Blue</Title>
+  <Tracks>
+    <Track>So What</Track>
+    <Track>Freddie Freeloader</Track>
+  </Tracks>
+</Album>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/12_SerializeCollections.cs)
+
+The name is optional. `[XmlArray]` with no arguments uses the member name for the wrapper.

@@ -1,0 +1,27 @@
+### Compare and print names
+
+`ToString` returns `prefix:local` when the name has a prefix, `{uri}local` when it has a namespace and no prefix, and the local name otherwise.
+
+```csharp
+var written = new XmlName("Invoice", "urn:example:billing", "b");
+var expected = new XmlName("Invoice", "urn:example:billing");
+var unqualified = new XmlName("Invoice");
+
+output.WriteLine(written);
+output.WriteLine(expected);
+output.WriteLine(unqualified);
+output.WriteLine(written == expected);
+output.WriteLine(written == unqualified);
+```
+
+The code produces the following output:
+
+```text
+b:Invoice
+{urn:example:billing}Invoice
+Invoice
+True
+False
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/14_Namespaces.cs)

@@ -1,0 +1,16 @@
+Apply `[XmlObjectCreationHandling]` to a property or field to say whether the value it already holds is replaced or populated when it is read. The attribute takes precedence over `XmlSerializerOptions.PreferredObjectCreationHandling` for that member. It is the counterpart of `[JsonObjectCreationHandling]`.
+
+```csharp
+public sealed class Playlist
+{
+    // The items are added to the list the property already holds.
+    [XmlObjectCreationHandling(XmlObjectCreationHandling.Populate)]
+    public List<string> Tracks { get; } = [];
+}
+```
+
+Apply it to a type to set the handling for every member of the type that can be populated.
+
+`Populate` on a member that can't be populated throws an `InvalidOperationException` the first time the type is used. That covers an array, an immutable or frozen collection, a collection declared as a read-only interface such as `IEnumerable<T>`, a single value such as a `string` or a number, a value with a custom converter, mixed content, a polymorphic type, and a value type with no setter. On a type that is created through a constructor with parameters, or on a member of such a type, it throws a `NotSupportedException`.
+
+See [Populate a collection that already holds a value](/guides/collections#populate-a-collection-that-already-holds-a-value).

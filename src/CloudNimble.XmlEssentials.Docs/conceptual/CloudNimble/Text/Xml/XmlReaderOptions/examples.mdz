@@ -1,0 +1,48 @@
+Each example is a sample in the repository whose output is checked by a test.
+
+### Set limits
+
+Each call reads the same document with one limit lowered. The last call uses the defaults.
+
+```csharp
+var xml = "<Order note=\"gift\" rush=\"true\"><Customer><Name>Ada Lovelace</Name></Customer></Order>"u8;
+
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxDepth = 2 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxAttributeCount = 1 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxNameByteCount = 4 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxTextByteCount = 8 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions { MaxDocumentByteCount = 64 }));
+output.WriteLine(Drain(xml, new XmlReaderOptions()));
+```
+
+```text
+XmlException: MaxDepth exceeded (2).
+XmlException: MaxAttributeCount exceeded (1).
+XmlException: MaxNameByteCount exceeded (4).
+XmlException: MaxTextByteCount exceeded (8).
+XmlException: MaxDocumentByteCount exceeded (64).
+Read 7 tokens.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)
+
+### Read a fragment
+
+```csharp
+var options = new XmlReaderOptions { AllowMultipleRoots = true };
+var reader = new Utf8XmlReader("<Item>Keyboard</Item><Item>Mouse</Item>"u8, options);
+while (reader.Read())
+{
+    if (reader.TokenType is XmlTokenType.Text)
+    {
+        output.WriteLine(reader.GetString());
+    }
+}
+```
+
+```text
+Keyboard
+Mouse
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/21_ReadMarkupAndHandleErrors.cs)

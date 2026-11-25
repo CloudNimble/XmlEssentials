@@ -1,0 +1,63 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:s="urn:shapes" targetNamespace="urn:shapes" elementFormDefault="qualified">
+  <xs:simpleType name="Mode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="next-day"/>
+      <xs:enumeration value="Plain"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Shape" abstract="true">
+    <xs:sequence>
+      <xs:element name="Name" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="Circle">
+    <xs:complexContent>
+      <xs:extension base="s:Shape">
+        <xs:sequence>
+          <xs:element name="Radius" type="xs:int"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Ring">
+    <xs:complexContent>
+      <xs:extension base="s:Circle">
+        <xs:sequence>
+          <xs:element name="Inner" type="xs:int" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Para" mixed="true">
+    <xs:sequence>
+      <xs:element name="b" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="drawing" type="s:Drawing"/>
+  <xs:complexType name="Drawing">
+    <xs:sequence>
+      <xs:element name="Main" type="s:Shape"/>
+      <xs:element name="Mode" type="s:Mode" minOccurs="0"/>
+      <xs:element name="Tags">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Tag" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Note" type="xs:string" minOccurs="0"/>
+      <xs:choice>
+        <xs:element name="Home" type="xs:string"/>
+        <xs:element name="Work" type="xs:string"/>
+      </xs:choice>
+      <xs:choice maxOccurs="unbounded">
+        <xs:element name="Text" type="xs:string"/>
+        <xs:element name="Count" type="xs:int"/>
+        <xs:element name="Body" type="s:Para"/>
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="scale" type="xs:double"/>
+    <xs:attribute name="rev" type="xs:int" default="3"/>
+  </xs:complexType>
+</xs:schema>

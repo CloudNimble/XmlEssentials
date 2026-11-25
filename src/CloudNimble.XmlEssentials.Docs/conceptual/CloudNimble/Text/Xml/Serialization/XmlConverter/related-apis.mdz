@@ -1,0 +1,8 @@
+CloudNimble.Text.Xml.Serialization.XmlConverterFactory
+CloudNimble.Text.Xml.Serialization.XmlConverterAttribute
+CloudNimble.Text.Xml.Serialization.XmlTypeInfo
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.Utf8XmlReader
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlException
+CloudNimble.Text.Xml.XmlName

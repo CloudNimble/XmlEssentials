@@ -1,0 +1,4 @@
+CloudNimble.Text.Xml.Serialization.XmlArrayItemAttribute
+CloudNimble.Text.Xml.Serialization.XmlElementAttribute
+CloudNimble.Text.Xml.Serialization.XmlPropertyNameAttribute
+CloudNimble.Text.Xml.Serialization.XmlPropertyOrderAttribute

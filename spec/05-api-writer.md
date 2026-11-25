@@ -1,0 +1,235 @@
+# Utf8XmlWriter
+
+Part of the [XmlEssentials spec](README.md).
+
+This page is **authoritative** for writer types. Family: implementers provide `string` / `ReadOnlySpan<char>` / `ReadOnlySpan<byte>` (utf8) and prefix+ns variants wherever a family is listed. BOM: `EmitByteOrderMark` (default `false`). Declaration text: [XML fidelity](02-xml-fidelity.md#xml-10-and-11).
+
+## XmlEncodedText
+
+```csharp
+namespace CloudNimble.Text.Xml;
+
+public readonly struct XmlEncodedText : IEquatable<XmlEncodedText>
+{
+    public static XmlEncodedText Encode(string value);
+    public static XmlEncodedText Encode(ReadOnlySpan<char> value);
+    public static XmlEncodedText Encode(ReadOnlySpan<byte> utf8Value);
+
+    public ReadOnlySpan<byte> EncodedUtf8Bytes { get; }
+    public override string ToString();
+}
+```
+
+Caches escaped UTF-8 for hot element/attribute names (STJ `JsonEncodedText`).
+
+## Writer options
+
+```csharp
+namespace CloudNimble.Text.Xml;
+
+public struct XmlWriterOptions
+{
+    public bool Indented { get; set; }
+    public char IndentCharacter { get; set; }   // default ' '
+    public int IndentSize { get; set; }         // default 2
+    public string NewLine { get; set; }         // "\n" or "\r\n"; default Environment.NewLine, in default(XmlWriterOptions) too; every line break the writer writes
+    public XmlEmptyElementStyle EmptyElementStyle { get; set; }  // default SelfClosing: <e/>; SelfClosingWithSpace: <e />; StartAndEndTag: <e></e>
+    public XmlAttributeStyle AttributeStyle { get; set; }        // default Inline; PerLine: AttributesPerLine to a line, aligned under the first
+    public int AttributesPerLine { get; set; }  // 0 → 1; read only under PerLine
+    public int MaxDepth { get; set; }           // 0 → 64
+    public int MaxAttributeCount { get; set; }  // 0 → 1000; includes xmlns*; attribute storm
+    public int MaxNameByteCount { get; set; }   // 0 → 1024; element/attribute/prefix names
+    public bool SkipValidation { get; set; }
+    public bool OmitXmlDeclaration { get; set; }
+    public bool EmitByteOrderMark { get; set; } // default false; EF BB BF at first output
+    public bool? Standalone { get; set; }       // null = omit standalone= from declaration
+    public XmlVersion Version { get; set; }     // default Version10
+}
+```
+
+`0` on max-* means table default ([K32](01-identity-and-decisions.md#key-decisions)). Writer does **not** expose `MaxTextByteCount` / `MaxCommentByteCount` (caller-supplied payloads). `EncodeInvalidCharsAsHex` is omitted ([K34](01-identity-and-decisions.md#key-decisions)). Char legality follows `Version`. In 1.1, RestrictedChar in values is written as a numeric character reference.
+
+## Utf8XmlWriter
+
+```csharp
+namespace CloudNimble.Text.Xml;
+
+public sealed class Utf8XmlWriter : IDisposable, IAsyncDisposable
+{
+    public Utf8XmlWriter(IBufferWriter<byte> bufferWriter, XmlWriterOptions options = default);
+    public Utf8XmlWriter(Stream utf8Xml, XmlWriterOptions options = default);
+
+    public long BytesCommitted { get; }
+    public int BytesPending { get; }
+    public int CurrentDepth { get; }
+    public XmlWriterOptions Options { get; }
+
+    public void Dispose();
+    public ValueTask DisposeAsync();
+    public void Flush();
+    public Task FlushAsync(CancellationToken cancellationToken = default);
+    public void Reset();                               // discards pending bytes, as Utf8JsonWriter.Reset does; Flush first to keep them
+    public void Reset(IBufferWriter<byte> bufferWriter);
+    public void Reset(Stream utf8Xml);
+
+    public void WriteXmlDeclaration(); // <?xml version="1.0"|"1.1" encoding="utf-8"?> [standalone]; BOM is EmitByteOrderMark at first output, not this call
+
+    // Family: local | local+ns | prefix+local+ns × string | ReadOnlySpan<char> | ReadOnlySpan<byte> | XmlEncodedText
+    public void WriteStartElement(string localName);
+    public void WriteStartElement(string localName, string? namespaceUri);
+    public void WriteStartElement(string? prefix, string localName, string? namespaceUri);
+    public void WriteStartElement(ReadOnlySpan<char> localName);
+    public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName);
+    public void WriteStartElement(XmlEncodedText localName);
+    public void WriteStartElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri);
+    public void WriteStartElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri);
+    public void WriteStartElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri);
+
+    public void WriteEndElement();
+    public void WriteFullEndElement();
+
+    public void WriteEmptyElement(string localName);
+    public void WriteEmptyElement(string localName, string? namespaceUri);
+    public void WriteEmptyElement(string? prefix, string localName, string? namespaceUri);
+    public void WriteEmptyElement(ReadOnlySpan<char> localName);
+    public void WriteEmptyElement(ReadOnlySpan<char> localName, ReadOnlySpan<char> namespaceUri);
+    public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName);
+    public void WriteEmptyElement(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri);
+    public void WriteEmptyElement(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8NamespaceUri);
+    public void WriteEmptyElement(XmlEncodedText localName);
+
+    public void WriteElementString(string localName, string? value);
+    public void WriteElementString(string localName, string? namespaceUri, string? value);
+    public void WriteElementString(string localName, DateTime value);
+    public void WriteElementString(string localName, DateTimeOffset value);
+    public void WriteElementString(string localName, Guid value);
+    public void WriteElementString(ReadOnlySpan<char> localName, ReadOnlySpan<char> value);
+    public void WriteElementString(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> utf8Value);
+    // WriteElementString, in full: a name as string, ReadOnlySpan<char>, ReadOnlySpan<byte> or XmlEncodedText,
+    // with a value as string?, ReadOnlySpan<char>, ReadOnlySpan<byte>, DateTime, DateTimeOffset or Guid (24 overloads).
+
+    public void WriteElementNumber(string localName, int value);
+    public void WriteElementNumber(string localName, long value);
+    public void WriteElementNumber(string localName, double value);
+    public void WriteElementNumber(string localName, float value);
+    public void WriteElementNumber(string localName, decimal value);
+    [CLSCompliant(false)] public void WriteElementNumber(string localName, uint value);
+    [CLSCompliant(false)] public void WriteElementNumber(string localName, ulong value);
+    // WriteElementNumber, in full: each of the seven number types with a name in each of the four forms (28 overloads).
+
+    public void WriteElementBoolean(string localName, bool value);
+    public void WriteElementBoolean(ReadOnlySpan<char> localName, bool value);
+    public void WriteElementBoolean(ReadOnlySpan<byte> utf8LocalName, bool value);
+    public void WriteElementBoolean(XmlEncodedText localName, bool value);
+    public void WriteElementBase64String(string localName, ReadOnlySpan<byte> bytes);
+    public void WriteElementBase64String(ReadOnlySpan<char> localName, ReadOnlySpan<byte> bytes);
+    public void WriteElementBase64String(ReadOnlySpan<byte> utf8LocalName, ReadOnlySpan<byte> bytes);
+    public void WriteElementBase64String(XmlEncodedText localName, ReadOnlySpan<byte> bytes);
+
+    public void WriteNilElement(string localName);
+    public void WriteNilElement(string localName, string? namespaceUri);
+    public void WriteNilElement(ReadOnlySpan<char> localName);
+    public void WriteNilElement(ReadOnlySpan<byte> utf8LocalName);
+    public void WriteNilElement(XmlEncodedText localName);
+
+    public void WriteAttributeString(string name, string? value);
+    public void WriteAttributeString(string localName, string? namespaceUri, string? value);
+    public void WriteAttributeString(string? prefix, string localName, string? namespaceUri, string? value);
+    public void WriteAttributeString(ReadOnlySpan<byte> utf8Name, ReadOnlySpan<byte> utf8Value);
+    public void WriteAttributeString(ReadOnlySpan<char> name, ReadOnlySpan<char> value);
+
+    public void WriteStartAttribute(string name);
+    public void WriteStartAttribute(ReadOnlySpan<char> name);
+    public void WriteStartAttribute(string? prefix, string localName, string? namespaceUri);
+    public void WriteEndAttribute();
+
+    public void WriteNamespaceDeclaration(string prefix, string namespaceUri);
+    public void WriteNamespaceDeclaration(ReadOnlySpan<byte> utf8Prefix, ReadOnlySpan<byte> utf8NamespaceUri);
+    public void WriteDefaultNamespace(string namespaceUri);
+    public void WriteDefaultNamespace(ReadOnlySpan<byte> utf8NamespaceUri);
+
+    public void WriteStringValue(string? value);
+    public void WriteStringValue(ReadOnlySpan<char> value);
+    public void WriteStringValue(ReadOnlySpan<byte> utf8Value);
+    public void WriteStringValue(DateTime value);
+    public void WriteStringValue(DateTimeOffset value);
+    public void WriteStringValue(DateOnly value);
+    public void WriteStringValue(TimeOnly value);
+    public void WriteStringValue(TimeSpan value);
+    public void WriteStringValue(Guid value);
+
+    public void WriteNumberValue(int value);
+    public void WriteNumberValue(long value);
+    public void WriteNumberValue(double value);
+    public void WriteNumberValue(float value);
+    public void WriteNumberValue(decimal value);
+    [CLSCompliant(false)] public void WriteNumberValue(uint value);
+    [CLSCompliant(false)] public void WriteNumberValue(ulong value);
+
+    public void WriteBooleanValue(bool value);
+    public void WriteBase64StringValue(ReadOnlySpan<byte> bytes);
+    public void WriteNilValue();
+
+    public void WriteStringValueSegment(ReadOnlySpan<byte> value, bool isFinalSegment);
+    public void WriteStringValueSegment(ReadOnlySpan<char> value, bool isFinalSegment);
+    public void WriteBase64StringSegment(ReadOnlySpan<byte> value, bool isFinalSegment);
+
+    public void WriteCData(string text);
+    public void WriteCData(ReadOnlySpan<char> text);
+    public void WriteCData(ReadOnlySpan<byte> utf8Value);
+    public void WriteComment(string value);
+    public void WriteComment(ReadOnlySpan<char> value);
+    public void WriteComment(ReadOnlySpan<byte> utf8Value);
+    public void WriteProcessingInstruction(string target, string? data);
+    public void WriteRawValue(ReadOnlySpan<byte> utf8Xml, bool skipInputValidation = false);
+    public void WriteRawValue(ReadOnlySpan<char> xml, bool skipInputValidation = false);
+    public void WriteRawValue(string xml, bool skipInputValidation = false);
+}
+```
+
+Namespace declarations: if the caller writes an element in a URI that is not in scope, the writer **auto-declares** a prefix (`ns1`, `ns2`, …) or a default xmlns when `prefix` is null/empty. Explicit `WriteNamespaceDeclaration` / `WriteDefaultNamespace` must occur on the start tag (before attributes that use them, and before content).
+
+`Dispose` flushes. If `SkipValidation` is false and elements are unclosed, `Dispose` throws `XmlException`.
+
+`WriteNilValue` after attributes: legal. After content: `XmlException`. Other attributes plus `xsi:nil` on deserialize: attributes are applied; the nillable **element value** is null.
+
+## Segmented values
+
+`WriteStringValueSegment` and `WriteBase64StringSegment` write one value from several buffers. The segments together produce exactly what one call with the whole value produces, wherever they are cut:
+
+- A UTF-8 segment may end inside a multi-byte character, and a character segment between the halves of a surrogate pair. The writer keeps the incomplete character (at most three bytes, or one `char`) and writes it with the next segment. Text that ends inside a character at the final segment is `XmlException` ("Invalid UTF-8 in XML value."), as it is in one call; half a surrogate pair with no other half is `XmlException` ("The text contains half of a surrogate pair."), as it is in one call.
+- A base64 segment may be any length. The writer keeps the one or two bytes that do not fill a group of three, and pads only at the end of the value.
+- After a segment with `isFinalSegment: false`, the next call must be the next segment of the same kind. `Flush` and `FlushAsync` are allowed in between. Anything else is `XmlException` ("A value is being written in segments. Write its final segment before anything else."). `Reset` discards an open value.
+
+Element text written in several calls, segments or not, never forms `]]>`: the writer remembers how many `]` end the text it wrote last, for as long as nothing else has been written since, and escapes a `>` that follows two of them.
+
+## Writer escaping
+
+The writer escapes whatever a reader would otherwise change, so a value is read back exactly as it was written. The full table and its reasons are in [XML fidelity](02-xml-fidelity.md#round-trip-guarantees).
+
+`EmptyElementStyle`, `AttributeStyle` with `AttributesPerLine`, and `NewLine` say how the output is laid out. Each is a rule for every element the writer writes, so the serializer, a generated context, `XmlDocument.WriteTo` and `XmlNode.WriteTo` follow it with no code of their own. The rules are under [predictable normalization](02-xml-fidelity.md#round-trip-guarantees).
+
+| Context | Escape |
+| --- | --- |
+| Element text | `&` → `&amp;`, `<` → `&lt;`, `]]>` → `]]&gt;`, CR → `&#xD;` |
+| Attribute value (always double-quoted) | `&` → `&amp;`, `<` → `&lt;`, `"` → `&quot;`, TAB → `&#x9;`, LF → `&#xA;`, CR → `&#xD;` |
+| Text and attribute values, 1.1 only | NEL → `&#x85;`, LS → `&#x2028;`, RestrictedChar → `&#xN;` |
+| CDATA | no escaping; `]]>` in input throws |
+| Comment | `--` in input, or a trailing `-`, throws |
+| Processing instruction | `?>` in data throws; the target is an NCName and not `xml` in any letter case |
+| Names | no escaping; an invalid name throws. An element name with the `xmlns` prefix throws. |
+| `>` in text | escaped as `&gt;` only when required (`]]>` case); otherwise literal `>` |
+
+A character outside the `Char` production of the output version throws in every context. In a comment, CDATA section, or processing instruction a 1.1 RestrictedChar also throws, because references are not recognized there.
+
+Namespace declarations: `xmlns:xmlns` throws; `xmlns:xml` must name the XML namespace; no other prefix, and no default declaration, may name the `xml` or `xmlns` namespace.
+
+`Indented` puts each element, comment and processing instruction on a line of its own. An element that holds character data is written on one line, with everything in it. `IndentCharacter` is a space or a tab; anything else is `ArgumentOutOfRangeException`, as is a negative limit or indent size. `Dispose` flushes and then throws when elements are open. `WriteRawValue` checks that its input is well formed where it is written unless `skipInputValidation` is `true` or `SkipValidation` is set.
+
+`XmlWriterOptions.SkipValidation` turns the name, namespace, and character checks off. Escaping still happens.
+
+Typed write lexical forms: [XML fidelity](02-xml-fidelity.md#lexical-rules-xsd-10-invariant).
+
+---
+
+[Index](README.md) · [Previous: Utf8XmlReader](04-api-reader.md) · [Next: DOM](06-api-dom.md)

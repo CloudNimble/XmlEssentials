@@ -1,0 +1,31 @@
+Know the following about the defaults and the limits.
+
+### The defaults keep everything
+
+`new XmlReaderOptions()` and `default(XmlReaderOptions)` are the same value. `CommentHandling` is `Allow` and `WhitespaceHandling` is `Significant`, so the reader reports comments as `Comment` tokens and white-space-only text between elements as `Text` tokens. The XML specification asks a processor to pass all of a document's characters to the application, and XML that's read and written back then keeps its comments and layout. `XmlSerializerOptions` has the opposite defaults, because neither belongs in an object.
+
+### A limit of 0 means the default
+
+| Property | When it's 0 |
+| --- | --- |
+| `MaxDepth` | 64 |
+| `MaxAttributeCount` | 1,000 |
+| `MaxNameByteCount` | 1,024 bytes |
+| `MaxTextByteCount` | 16,777,216 bytes |
+| `MaxCommentByteCount` | 1,048,576 bytes |
+| `MaxDocumentByteCount` | No limit |
+
+`MaxDocumentByteCount` is the exception: 0 means no limit. The reader checks it in its constructor, against the bytes read in earlier blocks plus the length of the block it's given.
+
+### What the limits count
+
+- `MaxAttributeCount` includes namespace declarations.
+- `MaxNameByteCount`, `MaxTextByteCount`, and `MaxCommentByteCount` are in UTF-8 bytes, not characters, counted as they are in the document, before references are expanded.
+- `MaxTextByteCount` applies to each text node, CDATA section, attribute value, and processing instruction's data on its own.
+- When the document is read in blocks, a token that is already longer than its limit throws before its end arrives.
+- `MaxCommentByteCount` applies to comments that are skipped as well as to comments that are reported.
+- Exceeding a limit throws an `XmlException` whose message names the property and the limit, such as `MaxDepth exceeded (64).`
+
+### Where else the options apply
+
+These options are for `Utf8XmlReader`. `XmlDocument` and `XmlSerializer` have their own options types, `XmlDocumentOptions` and `XmlSerializerOptions`.

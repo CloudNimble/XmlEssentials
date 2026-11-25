@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>$(StandardTestTfms)</TargetFrameworks>
+		<IsPackable>false</IsPackable>
+		<RootNamespace>CloudNimble.XmlEssentials.Samples</RootNamespace>
+		<Description>The samples shown in the XmlEssentials documentation. Each numbered file is one sample, and CloudNimble.XmlEssentials.Tests.Samples runs every one of them.</Description>
+		<NoWarn>$(NoWarn);CA1707;IL2026;IL3050</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudNimble.XmlEssentials\CloudNimble.XmlEssentials.csproj" />
+		<ProjectReference Include="..\CloudNimble.XmlEssentials.SourceGeneration\CloudNimble.XmlEssentials.SourceGeneration.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<Import Project="..\CloudNimble.XmlEssentials\build\XmlEssentials.props" />
+
+	<ItemGroup>
+		<AdditionalFiles Include="Schemas\catalog.xsd">
+			<XmlEssentialsNamespace>CloudNimble.XmlEssentials.Samples.Schemas</XmlEssentialsNamespace>
+			<XmlEssentialsContext>CatalogXmlContext</XmlEssentialsContext>
+		</AdditionalFiles>
+	</ItemGroup>
+
+</Project>

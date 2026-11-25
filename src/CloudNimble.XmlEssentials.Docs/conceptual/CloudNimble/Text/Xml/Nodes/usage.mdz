@@ -1,0 +1,36 @@
+Create an `XmlElementNode` and add to it, or parse existing XML with `XmlNode.Parse`. `ToString` returns the markup.
+
+```csharp
+var order = new XmlElementNode("Order");
+order.SetAttribute("id", "1042");
+
+XmlElementNode customer = order.AddElement("Customer");
+customer.Add(new XmlTextNode("Ada Lovelace"));
+
+order.AddElement("Item").InnerText = "Keyboard";
+order.AddElement("Item").InnerText = "Mouse & pad";
+order.AddElement("Notes");
+
+output.WriteLine(order.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Order id="1042"><Customer>Ada Lovelace</Customer><Item>Keyboard</Item><Item>Mouse &amp; pad</Item><Notes/></Order>
+```
+
+| Type | Represents |
+| --- | --- |
+| `XmlElementNode` | An element, with `Attributes` and `Children` |
+| `XmlAttributeNode` | An attribute |
+| `XmlTextNode` | Character data |
+| `XmlCDataNode` | A CDATA section |
+| `XmlCommentNode` | A comment |
+| `XmlProcessingInstructionNode` | A processing instruction |
+| `XmlDeclarationNode` | The XML declaration |
+| `XmlNodeList`, `XmlAttributeNodeList` | The lists behind `Children` and `Attributes` |
+
+For a walkthrough, see [How to build and change XML with XmlNode](/guides/use-xmlnode).
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/29_BuildWithXmlNode.cs)

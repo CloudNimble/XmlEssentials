@@ -1,0 +1,6 @@
+- A policy converts type names as well as member names, so it changes the document element. With `CamelCase`, a type named `Warehouse` is written as `<warehouse>`.
+- A policy doesn't convert names set with `[XmlRoot]`, `[XmlPropertyName]`, `[XmlElement]`, `[XmlAttribute]`, `[XmlArray]`, or `[XmlArrayItem]`, and it doesn't convert enumeration values.
+- `CamelCase` and `PascalCase` change only the first character. `CamelCase` turns `XMLParser` into `xMLParser`. `JsonNamingPolicy.CamelCase` lowercases the whole leading run of capitals instead.
+- The snake case and kebab case policies insert a separator before a capital that follows a lowercase letter, and before the last capital of a run that is followed by a lowercase letter. `XMLParser` becomes `xml_parser`. A digit doesn't start a new word.
+- In a source-generated context, a policy is named with the [`XmlKnownNamingPolicy`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlKnownNamingPolicy) enumeration, because an attribute argument has to be a constant.
+- The built-in policies are shared instances with no state.

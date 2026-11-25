@@ -1,0 +1,59 @@
+<Solution>
+  <Folder Name="/Benchmarks/">
+    <Project Path="CloudNimble.XmlEssentials.Performance/CloudNimble.XmlEssentials.Performance.csproj" />
+  </Folder>
+  <Folder Name="/Core/">
+    <Project Path="CloudNimble.XmlEssentials/CloudNimble.XmlEssentials.csproj" />
+    <Project Path="CloudNimble.XmlEssentials.SourceGeneration/CloudNimble.XmlEssentials.SourceGeneration.csproj" />
+  </Folder>
+  <Folder Name="/Docs/">
+    <Project Path="CloudNimble.XmlEssentials.Docs/CloudNimble.XmlEssentials.Docs.docsproj" Type="C#" />
+  </Folder>
+  <Folder Name="/Spec/">
+    <File Path="../spec/README.md" />
+    <File Path="../spec/00-overview.md" />
+    <File Path="../spec/01-identity-and-decisions.md" />
+    <File Path="../spec/02-xml-fidelity.md" />
+    <File Path="../spec/03-architecture.md" />
+    <File Path="../spec/04-api-reader.md" />
+    <File Path="../spec/05-api-writer.md" />
+    <File Path="../spec/06-api-dom.md" />
+    <File Path="../spec/07-api-serializer.md" />
+    <File Path="../spec/08-api-converters-and-attributes.md" />
+    <File Path="../spec/09-object-mapping.md" />
+    <File Path="../spec/10-source-generation.md" />
+    <File Path="../spec/11-xsd-source-generation.md" />
+    <File Path="../spec/12-aot-and-trimming.md" />
+    <File Path="../spec/13-repo-and-packaging.md" />
+    <File Path="../spec/14-testing.md" />
+    <File Path="../spec/15-benchmarks.md" />
+    <File Path="../spec/16-documentation.md" />
+    <File Path="../spec/17-alternatives.md" />
+    <File Path="../spec/18-security.md" />
+    <File Path="../spec/19-operability.md" />
+    <File Path="../spec/20-open-questions.md" />
+    <File Path="../spec/21-references.md" />
+    <File Path="../spec/22-pr-plan.md" />
+    <File Path="../spec/23-optimization.md" />
+    <File Path="../spec/24-doc-findings-resolution.md" />
+    <File Path="../spec/25-single-engine-metadata.md" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="../.gitignore" />
+    <File Path="../LICENSE" />
+    <File Path="../README.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="global.json" />
+    <File Path="coverage-gate.cs" />
+  </Folder>
+  <Folder Name="/Samples/">
+    <Project Path="CloudNimble.XmlEssentials.Samples/CloudNimble.XmlEssentials.Samples.csproj" />
+    <Project Path="CloudNimble.XmlEssentials.Samples.Cli/CloudNimble.XmlEssentials.Samples.Cli.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj" />
+    <Project Path="CloudNimble.XmlEssentials.Tests.Aot/CloudNimble.XmlEssentials.Tests.Aot.csproj" />
+    <Project Path="CloudNimble.XmlEssentials.Tests.Samples/CloudNimble.XmlEssentials.Tests.Samples.csproj" />
+  </Folder>
+</Solution>

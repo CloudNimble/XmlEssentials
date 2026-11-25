@@ -1,0 +1,21 @@
+A factory is a converter that doesn't convert anything itself. It tells the serializer which types it covers, in `CanConvert`, and creates the converter for each one, in `CreateConverter`. Use it for a family of types that one `XmlConverter<T>` can't serve: every enumeration, or every closed form of a generic type.
+
+```csharp
+public sealed class KebabCaseEnumConverterFactory : XmlConverterFactory
+{
+    public override bool CanConvert(Type typeToConvert)
+    {
+        return typeToConvert.IsEnum;
+    }
+
+    public override XmlConverter? CreateConverter(Type typeToConvert, XmlSerializerOptions options)
+    {
+        Type converterType = typeof(KebabCaseEnumConverter<>).MakeGenericType(typeToConvert);
+        return (XmlConverter?)Activator.CreateInstance(converterType);
+    }
+}
+```
+
+Register a factory as you would a converter: add an instance to `XmlSerializerOptions.Converters`, or name the factory type in `[XmlConverter]`.
+
+`CreateConverter` must return an `XmlConverter<T>` whose `T` is exactly `typeToConvert`. The class is the counterpart of `JsonConverterFactory` in System.Text.Json.

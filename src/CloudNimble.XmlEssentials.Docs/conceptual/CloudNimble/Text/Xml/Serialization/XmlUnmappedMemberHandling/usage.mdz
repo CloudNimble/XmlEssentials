@@ -1,0 +1,42 @@
+`XmlUnmappedMemberHandling` says what the serializer does, when reading, with an element or attribute that no member of the target type maps to. Set it through `XmlSerializerOptions.UnmappedMemberHandling`. It is the counterpart of `JsonUnmappedMemberHandling`.
+
+| Value | Behavior |
+| --- | --- |
+| `Skip` (default) | The element or attribute is ignored. |
+| `Disallow` | The serializer throws an [`XmlException`](/api-reference/CloudNimble/Text/Xml/XmlException). |
+
+```csharp
+string[] documents =
+[
+    "<Registration><Email>ada@contoso.example</Email><Plan>pro</Plan><Coupon>SPRING</Coupon></Registration>",
+    "<Registration source=\"web\"><Email>ada@contoso.example</Email><Plan>pro</Plan></Registration>",
+];
+
+var options = new XmlSerializerOptions { UnmappedMemberHandling = XmlUnmappedMemberHandling.Disallow };
+
+foreach (string xml in documents)
+{
+    Registration? registration = XmlSerializer.Deserialize<Registration>(xml);
+    output.WriteLine($"Skip: {registration!.Email} chose {registration.Plan}");
+
+    try
+    {
+        XmlSerializer.Deserialize<Registration>(xml, options);
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine($"Disallow: {ex.Message}");
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+Skip: ada@contoso.example chose pro
+Disallow: Unknown element 'Coupon'. Path: /Registration | LineNumber: 1 | BytePositionInLine: 73.
+Skip: ada@contoso.example chose pro
+Disallow: Unknown attribute 'source'. Path: /Registration | LineNumber: 1 | BytePositionInLine: 28.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)

@@ -1,0 +1,8 @@
+CloudNimble.Text.Xml.Nodes.XmlNode
+CloudNimble.Text.Xml.Nodes.XmlNodeList
+CloudNimble.Text.Xml.Nodes.XmlAttributeNodeList
+CloudNimble.Text.Xml.Nodes.XmlAttributeNode
+CloudNimble.Text.Xml.Nodes.XmlTextNode
+CloudNimble.Text.Xml.XmlNamespaces
+CloudNimble.Text.Xml.XmlElement
+CloudNimble.Text.Xml.Utf8XmlWriter

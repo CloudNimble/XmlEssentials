@@ -1,0 +1,50 @@
+### Parse, change, write
+
+Parse with `XmlNode.Parse`, change the tree, and write it with `ToString` or `WriteTo`. Comments and indentation inside the root element survive, and the elements you didn't reach into are written from the parsed input.
+
+### Read with the document, edit a copy
+
+Parse with `XmlDocument` when you need `XmlDocumentOptions`, a `Stream`, or the typed getters to find what to change. Find the element with `GetChild` and call `CloneNode`. The copy holds everything under the element and outlives the document.
+
+```csharp
+XmlElementNode product;
+
+using (XmlDocument document = XmlDocument.Parse("""<Catalog><Product sku="KB-1"><Name>Keyboard</Name></Product></Catalog>"""))
+{
+    product = (XmlElementNode)document.RootElement.GetChild("Product").CloneNode();
+}
+
+product.SetAttribute("sku", "KB-2");
+product.AddElement("Price").InnerText = "49.90";
+
+output.WriteLine(product.ToString());
+```
+
+The code produces the following output:
+
+```xml
+<Product sku="KB-2"><Name>Keyboard</Name><Price>49.90</Price></Product>
+```
+
+### Adjust what the serializer produced
+
+`XmlSerializer.SerializeToNode` gives you an object's XML as a tree, and `XmlSerializer.Deserialize` accepts a node.
+
+```csharp
+var product = new Product { Name = "Keyboard", Price = 49.90m };
+
+var node = (XmlElementNode)XmlSerializer.SerializeToNode(product)!;
+output.WriteLine(node.ToString());
+
+node["Price"]!.InnerText = "44.90";
+
+Product? discounted = XmlSerializer.Deserialize<Product>(node);
+output.WriteLine($"{discounted!.Name}: {discounted.Price.ToString(CultureInfo.InvariantCulture)}");
+```
+
+The code produces the following output:
+
+```text
+<Product><Name>Keyboard</Name><Price>49.90</Price></Product>
+Keyboard: 44.90
+```

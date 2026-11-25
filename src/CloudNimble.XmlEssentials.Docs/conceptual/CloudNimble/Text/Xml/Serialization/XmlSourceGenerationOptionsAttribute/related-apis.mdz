@@ -1,0 +1,5 @@
+CloudNimble.Text.Xml.Serialization.XmlSerializerContext
+CloudNimble.Text.Xml.Serialization.XmlSerializableAttribute
+CloudNimble.Text.Xml.Serialization.XmlSourceGenerationMode
+CloudNimble.Text.Xml.Serialization.XmlKnownNamingPolicy
+CloudNimble.Text.Xml.XmlSerializerOptions

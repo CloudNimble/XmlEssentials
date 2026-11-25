@@ -1,0 +1,10 @@
+- **Dispose the writer, or call `Flush`, before you read the output.** Until then, bytes are pending and the buffer or stream doesn't have them.
+- **End every element yourself.** `Dispose` throws an `XmlException` when an element is still open. It doesn't close elements for you.
+- **Use the `WriteElement*` methods for elements that hold one value.** One call replaces three.
+- **Pass `u8` literals for names that are fixed.** `writer.WriteStartElement("Order"u8)` skips the conversion from UTF-16. For a name computed once at run time, keep an `XmlEncodedText`.
+- **Declare the prefixes you use often on the root element** with `WriteNamespaceDeclaration`. Otherwise the writer declares a prefix again on every element that needs it and isn't inside one that has it.
+- **Reuse a writer with `Reset` on a hot path.** A reused writer allocates nothing per document. Call `Flush` before `Reset`, because `Reset` discards pending bytes.
+- **Set `NewLine` when the bytes matter.** The default depends on the operating system.
+- **Write binary data that's in one buffer with one `WriteBase64StringValue` call.** Use `WriteBase64StringSegment` only when the data arrives in pieces.
+- **Use `WriteRawValue` only for XML that your own code produced.** The input isn't escaped. By default the writer checks that it's well formed where it goes, but well-formed input can still carry markup you didn't intend.
+- **Discard the output when the writer throws.** Part of the document may already be committed.

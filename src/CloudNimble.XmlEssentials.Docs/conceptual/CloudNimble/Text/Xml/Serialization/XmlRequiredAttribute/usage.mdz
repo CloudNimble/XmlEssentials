@@ -1,0 +1,45 @@
+Apply `[XmlRequired]` to a property or field that must be present in the XML when deserializing. It is the counterpart of `[JsonRequired]`, and it has the same effect as the C# `required` modifier without making the compiler demand the member in object initializers.
+
+```csharp
+public sealed class Registration
+{
+    public required string Email { get; set; }
+
+    [XmlRequired]
+    public string? Plan { get; set; }
+
+    public string? Referrer { get; set; }
+}
+```
+
+```csharp
+string[] documents =
+[
+    "<Registration><Email>ada@contoso.example</Email><Plan>pro</Plan></Registration>",
+    "<Registration><Plan>pro</Plan></Registration>",
+    "<Registration><Email>ada@contoso.example</Email></Registration>",
+];
+
+foreach (string xml in documents)
+{
+    try
+    {
+        Registration? registration = XmlSerializer.Deserialize<Registration>(xml);
+        output.WriteLine($"{registration!.Email} chose {registration.Plan}");
+    }
+    catch (XmlException ex)
+    {
+        output.WriteLine(ex.Message);
+    }
+}
+```
+
+The code produces the following output:
+
+```text
+ada@contoso.example chose pro
+The required member 'Email' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 46.
+The required member 'Plan' is missing. Path: /Registration | LineNumber: 1 | BytePositionInLine: 64.
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/10_RequiredProperties.cs)

@@ -1,0 +1,30 @@
+- An attribute without a prefix is in no namespace, even when its element is in a default namespace. To put an attribute in a namespace, give it a `NamespaceUri` and a `Prefix`. With a namespace and no prefix, the writer generates one:
+
+  ```csharp
+  var item = new XmlElementNode("Item");
+  item.SetAttribute("unit", "kg", "urn:example:units");
+  output.WriteLine(item.ToString());
+
+  var broken = new XmlElementNode("Item", namespaceUri: null, prefix: "u");
+  try
+  {
+      broken.ToString();
+  }
+  catch (XmlException ex)
+  {
+      output.WriteLine(ex.Message);
+  }
+  ```
+
+  The code produces the following output:
+
+  ```text
+  <Item xmlns:ns1="urn:example:units" ns1:unit="kg"/>
+  Prefixed names require a namespace URI.
+  ```
+
+- A namespace declaration is an attribute too. In a parsed tree, `xmlns="..."` has the local name `xmlns`, and `xmlns:dc="..."` has the prefix `xmlns` and the local name `dc`; both report `XmlNamespaces.Xmlns` as their namespace.
+- `Value` is the plain value. Escaping happens when the attribute is written. A `null` value, prefix, or namespace is stored as an empty string.
+- `LocalName` rejects `null`, an empty string, and white space.
+- `ToString` on an attribute throws an `XmlException`, because an attribute can't be written outside a start tag. Read `Value`.
+- An attribute has one parent. Adding it to a second element throws; use `DeepClone` to copy it.

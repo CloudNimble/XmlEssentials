@@ -1,0 +1,58 @@
+The following examples show the names and the shapes that a wrapped collection produces.
+
+### Default item names
+
+Without `[XmlArrayItem]`, each item of a wrapped collection is named after its type. A built-in type has its XML Schema name, so an `int` item is `<int>`.
+
+```csharp
+public sealed class Scoreboard
+{
+    public string? Player { get; set; }
+
+    [XmlArray]
+    public int[]? Scores { get; set; }
+}
+```
+
+```csharp
+var board = new Scoreboard { Player = "Ada", Scores = [90, 85] };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+output.WriteLine(XmlSerializer.Serialize(board, options));
+```
+
+The code produces the following output:
+
+```xml
+<Scoreboard><Player>Ada</Player><Scores><int>90</int><int>85</int></Scores></Scoreboard>
+```
+
+### Empty and null collections
+
+A wrapper can show the difference between an empty collection and a `null` one. Repeated elements with no wrapper can't. `Playlist.Tracks` in the following example has no `[XmlArray]`.
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+output.WriteLine(XmlSerializer.Serialize(new Playlist { Name = "Empty", Tracks = [] }, options));
+output.WriteLine(XmlSerializer.Serialize(new Album { Title = "Empty", Tracks = [] }, options));
+output.WriteLine(XmlSerializer.Serialize(new Album { Title = "Null", Tracks = null }, options));
+
+Album? empty = XmlSerializer.Deserialize<Album>("<Album><Title>Empty</Title><Tracks /></Album>");
+output.WriteLine($"Wrapped and empty: {empty!.Tracks?.Count.ToString() ?? "null"}");
+
+Album? missing = XmlSerializer.Deserialize<Album>("<Album><Title>Missing</Title></Album>");
+output.WriteLine($"Wrapper missing: {missing!.Tracks?.Count.ToString() ?? "null"}");
+```
+
+The code produces the following output:
+
+```text
+<Playlist><Name>Empty</Name></Playlist>
+<Album><Title>Empty</Title><Tracks/></Album>
+<Album><Title>Null</Title><Tracks xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/></Album>
+Wrapped and empty: 0
+Wrapper missing: null
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/12_SerializeCollections.cs)

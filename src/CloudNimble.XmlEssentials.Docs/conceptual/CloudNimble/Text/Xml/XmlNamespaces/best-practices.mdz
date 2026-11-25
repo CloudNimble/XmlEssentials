@@ -1,0 +1,2 @@
+- Compare by URI, never by prefix. A document can bind `http://www.w3.org/2001/XMLSchema-instance` to any prefix, and `xsi` is only the conventional one.
+- Use `XmlNamespaces.Xsi` together with `XmlAttributes.Nil` or `XmlAttributes.Type` when you look for `xsi:nil` or `xsi:type`. An attribute with no prefix is never in a namespace, so an unprefixed `nil` attribute is not `xsi:nil`.

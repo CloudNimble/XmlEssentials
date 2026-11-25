@@ -1,0 +1,38 @@
+### Read the contract of a type
+
+The following example lists the members of `Order` as the serializer maps them. The type info comes from a source-generated context, which builds it from generated metadata. A context in the default mode gives the same list.
+
+```csharp
+XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
+
+output.WriteLine($"Root element: {metadata.RootName.LocalName}");
+foreach (XmlPropertyInfo property in metadata.Properties)
+{
+    string kind = property.IsAttribute ? "attribute" : "element";
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+}
+```
+
+```csharp
+public sealed class Order
+{
+    public string? Customer { get; set; }
+
+    [XmlAttribute]
+    public int Id { get; set; }
+
+    [XmlElement("Line")]
+    public List<OrderLine> Lines { get; set; } = [];
+}
+```
+
+The code produces the following output:
+
+```text
+Root element: Order
+Id: attribute, Int32
+Customer: element, String
+Line: element, List`1
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/33_SourceGenerationModes.cs)

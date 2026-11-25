@@ -1,0 +1,4 @@
+CloudNimble.Text.Xml.Serialization.XmlExtensionData
+CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
+CloudNimble.Text.Xml.Serialization.XmlMixedAttribute
+CloudNimble.Text.Xml.XmlSerializerOptions

@@ -1,0 +1,1 @@
+D:\GitHub\XmlEssentials\src\CloudNimble.XmlEssentials\bin\Debug\net11.0\CloudNimble.XmlEssentials.dll

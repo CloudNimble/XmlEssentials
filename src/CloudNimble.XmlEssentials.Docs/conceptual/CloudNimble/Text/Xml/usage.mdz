@@ -1,0 +1,78 @@
+Install the `XmlEssentials` package and import the namespace:
+
+```bash
+dotnet add package XmlEssentials
+```
+
+```csharp
+using CloudNimble.Text.Xml;
+```
+
+Then choose the entry point that fits the job. Start at the top of this list and move down only when you need to.
+
+### XmlSerializer: your types to XML and back
+
+`XmlSerializer.Serialize` and `XmlSerializer.Deserialize` convert between .NET objects and XML. This is the entry point for most applications.
+
+```csharp
+var person = new Person { Name = "Ada", Age = 36 };
+
+string xml = XmlSerializer.Serialize(person);
+output.WriteLine(xml);
+
+Person? copy = XmlSerializer.Deserialize<Person>(xml);
+output.WriteLine($"{copy!.Name} is {copy.Age}");
+```
+
+See [How to serialize](/guides/serialize) and [How to deserialize](/guides/deserialize).
+
+### XmlDocument: a read-only tree
+
+`XmlDocument.Parse` reads a whole document into pooled memory. `RootElement` and the `XmlElement` values you get from it let you move through the document in any order.
+
+```csharp
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"Order {order.GetAttribute("id").GetInt32()}");
+```
+
+See [How to use XmlDocument](/guides/use-xmldocument). To change a document, use the tree in `CloudNimble.Text.Xml.Nodes`, described in [How to use XmlNode](/guides/use-xmlnode).
+
+### Utf8XmlReader: one token at a time
+
+`Utf8XmlReader` reads UTF-8 bytes forward, one token per call to `Read`, and gives you names and values as slices of your input.
+
+```csharp
+var options = new XmlReaderOptions { AllowMultipleRoots = true };
+var reader = new Utf8XmlReader("<Item>Keyboard</Item><Item>Mouse</Item>"u8, options);
+while (reader.Read())
+{
+    if (reader.TokenType is XmlTokenType.Text)
+    {
+        output.WriteLine(reader.GetString());
+    }
+}
+```
+
+The example reads a fragment with two top-level elements, which is why it sets `AllowMultipleRoots`.
+
+See [How to read XML with Utf8XmlReader](/guides/use-utf8xmlreader).
+
+### Utf8XmlWriter: one call at a time
+
+`Utf8XmlWriter` writes UTF-8 to an `IBufferWriter<byte>` or a `Stream`. It escapes values, declares namespaces, and checks that the output is well formed.
+
+```csharp
+using (var writer = new Utf8XmlWriter(buffer, options))
+{
+    writer.WriteStartElement("Order");
+    writer.WriteAttributeString("id", "1042");
+    writer.WriteElementString("Item", "Keyboard");
+    writer.WriteElementString("Item", "Mouse & pad");
+    writer.WriteElementNumber("Total", 129.90m);
+    writer.WriteEndElement();
+}
+```
+
+See [How to write XML with Utf8XmlWriter](/guides/use-utf8xmlwriter).

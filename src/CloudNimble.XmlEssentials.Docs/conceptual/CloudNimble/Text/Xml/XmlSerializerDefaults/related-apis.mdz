@@ -1,0 +1,5 @@
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.XmlSerializer
+CloudNimble.Text.Xml.XmlNamingPolicy
+CloudNimble.Text.Xml.XmlCommentHandling
+CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling

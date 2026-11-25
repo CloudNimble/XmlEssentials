@@ -1,0 +1,7 @@
+- `Always` has an effect only on `[XmlIgnore]`. Setting `DefaultIgnoreCondition` to `Always` throws an `ArgumentException`, because it would leave out every member.
+- `WhenWritingDefault` includes `null`. For a value type it compares with the default value, so `0`, `false`, and `0001-01-01` are left out. Be careful with it when a default value is meaningful to the reader of the XML.
+- A `null` collection wrapped with `[XmlArray]` is left out by `WhenWritingNull`, `WhenWritingNullReference`, and `WhenWritingDefault`, as any other `null` member is.
+- `WhenReading` doesn't stop a constructor parameter of the same name from being filled. On a required member it is an error, because the member could never be read: the serializer throws an `InvalidOperationException` when the type is first used.
+- `WhenWritingNull`, `WhenWritingNullReference`, `WhenWritingDefault`, and `WhenWriting` don't affect reading. There are no conditions that apply to reading only.
+- A member that is left out can't be told apart from a member that was never set. If the reader needs to see an explicit `null`, keep `Never` and let the serializer write `xsi:nil="true"`. See [Handle null values](/guides/null-and-nil).
+- Collections follow their own rules for empty and `null`. See [Serialize collections](/guides/collections#empty-and-null-collections).

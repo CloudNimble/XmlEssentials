@@ -1,0 +1,13 @@
+Put `[XmlMixed]` on a `List<XmlMixedContentItem>` member to map an element whose content is text with child elements inside it. The serializer fills the list with `XmlMixedText` and `XmlMixedElement` items in document order, and writes them back in the order of the list.
+
+```csharp
+public sealed class Paragraph
+{
+    [XmlMixed]
+    public List<XmlMixedContentItem> Content { get; set; } = [];
+}
+```
+
+Deserializing `<Paragraph>Press <Key>Ctrl</Key> and <Key>S</Key> to save.</Paragraph>` into this type gives five items: the text `Press `, a `Key` element, the text ` and `, a second `Key` element, and the text ` to save.`
+
+See [Mixed content and overflow](/guides/mixed-content) for the complete example, and the [mixed content sample](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/18_MixedContent.cs).

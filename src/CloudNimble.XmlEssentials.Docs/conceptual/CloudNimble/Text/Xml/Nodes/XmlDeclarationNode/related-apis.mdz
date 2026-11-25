@@ -1,0 +1,5 @@
+CloudNimble.Text.Xml.XmlDeclarationInfo
+CloudNimble.Text.Xml.XmlWriterOptions
+CloudNimble.Text.Xml.Utf8XmlWriter
+CloudNimble.Text.Xml.XmlDocument
+CloudNimble.Text.Xml.Nodes.XmlNode

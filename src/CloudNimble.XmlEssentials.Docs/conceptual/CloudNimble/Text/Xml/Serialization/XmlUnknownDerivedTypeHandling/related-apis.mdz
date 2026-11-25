@@ -1,0 +1,4 @@
+CloudNimble.Text.Xml.Serialization.XmlPolymorphicAttribute
+CloudNimble.Text.Xml.Serialization.XmlDerivedTypeAttribute
+CloudNimble.Text.Xml.Serialization.XmlUnmappedMemberHandling
+CloudNimble.Text.Xml.XmlDiscriminatorPlacement

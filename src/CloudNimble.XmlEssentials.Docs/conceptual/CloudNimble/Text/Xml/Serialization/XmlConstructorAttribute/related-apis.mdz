@@ -1,0 +1,3 @@
+CloudNimble.Text.Xml.XmlSerializerOptions
+CloudNimble.Text.Xml.Serialization.XmlRequiredAttribute
+CloudNimble.Text.Xml.XmlException

@@ -1,0 +1,5 @@
+- Declare every derived type that can appear. The default, `FailSerialization`, then reports a type you forgot instead of writing part of it.
+- Prefer `ElementName` when you control the format. It needs no extra attribute, and the document says what each element is.
+- Use `Attribute` or `XsiType` when a schema fixes the element name.
+- Choose a fallback value of `UnknownDerivedTypeHandling` only when losing the members of the undeclared type is acceptable.
+- Give each derived type a discriminator that is not the element name of another member of the containing type.

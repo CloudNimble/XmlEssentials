@@ -1,0 +1,70 @@
+An `XmlElement` is one node of an [`XmlDocument`](/api-reference/CloudNimble/Text/Xml/XmlDocument): an element, an attribute, a text node, a CDATA section, a comment, or a processing instruction. `ValueKind` says which. It's the XML counterpart of `JsonElement`: a small struct that points into the document and is usable only while the document is alive.
+
+You get the first one from `XmlDocument.RootElement`. From there, `GetChild` and `GetAttribute` find a node by name and throw an `XmlException` when it's missing, and `TryGetChild` and `TryGetAttribute` return `false` instead. The typed getters convert a value.
+
+```csharp
+const string xml = """
+    <Order id="1042">
+      <Customer>Ada Lovelace</Customer>
+      <Total currency="GBP">129.90</Total>
+    </Order>
+    """;
+
+using XmlDocument document = XmlDocument.Parse(xml);
+XmlElement order = document.RootElement;
+
+output.WriteLine($"Customer: {order.GetChild("Customer").GetString()}");
+output.WriteLine($"Order id: {order.GetAttribute("id").GetInt32()}");
+
+if (order.TryGetChild("Total", out XmlElement total) && total.TryGetAttribute("currency", out XmlElement currency))
+{
+    output.WriteLine($"Total: {total.GetDecimal()} {currency.GetString()}");
+}
+
+if (!order.TryGetChild("Discount", out _))
+{
+    output.WriteLine("No Discount element");
+}
+
+try
+{
+    order.GetChild("Discount");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+
+try
+{
+    order.GetAttribute("status");
+}
+catch (XmlException ex)
+{
+    output.WriteLine(ex.Message);
+}
+```
+
+The code produces the following output:
+
+```text
+Customer: Ada Lovelace
+Order id: 1042
+Total: 129.90 GBP
+No Discount element
+Child element 'Discount' was not found.
+Attribute 'status' was not found.
+```
+
+The members fall into these groups:
+
+| To | Use |
+| --- | --- |
+| Identify the node | `ValueKind`, `TokenType`, `LocalName`, `Prefix`, `NamespaceUri`, `IsEmptyElement`, `IsNil` |
+| Find a node by name | `GetChild`, `TryGetChild`, `GetAttribute`, `TryGetAttribute` |
+| Visit every node | `EnumerateChildren`, `EnumerateAttributes`, `AttributeCount` |
+| Read a value | `GetString`, `GetBoolean`, `GetInt32`, `GetInt64`, `GetDecimal`, `GetDouble`, `GetDateTime`, `GetDateTimeOffset`, `GetGuid`, `GetBytesFromBase64`, the other integer and floating-point getters, and a `TryGet` method for each typed getter except `GetBoolean` |
+| Read text or markup | `GetInnerText`, `GetRawXml` |
+| Write or copy the node | `WriteTo`, `CloneNode` |
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/27_QueryWithXmlElement.cs)

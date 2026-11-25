@@ -1,0 +1,51 @@
+`XmlDocument` parses a whole XML document and gives you read-only, random access to it through [`XmlElement`](/api-reference/CloudNimble/Text/Xml/XmlElement). It's the XML counterpart of `JsonDocument`: the document rents its buffers from the shared array pool, so create it in a `using` statement.
+
+`Parse` has an overload for a `string`, a `ReadOnlySpan<char>`, UTF-8 bytes in a `ReadOnlySpan<byte>` or a `ReadOnlySequence<byte>`, and a `Stream` of UTF-8. Start every query at `RootElement`.
+
+```csharp
+const string text = """<Order id="1042"><Item>Keyboard</Item></Order>""";
+byte[] utf8 = """<Order id="1043"><Item>Mouse</Item></Order>"""u8.ToArray();
+
+using (XmlDocument fromString = XmlDocument.Parse(text))
+{
+    output.WriteLine($"string: order {fromString.RootElement.GetAttribute("id").GetInt32()}");
+}
+
+using (XmlDocument fromUtf8 = XmlDocument.Parse(utf8.AsSpan()))
+{
+    output.WriteLine($"UTF-8 span: order {fromUtf8.RootElement.GetAttribute("id").GetInt32()}");
+}
+
+using (var stream = new MemoryStream(utf8))
+using (XmlDocument fromStream = XmlDocument.Parse(stream))
+{
+    output.WriteLine($"stream: order {fromStream.RootElement.GetAttribute("id").GetInt32()}");
+}
+
+using (XmlDocument fromSequence = XmlDocument.Parse(new ReadOnlySequence<byte>(utf8)))
+{
+    output.WriteLine($"sequence: order {fromSequence.RootElement.GetAttribute("id").GetInt32()}");
+}
+```
+
+The code produces the following output:
+
+```text
+string: order 1042
+UTF-8 span: order 1043
+stream: order 1043
+sequence: order 1043
+```
+
+The other entry points are:
+
+- `ParseAsync`, which reads a `Stream` without blocking and then parses it.
+- `TryParse`, which returns `false` where `Parse` throws an `XmlException`.
+- `ParseValue`, which builds a document from the element a `Utf8XmlReader` is positioned on, and `TryParseValue`, which returns `false` and leaves the reader where it was when the element isn't all in a block that isn't the last one, or when the reader is on an end tag.
+- `DiscoverNamespaces`, which returns the prefixes and namespaces a document declares without building a document. See [Take them from an existing document](/guides/namespaces#take-them-from-an-existing-document).
+
+`Declaration` is the XML declaration that was parsed, or `null`. `WriteTo` writes the document to a `Utf8XmlWriter`.
+
+A document keeps comments and the white space between elements by default, so that parsing a document and writing it back doesn't lose its comments or its indentation. Both appear among the children of an element, so check `ValueKind` when you enumerate. To leave them out, pass an [`XmlDocumentOptions`](/api-reference/CloudNimble/Text/Xml/XmlDocumentOptions) with `CommentHandling = XmlCommentHandling.Skip` and `WhitespaceHandling = XmlWhitespaceHandling.Insignificant`.
+
+For a walkthrough of every member, see [How to read XML with XmlDocument and XmlElement](/guides/use-xmldocument).

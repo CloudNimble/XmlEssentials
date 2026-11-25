@@ -1,0 +1,10 @@
+- **UTF-8 only.** A document that declares another encoding is rejected with an `XmlException`. Transcode it first.
+- **No DTDs.** A document type declaration is rejected, so a document can't define entities. Only the five predefined entities and character references are decoded. See [Security](/guides/security).
+- **XML 1.0 and XML 1.1.** The reader takes the version from the XML declaration and applies that version's rules. The writer writes the version you set in `XmlWriterOptions.Version`.
+- **Namespaces are always processed.** Names are reported as a local name and a namespace URI. An element without a prefix is in the default namespace. An attribute without a prefix is in no namespace.
+- **Empty elements have no end token.** `Utf8XmlReader` reports `<e/>` as one `StartElement` token with `IsEmptyElement` set.
+- **Typed values use XML Schema forms.** Numbers, dates, durations, and Booleans are read and written in their XML Schema lexical forms with the invariant culture.
+- **The names match `System.Xml` in places, the types don't.** `XmlDocument`, `XmlElement`, `XmlSerializer`, and `XmlException` in this namespace are different types from those in `System.Xml`. Avoid importing both namespaces in one file, or use an alias.
+- **Thread safety differs by type.** See [Thread safety](/guides/thread-safety).
+
+For what the library accepts and rejects, see [XML conformance](/guides/xml-conformance).

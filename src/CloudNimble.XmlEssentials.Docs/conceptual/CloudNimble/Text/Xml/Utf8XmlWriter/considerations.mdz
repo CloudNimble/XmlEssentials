@@ -1,0 +1,47 @@
+Know the following before you build on the writer.
+
+### Output and buffering
+
+The output is always UTF-8. With an `IBufferWriter<byte>`, the writer writes into memory it gets from the buffer writer and commits it on `Flush`, on `Dispose`, and when it needs more room. With a `Stream`, it fills a buffer rented from the array pool, which starts at 16 KB, and writes to the stream on `Flush`, on `Dispose`, and when the buffer fills. Disposing the writer doesn't close the stream.
+
+### Dispose and open elements
+
+`Dispose` and `DisposeAsync` flush. If an element is still open and `SkipValidation` is `false`, they flush and then throw an `XmlException`. In a `using` statement, that exception replaces an exception that was already on its way out, so the message you catch can be `The document has unclosed elements.` when the real cause came earlier.
+
+### Thread safety
+
+A writer isn't thread safe. Use each instance from one thread at a time. See [Thread safety](/guides/thread-safety).
+
+### Allocation
+
+A writer that's reused with `Reset` allocates nothing per document. `Reset` discards bytes that are still pending, so call `Flush` first to keep them. See [Benchmarks](/benchmarks) for the measurements.
+
+### Namespaces
+
+The writer tracks the namespaces in scope and declares what's missing: a default namespace for an element written with a namespace and no prefix, your prefix for an element written with one, and a generated prefix (`ns1`, `ns2`, and so on) for an attribute in a namespace that has no prefix in scope. An element written with no namespace argument, or with a `null` one, gets no declaration, so under a default namespace a reader puts it in that namespace. An element written with an empty namespace is in no namespace: under a default namespace the writer adds `xmlns=""`.
+
+### Indentation
+
+With `Indented` set, elements, comments, and processing instructions each get a line break and indentation. An element that holds text, a CDATA section, or raw XML from `WriteRawValue` is written on one line, with everything in it.
+
+### Layout
+
+Every line break the writer writes is the `NewLine` of its options, including a line feed inside text, a CDATA section, a comment, or a processing instruction. An element with no content is written in the form `EmptyElementStyle` asks for (`<e/>` by default), except after `WriteFullEndElement`, which always writes an end tag. `AttributeStyle` decides whether attributes stay on the line of the start tag.
+
+### What isn't checked
+
+- `WriteRawValue` copies its input without escaping it. It checks that the input is well formed where it is written only when `skipInputValidation` is `false` and the writer does not have `SkipValidation` set.
+- With `SkipValidation` set, names, namespace declarations, duplicate attributes, the characters of comments, CDATA sections, and processing instructions, and unclosed elements at `Dispose` aren't checked. Values are still escaped, and the single root, `MaxDepth`, and `MaxAttributeCount` are still enforced.
+
+### Differences from Utf8JsonWriter
+
+- There's no property-name step. Structure comes from `WriteStartElement` and `WriteEndElement`, and attributes are written on the open start tag.
+- Validation is on by default and also covers names and namespaces. `SkipValidation` doesn't turn off the single-root check, `MaxDepth`, or `MaxAttributeCount`.
+- `Dispose` throws when the document is incomplete.
+
+### Differences from System.Xml.XmlWriter
+
+- The output is UTF-8 only, to an `IBufferWriter<byte>` or a `Stream`. There's no `TextWriter` or `StringBuilder` target.
+- There's no `WriteDocType`, `WriteEntityRef`, `WriteStartDocument`, or `WriteEndDocument`. The declaration is written for you, and nothing closes open elements for you.
+- `Reset` lets one instance write many documents.
+- Typed values have their own methods, in place of `WriteValue` overloads and `XmlConvert`.

@@ -1,0 +1,6 @@
+The four entry points are built on each other, and you can move between them:
+
+- **The serializer uses the reader and the writer.** A [custom converter](/guides/custom-converters) receives a `Utf8XmlReader` to read its value and a `Utf8XmlWriter` to write it.
+- **A document writes itself to a writer.** `XmlDocument.WriteTo` and `XmlElement.WriteTo` copy a parsed document, or one element of it, into a `Utf8XmlWriter`. See [How to use XmlDocument](/guides/use-xmldocument).
+- **The serializer reads from and writes to the tree.** You can deserialize from an `XmlDocument`, an `XmlElement`, or an `XmlNode`, and serialize to them. See [How to deserialize](/guides/deserialize).
+- **Reader in, writer out.** To transform a large document without holding it in memory, read tokens with `Utf8XmlReader` and write what you keep with `Utf8XmlWriter`. See [How to read XML with Utf8XmlReader](/guides/use-utf8xmlreader#read-a-stream-in-blocks).

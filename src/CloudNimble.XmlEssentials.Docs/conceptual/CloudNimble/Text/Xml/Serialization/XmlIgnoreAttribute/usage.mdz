@@ -1,0 +1,67 @@
+Apply `[XmlIgnore]` to a property or field to keep it out of the XML. It is the counterpart of `[JsonIgnore]`. With no arguments, the member is never written and never read.
+
+```csharp
+public sealed class UserAccount
+{
+    public string? UserName { get; set; }
+
+    [XmlIgnore]
+    public string? Password { get; set; }
+
+    public string? Email { get; set; }
+}
+```
+
+```csharp
+var account = new UserAccount { UserName = "ada", Password = "hunter2", Email = "ada@contoso.example" };
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+output.WriteLine(XmlSerializer.Serialize(account, options));
+
+UserAccount? copy = XmlSerializer.Deserialize<UserAccount>(
+    "<UserAccount><UserName>ada</UserName><Password>injected</Password></UserAccount>");
+output.WriteLine($"Password: {copy!.Password ?? "(null)"}");
+```
+
+The code produces the following output:
+
+```text
+<UserAccount><UserName>ada</UserName><Email>ada@contoso.example</Email></UserAccount>
+Password: (null)
+```
+
+Set `Condition` to leave the member out only when it has no value:
+
+```csharp
+public sealed class UserProfile
+{
+    public string? DisplayName { get; set; }
+
+    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingNull)]
+    public string? Bio { get; set; }
+
+    [XmlIgnore(Condition = XmlIgnoreCondition.WhenWritingDefault)]
+    public int SignInCount { get; set; }
+
+    public string? Website { get; set; }
+}
+```
+
+```csharp
+var options = new XmlSerializerOptions { OmitXmlDeclaration = true };
+
+var empty = new UserProfile { DisplayName = "Ada" };
+output.WriteLine(XmlSerializer.Serialize(empty, options));
+
+var full = new UserProfile { DisplayName = "Ada", Bio = "Mathematician", SignInCount = 3, Website = "https://contoso.example" };
+output.WriteLine(XmlSerializer.Serialize(full, options));
+```
+
+The code produces the following output:
+
+```xml
+<UserProfile><DisplayName>Ada</DisplayName><Website xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/></UserProfile>
+<UserProfile><DisplayName>Ada</DisplayName><Bio>Mathematician</Bio><SignInCount>3</SignInCount><Website>https://contoso.example</Website></UserProfile>
+```
+
+[View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/09_IgnoreProperties.cs)
