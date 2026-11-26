@@ -160,8 +160,64 @@ jobs:
           ./artifacts/*.snupkg
         retention-days: 7
 
+  test-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The workflow-level paths are on the Windows D: drive. Ubuntu runners keep them in the home directory.
+    env:
+      DOTNET_INSTALL_DIR: '/home/runner/.dotnet'
+      DOTNET_ROOT: '/home/runner/.dotnet'
+      NUGET_PACKAGES: '/home/runner/.nuget/packages'
+      NUGET_HTTP_CACHE_PATH: '/home/runner/.local/share/NuGet/http-cache'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Install .NET versions
+      run: |
+        curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+        bash dotnet-install.sh --channel 10.0 --install-dir "$DOTNET_INSTALL_DIR"
+        bash dotnet-install.sh --channel 11.0 --install-dir "$DOTNET_INSTALL_DIR"
+        echo "$DOTNET_INSTALL_DIR" >> "$GITHUB_PATH"
+        "$DOTNET_INSTALL_DIR/dotnet" --list-sdks
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release
+
+    - name: Test net10.0
+      working-directory: src
+      run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net10.0
+
+    - name: Test net11.0 samples
+      working-directory: src
+      run: dotnet test --project CloudNimble.XmlEssentials.Tests.Samples/CloudNimble.XmlEssentials.Tests.Samples.csproj --configuration Release --no-build -f net11.0
+
+    # The default line ending, the native executable's name and the culture differ from Windows, so the
+    # library's tests and the coverage gate run here as well.
+    - name: Test net11.0 with coverage
+      working-directory: src
+      run: dotnet test --project CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj --configuration Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
+
+    - name: Coverage gate
+      working-directory: src
+      run: dotnet run coverage-gate.cs -- "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
+
+    - name: Publish AOT CLI sample
+      working-directory: src
+      run: dotnet publish CloudNimble.XmlEssentials.Samples.Cli/CloudNimble.XmlEssentials.Samples.Cli.csproj -c Release
+
+    - name: Run AOT CLI serialize
+      working-directory: src
+      run: ./CloudNimble.XmlEssentials.Samples.Cli/bin/Release/net11.0/linux-x64/publish/xmlessentials serialize --name Ada --age 36
+
   deploy:
-    needs: build
+    needs: [build, test-linux]
     runs-on: windows-latest
     timeout-minutes: 15
     environment: production
