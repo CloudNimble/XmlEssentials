@@ -325,15 +325,14 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 // The classes a schema generates have public properties with a getter and a setter. Their metadata
                 // is written before the classes exist as symbols, so the property type is inferred here.
-                builder.Append(indent).AppendLine("    private static XmlPropertyInfoValues<TValue> __Property<TDeclaring, TValue>(string name, Func<TDeclaring, TValue> get, Action<TDeclaring, TValue> set, params Attribute[] attributes)");
+                builder.Append(indent).AppendLine("    private static XmlPropertyInfoValues<TDeclaring, TValue> __Property<TDeclaring, TValue>(string name, Func<TDeclaring, TValue> get, Action<TDeclaring, TValue> set, params Attribute[] attributes)");
                 builder.Append(indent).AppendLine("        where TDeclaring : class");
                 builder.Append(indent).AppendLine("    {");
-                builder.Append(indent).AppendLine("        return new XmlPropertyInfoValues<TValue>");
+                builder.Append(indent).AppendLine("        return new XmlPropertyInfoValues<TDeclaring, TValue>");
                 builder.Append(indent).AppendLine("        {");
                 builder.Append(indent).AppendLine("            PropertyName = name,");
-                builder.Append(indent).AppendLine("            DeclaringType = typeof(TDeclaring),");
-                builder.Append(indent).AppendLine("            Getter = obj => get((TDeclaring)obj),");
-                builder.Append(indent).AppendLine("            Setter = (obj, value) => set((TDeclaring)obj, value),");
+                builder.Append(indent).AppendLine("            Getter = get,");
+                builder.Append(indent).AppendLine("            Setter = (ref TDeclaring obj, TValue value) => set(obj, value),");
                 builder.Append(indent).AppendLine("            Attributes = attributes,");
                 builder.Append(indent).AppendLine("        };");
                 builder.Append(indent).AppendLine("    }");

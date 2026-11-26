@@ -19,6 +19,7 @@ namespace CloudNimble.XmlEssentials.Tests.POCOs.Prefixes
         /// Gets or sets a child element in <c>urn:b</c>.
         /// </summary>
         [XmlElement("entry", "urn:b")]
+        [XmlPropertyOrder(2)]
         public PrefixedEntry? Entry { get; set; }
 
         /// <summary>

@@ -10,7 +10,7 @@ STJ’s source generator has two modes (`JsonSourceGenerationMode`), and XmlEsse
 
 | Mode | What the generator emits | Behaviour |
 | --- | --- | --- |
-| **Metadata** | For every listed and reached object type, an `XmlObjectInfoValues<T>` and one `XmlPropertyInfoValues<TValue>` per member: getter and setter delegates, the member's attributes as instances, the constructor's parameters and a delegate that calls it. No reflection. | The runtime engine reads and writes, with every option and feature the reflection resolver has. Native AOT-safe. |
+| **Metadata** | For every listed and reached object type, an `XmlObjectInfoValues<T>` and one `XmlPropertyInfoValues<TDeclaring, TValue>` per member: getter and setter delegates, the member's attributes as instances, the constructor's parameters and a delegate that calls it. No reflection. | The runtime engine reads and writes, with every option and feature the reflection resolver has. Native AOT-safe. |
 | **Serialization** | A write-only fast path that calls `Utf8XmlWriter` directly. | Writes when the options are the ones it was compiled for. Otherwise, and on every read, `InvalidOperationException`: "The type info for 'T' was generated in XmlSourceGenerationMode.Serialization, which provides no property metadata. It can only write a type that has a write fast path, with the options it was compiled for. Use XmlSourceGenerationMode.Default or XmlSourceGenerationMode.Metadata." |
 | **Default** | `Metadata | Serialization`: both. | The fast path writes when the options allow it, and the engine does everything else. Nothing is refused. |
 

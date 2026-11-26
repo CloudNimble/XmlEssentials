@@ -16,7 +16,7 @@ public partial class MetadataOrderXmlContext : XmlSerializerContext
 
 Combining `Metadata` and `Serialization` gives the same result as `Default`.
 
-The metadata describes the constructor and the members of a type: `XmlObjectInfoValues<T>`, `XmlPropertyInfoValues<TValue>`, and `XmlParameterInfoValues`. The serializer reads and writes from it with the engine the reflection resolver uses, so every option, converter, and attribute has the same effect. The write fast path is a method that writes the type directly. It's used when the options agree with what `[XmlSourceGenerationOptions]` declares. Every mode is safe for trimming and Native AOT.
+The metadata describes the constructor and the members of a type: `XmlObjectInfoValues<T>`, `XmlPropertyInfoValues<TDeclaring, TValue>`, and `XmlParameterInfoValues`. The serializer reads and writes from it with the engine the reflection resolver uses, so every option, converter, and attribute has the same effect. The write fast path is a method that writes the type directly. It's used when the options agree with what `[XmlSourceGenerationOptions]` declares. Every mode is safe for trimming and Native AOT.
 
 The following example writes and reads the same order with a context generated in each mode:
 

@@ -16,14 +16,14 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Fields
 
         private readonly XmlObjectBinding _binding;
-        private readonly XmlPropertyInfo[] _properties;
+        private readonly XmlPropertyInfoList _properties;
 
         #endregion
 
         #region Public Properties
 
         /// <inheritdoc />
-        public override Func<object>? CreateObject => _binding.CreateObject;
+        public override Func<T>? CreateObject => field ??= _binding.CreateObject is { } create ? () => (T)create() : null;
 
         /// <inheritdoc />
         public override IList<XmlPropertyInfo> Properties => _properties;
@@ -64,11 +64,13 @@ namespace CloudNimble.Text.Xml.Serialization
                 options.RemoveTypeInfo(typeof(T));
                 throw;
             }
-            _properties = new XmlPropertyInfo[_binding.Properties.Length];
-            for (var i = 0; i < _properties.Length; i++)
+            var properties = new XmlPropertyInfo[_binding.Properties.Length];
+            for (var i = 0; i < properties.Length; i++)
             {
-                _properties[i] = _binding.Properties[i].Info;
+                properties[i] = _binding.Properties[i].Info;
             }
+
+            _properties = new XmlPropertyInfoList(properties);
         }
 
         #endregion

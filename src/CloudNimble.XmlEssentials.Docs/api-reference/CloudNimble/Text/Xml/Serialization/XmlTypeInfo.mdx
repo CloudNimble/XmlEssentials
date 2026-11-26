@@ -64,7 +64,7 @@ output.WriteLine($"Root element: {metadata.RootName.LocalName}");
 foreach (XmlPropertyInfo property in metadata.Properties)
 {
     string kind = property.IsAttribute ? "attribute" : "element";
-    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Name}");
 }
 ```
 
@@ -97,7 +97,7 @@ Line: element, List`1
 - **Type info is read-only.** Every property has a getter only. Unlike `JsonTypeInfo`, you can't add, remove, or change members to customize a contract. Change the mapping with attributes, options, or a custom converter.
 - **You can't derive from it or construct it.** The constructors aren't accessible outside the library.
 - **`Properties` lists the members of a type mapped as an object.** Type info from the reflection resolver, or from a source-generated context in the default mode or in `Metadata` mode, lists one `XmlPropertyInfo` for each member in the order they're written. Type info for a simple value, for a custom converter, or from a context in `Serialization` mode has an empty list.
-- **`CreateObject` is `null` unless the type is mapped as an object and is created with no arguments.** It's `null` for a type that is created through a constructor with parameters, and for type info from a context in `Serialization` mode.
+- **`CreateObject`, which is on `XmlTypeInfo<T>`, is `null` unless the type is mapped as an object and is created with no arguments.** It's `null` for a type that is created through a constructor with parameters, and for type info from a context in `Serialization` mode.
 - **Type info is bound to its `Options`.** The serializer uses those options when you pass the type info, whatever other options exist. Type info from `XmlSerializerOptions.GetTypeInfo` is cached on that instance, and asking for it makes the instance read-only.
 - **It's safe to share.** Keep and reuse type info across threads, as you would the options or the context it came from.
 
@@ -169,23 +169,21 @@ public CloudNimble.Text.Xml.Serialization.XmlConverter Converter { get; }
 Type: `CloudNimble.Text.Xml.Serialization.XmlConverter`
 The converter that reads and writes values of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type).
 
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateObject <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateObject <Badge color="orange">Virtual</Badge>
 
-<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`</Note>
-
-Gets a parameterless factory that creates an instance of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type) on deserialization.
+Gets a parameterless factory that creates an instance of *T* on deserialization.
 
 #### Syntax
 
 ```csharp
-public virtual System.Func<object> CreateObject { get; }
+public virtual System.Func<T> CreateObject { get; }
 ```
 
 #### Property Value
 
-Type: `System.Func<object>?`
-A factory that creates an instance of [XmlTypeInfo.Type](/api-reference/CloudNimble/Text/Xml/Serialization/XmlTypeInfo#type), or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the type is not mapped as an
-object or is created through a constructor that has parameters.
+Type: `System.Func<T>?`
+A factory that creates an instance of *T*, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the type is not
+mapped as an object or is created through a constructor that has parameters.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsNillable <Badge color="gray">Inherited</Badge>
 

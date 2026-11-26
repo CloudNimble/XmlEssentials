@@ -973,6 +973,135 @@ Counted over every row where the BCL does the same work: **67 comparisons, faste
 - **Open: `WriteSequence` is 18.5 µs against 13.7 µs** (1.36), where the direct loop gave 1.08.
 - The two first-call rows have an error larger than their mean. Three iterations cannot measure a call that happens once.
 
+## After the typed-first changes (2026-11-26, net11.0 ShortRun, Hyper-V)
+
+Two runs of the whole suite, one before and one after the changes below, each compared with the full run of 2026-11-25. The code under test carries the three breaking changes of [contract modifiers](27-modifiers.md) (B1 to B3) and the read-only property list. The second run has 235 benchmarks: the six of `XmlSerializerValueTypeBenchmarks` are new.
+
+### How a moved row was checked
+
+A ShortRun is three iterations, and the suite runs in one process. A row that moved was timed again in a plain loop, on the committed build and on the working tree side by side, each best of twelve quarter-second rounds after a warm-up. That is what separates a change in the code from a change in the run.
+
+- **The suite moves rows that the code did not.** `WriteMembers` read 50.6 µs in the earlier run and 55.7 µs in the first of these; side by side it is 47.0 µs on the committed build and 45.6 µs on the working tree. `Write_Metadata` read 1.3 µs and then 1.5 µs; side by side it is 1,181 ns and 1,175 ns. `DomParseCatalog` and `CatalogWrite`, whose code did not change, read 1.30 and 1.13 of their earlier figures in the second run and were inside the error in the first.
+- **A row can depend on what ran before it in the process.** `WriteSequence` is 18.3 µs against 13.8 µs in the whole suite (1.33) and 14.8 µs against 13.5 µs when its class runs alone (1.09), which is what the direct loop gave on 2026-11-25. Nothing was changed for it.
+- **The sampling profile was no use at this scale.** `dotnet-trace` with `cpu-sampling` put 92% of the samples in the loop that calls the benchmark, not in what it calls. The measurements here are side-by-side timings of a change.
+
+### What was changed
+
+- **`WriteDictionary`: 1,430 ns to 905 ns in the loop, 1,792 ns to 934 ns in the suite; System.Text.Json is 943 ns.** An entry with a string key had its key checked twice: `XmlCollectionShape.IsNcName` in `XmlDictionaryConverter.WriteEntry`, and then `XmlChars.IsShortAsciiNcName` in `Utf8XmlWriter.BeginElementValue`, which the formatted write calls. `WriteEntry` now tries the formatted write first, which checks the key as it copies it, and `IsNcName` runs only for an entry that write does not take. `WriteLeafEntry` lost the same attempt, which it made a second time.
+- **A field of a value type, through the reflection resolver.** Typed accessors (B2) hand a getter the object by value, and a field can only be read through reflection, which boxed the whole struct on every field read and write: 56 B more per object, and 7% to 12% more time, on a struct with one field and five properties. `XmlObjectBinder.CreateFieldGetter` and `CreateFieldSetter` now emit the accessor (`ldfld` and `stfld` in a `DynamicMethod`) where `RuntimeFeature.IsDynamicCodeCompiled`, and go through `FieldInfo.GetValueDirect` and `SetValueDirect` elsewhere, which box the value but not the object. With the emitted accessors the value is not boxed either, so the row allocates 24 B less per object than the committed build did. The reflection resolver already requires dynamic code; generated metadata is not involved.
+
+### What was tried and not kept
+
+- **Emitting the getter of a struct property and the setter of a class property**, which the reflection resolver wraps in a second delegate. Side by side, `ReadMembers`, `ReadOrder` and `ReadOrders` did not move and `ReadCustomer` was inside the 5% the loop itself varies by. This agrees with the note of the final pass that calling the accessor without the closure changed nothing.
+
+### What the typed-first changes cost
+
+Nothing that a side-by-side timing shows, on the generated path or the reflection path, for classes. For a value type through generated metadata, where a setter is now two delegate calls and a getter takes the struct by value: 165.5 µs against 167.8 µs to read 1,000 and 173.5 µs against 174.5 µs to write them, with the same bytes.
+
+### The second run against the run of 2026-11-25
+
+Time / allocated bytes. The last column is this run over the earlier one for XmlEssentials; "inside error" means the difference is within the sum of the two error columns.
+
+| Test | BCL | STJ | XmlEssentials | XmlEssentials before | Change |
+| --- | --- | --- | --- | --- | --- |
+| RealDomParse | 331.8 µs / 709,083 B |  | 108.6 µs / 105 B | 108.8 µs / 105 B | 1.00 (inside error) |
+| RealDomWrite | 146.9 µs / 8,017 B |  | 87.3 µs / 0 B | 89.6 µs / 0 B | 0.97 (inside error) |
+| RealDrain (Drain) | 190.3 µs / 47,137 B |  | 81.4 µs / 1,441 B | 82.4 µs / 1,441 B | 0.99 (inside error) |
+| RealDrain (DrainWithScratch) | 190.3 µs / 47,137 B |  | 100.0 µs / 0 B | 83.0 µs / 0 B | 1.21 (inside error) |
+| CatalogDrain | 25.6 µs / 15,088 B |  | 17.9 µs / 0 B | 17.3 µs / 0 B | 1.03 (inside error) |
+| CatalogGetInt32 | 29.5 µs / 35,808 B |  | 19.2 µs / 0 B | 18.6 µs / 0 B | 1.03 (inside error) |
+| NamespacedDrain | 20.9 µs / 15,200 B |  | 14.8 µs / 0 B | 14.6 µs / 0 B | 1.01 (inside error) |
+| TinyDrain | 331 ns / 2,472 B |  | 64 ns / 0 B | 63 ns / 0 B | 1.02 (inside error) |
+| ResumedDrain (OneBlockDrain) | 261.2 µs / 27,603 B |  | 200.4 µs / 114 B | 194.3 µs / 114 B | 1.03 (inside error) |
+| ResumedDrain (ResumedDrain) | 261.2 µs / 27,603 B |  | 196.0 µs / 17,042 B | 190.6 µs / 17,042 B | 1.03 (inside error) |
+| Skip (Skip) | 198.7 µs / 27,738 B |  | 175.2 µs / 42 B | 172.4 µs / 42 B | 1.02 (inside error) |
+| Skip (TrySkip_Resumed) | 198.7 µs / 27,738 B |  | 187.4 µs / 6,506 B | 187.9 µs / 6,506 B | 1.00 (inside error) |
+| WideElement1000 | 68.1 µs / 344,281 B |  | 17.2 µs / 73,320 B | 16.1 µs / 73,320 B | 1.07 (inside error) |
+| WideElement5000 | 1626.1 µs / 1,755,805 B |  | 123.2 µs / 589,918 B | 119.2 µs / 589,936 B | 1.03 (inside error), 589,936 B to 589,918 B |
+| CatalogWrite | 33.0 µs / 13,728 B |  | 18.5 µs / 0 B | 16.4 µs / 0 B | 1.13 |
+| TinyWrite | 322 ns / 7,328 B |  | 33 ns / 0 B | 33 ns / 0 B | 1.01 (inside error) |
+| AttributesPerLine | 26.6 µs / 7,384 B |  | 15.8 µs / 0 B | 15.8 µs / 0 B | 0.99 (inside error) |
+| Base64Segments | 26.8 µs / 9,448 B |  | 1.8 µs / 0 B | 1.8 µs / 0 B | 1.02 (inside error) |
+| EncodedNames (EncodedNames) | 32.3 µs / 13,728 B |  | 14.8 µs / 0 B | 14.8 µs / 0 B | 1.00 (inside error) |
+| EncodedNames (StringNames) | 32.3 µs / 13,728 B |  | 14.4 µs / 0 B | 14.4 µs / 0 B | 1.00 (inside error) |
+| IndentedWrite | 44.6 µs / 13,784 B |  | 21.4 µs / 0 B | 21.5 µs / 0 B | 1.00 (inside error) |
+| NewLineText (NewLineText_CrLf) | 310.6 µs / 7,332 B |  | 104.6 µs / 0 B | 103.6 µs / 0 B | 1.01 (inside error) |
+| NewLineText (NewLineText_CrLf_Xml11) | 310.6 µs / 7,332 B |  | 103.7 µs / 0 B | 104.1 µs / 0 B | 1.00 (inside error) |
+| NewLineText (NewLineText_Lf) | 310.6 µs / 7,332 B |  | 24.5 µs / 0 B | 24.8 µs / 0 B | 0.99 (inside error) |
+| RawValue (RawValue) | 6.6 µs / 7,328 B |  | 18.5 µs / 0 B | 17.5 µs / 0 B | 1.06 (inside error) |
+| RawValue (RawValue_SkipValidation) | 6.6 µs / 7,328 B |  | 87 ns / 0 B | 82 ns / 0 B | 1.06 (inside error) |
+| StringSegments | 30.4 µs / 7,328 B |  | 7.5 µs / 0 B | 7.6 µs / 0 B | 1.00 (inside error) |
+| DomNavigate | 3.6 µs / 0 B |  | 2.9 µs / 0 B | 2.8 µs / 0 B | 1.01 (inside error) |
+| DomParseCatalog | 53.1 µs / 136,128 B |  | 33.7 µs / 104 B | 25.8 µs / 104 B | 1.30 |
+| DomParseNamespaced | 42.6 µs / 110,760 B |  | 20.7 µs / 104 B | 20.0 µs / 104 B | 1.03 (inside error) |
+| DomParseTiny | 631 ns / 5,176 B |  | 126 ns / 104 B | 114 ns / 104 B | 1.10 (inside error) |
+| DomWrite | 28.0 µs / 7,368 B |  | 15.1 µs / 0 B | 15.5 µs / 0 B | 0.98 (inside error) |
+| ChangeTree |  |  | 105.5 µs / 257,193 B | 108.4 µs / 257,193 B | 0.97 (inside error) |
+| ParseTree |  |  | 33.1 µs / 87,544 B | 35.5 µs / 87,544 B | 0.93 (inside error) |
+| ReadDateTime | 1.1 µs / 6,040 B |  | 71 ns / 0 B | 74 ns / 0 B | 0.96 (inside error) |
+| ReadEnum | 791 ns / 4,480 B |  | 61 ns / 0 B | 62 ns / 0 B | 0.98 (inside error) |
+| ReadInt32 | 1.0 µs / 5,968 B | 26 ns / 0 B | 56 ns / 0 B | 56 ns / 0 B | 1.00 (inside error) |
+| ReadInt32Stream | 1.0 µs / 5,968 B |  | 71 ns / 0 B | 68 ns / 0 B | 1.03 (inside error) |
+| ReadString | 1.2 µs / 6,120 B | 77 ns / 96 B | 131 ns / 96 B | 125 ns / 96 B | 1.05 (inside error) |
+| WriteDateTime | 348 ns / 7,784 B |  | 54 ns / 104 B | 58 ns / 104 B | 0.94 (inside error) |
+| WriteEnum | 356 ns / 7,744 B |  | 51 ns / 96 B | 52 ns / 96 B | 0.98 (inside error) |
+| WriteInt32 | 320 ns / 7,728 B | 28 ns / 32 B | 48 ns / 80 B | 49 ns / 80 B | 0.99 (inside error) |
+| WriteInt32Buffer | 318 ns / 7,648 B |  | 35 ns / 0 B | 35 ns / 0 B | 1.02 (inside error) |
+| WriteInt32String | 339 ns / 7,784 B | 32 ns / 32 B | 54 ns / 136 B | 58 ns / 136 B | 0.93 (inside error) |
+| WriteNullable | 571 ns / 8,024 B |  | 73 ns / 144 B | 75 ns / 144 B | 0.97 (inside error) |
+| WriteString | 375 ns / 7,888 B | 66 ns / 80 B | 86 ns / 128 B | 83 ns / 128 B | 1.03 (inside error) |
+| ReadCustomerBclPreset | 4.6 µs / 10,704 B |  | 1.7 µs / 1,320 B | 1.7 µs / 1,320 B | 1.00 (inside error) |
+| ReadCustomers (ReadCustomers) |  |  | 189.6 µs / 266,666 B | 195.2 µs / 266,666 B | 0.97 (inside error) |
+| ReadCustomers (ReadCustomers_Preserve) |  |  | 367.2 µs / 494,396 B | 368.8 µs / 494,396 B | 1.00 (inside error) |
+| ReadFeed | 169.0 µs / 197,882 B |  | 125.2 µs / 153,585 B | 122.5 µs / 153,585 B | 1.02 (inside error) |
+| ReadTaggedDrawing |  | 144.2 µs / 117,914 B | 130.2 µs / 90,794 B | 133.5 µs / 90,794 B | 0.98 (inside error) |
+| ReadTypedDrawing | 238.1 µs / 228,570 B |  | 191.9 µs / 90,798 B | 197.8 µs / 90,798 B | 0.97 (inside error) |
+| WriteCustomerBclPreset | 2.1 µs / 8,224 B |  | 746 ns / 0 B | 747 ns / 0 B | 1.00 (inside error) |
+| WriteCustomers (WriteCustomers) |  |  | 91.3 µs / 0 B | 101.4 µs / 0 B | 0.90 |
+| WriteCustomers (WriteCustomers_IgnoreCycles) |  |  | 111.5 µs / 361 B | 112.4 µs / 360 B | 0.99 (inside error), 360 B to 361 B |
+| WriteCustomers (WriteCustomers_Preserve) |  |  | 202.0 µs / 148,578 B | 199.6 µs / 148,578 B | 1.01 (inside error) |
+| WriteFeed | 85.4 µs / 15,009 B |  | 62.7 µs / 0 B | 64.2 µs / 0 B | 0.98 (inside error) |
+| WriteTaggedDrawing |  | 79.3 µs / 313 B | 74.0 µs / 0 B | 76.7 µs / 0 B | 0.96 (inside error) |
+| WriteTypedDrawing | 166.9 µs / 30,506 B |  | 96.1 µs / 0 B | 96.1 µs / 0 B | 1.00 (inside error) |
+| ReadCustomer (ReadCustomer) | 8.6 µs / 16,496 B | 2.8 µs / 3,576 B | 2.6 µs / 3,168 B | 2.6 µs / 3,168 B | 1.00 (inside error) |
+| ReadCustomer (ReadCustomer_FirstCall) | 8.6 µs / 16,496 B | 2.8 µs / 3,576 B | 635.2 µs / 82,344 B | 621.0 µs / 82,432 B | 1.02 (inside error), 82,432 B to 82,344 B |
+| ReadCustomer (ReadCustomer_SourceGen) | 8.6 µs / 16,496 B | 2.8 µs / 3,576 B | 2.5 µs / 3,168 B | 2.6 µs / 3,168 B | 0.97 (inside error) |
+| WriteCustomer (WriteCustomer) | 4.2 µs / 8,648 B | 1.4 µs / 312 B | 1.3 µs / 0 B | 1.4 µs / 0 B | 0.94 |
+| WriteCustomer (WriteCustomer_FirstCall) | 4.2 µs / 8,648 B | 1.4 µs / 312 B | 585.2 µs / 79,160 B | 570.7 µs / 79,248 B | 1.03 (inside error), 79,248 B to 79,160 B |
+| WriteCustomer (WriteCustomer_SourceGen) | 4.2 µs / 8,648 B | 1.4 µs / 312 B | 1.1 µs / 0 B | 1.2 µs / 0 B | 0.89 |
+| ReadCustomer | 8.6 µs / 16,496 B | 2.8 µs / 3,576 B | 2.6 µs / 3,168 B | 2.7 µs / 3,168 B | 0.97 (inside error) |
+| ReadDictionary |  | 3.4 µs / 13,392 B | 3.9 µs / 13,392 B | 4.1 µs / 13,392 B | 0.96 (inside error) |
+| ReadDrawing | 210.1 µs / 130,866 B | 146.4 µs / 117,914 B | 98.4 µs / 90,793 B | 100.4 µs / 90,793 B | 0.98 (inside error) |
+| ReadMembers |  | 164.0 µs / 240,274 B | 138.5 µs / 143,802 B | 141.7 µs / 143,802 B | 0.98 (inside error) |
+| ReadMoney | 267.7 µs / 146,252 B | 85.6 µs / 89,073 B | 89.2 µs / 88,601 B | 87.9 µs / 88,601 B | 1.01 (inside error) |
+| ReadOrder | 2.0 µs / 7,368 B | 305 ns / 232 B | 361 ns / 232 B | 363 ns / 232 B | 0.99 (inside error) |
+| ReadOrders | 785.3 µs / 567,319 B | 320.2 µs / 249,076 B | 328.8 µs / 248,604 B | 320.3 µs / 248,604 B | 1.03 (inside error) |
+| ReadReadings | 345.9 µs / 267,716 B | 136.8 µs / 105,074 B | 157.2 µs / 104,602 B | 157.2 µs / 104,602 B | 1.00 (inside error) |
+| WriteCustomer | 4.3 µs / 8,648 B | 1.6 µs / 312 B | 1.3 µs / 0 B | 1.3 µs / 0 B | 0.98 (inside error) |
+| WriteDictionary |  | 943 ns / 0 B | 934 ns / 0 B | 1.8 µs / 0 B | 0.52 |
+| WriteDrawing | 130.4 µs / 30,098 B | 80.6 µs / 313 B | 60.1 µs / 0 B | 61.5 µs / 0 B | 0.98 (inside error) |
+| WriteMembers |  | 56.1 µs / 312 B | 50.8 µs / 0 B | 50.6 µs / 0 B | 1.00 (inside error) |
+| WriteMoney | 85.3 µs / 48,009 B | 51.4 µs / 312 B | 46.7 µs / 0 B | 47.2 µs / 0 B | 0.99 (inside error) |
+| WriteOrder | 996 ns / 8,192 B | 171 ns / 0 B | 201 ns / 0 B | 207 ns / 0 B | 0.97 (inside error) |
+| WriteOrders | 420.8 µs / 214,508 B | 198.5 µs / 314 B | 199.3 µs / 0 B | 201.1 µs / 0 B | 0.99 (inside error) |
+| WriteReadings | 207.9 µs / 131,138 B | 106.9 µs / 313 B | 108.2 µs / 0 B | 110.3 µs / 0 B | 0.98 (inside error) |
+| ReadOrderSequence |  | 444.4 µs / 235,220 B | 342.1 µs / 240,892 B | 340.3 µs / 240,892 B | 1.01 (inside error) |
+| WriteOrderSequence |  | 225.6 µs / 690 B | 211.4 µs / 186 B | 214.1 µs / 186 B | 0.99 (inside error) |
+| ReadSequence | 41.2 µs / 61,152 B | 26.5 µs / 8,968 B | 21.4 µs / 9,224 B | 21.0 µs / 9,224 B | 1.02 (inside error) |
+| WriteSequence | 32.2 µs / 30,408 B | 13.7 µs / 376 B | 18.6 µs / 184 B | 18.5 µs / 184 B | 1.00 (inside error) |
+| ReadCustomerSourceGen (Read_Default) |  |  | 2.5 µs / 3,168 B | 2.5 µs / 3,168 B | 1.00 (inside error) |
+| ReadCustomerSourceGen (Read_Metadata) |  |  | 2.6 µs / 3,168 B | 2.6 µs / 3,168 B | 1.00 (inside error) |
+| ReadCustomerSourceGen (Read_Reflection) |  |  | 2.6 µs / 3,168 B | 2.7 µs / 3,168 B | 0.98 (inside error) |
+| WriteCustomerSourceGen (Write_Default) |  |  | 1.1 µs / 0 B | 1.1 µs / 0 B | 1.01 (inside error) |
+| WriteCustomerSourceGen (Write_Default_OtherOptions) |  |  | 1.3 µs / 0 B | 1.3 µs / 0 B | 0.99 (inside error) |
+| WriteCustomerSourceGen (Write_Metadata) |  |  | 1.5 µs / 0 B | 1.3 µs / 0 B | 1.14 |
+| WriteCustomerSourceGen (Write_Reflection) |  |  | 1.3 µs / 0 B | 1.4 µs / 0 B | 0.97 (inside error) |
+| WriteCustomerSourceGen (Write_Serialization) |  |  | 1.2 µs / 0 B | 1.1 µs / 0 B | 1.07 (inside error) |
+| ReadVertices (ReadVertices) |  | 209.6 µs / 170,482 B | 170.7 µs / 170,010 B | new |  |
+| ReadVertices (ReadVertices_SourceGen) |  | 209.6 µs / 170,482 B | 175.2 µs / 170,010 B | new |  |
+| WriteVertices (WriteVertices) |  | 191.9 µs / 56,314 B | 195.5 µs / 56,002 B | new |  |
+| WriteVertices (WriteVertices_SourceGen) |  | 191.9 µs / 56,314 B | 184.3 µs / 56,002 B | new |  |
+
 ---
 
 [Index](README.md) · [Previous: PR plan](22-pr-plan.md) · [Next: Doc findings resolution](24-doc-findings-resolution.md)

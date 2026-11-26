@@ -11,7 +11,7 @@ The enumeration has the same members as `JsonSourceGenerationMode` in System.Tex
 
 ## How a generated context works
 
-The metadata is a set of values: an [`XmlObjectInfoValues<T>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectInfoValues) for the type, an [`XmlPropertyInfoValues<TValue>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfoValues) for each member, and an [`XmlParameterInfoValues`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlParameterInfoValues) for each constructor parameter. [`XmlMetadataServices.CreateObjectInfo`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlMetadataServices) turns them into type info. These types mirror `JsonObjectInfoValues<T>`, `JsonPropertyInfoValues<T>`, and `JsonMetadataServices` in System.Text.Json.
+The metadata is a set of values: an [`XmlObjectInfoValues<T>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlObjectInfoValues) for the type, an [`XmlPropertyInfoValues<TDeclaring, TValue>`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfoValues) for each member, and an [`XmlParameterInfoValues`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlParameterInfoValues) for each constructor parameter. [`XmlMetadataServices.CreateObjectInfo`](/api-reference/CloudNimble/Text/Xml/Serialization/XmlMetadataServices) turns them into type info. These types mirror `JsonObjectInfoValues<T>`, `JsonPropertyInfoValues<T>`, and `JsonMetadataServices` in System.Text.Json.
 
 The serializer reads and writes from that type info with the same engine the reflection resolver uses, so a generated context gives the same result as the reflection resolver. No generated code reads XML.
 
@@ -139,7 +139,7 @@ output.WriteLine($"Root element: {metadata.RootName.LocalName}");
 foreach (XmlPropertyInfo property in metadata.Properties)
 {
     string kind = property.IsAttribute ? "attribute" : "element";
-    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Name}");
 }
 ```
 

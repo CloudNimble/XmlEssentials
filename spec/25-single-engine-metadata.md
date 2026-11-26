@@ -45,18 +45,19 @@ public sealed class XmlObjectInfoValues<T>
 
 public abstract class XmlPropertyInfoValues { /* no public constructor */ }
 
-public sealed class XmlPropertyInfoValues<TValue> : XmlPropertyInfoValues
+public delegate void XmlPropertySetter<TDeclaring, TValue>(ref TDeclaring instance, TValue value);
+
+public sealed class XmlPropertyInfoValues<TDeclaring, TValue> : XmlPropertyInfoValues   // TDeclaring is the type that declares the member
 {
     public string PropertyName { get; init; }
-    public Type DeclaringType { get; init; }
     public bool IsProperty { get; init; }
     public bool IsPublic { get; init; }
     public bool IsRequired { get; init; }              // the required modifier
     public bool IsVirtual { get; init; }               // a virtual accessor; see "members of the same name" in object mapping
     public bool IsGetNullable { get; init; }
     public bool IsSetNullable { get; init; }
-    public Func<object, TValue>? Getter { get; init; }
-    public Action<object, TValue>? Setter { get; init; }
+    public Func<TDeclaring, TValue>? Getter { get; init; }
+    public XmlPropertySetter<TDeclaring, TValue>? Setter { get; init; }   // by reference, so it can set a member of a value type
     public Attribute[]? Attributes { get; init; }      // the member's XmlEssentials attributes, constructed
 }
 
@@ -73,16 +74,17 @@ public sealed class XmlParameterInfoValues
 public static class XmlMetadataServices
 {
     public static XmlTypeInfo<T> CreateObjectInfo<T>(XmlSerializerOptions options, XmlObjectInfoValues<T> objectInfo);
-    public static XmlPropertyInfoValues<TCollection> CreateCollectionPropertyInfo<TCollection, TElement>(XmlPropertyInfoValues<TCollection> propertyInfo);
-    public static XmlPropertyInfoValues<TElement[]> CreateArrayPropertyInfo<TElement>(XmlPropertyInfoValues<TElement[]> propertyInfo);
-    public static XmlPropertyInfoValues<T?> CreateNullablePropertyInfo<T>(XmlPropertyInfoValues<T?> propertyInfo) where T : struct;
-    public static XmlPropertyInfoValues<TValue> CreateValuePropertyInfo<TValue>(XmlPropertyInfoValues<TValue> propertyInfo) where TValue : struct;
+    public static XmlPropertyInfoValues<TDeclaring, TCollection> CreateCollectionPropertyInfo<TDeclaring, TCollection, TElement>(XmlPropertyInfoValues<TDeclaring, TCollection> propertyInfo);
+    public static XmlPropertyInfoValues<TDeclaring, TElement[]> CreateArrayPropertyInfo<TDeclaring, TElement>(XmlPropertyInfoValues<TDeclaring, TElement[]> propertyInfo);
+    public static XmlPropertyInfoValues<TDeclaring, T?> CreateNullablePropertyInfo<TDeclaring, T>(XmlPropertyInfoValues<TDeclaring, T?> propertyInfo) where T : struct;
+    public static XmlPropertyInfoValues<TDeclaring, TValue> CreateValuePropertyInfo<TDeclaring, TValue>(XmlPropertyInfoValues<TDeclaring, TValue> propertyInfo) where TValue : struct;
+    public static XmlPropertyInfoValues<TDeclaring, TValue> CreateStructPropertyInfo<TDeclaring, TValue>(XmlPropertyInfoValues<TDeclaring, TValue> propertyInfo) where TDeclaring : struct;
     public static bool CanUseSerializeHandler(XmlSerializerOptions options, XmlNamingPolicy? elementNamingPolicy, XmlNamingPolicy? attributeNamingPolicy,
         XmlPropertyMapping defaultPropertyMapping, bool includeFields, params ReadOnlySpan<Type> directTypes);
 }
 ```
 
-`XmlTypeInfo` stays read-only. There is no `CreatePropertyInfo`: generated code creates the `XmlPropertyInfoValues<TValue>` itself. `CreateCollectionPropertyInfo` names the item type of a collection member, `CreateArrayPropertyInfo` that of an array (the constructors of `System.Array` cannot be kept for Native AOT), `CreateNullablePropertyInfo` the underlying type of a nullable member that has its own converter, and `CreateValuePropertyInfo` a value-type member, whose value is held in a reusable box while a constructor's arguments are gathered; all four exist so that no generic type is closed at run time. `CanUseSerializeHandler` is the test generated code makes before it supplies a `SerializeHandler`. `IsGetNullable`, `IsSetNullable`, `IsProperty` and `IsPublic` default to `true`.
+`XmlTypeInfo` stays read-only. There is no `CreatePropertyInfo`: generated code creates the `XmlPropertyInfoValues<TDeclaring, TValue>` itself. `CreateCollectionPropertyInfo` names the item type of a collection member, `CreateArrayPropertyInfo` that of an array (the constructors of `System.Array` cannot be kept for Native AOT), `CreateNullablePropertyInfo` the underlying type of a nullable member that has its own converter, and `CreateValuePropertyInfo` a value-type member, whose value is held in a reusable box while a constructor's arguments are gathered; all four exist so that no generic type is closed at run time. `CanUseSerializeHandler` is the test generated code makes before it supplies a `SerializeHandler`. `IsGetNullable`, `IsSetNullable`, `IsProperty` and `IsPublic` default to `true`.
 
 ### What generated code may do that System.Text.Json's does not
 
@@ -140,6 +142,7 @@ Add a dated line here whenever a phase finishes or a design point changes, so th
   - **Runtime.** `XmlObjectBinder.Bind<T>(XmlObjectInfoValues<T>, options)` is the metadata front and `Bind<T>(options)` the reflection front; both end in the same `Bind`. `XmlObjectConverter<T>` calls the `SerializeHandler` when there is one, and `XmlObjectBinding.ThrowIfNoMetadata` throws for a `Serialization`-only type. `XmlMetadataServices.CreateObjectInfo` returns the caller's own converter for the type when the options or the type name one.
   - **Deleted:** the generated read code (`EmitRead`, `EmitPopulate` and their helpers), the `__ReadNil` and `ReadStringElement` context helpers, `VerifyGeneratedOptions`, `XmlMetadataServices.Read` / `ReadAttribute` / `AddItems` / `AddEntries` / `CreateCollection` / `RejectUnmappedAttribute` / `RejectUnmappedElement`, `XmlCollectionFactory<,>`, the populate, constructor-tail and root-name fields of `MemberSpec` and `TypeSpec` with the helpers that fed them, XMLESS008, 009, 014 and 016, and the `ManualMetadata.cs` spike.
 - 2026-11-23: found while testing parity, and decided by the owner: members of the same name follow System.Text.Json (K53, [object mapping](09-object-mapping.md#members-of-the-same-name)). `XmlObjectBinder.CreateModels` applies the rules to the facts of either resolver; `XmlPropertyInfoValues<TValue>.IsVirtual` carries what it needs. This closed the edge noted earlier, that an override did not carry the attributes of the property it overrides: it carries none in either resolver.
+- 2026-11-26: the member metadata is typed by the declaring type ([contract modifiers](27-modifiers.md), B2). `XmlPropertyInfoValues<TDeclaring, TValue>` has a `Func<TDeclaring, TValue>` getter and an `XmlPropertySetter<TDeclaring, TValue>` setter that takes the object by reference; `DeclaringType` is gone; `CreateStructPropertyInfo` marks a member that a value type declares. The API block above shows the new shapes.
 - 2026-11-23: also found while testing parity and fixed: a member whose type or item type declares derived types was written by the fast path without its discriminator (the type now gets no fast path); `XmlMixedText` was not listed by a context with a mixed member; a non-public constructor marked `[XmlConstructor]` was refused.
 
 ---

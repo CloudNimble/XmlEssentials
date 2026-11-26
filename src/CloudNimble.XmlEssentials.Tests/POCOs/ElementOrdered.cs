@@ -19,7 +19,7 @@ namespace CloudNimble.XmlEssentials.Tests.POCOs
         /// <summary>
         /// Gets the ordered member, written first.
         /// </summary>
-        [XmlElement(Order = 0)]
+        [XmlElement(Order = -1)]
         public int Z { get; set; }
 
         #endregion

@@ -55,7 +55,7 @@ namespace CloudNimble.XmlEssentials.Samples
             foreach (XmlPropertyInfo property in metadata.Properties)
             {
                 string kind = property.IsAttribute ? "attribute" : "element";
-                output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+                output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Name}");
             }
         }
 

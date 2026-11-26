@@ -8,10 +8,12 @@ namespace CloudNimble.Text.Xml.Serialization
     /// This class cannot be inherited.
     /// </summary>
     /// <remarks>
-    /// Members with an order greater than or equal to zero are written first, sorted by that value. Members with a negative
-    /// order, or with no order, follow in declaration order from the most-base type to the most-derived type. Ordering
-    /// applies within each kind of member: attributes are written first, then text content, then child elements.
-    /// This attribute is analogous to <c>JsonPropertyOrderAttribute</c> in <c>System.Text.Json</c>.
+    /// Members are written from the lowest order to the highest. A member with no order is placed as one whose order is
+    /// <c>0</c>, so a member with a negative order is written before the members that set none, and a member with a
+    /// positive order after them. Members with the same order keep the order they are declared in, from the most-base
+    /// type to the most-derived type. Ordering applies within each kind of member: attributes are written first, then
+    /// text content, then child elements. This attribute orders members as <c>JsonPropertyOrderAttribute</c> does in
+    /// <c>System.Text.Json</c>.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
     public sealed class XmlPropertyOrderAttribute : Attribute
@@ -23,8 +25,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets the serialization order of the member.
         /// </summary>
         /// <value>
-        /// The serialization order of the member. Lower values are written first. A value greater than or equal to zero takes
-        /// part in explicit ordering, and a negative value means the order is not set.
+        /// The serialization order of the member. Lower values are written first, and a negative value is written before
+        /// the members that set no order.
         /// </value>
         public int Order { get; }
 
@@ -35,7 +37,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Initializes a new instance of the <see cref="XmlPropertyOrderAttribute"/> class with the specified order.
         /// </summary>
-        /// <param name="order">The serialization order of the member. Use a value greater than or equal to zero to take part in explicit ordering.</param>
+        /// <param name="order">The serialization order of the member. Lower values are written first.</param>
         public XmlPropertyOrderAttribute(int order)
         {
             Order = order;

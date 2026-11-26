@@ -194,6 +194,7 @@
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfoValues",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyNameAttribute",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyOrderAttribute",
+                          "api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertySetter",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceHandler",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlReferenceResolver",
                           "api-reference/CloudNimble/Text/Xml/Serialization/XmlRequiredAttribute",

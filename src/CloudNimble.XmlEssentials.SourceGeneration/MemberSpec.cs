@@ -97,9 +97,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal int IgnoreCondition { get; }
 
         /// <summary>
-        /// Gets the explicit order, or <c>-1</c>.
+        /// Gets the explicit order, or null when the member sets none.
         /// </summary>
-        internal int Order { get; }
+        internal int? Order { get; }
 
         /// <summary>
         /// Gets the name of the constructor parameter this member fills, or null.
@@ -140,7 +140,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         /// <param name="isRequired">Whether the member is required.</param>
         /// <param name="canSet">Whether the member can be set.</param>
         /// <param name="ignoreCondition">The ignore condition.</param>
-        /// <param name="order">The explicit order.</param>
+        /// <param name="order">The explicit order, or null when the member sets none.</param>
         /// <param name="isExtensionData">Whether the member is extension data.</param>
         /// <param name="isMixed">Whether the member is mixed content.</param>
         internal MemberSpec(
@@ -159,7 +159,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             bool isRequired,
             bool canSet,
             int ignoreCondition,
-            int order,
+            int? order,
             bool isExtensionData,
             bool isMixed)
         {

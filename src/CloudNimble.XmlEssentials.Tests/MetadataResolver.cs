@@ -41,7 +41,7 @@ namespace CloudNimble.XmlEssentials.Tests
                     // The properties of a record have init accessors, which are setters: a generated context
                     // calls them through an accessor, and here reflection stands in for it.
                     Property<MetadataLine, int>(nameof(MetadataLine.Qty), static l => l.Qty, static (l, v) => typeof(MetadataLine).GetProperty(nameof(MetadataLine.Qty))!.SetValue(l, v)),
-                    new XmlPropertyInfoValues<string> { PropertyName = nameof(MetadataLine.Sku), DeclaringType = typeof(MetadataLine), Getter = static o => ((MetadataLine)o).Sku, Setter = static (o, v) => typeof(MetadataLine).GetProperty(nameof(MetadataLine.Sku))!.SetValue(o, v), IsGetNullable = false, IsSetNullable = false },
+                    new XmlPropertyInfoValues<MetadataLine, string> { PropertyName = nameof(MetadataLine.Sku), Getter = static l => l.Sku, Setter = static (ref MetadataLine l, string v) => typeof(MetadataLine).GetProperty(nameof(MetadataLine.Sku))!.SetValue(l, v), IsGetNullable = false, IsSetNullable = false },
                     Property<MetadataLine, decimal>(nameof(MetadataLine.Price), static l => l.Price, static (l, v) => l.Price = v),
                 ],
             }),
@@ -52,14 +52,14 @@ namespace CloudNimble.XmlEssentials.Tests
                 [
                     Property<MetadataOrder, Dictionary<string, int>>(nameof(MetadataOrder.Counts), static o => o.Counts, static (o, v) => o.Counts = v),
                     Property<MetadataOrder, int>(nameof(MetadataOrder.Id), static o => o.Id, static (o, v) => o.Id = v, new XmlAttributeAttribute()),
-                    XmlMetadataServices.CreateCollectionPropertyInfo<List<MetadataLine>, MetadataLine>(
+                    XmlMetadataServices.CreateCollectionPropertyInfo<MetadataOrder, List<MetadataLine>, MetadataLine>(
                         Property<MetadataOrder, List<MetadataLine>>(nameof(MetadataOrder.Lines), static o => o.Lines, null, new XmlArrayAttribute())),
                     Property<MetadataOrder, string?>(nameof(MetadataOrder.Name), static o => o.Name, static (o, v) => SetName(o, v)),
-                    XmlMetadataServices.CreateCollectionPropertyInfo<List<int>, int>(
+                    XmlMetadataServices.CreateCollectionPropertyInfo<MetadataOrder, List<int>, int>(
                         Property<MetadataOrder, List<int>>(nameof(MetadataOrder.Numbers), static o => o.Numbers, static (o, v) => o.Numbers = v, new XmlElementAttribute("N"))),
                     Property<MetadataOrder, PopulatePoint>(nameof(MetadataOrder.Origin), static o => o.Origin, static (o, v) => o.Origin = v),
                     Property<MetadataOrder, string?>(nameof(MetadataOrder.Note), static o => o.Note, static (o, v) => o.Note = v, new XmlIgnoreAttribute { Condition = XmlIgnoreCondition.WhenWritingNull }),
-                    new XmlPropertyInfoValues<int> { PropertyName = nameof(MetadataOrder.Revision), DeclaringType = typeof(MetadataOrder), IsProperty = false, Getter = static o => ((MetadataOrder)o).Revision, Setter = static (o, v) => ((MetadataOrder)o).Revision = v },
+                    new XmlPropertyInfoValues<MetadataOrder, int> { PropertyName = nameof(MetadataOrder.Revision), IsProperty = false, Getter = static o => o.Revision, Setter = static (ref MetadataOrder o, int v) => o.Revision = v },
                 ],
             }),
             [typeof(PopulatePoint)] = static options => XmlMetadataServices.CreateObjectInfo(options, new XmlObjectInfoValues<PopulatePoint>
@@ -67,8 +67,8 @@ namespace CloudNimble.XmlEssentials.Tests
                 ObjectCreator = static () => default,
                 PropertyMetadataInitializer = static _ =>
                 [
-                    new XmlPropertyInfoValues<int> { PropertyName = nameof(PopulatePoint.X), DeclaringType = typeof(PopulatePoint), Getter = static o => ((PopulatePoint)o).X, Setter = static (o, v) => System.Runtime.CompilerServices.Unsafe.Unbox<PopulatePoint>(o).X = v },
-                    new XmlPropertyInfoValues<int> { PropertyName = nameof(PopulatePoint.Y), DeclaringType = typeof(PopulatePoint), Getter = static o => ((PopulatePoint)o).Y, Setter = static (o, v) => System.Runtime.CompilerServices.Unsafe.Unbox<PopulatePoint>(o).Y = v },
+                    XmlMetadataServices.CreateStructPropertyInfo(new XmlPropertyInfoValues<PopulatePoint, int> { PropertyName = nameof(PopulatePoint.X), Getter = static p => p.X, Setter = static (ref PopulatePoint p, int v) => p.X = v }),
+                    XmlMetadataServices.CreateStructPropertyInfo(new XmlPropertyInfoValues<PopulatePoint, int> { PropertyName = nameof(PopulatePoint.Y), Getter = static p => p.Y, Setter = static (ref PopulatePoint p, int v) => p.Y = v }),
                 ],
             }),
             [typeof(ExtraBag)] = static options => XmlMetadataServices.CreateObjectInfo(options, new XmlObjectInfoValues<ExtraBag>
@@ -127,7 +127,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 PropertyMetadataInitializer = static _ =>
                 [
                     Property<PopulateInner, PopulateChild>(nameof(PopulateInner.Child), static i => i.Child, null),
-                    XmlMetadataServices.CreateCollectionPropertyInfo<List<int>, int>(Property<PopulateInner, List<int>>(nameof(PopulateInner.List), static i => i.List, null, new XmlArrayAttribute())),
+                    XmlMetadataServices.CreateCollectionPropertyInfo<PopulateInner, List<int>, int>(Property<PopulateInner, List<int>>(nameof(PopulateInner.List), static i => i.List, null, new XmlArrayAttribute())),
                     Property<PopulateInner, int>(nameof(PopulateInner.Size), static i => i.Size, static (i, v) => i.Size = v),
                 ],
             }),
@@ -164,15 +164,14 @@ namespace CloudNimble.XmlEssentials.Tests
         /// <summary>
         /// Describes a property of a class as generated code describes it.
         /// </summary>
-        private static XmlPropertyInfoValues<TValue> Property<TDeclaring, TValue>(string name, Func<TDeclaring, TValue> get, Action<TDeclaring, TValue>? set, params Attribute[] attributes)
+        private static XmlPropertyInfoValues<TDeclaring, TValue> Property<TDeclaring, TValue>(string name, Func<TDeclaring, TValue> get, Action<TDeclaring, TValue>? set, params Attribute[] attributes)
             where TDeclaring : class
         {
-            return new XmlPropertyInfoValues<TValue>
+            return new XmlPropertyInfoValues<TDeclaring, TValue>
             {
                 PropertyName = name,
-                DeclaringType = typeof(TDeclaring),
-                Getter = instance => get((TDeclaring)instance),
-                Setter = set is null ? null : (instance, value) => set((TDeclaring)instance, value),
+                Getter = get,
+                Setter = set is null ? null : (ref TDeclaring instance, TValue value) => set(instance, value),
                 Attributes = attributes,
             };
         }

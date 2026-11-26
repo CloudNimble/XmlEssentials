@@ -615,7 +615,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             XmlSerializer.Serialize(new Person { Name = "", Age = 0 }, Bare).Should().Be("<Person><Name></Name><Age>0</Age></Person>");
             XmlSerializer.Serialize(new Catalog { Title = "", Items = [""] }, Bare).Should().Be("<Catalog><Items></Items><Title></Title></Catalog>");
-            XmlSerializer.Serialize(new WrappedCatalog { Title = "t", Items = [""] }, Bare).Should().Be("<WrappedCatalog><Items><Item></Item></Items><Title>t</Title></WrappedCatalog>");
+            XmlSerializer.Serialize(new WrappedCatalog { Title = "t", Items = [""] }, Bare).Should().Be("<WrappedCatalog><Title>t</Title><Items><Item></Item></Items></WrappedCatalog>");
             XmlSerializer.Serialize(new List<string> { "" }, Bare).Should().Be("<ArrayOfString><string></string></ArrayOfString>");
             XmlSerializer.Serialize(new List<byte[]> { Array.Empty<byte>() }, Bare).Should().Be("<ArrayOfBase64Binary><base64Binary></base64Binary></ArrayOfBase64Binary>");
             XmlSerializer.Serialize("", Bare).Should().Be("<string></string>");

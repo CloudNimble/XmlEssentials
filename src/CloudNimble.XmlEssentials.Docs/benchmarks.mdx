@@ -202,7 +202,7 @@ When XmlEssentials reads objects, the memory it allocates is the objects and str
 | Read 1,000 positional records | 170.1 µs / 240,274 B | 141.7 µs / 143,802 B |
 | Write 1,000 positional records | 56.3 µs / 312 B | 50.6 µs / 0 B |
 | Read a dictionary of 100 integers | 3.48 µs / 13,392 B | 4.10 µs / 13,392 B |
-| Write a dictionary of 100 integers | 928 ns / 0 B | 1.79 µs / 0 B |
+| Write a dictionary of 100 integers | 943 ns / 0 B | 934 ns / 0 B |
 
 ### Documents shaped for System.Xml
 
@@ -285,8 +285,8 @@ What's counted, so that you can check it:
 XmlEssentials has the same API shape as System.Text.Json, so it's fair to ask whether it has the same speed. For objects, it does. For single values and the mutable tree, it doesn't. Of the 47 rows above that have a System.Text.Json figure:
 
 - **Ahead in 10.** Objects of three derived types (read 100.4 µs against 142.6 µs, write 61.5 µs against 79.8 µs), a stream of 1,000 orders read (340.3 µs against 462.6 µs), and a long text value written in segments are the widest.
-- **Level in 19.** The difference is inside the measurement error of the run. That covers most of the object rows: a customer, 1,000 orders, objects mapped as attributes, and objects with a decimal amount, read and written.
-- **Behind in 18,** by 1.15× to 2.1×. The widest gaps are single values (56 ns against 27 ns to read an `int`), the mutable tree, a dictionary written, and checked raw XML.
+- **Level in 20.** The difference is inside the measurement error of the run. That covers most of the object rows: a customer, 1,000 orders, objects mapped as attributes, and objects with a decimal amount, read and written, and a dictionary written.
+- **Behind in 17,** by 1.15× to 2.1×. The widest gaps are single values (56 ns against 27 ns to read an `int`), the mutable tree, and checked raw XML.
 - **Equal or lower in memory in 38 of the 47.**
 
 XML asks more of a parser than JSON does. `<int>1</int>` is three tokens, and the name has to match at both ends; in JSON, `1` is one token. A whole XML document for one value also carries more bytes than the JSON for it. So a single XML value can't be read or written as fast as a JSON one. What you get instead is XML objects at the speed of JSON objects.

@@ -5,10 +5,10 @@ public sealed class Address
 {
     public string? PostalCode { get; set; }
 
-    [XmlPropertyOrder(1)]
+    [XmlPropertyOrder(-1)]
     public string? City { get; set; }
 
-    [XmlPropertyOrder(0)]
+    [XmlPropertyOrder(-2)]
     public string? Street { get; set; }
 }
 ```
@@ -29,4 +29,4 @@ The code produces the following output:
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
 
-Members with an order of zero or more are written first, lowest number first. Members with no order follow in declaration order, base class members before derived class members.
+Members are written from the lowest order to the highest. A member with no order, such as `PostalCode`, is placed as if its order were `0`, so the two negative orders come before it. Members with the same order keep their declaration order, base class members before derived class members.

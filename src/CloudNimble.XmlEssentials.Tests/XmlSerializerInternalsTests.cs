@@ -2,6 +2,7 @@ using System;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Tests.POCOs;
+using CloudNimble.XmlEssentials.Tests.POCOs.Bcl;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -90,31 +91,64 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow(true, DisplayName = "emitted")]
+        [DataRow(false, DisplayName = "through reflection")]
+        public void CreateFieldAccessors_ReadAndSetAFieldInPlace_OnAClassAndOnAValueType(bool emit)
+        {
+            // No delegate can be bound to a field, so the reflection resolver emits its accessors where code can be
+            // compiled at run time and goes through reflection elsewhere. Both set a value type in place.
+            var x = typeof(FieldPoint).GetField(nameof(FieldPoint.X))!;
+            var point = new FieldPoint { X = 3, Y = 4 };
+            XmlObjectBinder.CreateFieldGetter<FieldPoint, int>(x, emit)(point).Should().Be(3);
+            XmlObjectBinder.CreateFieldSetter<FieldPoint, int>(x, emit)(ref point, 9);
+            point.X.Should().Be(9);
+            point.Y.Should().Be(4);
+
+            var f1 = typeof(MixedMembers).GetField(nameof(MixedMembers.F1))!;
+            var members = new MixedMembers();
+            var same = members;
+            XmlObjectBinder.CreateFieldGetter<MixedMembers, int>(f1, emit)(members).Should().Be(4);
+            XmlObjectBinder.CreateFieldSetter<MixedMembers, int>(f1, emit)(ref members, 8);
+            members.F1.Should().Be(8);
+            members.Should().BeSameAs(same);
+        }
+
+        [TestMethod]
         public void CreateProperty_ForFactsThatLackWhatBindingNeeds_SaysWhatIsMissing()
         {
             // The member is bound from its facts alone, with no reflection to fall back on. A generated context and
             // the reflection resolver both fill the facts, so only facts that were taken apart get here.
             var options = new XmlSerializerOptions { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
 
-            var unread = new XmlMemberFacts("Name", typeof(Person), typeof(string), false, true, false, (Func<object, string?>)(static o => ((Person)o).Name), (Action<object, string?>)(static (o, v) => ((Person)o).Name = v), null);
+            var unread = new XmlMemberFacts("Name", typeof(Person), typeof(string), false, true, false, (Func<Person, string?>)(static p => p.Name), (XmlPropertySetter<Person, string?>)(static (ref Person p, string? v) => p.Name = v), null);
             XmlObjectBinder.TryCreateModel(unread, options, 0, out var unreadModel).Should().BeTrue();
             unread.Getter = null;
-            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<object, string?>(unreadModel, options, 0, -1))
+            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<Person, string?>(unreadModel, options, 0, -1))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be($"The metadata of member 'Name' on type '{typeof(Person)}' has no getter.");
 
-            var unset = new XmlMemberFacts("Name", typeof(Person), typeof(string), false, true, false, (Func<object, string?>)(static o => ((Person)o).Name), (Action<object, string?>)(static (o, v) => ((Person)o).Name = v), null);
+            var unset = new XmlMemberFacts("Name", typeof(Person), typeof(string), false, true, false, (Func<Person, string?>)(static p => p.Name), (XmlPropertySetter<Person, string?>)(static (ref Person p, string? v) => p.Name = v), null);
             XmlObjectBinder.TryCreateModel(unset, options, 0, out var unsetModel).Should().BeTrue();
             unset.Setter = null;
-            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<object, string?>(unsetModel, options, 0, -1))
+            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<Person, string?>(unsetModel, options, 0, -1))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be($"The metadata of member 'Name' on type '{typeof(Person)}' has no setter.");
 
-            var items = new XmlMemberFacts("Items", typeof(Catalog), typeof(System.Collections.Generic.List<string>), false, true, false, (Func<object, System.Collections.Generic.List<string>?>)(static o => ((Catalog)o).Items), null, null)
+            var items = new XmlMemberFacts("Items", typeof(Catalog), typeof(System.Collections.Generic.List<string>), false, true, false, (Func<Catalog, System.Collections.Generic.List<string>?>)(static c => c.Items), null, null)
             {
                 ElementType = typeof(string),
             };
             XmlObjectBinder.TryCreateModel(items, options, 0, out var itemsModel).Should().BeTrue();
-            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<object, System.Collections.Generic.List<string>?>(itemsModel, options, 0, -1))
+            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<Catalog, System.Collections.Generic.List<string>?>(itemsModel, options, 0, -1))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be($"The metadata of member 'Items' on type '{typeof(Catalog)}' does not say how its collection is made.");
+
+            // A value type is read in a box. A setter on one needs the way into the box, which metadata gives
+            // through XmlMetadataServices.CreateStructPropertyInfo; a member that is only read needs none.
+            var boxed = new XmlMemberFacts("X", typeof(PopulatePoint), typeof(int), false, true, false, (Func<PopulatePoint, int>)(static p => p.X), (XmlPropertySetter<PopulatePoint, int>)(static (ref PopulatePoint p, int v) => p.X = v), null);
+            XmlObjectBinder.TryCreateModel(boxed, options, 0, out var boxedModel).Should().BeTrue();
+            FluentActions.Invoking(() => XmlObjectBinder.CreateProperty<PopulatePoint, int>(boxedModel, options, 0, -1))
+                .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(
+                    $"The metadata of member 'X' on type '{typeof(PopulatePoint)}' sets a member of a value type. Pass it to XmlMetadataServices.CreateStructPropertyInfo.");
+            XmlMemberAccess.RequireUnbox<PopulatePoint>(boxed, hasSetter: false).Should().BeNull();
+            XmlMemberAccess.RequireUnbox<Person>(unset, hasSetter: true).Should().BeNull();
 
             FluentActions.Invoking(() => XmlObjectBinder.CreateMemberTypeInfo(new XmlConverterAttribute<NegatingIntConverter>(), typeof(int?), options, null))
                 .Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be("The metadata of a member of type 'System.Nullable`1[System.Int32]' does not say how the converter of 'System.Int32' is wrapped.");

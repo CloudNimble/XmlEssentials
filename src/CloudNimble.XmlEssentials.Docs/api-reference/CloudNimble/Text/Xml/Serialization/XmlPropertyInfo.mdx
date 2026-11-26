@@ -24,7 +24,7 @@ Provides XML serialization-related metadata about a property or field. This clas
 
 ## Usage
 
-An `XmlPropertyInfo` describes how one member of an object is mapped: its XML name, whether it's an attribute, an element, or the text of its parent, whether it's required, and the type info of its value. You read these objects from `XmlTypeInfo.Properties`. You don't create them.
+An `XmlPropertyInfo` describes how one member of an object is mapped: its XML name, whether it's an attribute, an element, or the text of its parent, whether it's required, and the type of its value. You read these objects from `XmlTypeInfo.Properties`. You don't create them.
 
 ```csharp
 XmlTypeInfo<Order> metadata = MetadataOrderXmlContext.Default.Order;
@@ -33,7 +33,7 @@ output.WriteLine($"Root element: {metadata.RootName.LocalName}");
 foreach (XmlPropertyInfo property in metadata.Properties)
 {
     string kind = property.IsAttribute ? "attribute" : "element";
-    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Type.Name}");
+    output.WriteLine($"{property.Name.LocalName}: {kind}, {property.PropertyType.Name}");
 }
 ```
 
@@ -46,7 +46,7 @@ Customer: element, String
 Line: element, List`1
 ```
 
-`Name` is the XML name, after attributes and naming policies: the `Lines` property appears as `Line` because of `[XmlElement("Line")]`. `Order` is the explicit order of the member among its siblings, or `-1` when it has none.
+`Name` is the XML name, after attributes and naming policies: the `Lines` property appears as `Line` because of `[XmlElement("Line")]`. `Order` is the order the member sets among its siblings, or `null` when it sets none.
 
 The list is filled for a type that the serializer maps member by member, whether the type info comes from the reflection resolver or from a source-generated context in the default mode or in `Metadata` mode. It's empty for type info from a context in `Serialization` mode. The class is read-only. Unlike `JsonPropertyInfo` in System.Text.Json, it can't be used to change a contract.
 
@@ -154,28 +154,40 @@ Gets the serialization order of the member among the members of its containing t
 #### Syntax
 
 ```csharp
-public int Order { get; }
+public int? Order { get; }
 ```
 
 #### Property Value
 
-Type: `int`
-The order of the member, or `-1` if no order is set.
+Type: `int?`
+The order of the member, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) if the member sets no order.
+
+#### Remarks
+
+Members are written from the lowest order to the highest. A member that sets no order is placed as one
+that sets `0`, so a member with a negative order is written before it and one with a positive order
+after. Members with the same order keep the order they are declared in.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> PropertyType
 
-Gets the metadata for the type of the member.
+Gets the type of the member.
 
 #### Syntax
 
 ```csharp
-public CloudNimble.Text.Xml.Serialization.XmlTypeInfo PropertyType { get; }
+public System.Type PropertyType { get; }
 ```
 
 #### Property Value
 
-Type: `CloudNimble.Text.Xml.Serialization.XmlTypeInfo`
-The serialization metadata for the type of the member.
+Type: `System.Type`
+The type the property or field is declared with.
+
+#### Remarks
+
+The type is the declared one: a member declared as `int?` has the type [Nullable`1](https://learn.microsoft.com/dotnet/api/system.nullable-1) of
+[Int32](https://learn.microsoft.com/dotnet/api/system.int32), and a collection member has the type of the collection, not of its items. To get the
+serialization metadata for the type, pass it to [XmlSerializerOptions.GetTypeInfo](/api-reference/CloudNimble/Text/Xml/XmlSerializerOptions#gettypeinfo).
 
 ## Methods
 

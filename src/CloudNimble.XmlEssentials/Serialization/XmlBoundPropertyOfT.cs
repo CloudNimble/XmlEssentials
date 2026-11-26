@@ -21,11 +21,12 @@ namespace CloudNimble.Text.Xml.Serialization
         #region Fields
 
         private readonly XmlConverter<TValue>? _converter;
-        private readonly Func<object, TValue> _get;
+        private readonly Func<TDeclaring, TValue> _get;
         private XmlHeldBox<TValue>? _held;
         private readonly XmlIgnoreCondition _ignore;
         private readonly bool _isScalar;
-        private readonly Action<object, TValue>? _set;
+        private readonly XmlPropertySetter<TDeclaring, TValue>? _set;
+        private readonly XmlUnbox<TDeclaring>? _unbox;
         private readonly XmlTypeInfo<TValue>? _typed;
         private readonly XmlTypeInfo _typeInfo;
         private readonly XmlValueConverter<TValue>? _valueConverter;
@@ -48,8 +49,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="utf8LocalName">The UTF-8 local name.</param>
         /// <param name="utf8NamespaceUri">The UTF-8 namespace URI.</param>
         /// <param name="typeInfo">The type info the member is read and written with.</param>
-        /// <param name="get">Reads the member from a boxed instance.</param>
-        /// <param name="set">Writes the member on a boxed instance, or null when it is read-only after construction.</param>
+        /// <param name="get">Reads the member.</param>
+        /// <param name="set">Writes the member, or null when it is read-only after construction.</param>
+        /// <param name="unbox">Reaches the value inside a box, when <typeparamref name="TDeclaring"/> is a value type; otherwise null.</param>
         /// <param name="ignore">When the member is omitted on write.</param>
         /// <param name="constructorIndex">The constructor parameter index, or <c>-1</c>.</param>
         /// <param name="isCData">Whether simple content is written as CDATA.</param>
@@ -61,8 +63,9 @@ namespace CloudNimble.Text.Xml.Serialization
             byte[] utf8LocalName,
             byte[] utf8NamespaceUri,
             XmlTypeInfo typeInfo,
-            Func<object, TValue> get,
-            Action<object, TValue>? set,
+            Func<TDeclaring, TValue> get,
+            XmlPropertySetter<TDeclaring, TValue>? set,
+            XmlUnbox<TDeclaring>? unbox,
             XmlIgnoreCondition ignore,
             int constructorIndex,
             bool isCData,
@@ -76,6 +79,7 @@ namespace CloudNimble.Text.Xml.Serialization
             _valueConverter = _converter as XmlValueConverter<TValue>;
             _get = get;
             _set = set;
+            _unbox = unbox;
             _ignore = ignore;
             _isScalar = XmlBuiltInConverters.IsScalar(typeof(TValue));
             ReadsWholeLeaf = _valueConverter is not null && LeafOpenTag is not null && collection is null;
@@ -153,14 +157,14 @@ namespace CloudNimble.Text.Xml.Serialization
                     value = (TValue)collection.Finish(builder);
                 }
             }
-            else if (Populates && !(reader.HasAttributes && reader.GetNil()) && (object?)_get(instance!) is { } existing)
+            else if (Populates && !(reader.HasAttributes && reader.GetNil()) && (object?)_get((TDeclaring)instance!) is { } existing)
             {
                 // A value type is populated in its box, and the box is then copied back through the setter the
                 // binder required. A nil element and a member that holds nothing are read as any member is.
                 _typeInfo.Converter.Populate(ref reader, existing, _typeInfo.Options);
                 if (typeof(TValue).IsValueType)
                 {
-                    _set!(instance!, (TValue)existing);
+                    XmlMemberAccess.Set(_set!, _unbox, instance!, (TValue)existing);
                 }
 
                 return;
@@ -301,7 +305,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override void SetHeldValue(object instance, object? value)
         {
-            _set!(instance, value is null ? default! : (TValue)value);
+            XmlMemberAccess.Set(_set!, _unbox, instance, value is null ? default! : (TValue)value);
         }
 
         /// <summary>
@@ -317,10 +321,14 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </remarks>
         internal void PopulateCollection(object builder, object instance)
         {
-            var existing = _get(instance);
+            var existing = _get((TDeclaring)instance);
             if (XmlConverterHelpers.IsNull(existing))
             {
-                _set?.Invoke(instance, (TValue)Collection!.Finish(builder));
+                if (_set is not null)
+                {
+                    XmlMemberAccess.Set(_set, _unbox, instance, (TValue)Collection!.Finish(builder));
+                }
+
                 return;
             }
 
@@ -382,7 +390,10 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            _set?.Invoke(instance!, value!);
+            if (_set is not null)
+            {
+                XmlMemberAccess.Set(_set, _unbox, instance!, value!);
+            }
         }
 
         /// <inheritdoc />
@@ -405,7 +416,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 return;
             }
 
-            var value = _get(instance);
+            var value = _get((TDeclaring)instance);
             if (NullWriteError is not null && XmlConverterHelpers.IsNull(value) && _ignore is not (XmlIgnoreCondition.WhenWritingNull or XmlIgnoreCondition.WhenWritingDefault))
             {
                 // A null the ignore condition leaves out is not written, so it is not refused either.

@@ -16,7 +16,6 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #region Fields
 
-        private static readonly XmlPropertyInfo[] EmptyProperties = [];
         private readonly byte[]? _rootLeafCloseTag;
         private readonly byte[]? _rootLeafOpenTag;
         private readonly byte[] _rootLocalName;
@@ -35,15 +34,6 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The converter that reads and writes values of <see cref="Type"/>.
         /// </value>
         public XmlConverter Converter { get; }
-
-        /// <summary>
-        /// Gets a parameterless factory that creates an instance of <see cref="Type"/> on deserialization.
-        /// </summary>
-        /// <value>
-        /// A factory that creates an instance of <see cref="Type"/>, or <see langword="null"/> if the type is not mapped as an
-        /// object or is created through a constructor that has parameters.
-        /// </value>
-        public virtual Func<object>? CreateObject => null;
 
         /// <summary>
         /// Gets a value that indicates whether a value of <see cref="Type"/> can be <see langword="null"/>.
@@ -72,7 +62,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The serialized members of an object type, in the order they are written. The list is empty for a type that is not mapped as an object,
         /// and for a type that a context generated in <see cref="XmlSourceGenerationMode.Serialization"/> mode.
         /// </value>
-        public virtual IList<XmlPropertyInfo> Properties => EmptyProperties;
+        public virtual IList<XmlPropertyInfo> Properties => XmlPropertyInfoList.Empty;
 
         /// <summary>
         /// Gets the name of the document element that a value of <see cref="Type"/> is serialized as.

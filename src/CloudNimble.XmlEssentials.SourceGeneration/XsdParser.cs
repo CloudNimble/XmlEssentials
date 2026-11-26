@@ -429,9 +429,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 // A member that holds named values is of this type, which the runtime library asks the context for.
                 var named = new[]
                 {
-                    new MemberSpec("Name", "string", "Name", "", false, false, false, false, false, "", "", true, false, true, -1, -1, false, false),
-                    new MemberSpec("Namespace", "string", "Namespace", "", false, false, false, false, false, "", "", true, false, true, -1, -1, false, false),
-                    new MemberSpec("Value", "object", "Value", "", false, false, false, false, false, "", "", true, false, true, -1, -1, false, false),
+                    new MemberSpec("Name", "string", "Name", "", false, false, false, false, false, "", "", true, false, true, -1, null, false, false),
+                    new MemberSpec("Namespace", "string", "Namespace", "", false, false, false, false, false, "", "", true, false, true, -1, null, false, false),
+                    new MemberSpec("Value", "object", "Value", "", false, false, false, false, false, "", "", true, false, true, -1, null, false, false),
                 };
                 typeSpecs.Add(new TypeSpec(
                     NamedValue,
@@ -448,7 +448,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 // The text of mixed content is read as XmlMixedText, which the runtime library asks the context for.
                 const string mixedText = "global::CloudNimble.Text.Xml.Serialization.XmlMixedText";
-                var textMember = new MemberSpec("Text", "string", "Text", "", false, true, false, false, false, "", "", true, false, true, -1, -1, false, false);
+                var textMember = new MemberSpec("Text", "string", "Text", "", false, true, false, false, false, "", "", true, false, true, -1, null, false, false);
                 typeSpecs.Add(new TypeSpec(
                     mixedText,
                     "XmlMixedText",
@@ -783,7 +783,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                         content = derivation;
                         if (child.LocalName == "simpleContent" && !isNamedComplex)
                         {
-                            members.Add(new MemberSpec("Value", MapXsdType(derivation.Attr("base") ?? "xs:string", bind), "Value", "", false, true, false, false, false, "", "", true, false, true, -1, -1, false, false));
+                            members.Add(new MemberSpec("Value", MapXsdType(derivation.Attr("base") ?? "xs:string", bind), "Value", "", false, true, false, false, false, "", "", true, false, true, -1, null, false, false));
                         }
                         else if (child.LocalName == "complexContent" && !isNamedComplex && baseName is not ("" or "anyType"))
                         {
@@ -801,7 +801,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
 
                 const string item = "global::CloudNimble.Text.Xml.Serialization.XmlMixedContentItem";
-                members.Add(new MemberSpec("Content", "global::System.Collections.Generic.List<" + item + ">", "Content", "", false, false, false, true, false, "", item, true, false, true, -1, -1, false, true));
+                members.Add(new MemberSpec("Content", "global::System.Collections.Generic.List<" + item + ">", "Content", "", false, false, false, true, false, "", item, true, false, true, -1, null, false, true));
             }
             else if (content is not null)
             {
@@ -1133,8 +1133,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         internal static void AddChoice(List<MemberSpec> members, string ident, string localName, string declaredClr, List<XsdAlternative> alternatives, bool isList)
         {
             var member = isList
-                ? new MemberSpec(ident, "global::System.Collections.Generic.List<" + declaredClr + ">", localName, "", false, false, false, true, false, localName, declaredClr, true, false, true, -1, -1, false, false)
-                : new MemberSpec(ident, declaredClr, localName, "", false, false, false, false, false, localName, "", true, false, true, 3, -1, false, false);
+                ? new MemberSpec(ident, "global::System.Collections.Generic.List<" + declaredClr + ">", localName, "", false, false, false, true, false, localName, declaredClr, true, false, true, -1, null, false, false)
+                : new MemberSpec(ident, declaredClr, localName, "", false, false, false, false, false, localName, "", true, false, true, 3, null, false, false);
             members.Add(new MemberSpec(member, new XsdMemberDetails { Choices = alternatives }));
         }
 
@@ -1404,7 +1404,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 var itemType = TrimNullable(clrType);
                 members.Add(new MemberSpec(
-                    new MemberSpec(ident, "global::System.Collections.Generic.List<" + itemType + ">", name, elementNamespace ?? "", false, false, false, true, false, name, itemType, true, false, true, -1, -1, false, false),
+                    new MemberSpec(ident, "global::System.Collections.Generic.List<" + itemType + ">", name, elementNamespace ?? "", false, false, false, true, false, name, itemType, true, false, true, -1, null, false, false),
                     details));
                 return;
             }
@@ -1430,7 +1430,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             members.Add(new MemberSpec(
-                new MemberSpec(ident, clrType, name, elementNamespace ?? "", false, false, false, false, false, name, "", canBeNull, false, true, canBeNull && !nillable ? 3 : -1, -1, false, false),
+                new MemberSpec(ident, clrType, name, elementNamespace ?? "", false, false, false, false, false, name, "", canBeNull, false, true, canBeNull && !nillable ? 3 : -1, null, false, false),
                 details));
         }
 
@@ -1674,7 +1674,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             members.Add(new MemberSpec(
-                new MemberSpec(Sanitize(name!), clrType, name!, attributeNamespace, true, false, false, false, false, "", "", canBeNull, false, true, -1, -1, false, false),
+                new MemberSpec(Sanitize(name!), clrType, name!, attributeNamespace, true, false, false, false, false, "", "", canBeNull, false, true, -1, null, false, false),
                 new XsdMemberDetails { Initializer = initializer }));
         }
 
@@ -1925,7 +1925,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 }
             }
 
-            members.Add(new MemberSpec("Extra", "global::CloudNimble.Text.Xml.Serialization.XmlExtensionData", "Extra", "", false, false, false, false, false, "", "", true, false, true, -1, -1, true, false));
+            members.Add(new MemberSpec("Extra", "global::CloudNimble.Text.Xml.Serialization.XmlExtensionData", "Extra", "", false, false, false, false, false, "", "", true, false, true, -1, null, true, false));
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Nodes;
@@ -360,10 +361,10 @@ namespace CloudNimble.XmlEssentials.Tests
         public void WrappedCatalog_WritesAWrapper()
         {
             var catalog = new WrappedCatalog { Title = "Ada", Items = ["a", "b"] };
-            XmlSerializer.Serialize(catalog, Bare).Should().Be("<WrappedCatalog><Items><Item>a</Item><Item>b</Item></Items><Title>Ada</Title></WrappedCatalog>");
-            var read = XmlSerializer.Deserialize<WrappedCatalog>("<WrappedCatalog><Items><Item>a</Item><Item>b</Item></Items><Title>Ada</Title></WrappedCatalog>")!;
+            XmlSerializer.Serialize(catalog, Bare).Should().Be("<WrappedCatalog><Title>Ada</Title><Items><Item>a</Item><Item>b</Item></Items></WrappedCatalog>");
+            var read = XmlSerializer.Deserialize<WrappedCatalog>("<WrappedCatalog><Title>Ada</Title><Items><Item>a</Item><Item>b</Item></Items></WrappedCatalog>")!;
             read.Items.Should().Equal("a", "b");
-            XmlSerializer.Serialize(new WrappedCatalog { Title = "Ada", Items = [] }, Bare).Should().Be("<WrappedCatalog><Items/><Title>Ada</Title></WrappedCatalog>");
+            XmlSerializer.Serialize(new WrappedCatalog { Title = "Ada", Items = [] }, Bare).Should().Be("<WrappedCatalog><Title>Ada</Title><Items/></WrappedCatalog>");
         }
 
         [TestMethod]
@@ -686,7 +687,7 @@ namespace CloudNimble.XmlEssentials.Tests
         public void WrappedCatalog_NullItems_WritesNil()
         {
             XmlSerializer.Serialize(new WrappedCatalog { Title = "Ada", Items = null }, Bare).Should().Be(
-                "<WrappedCatalog><Items xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/><Title>Ada</Title></WrappedCatalog>");
+                "<WrappedCatalog><Title>Ada</Title><Items xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\"/></WrappedCatalog>");
         }
 
         [TestMethod]
@@ -1184,6 +1185,51 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void TypeInfo_Properties_IsAListThatCannotBeChanged()
+        {
+            // The type info is read-only, so its list of members is too. Each change is refused as System.Text.Json
+            // refuses a change to a read-only JsonTypeInfo, and an argument is checked first.
+            const string readOnly = "This XmlTypeInfo instance is marked read-only or has already been used in serialization or deserialization.";
+            var properties = Bare.GetTypeInfo<Person>().Properties;
+            var name = properties[0];
+            var age = properties[1];
+
+            properties.IsReadOnly.Should().BeTrue();
+            properties.Contains(age).Should().BeTrue();
+            properties.IndexOf(age).Should().Be(1);
+            properties.Contains(Bare.GetTypeInfo<MixedOrder>().Properties[0]).Should().BeFalse();
+            properties.IndexOf(Bare.GetTypeInfo<MixedOrder>().Properties[0]).Should().Be(-1);
+            var copy = new XmlPropertyInfo?[3];
+            properties.CopyTo(copy!, 1);
+            copy.Should().Equal(null, name, age);
+            properties.Select(property => property.Name.LocalName).Should().Equal("Name", "Age");
+            var untyped = new List<object?>();
+            foreach (var property in (System.Collections.IEnumerable)properties)
+            {
+                untyped.Add(property);
+            }
+
+            untyped.Should().Equal(name, age);
+
+            FluentActions.Invoking(() => properties.Add(age)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+            FluentActions.Invoking(() => properties.Insert(0, age)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+            FluentActions.Invoking(() => properties[0] = age).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+            FluentActions.Invoking(() => properties.Remove(age)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+            FluentActions.Invoking(() => properties.RemoveAt(0)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+            FluentActions.Invoking(properties.Clear).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+            FluentActions.Invoking(() => properties.Add(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("item");
+            FluentActions.Invoking(() => properties.Insert(0, null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("item");
+            FluentActions.Invoking(() => properties[0] = null!).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("value");
+
+            // Nothing changed, and a type with no members to describe has the same kind of list.
+            properties.Should().Equal(name, age);
+            var none = XmlSerializerOptions.Default.GetTypeInfo<int>().Properties;
+            none.Count.Should().Be(0);
+            none.IsReadOnly.Should().BeTrue();
+            FluentActions.Invoking(() => none.Add(age)).Should().ThrowExactly<InvalidOperationException>().Which.Message.Should().Be(readOnly);
+        }
+
+        [TestMethod]
         public void Point_RoundTripsAsAStruct()
         {
             XmlSerializer.Serialize(new Point { X = 3, Y = 4 }, Bare).Should().Be("<Point><X>3</X><Y>4</Y></Point>");
@@ -1193,8 +1239,9 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void MixedOrder_WritesExplicitOrderFirst()
+        public void MixedOrder_WritesAPositiveOrderAfterTheMembersThatSetNone()
         {
+            // As System.Text.Json places it: a member that sets no order is placed as one that sets zero.
             XmlSerializer.Serialize(new MixedOrder { A = 1, Z = 2 }, Bare).Should().Be("<MixedOrder><Z>2</Z><A>1</A></MixedOrder>");
             var read = XmlSerializer.Deserialize<MixedOrder>("<MixedOrder><Z>2</Z><A>1</A></MixedOrder>")!;
             read.Z.Should().Be(2);
@@ -1202,9 +1249,25 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
-        public void ElementOrdered_UsesXmlElementOrder()
+        public void ElementOrdered_WritesANegativeXmlElementOrderBeforeTheMembersThatSetNone()
         {
             XmlSerializer.Serialize(new ElementOrdered { A = 1, Z = 2 }, Bare).Should().Be("<ElementOrdered><Z>2</Z><A>1</A></ElementOrdered>");
+        }
+
+        [TestMethod]
+        public void Order_IsNullWhereAMemberSetsNone_AndZeroIsAnOrderAMemberSet()
+        {
+            // The contract tells a member that set zero from one that set nothing. Both are placed at zero, so
+            // they keep the order they are declared in.
+            static string Orders<T>() => string.Join(",", Bare.GetTypeInfo<T>().Properties.Select(property => property.Name.LocalName + "=" + (property.Order?.ToString() ?? "null")));
+
+            Orders<ZeroOrdered>().Should().Be("A=null,B=0,C=null");
+            XmlSerializer.Serialize(new ZeroOrdered { A = 1, B = 2, C = 3 }, Bare).Should().Be("<ZeroOrdered><A>1</A><B>2</B><C>3</C></ZeroOrdered>");
+            Orders<MixedOrder>().Should().Be("Z=null,A=5");
+            Orders<ElementOrdered>().Should().Be("Z=-1,A=null");
+            Orders<WrappedCatalog>().Should().Be("Title=null,Items=1");
+            new XmlElementAttribute().Order.Should().Be(0);
+            new XmlArrayAttribute().Order.Should().Be(0);
         }
 
         [TestMethod]

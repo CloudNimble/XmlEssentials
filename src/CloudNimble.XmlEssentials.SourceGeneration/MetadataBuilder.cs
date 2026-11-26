@@ -140,8 +140,8 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                 {
                     var declared = member.ClrTypeName.TrimEnd('?');
                     source = declared.EndsWith("[]", System.StringComparison.Ordinal)
-                        ? "XmlMetadataServices.CreateArrayPropertyInfo<" + member.ItemTypeName + ">(" + source + "!)"
-                        : "XmlMetadataServices.CreateCollectionPropertyInfo<" + declared + ", " + member.ItemTypeName + ">(" + source + "!)";
+                        ? "XmlMetadataServices.CreateArrayPropertyInfo<" + typeName + ", " + member.ItemTypeName + ">(" + source + "!)"
+                        : "XmlMetadataServices.CreateCollectionPropertyInfo<" + typeName + ", " + declared + ", " + member.ItemTypeName + ">(" + source + "!)";
                 }
 
                 body.Append("        ").Append(source).AppendLine(",");
@@ -277,9 +277,9 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var valueName = SymbolHelpers.FullName(memberType);
             var property = member as IPropertySymbol;
             var field = member as IFieldSymbol;
-            var instance = declaring.IsValueType
-                ? "global::System.Runtime.CompilerServices.Unsafe.Unbox<" + declaringName + ">(obj)"
-                : "((" + declaringName + ")obj)";
+            // The accessors are typed by the declaring type, so the object is used as it is. An accessor of a value
+            // type takes it by reference.
+            const string instance = "obj";
             var accessorTarget = declaring.IsValueType ? "ref " + instance : instance;
             var accessorParameter = (declaring.IsValueType ? "ref " : "") + declaringName + " target";
             var accessorName = "__" + key + "_" + index + "_" + member.Name;
@@ -344,7 +344,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var setNullable = property is { SetMethod: null } || !SymbolHelpers.RefusesNull(member, memberType, originalType, forRead: false);
 
             var values = new StringBuilder();
-            values.Append("new XmlPropertyInfoValues<").Append(valueName).Append("> { PropertyName = \"").Append(member.Name).Append("\", DeclaringType = typeof(").Append(TypeOf(declaring)).Append(')');
+            values.Append("new XmlPropertyInfoValues<").Append(declaringName).Append(", ").Append(valueName).Append("> { PropertyName = \"").Append(member.Name).Append('"');
             if (field is not null)
             {
                 values.Append(", IsProperty = false");
@@ -378,7 +378,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             values.Append(", Getter = static obj => ").Append(getter);
             if (setter is not null)
             {
-                values.Append(", Setter = static (obj, value) => ").Append(setter);
+                values.Append(", Setter = static (ref ").Append(declaringName).Append(" obj, ").Append(valueName).Append(" value) => ").Append(setter);
             }
 
             var attributes = Attributes(member);
@@ -393,20 +393,27 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 // A converter for T on a member of type T? converts the value. The wrapper that handles null round it
                 // is generic over T, so it is named here.
-                source = "XmlMetadataServices.CreateNullablePropertyInfo<" + SymbolHelpers.FullName(SymbolHelpers.UnwrapNullable(memberType)) + ">(" + source + ")";
+                source = "XmlMetadataServices.CreateNullablePropertyInfo<" + declaringName + ", " + SymbolHelpers.FullName(SymbolHelpers.UnwrapNullable(memberType)) + ">(" + source + ")";
             }
             else if (TypeGraphWalker.TryCollectionElement(memberType, out var elementType))
             {
                 // An array has a method of its own: the constructors and methods of System.Array cannot be kept for Native AOT.
                 source = memberType is IArrayTypeSymbol
-                    ? "XmlMetadataServices.CreateArrayPropertyInfo<" + SymbolHelpers.FullName(elementType) + ">(" + source + ")"
-                    : "XmlMetadataServices.CreateCollectionPropertyInfo<" + valueName.TrimEnd('?') + ", " + SymbolHelpers.FullName(elementType) + ">(" + source + ")";
+                    ? "XmlMetadataServices.CreateArrayPropertyInfo<" + declaringName + ", " + SymbolHelpers.FullName(elementType) + ">(" + source + ")"
+                    : "XmlMetadataServices.CreateCollectionPropertyInfo<" + declaringName + ", " + valueName.TrimEnd('?') + ", " + SymbolHelpers.FullName(elementType) + ">(" + source + ")";
             }
 
             else if (memberType.IsValueType && memberType.OriginalDefinition.SpecialType is not SpecialType.System_Nullable_T)
             {
                 // A value type that fills a constructor parameter is held in a box that is reused, which is generic over the type.
-                source = "XmlMetadataServices.CreateValuePropertyInfo<" + valueName + ">(" + source + ")";
+                source = "XmlMetadataServices.CreateValuePropertyInfo<" + declaringName + ", " + valueName + ">(" + source + ")";
+            }
+
+            if (declaring.IsValueType)
+            {
+                // A value type is read in a box, and its setter changes the value in the box. Reaching into a box is
+                // constrained to value types, so it is named here, where the declaring type is known to be one.
+                source = "XmlMetadataServices.CreateStructPropertyInfo(" + source + ")";
             }
 
             body.Append("        ").Append(source).AppendLine(",");

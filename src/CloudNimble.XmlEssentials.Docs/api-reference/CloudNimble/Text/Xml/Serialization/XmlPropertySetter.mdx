@@ -1,0 +1,865 @@
+---
+title: XmlPropertySetter
+description: "Represents a method that sets the value of a property or field on an object."
+icon: arrow-right-arrow-left
+tag: "SEALED"
+keywords: ['XmlPropertySetter', 'CloudNimble.Text.Xml.Serialization.XmlPropertySetter<TDeclaring, TValue>', 'CloudNimble.Text.Xml.Serialization', 'delegate', 'System.MulticastDelegate', 'System.ICloneable', 'System.Runtime.Serialization.ISerializable']
+---
+
+## Definition
+
+**Assembly:** CloudNimble.XmlEssentials.dll
+
+**Namespace:** CloudNimble.Text.Xml.Serialization
+
+**Inheritance:** System.MulticastDelegate
+
+## Syntax
+
+```csharp
+CloudNimble.Text.Xml.Serialization.XmlPropertySetter<TDeclaring, TValue>
+```
+
+## Summary
+
+Represents a method that sets the value of a property or field on an object.
+
+## Remarks
+
+The object is passed by reference so that the method can set a member of a value type in place. For a
+reference type, the method sets the member of the object that *instance* refers to and
+leaves the reference as it is.
+
+## Type Parameters
+
+- `TDeclaring` - The type that declares the property or field.
+- `TValue` - The type of the property or field.
+
+## Examples
+
+```csharp
+XmlPropertySetter<Point, int> setX = static (ref Point point, int value) => point.X = value;
+```
+
+## Constructors
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor
+
+#### Syntax
+
+```csharp
+public XmlPropertySetter(object object, nint method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `object` | `object` | - |
+| `method` | `nint` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.MulticastDelegate`</Note>
+
+#### Syntax
+
+```csharp
+protected MulticastDelegate(object target, string method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `target` | `object` | - |
+| `method` | `string` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.MulticastDelegate`</Note>
+
+#### Syntax
+
+```csharp
+protected MulticastDelegate(System.Type target, string method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `target` | `System.Type` | - |
+| `method` | `string` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+protected Delegate(object target, string method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `target` | `object` | - |
+| `method` | `string` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+protected Delegate(System.Type target, string method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `target` | `System.Type` | - |
+| `method` | `string` | - |
+
+### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public Object()
+```
+
+## Properties
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> HasSingleTarget <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public bool HasSingleTarget { get; }
+```
+
+#### Property Value
+
+Type: `bool`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Method <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public System.Reflection.MethodInfo Method { get; }
+```
+
+#### Property Value
+
+Type: `System.Reflection.MethodInfo`
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Target <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public object Target { get; }
+```
+
+#### Property Value
+
+Type: `object?`
+
+## Methods
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> BeginInvoke <Badge color="orange">Virtual</Badge>
+
+#### Syntax
+
+```csharp
+public virtual System.IAsyncResult BeginInvoke(ref TDeclaring instance, TValue value, System.AsyncCallback callback, object object)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `instance` | `TDeclaring` | - |
+| `value` | `TValue` | - |
+| `callback` | `System.AsyncCallback` | - |
+| `object` | `object` | - |
+
+#### Returns
+
+Type: `System.IAsyncResult`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Clone <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public virtual object Clone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Combine <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate Combine(System.Delegate a, System.Delegate b)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `a` | `System.Delegate?` | - |
+| `b` | `System.Delegate?` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Combine <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate Combine(params System.Delegate[] delegates)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `delegates` | `System.Delegate?[]?` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Combine <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate Combine(params System.ReadOnlySpan<System.Delegate> delegates)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `delegates` | `System.ReadOnlySpan<System.Delegate?>` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CombineImpl <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+protected System.Delegate CombineImpl(System.Delegate d)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `d` | `System.Delegate?` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `target` | `object` | - |
+| `method` | `string` | - |
+| `ignoreCase` | `bool` | - |
+| `throwOnBindFailure` | `bool` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, System.Type target, string method, bool ignoreCase, bool throwOnBindFailure)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `target` | `System.Type` | - |
+| `method` | `string` | - |
+| `ignoreCase` | `bool` | - |
+| `throwOnBindFailure` | `bool` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, System.Reflection.MethodInfo method, bool throwOnBindFailure)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `method` | `System.Reflection.MethodInfo` | - |
+| `throwOnBindFailure` | `bool` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, object firstArgument, System.Reflection.MethodInfo method, bool throwOnBindFailure)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `firstArgument` | `object?` | - |
+| `method` | `System.Reflection.MethodInfo` | - |
+| `throwOnBindFailure` | `bool` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, object firstArgument, System.Reflection.MethodInfo method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `firstArgument` | `object?` | - |
+| `method` | `System.Reflection.MethodInfo` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, System.Reflection.MethodInfo method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `method` | `System.Reflection.MethodInfo` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, object target, string method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `target` | `object` | - |
+| `method` | `string` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, object target, string method, bool ignoreCase)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `target` | `object` | - |
+| `method` | `string` | - |
+| `ignoreCase` | `bool` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, System.Type target, string method)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `target` | `System.Type` | - |
+| `method` | `string` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateDelegate <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate CreateDelegate(System.Type type, System.Type target, string method, bool ignoreCase)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `type` | `System.Type` | - |
+| `target` | `System.Type` | - |
+| `method` | `string` | - |
+| `ignoreCase` | `bool` | - |
+
+#### Returns
+
+Type: `System.Delegate`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DynamicInvoke <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public object DynamicInvoke(params object[] args)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `args` | `object?[]?` | - |
+
+#### Returns
+
+Type: `object?`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DynamicInvokeImpl <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+protected virtual object DynamicInvokeImpl(object[] args)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `args` | `object?[]?` | - |
+
+#### Returns
+
+Type: `object?`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EndInvoke <Badge color="orange">Virtual</Badge>
+
+#### Syntax
+
+```csharp
+public virtual void EndInvoke(ref TDeclaring instance, System.IAsyncResult result)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `instance` | `TDeclaring` | - |
+| `result` | `System.IAsyncResult` | - |
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> EnumerateInvocationList <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate.InvocationListEnumerator<TDelegate> EnumerateInvocationList<TDelegate>(TDelegate d) where TDelegate : System.Delegate
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `d` | `TDelegate?` | - |
+
+#### Returns
+
+Type: `System.Delegate.InvocationListEnumerator<TDelegate>`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public override sealed bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual bool Equals(object obj)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `obj` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Equals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool Equals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="code-merge" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="blue">Override</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public override sealed int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetHashCode <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual int GetHashCode()
+```
+
+#### Returns
+
+Type: `int`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetInvocationList <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public System.Delegate[] GetInvocationList()
+```
+
+#### Returns
+
+Type: `System.Delegate[]`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetMethodImpl <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+protected virtual System.Reflection.MethodInfo GetMethodImpl()
+```
+
+#### Returns
+
+Type: `System.Reflection.MethodInfo`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetObjectData <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public virtual void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `info` | `System.Runtime.Serialization.SerializationInfo` | - |
+| `context` | `System.Runtime.Serialization.StreamingContext` | - |
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> GetType <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public System.Type GetType()
+```
+
+#### Returns
+
+Type: `System.Type`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> MemberwiseClone <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+protected internal object MemberwiseClone()
+```
+
+#### Returns
+
+Type: `object`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ReferenceEquals <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public static bool ReferenceEquals(object objA, object objB)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `objA` | `object?` | - |
+| `objB` | `object?` | - |
+
+#### Returns
+
+Type: `bool`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Remove <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate Remove(System.Delegate source, System.Delegate value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `source` | `System.Delegate?` | - |
+| `value` | `System.Delegate?` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RemoveAll <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+public static System.Delegate RemoveAll(System.Delegate source, System.Delegate value)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `source` | `System.Delegate?` | - |
+| `value` | `System.Delegate?` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="function" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> RemoveImpl <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `System.Delegate`</Note>
+
+#### Syntax
+
+```csharp
+protected System.Delegate RemoveImpl(System.Delegate d)
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `d` | `System.Delegate?` | - |
+
+#### Returns
+
+Type: `System.Delegate?`
+
+### <Icon icon="code-fork" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> ToString <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
+
+<Note>Inherited from `object`</Note>
+
+#### Syntax
+
+```csharp
+public virtual string ToString()
+```
+
+#### Returns
+
+Type: `string?`
+
+## Related APIs
+
+- System.ICloneable
+- System.Runtime.Serialization.ISerializable
+

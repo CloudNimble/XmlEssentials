@@ -529,13 +529,13 @@ public abstract class XmlTypeInfo
     public XmlSerializerOptions Options { get; }
     public XmlName RootName { get; }
     public bool IsNillable { get; }
-    public Func<object>? CreateObject { get; }
     public IList<XmlPropertyInfo> Properties { get; }
 }
 
 public abstract class XmlTypeInfo<T> : XmlTypeInfo
 {
     public new XmlConverter<T> Converter { get; }
+    public Func<T>? CreateObject { get; }   // typed only; the untyped base has none
 }
 
 public sealed class XmlPropertyInfo
@@ -545,8 +545,8 @@ public sealed class XmlPropertyInfo
     public bool IsText { get; }
     public bool IsNillable { get; }
     public bool IsRequired { get; }
-    public int Order { get; }
-    public XmlTypeInfo PropertyType { get; }
+    public int? Order { get; }          // null when the member sets no order (K36)
+    public Type PropertyType { get; }   // the declared type of the member, as JsonPropertyInfo.PropertyType
 }
 
 public abstract class XmlSerializerContext : IXmlTypeInfoResolver
@@ -596,7 +596,7 @@ public sealed class XmlSourceGenerationOptionsAttribute : Attribute
 }
 ```
 
-`XmlPropertyInfo.Order` default is **-1** (unset, [K36](01-identity-and-decisions.md#key-decisions)).
+`XmlPropertyInfo.Order` is **`null`** when the member sets no order ([K36](01-identity-and-decisions.md#key-decisions)).
 
 `[XmlSourceGenerationOptions]` is a **default seed**. Generated `XmlSerializerContext` ctor options win when the consumer passes `new AppXmlContext(options)`.
 

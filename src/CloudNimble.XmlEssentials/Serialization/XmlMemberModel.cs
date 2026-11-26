@@ -94,9 +94,9 @@ namespace CloudNimble.Text.Xml.Serialization
         internal string NamespaceUri { get; }
 
         /// <summary>
-        /// Gets the explicit order, or <c>-1</c>.
+        /// Gets the explicit order, or null when the member sets none.
         /// </summary>
-        internal int Order { get; }
+        internal int? Order { get; }
 
         /// <summary>
         /// Gets the member CLR type.
@@ -125,7 +125,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="type">The member CLR type.</param>
         /// <param name="localName">The XML local name.</param>
         /// <param name="namespaceUri">The namespace URI.</param>
-        /// <param name="order">The explicit order, or <c>-1</c>.</param>
+        /// <param name="order">The explicit order, or null when the member sets none.</param>
         /// <param name="declarationIndex">The discovery index.</param>
         /// <param name="isRequired">Whether the member must appear when deserializing.</param>
         /// <param name="isNillable">Whether null is nillable.</param>
@@ -139,7 +139,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="itemLocalName">The item element name for a collection.</param>
         /// <param name="converterType">The converter CLR type, or null to use <paramref name="type"/>.</param>
         /// <param name="itemNamespaceUri">The namespace of the item elements, or null when none was given.</param>
-        internal XmlMemberModel(XmlMemberFacts member, Type type, string localName, string namespaceUri, int order, int declarationIndex, bool isRequired, bool isNillable, XmlIgnoreCondition ignore, bool canSet, bool isAttribute, bool isText, bool isCData, bool isCollection = false, bool isWrapped = false, string itemLocalName = "", Type? converterType = null, string? itemNamespaceUri = null)
+        internal XmlMemberModel(XmlMemberFacts member, Type type, string localName, string namespaceUri, int? order, int declarationIndex, bool isRequired, bool isNillable, XmlIgnoreCondition ignore, bool canSet, bool isAttribute, bool isText, bool isCData, bool isCollection = false, bool isWrapped = false, string itemLocalName = "", Type? converterType = null, string? itemNamespaceUri = null)
         {
             Member = member;
             Type = type;

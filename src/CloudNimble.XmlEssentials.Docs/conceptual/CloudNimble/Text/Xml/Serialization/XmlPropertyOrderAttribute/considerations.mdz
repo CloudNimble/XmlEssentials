@@ -1,4 +1,4 @@
-- A negative order means "not set". This differs from `[JsonPropertyOrder]`, where a negative number places a property before the unordered ones. To put a member first, give it `0` and give the others higher numbers, or leave the others without an order.
+- A member with no order is placed as if its order were `0`, as with `[JsonPropertyOrder]`. To put a member first, give it a negative order. To put one last, give it a positive order.
 - The order covers the whole type, base classes included. A member of a derived class can be placed between two members of its base class, which `System.Xml.Serialization.XmlSerializer` can't do.
 - XML attributes are always written before element text, and element text before child elements. The order sorts members within each of those groups.
 - Members with the same order keep their declaration order.

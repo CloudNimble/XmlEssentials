@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CloudNimble.Text.Xml;
 using CloudNimble.Text.Xml.Serialization;
 using CloudNimble.XmlEssentials.Tests.POCOs;
@@ -177,7 +178,7 @@ namespace CloudNimble.XmlEssentials.Tests
             var both = XmlMetadataServices.CreateObjectInfo(options, new XmlObjectInfoValues<Person>
             {
                 ObjectCreator = static () => new Person(),
-                PropertyMetadataInitializer = static _ => [new XmlPropertyInfoValues<string?> { PropertyName = "Name", DeclaringType = typeof(Person), Getter = static o => ((Person)o).Name, Setter = static (o, v) => ((Person)o).Name = v }],
+                PropertyMetadataInitializer = static _ => [new XmlPropertyInfoValues<Person, string?> { PropertyName = "Name", Getter = static p => p.Name, Setter = static (ref Person p, string? v) => p.Name = v }],
                 SerializeHandler = handler,
             });
             XmlSerializer.Serialize(new Person { Name = "n" }, both).Should().Be("<Person><Fast>n</Fast></Person>");
@@ -252,6 +253,30 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void PropertyType_IsTheDeclaredTypeOfTheMember()
+        {
+            // The type is the one the member is declared with, whatever the member is converted as.
+            static Dictionary<string, Type> Types(XmlTypeInfo info) => info.Properties.ToDictionary(property => property.Name.LocalName, property => property.PropertyType);
+
+            var described = Types(new XmlSerializerOptions { TypeInfoResolver = new MetadataResolver() }.GetTypeInfo(typeof(MetadataOrder)));
+            described["Id"].Should().Be(typeof(int));
+            described["Lines"].Should().Be(typeof(List<MetadataLine>));
+            described["Counts"].Should().Be(typeof(Dictionary<string, int>));
+
+            var options = new XmlSerializerOptions { TypeInfoResolver = DefaultXmlTypeInfoResolver.Instance };
+            var converted = Types(options.GetTypeInfo(typeof(MemberConverted)));
+            converted["Hex"].Should().Be(typeof(int));
+            converted["Maybe"].Should().Be(typeof(int?), "a nullable member is not unwrapped");
+            converted["Joined"].Should().Be(typeof(List<int>));
+
+            var typed = Types(options.GetTypeInfo(typeof(TypedElementFacets)));
+            typed["Last"].Should().Be(typeof(object), "the element names Person, and the member is declared as object");
+            typed["Count"].Should().Be(typeof(int));
+
+            Types(options.GetTypeInfo(typeof(Paragraph)))["Content"].Should().Be(typeof(List<XmlMixedContentItem>));
+        }
+
+        [TestMethod]
         public void TypeInfo_DescribesTheMembers()
         {
             var options = new XmlSerializerOptions { TypeInfoResolver = new MetadataResolver() };
@@ -260,13 +285,14 @@ namespace CloudNimble.XmlEssentials.Tests
             info.Properties.Should().HaveCount(7);
             info.Properties[0].Name.LocalName.Should().Be("Id");
             info.Properties[0].IsAttribute.Should().BeTrue();
-            info.CreateObject!().Should().BeOfType<MetadataOrder>();
-            options.GetTypeInfo(typeof(MetadataLine)).CreateObject.Should().BeNull("it is created through a constructor with parameters");
+            ((XmlTypeInfo<MetadataOrder>)info).CreateObject!().Should().BeOfType<MetadataOrder>();
+            options.GetTypeInfo<MetadataLine>().CreateObject.Should().BeNull("it is created through a constructor with parameters");
 
             FluentActions.Invoking(() => XmlMetadataServices.CreateObjectInfo<Person>(null!, new XmlObjectInfoValues<Person>())).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("options");
             FluentActions.Invoking(() => XmlMetadataServices.CreateObjectInfo<Person>(options, null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("objectInfo");
-            FluentActions.Invoking(() => XmlMetadataServices.CreateCollectionPropertyInfo<List<int>, int>(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("propertyInfo");
-            FluentActions.Invoking(() => XmlMetadataServices.CreateNullablePropertyInfo<int>(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("propertyInfo");
+            FluentActions.Invoking(() => XmlMetadataServices.CreateCollectionPropertyInfo<Person, List<int>, int>(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("propertyInfo");
+            FluentActions.Invoking(() => XmlMetadataServices.CreateNullablePropertyInfo<Person, int>(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("propertyInfo");
+            FluentActions.Invoking(() => XmlMetadataServices.CreateStructPropertyInfo<PopulatePoint, int>(null!)).Should().ThrowExactly<ArgumentNullException>().Which.ParamName.Should().Be("propertyInfo");
             FluentActions.Invoking(() => XmlMetadataServices.CreateObjectInfo(options, new XmlObjectInfoValues<MetadataLine> { ObjectWithParameterizedConstructorCreator = static args => new MetadataLine((int)args[0]!, (string)args[1]!) }))
                 .Should().ThrowExactly<ArgumentException>().Which.Message.Should().Be(
                     "ObjectWithParameterizedConstructorCreator needs ConstructorParameterMetadataInitializer: the serializer has to know the parameters it fills. (Parameter 'objectInfo')");

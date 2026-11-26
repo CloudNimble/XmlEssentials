@@ -109,10 +109,10 @@ public sealed class Address
 {
     public string? PostalCode { get; set; }
 
-    [XmlPropertyOrder(1)]
+    [XmlPropertyOrder(-1)]
     public string? City { get; set; }
 
-    [XmlPropertyOrder(0)]
+    [XmlPropertyOrder(-2)]
     public string? Street { get; set; }
 }
 ```
@@ -133,14 +133,13 @@ The code produces the following output:
 
 The rules are:
 
-- Members with an order of zero or more come first, lowest number first.
-- Members with no order follow, in declaration order.
+- Members are written from the lowest order to the highest.
+- A member with no order is placed as if its order were `0`. A negative order comes before it, and a positive order after.
+- Members with the same order keep their declaration order.
 - The order covers the whole type, so a member of a derived class can be placed between two members of its base class.
 - XML attributes are always written before element text, and element text before child elements. Within the attributes, the same ordering rules apply.
 
-<Note>
-A negative order means "not set". This differs from `[JsonPropertyOrder]` in System.Text.Json, where a negative number places a property before the unordered ones.
-</Note>
+These are the rules of `[JsonPropertyOrder]` in System.Text.Json.
 
 `[XmlElement(Order = n)]` and `[XmlArray(Order = n)]` set the same order. `[XmlPropertyOrder]` takes precedence when a member has both.
 

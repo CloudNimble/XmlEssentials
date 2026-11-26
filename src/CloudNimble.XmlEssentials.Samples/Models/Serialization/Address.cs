@@ -12,20 +12,20 @@ namespace CloudNimble.XmlEssentials.Samples.Models.Serialization
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets the postal code. It has no order, so it follows the ordered members.
+        /// Gets or sets the postal code. It has no order, so it is placed as order 0, after the negative orders.
         /// </summary>
         public string? PostalCode { get; set; }
 
         /// <summary>
         /// Gets or sets the city, written second.
         /// </summary>
-        [XmlPropertyOrder(1)]
+        [XmlPropertyOrder(-1)]
         public string? City { get; set; }
 
         /// <summary>
         /// Gets or sets the street, written first.
         /// </summary>
-        [XmlPropertyOrder(0)]
+        [XmlPropertyOrder(-2)]
         public string? Street { get; set; }
 
         #endregion

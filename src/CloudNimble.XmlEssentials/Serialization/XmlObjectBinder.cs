@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -16,9 +17,7 @@ namespace CloudNimble.Text.Xml.Serialization
 
         #region Fields
 
-        private static readonly MethodInfo CreateStructGetterMethod = typeof(XmlObjectBinder).GetMethod(nameof(CreateStructGetter), BindingFlags.NonPublic | BindingFlags.Static)!;
-
-        private static readonly MethodInfo CreateStructSetterMethod = typeof(XmlObjectBinder).GetMethod(nameof(CreateStructSetter), BindingFlags.NonPublic | BindingFlags.Static)!;
+        private static readonly MethodInfo CreateUnboxMethod = typeof(XmlObjectBinder).GetMethod(nameof(CreateUnbox), BindingFlags.NonPublic | BindingFlags.Static)!;
 
 #if NET11_0_OR_GREATER
         /// <summary>
@@ -306,9 +305,7 @@ namespace CloudNimble.Text.Xml.Serialization
             XmlExtensionDataBinding? extension = null;
             if (extensionMember is { } ext)
             {
-                extension = new XmlExtensionDataBinding(
-                    (Func<object, XmlExtensionData>)ext.Member.Getter!,
-                    ext.CanSet ? (Action<object, XmlExtensionData>?)ext.Member.Setter : null);
+                extension = ext.Member.CreateExtensionBinding(ext.Member, ext.CanSet);
             }
 
             var polymorphic = type.GetCustomAttribute<XmlPolymorphicAttribute>();
@@ -633,7 +630,10 @@ namespace CloudNimble.Text.Xml.Serialization
                 // The extension-data member is not bound as a member, so its accessors are made here, where the type is known.
                 facts.Getter = CreateGetter<T, XmlExtensionData>(member);
                 facts.Setter = facts.HasSetter ? CreateSetter<T, XmlExtensionData>(member) : null;
+                facts.Unbox = CreateReflectedUnbox<T>();
             }
+
+            facts.CreateExtensionBinding = static (extension, canSet) => CreateExtensionBinding<T>(extension, canSet);
 
             facts.CreateBound = static (model, options, index, constructorIndex) =>
             {
@@ -656,23 +656,113 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <typeparam name="TDeclaring">The declaring type.</typeparam>
         /// <typeparam name="TValue">The member type.</typeparam>
         /// <param name="member">The property or field.</param>
-        /// <returns>The getter. The instance is passed boxed so struct setters can mutate the box.</returns>
+        /// <returns>The getter.</returns>
         [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
-        internal static Func<object, TValue> CreateGetter<TDeclaring, TValue>(MemberInfo member)
+        internal static Func<TDeclaring, TValue> CreateGetter<TDeclaring, TValue>(MemberInfo member)
         {
             if (member is PropertyInfo property)
             {
                 if (typeof(TDeclaring).IsValueType)
                 {
-                    return (Func<object, TValue>)CreateStructGetterMethod.MakeGenericMethod(typeof(TDeclaring), typeof(TValue)).Invoke(null, [property])!;
+                    // The get accessor of a struct takes the struct by reference, which a Func cannot.
+                    var byReference = property.GetMethod!.CreateDelegate<XmlStructGetter<TDeclaring, TValue>>();
+                    return instance => byReference(ref instance);
                 }
 
-                var typed = property.GetMethod!.CreateDelegate<Func<TDeclaring, TValue>>();
-                return obj => typed((TDeclaring)obj);
+                return property.GetMethod!.CreateDelegate<Func<TDeclaring, TValue>>();
             }
 
-            var field = (FieldInfo)member;
-            return obj => (TValue)field.GetValue(obj)!;
+            return CreateFieldGetter<TDeclaring, TValue>((FieldInfo)member, RuntimeFeature.IsDynamicCodeCompiled);
+        }
+
+        /// <summary>
+        /// Builds a getter for a field.
+        /// </summary>
+        /// <typeparam name="TDeclaring">The type the getter takes, which declares the field or derives from the type that does.</typeparam>
+        /// <typeparam name="TValue">The type of the field.</typeparam>
+        /// <param name="field">The field.</param>
+        /// <param name="emit">Whether to emit the getter; otherwise it reads the field through reflection.</param>
+        /// <returns>The getter.</returns>
+        /// <remarks>
+        /// No delegate can be bound to a field. Where code can be compiled at run time, the getter is three
+        /// instructions and boxes nothing. Elsewhere it reads the field through a reference to the object, which
+        /// boxes the value it returns but not the object.
+        /// </remarks>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static Func<TDeclaring, TValue> CreateFieldGetter<TDeclaring, TValue>(FieldInfo field, bool emit)
+        {
+            if (!emit)
+            {
+                return instance => (TValue)field.GetValueDirect(__makeref(instance))!;
+            }
+
+            var method = new DynamicMethod("get_" + field.Name, typeof(TValue), [typeof(TDeclaring)], typeof(XmlObjectBinder).Module, skipVisibility: true);
+            var il = method.GetILGenerator();
+            il.Emit(typeof(TDeclaring).IsValueType ? OpCodes.Ldarga_S : OpCodes.Ldarg_S, (byte)0);
+            il.Emit(OpCodes.Ldfld, field);
+            il.Emit(OpCodes.Ret);
+            return method.CreateDelegate<Func<TDeclaring, TValue>>();
+        }
+
+        /// <summary>
+        /// Builds a setter for a field.
+        /// </summary>
+        /// <typeparam name="TDeclaring">The type the setter takes, which declares the field or derives from the type that does.</typeparam>
+        /// <typeparam name="TValue">The type of the field.</typeparam>
+        /// <param name="field">The field, which is not read-only.</param>
+        /// <param name="emit">Whether to emit the setter; otherwise it sets the field through reflection.</param>
+        /// <returns>The setter. It changes a value type in place, through the reference it is given.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static XmlPropertySetter<TDeclaring, TValue> CreateFieldSetter<TDeclaring, TValue>(FieldInfo field, bool emit)
+        {
+            if (!emit)
+            {
+                return (ref TDeclaring instance, TValue value) => field.SetValueDirect(__makeref(instance), value!);
+            }
+
+            var method = new DynamicMethod("set_" + field.Name, typeof(void), [typeof(TDeclaring).MakeByRefType(), typeof(TValue)], typeof(XmlObjectBinder).Module, skipVisibility: true);
+            var il = method.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            if (!typeof(TDeclaring).IsValueType)
+            {
+                // The argument is a reference to the variable that holds the object.
+                il.Emit(OpCodes.Ldind_Ref);
+            }
+
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Stfld, field);
+            il.Emit(OpCodes.Ret);
+            return method.CreateDelegate<XmlPropertySetter<TDeclaring, TValue>>();
+        }
+
+        /// <summary>
+        /// Creates the binding of the extension-data member that <typeparamref name="TDeclaring"/> declares.
+        /// </summary>
+        /// <typeparam name="TDeclaring">The type that declares the member.</typeparam>
+        /// <param name="facts">The facts of the member, whose accessors are typed by <typeparamref name="TDeclaring"/>.</param>
+        /// <param name="canSet">Whether the member is set after the object is created.</param>
+        /// <returns>The binding.</returns>
+        internal static XmlExtensionDataBinding CreateExtensionBinding<TDeclaring>(XmlMemberFacts facts, bool canSet)
+        {
+            var unbox = XmlMemberAccess.RequireUnbox<TDeclaring>(facts, canSet);
+            return new XmlExtensionDataBinding<TDeclaring>(
+                (Func<TDeclaring, XmlExtensionData?>)facts.Getter!,
+                canSet ? (XmlPropertySetter<TDeclaring, XmlExtensionData>?)facts.Setter : null,
+                unbox);
+        }
+
+        /// <summary>
+        /// Creates the delegate that reaches the value inside a box of <typeparamref name="TDeclaring"/>, for the
+        /// reflection resolver.
+        /// </summary>
+        /// <typeparam name="TDeclaring">The type that declares a member.</typeparam>
+        /// <returns>An <see cref="XmlUnbox{TDeclaring}"/>, or null when <typeparamref name="TDeclaring"/> is a reference type.</returns>
+        [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
+        internal static Delegate? CreateReflectedUnbox<TDeclaring>()
+        {
+            return typeof(TDeclaring).IsValueType
+                ? (Delegate)CreateUnboxMethod.MakeGenericMethod(typeof(TDeclaring)).Invoke(null, null)!
+                : null;
         }
 
         /// <summary>
@@ -820,9 +910,9 @@ namespace CloudNimble.Text.Xml.Serialization
                     return kind;
                 }
 
-                var leftOrder = left.Order >= 0 ? left.Order : int.MaxValue;
-                var rightOrder = right.Order >= 0 ? right.Order : int.MaxValue;
-                var compared = leftOrder.CompareTo(rightOrder);
+                // A member that sets no order is placed as one that sets zero, as System.Text.Json places it: a
+                // negative order goes before the members that set none, and a positive one after.
+                var compared = (left.Order ?? 0).CompareTo(right.Order ?? 0);
                 return compared != 0 ? compared : left.DeclarationIndex.CompareTo(right.DeclarationIndex);
             });
             return members;
@@ -902,10 +992,10 @@ namespace CloudNimble.Text.Xml.Serialization
                 ? CreateMemberTypeInfo(memberConverter, typeForInfo, options, member.Member.WrapNullable)
                 : options.GetTypeInfo(typeForInfo);
             var name = new XmlName(member.LocalName, member.NamespaceUri.Length == 0 ? null : member.NamespaceUri);
-            var info = new XmlPropertyInfo(name, typeInfo, member.IsNillable, member.IsRequired, member.Order, member.IsAttribute, member.IsText);
+            var info = new XmlPropertyInfo(name, typeof(TValue), member.IsNillable, member.IsRequired, member.Order, member.IsAttribute, member.IsText);
             var utf8Name = Encoding.UTF8.GetBytes(member.LocalName);
             var utf8Ns = member.NamespaceUri.Length == 0 ? [] : Encoding.UTF8.GetBytes(member.NamespaceUri);
-            var getter = (Func<object, TValue>?)member.Member.Getter
+            var getter = (Func<TDeclaring, TValue>?)member.Member.Getter
                 ?? throw new InvalidOperationException($"The metadata of member '{member.Member.Name}' on type '{member.Member.DeclaringType}' has no getter.");
             // A member that is never read has no setter as far as reading goes. A constructor parameter of the same
             // name is still filled, as System.Text.Json fills it.
@@ -916,9 +1006,10 @@ namespace CloudNimble.Text.Xml.Serialization
             }
 
             var setter = member.CanSet && !neverRead
-                ? (Action<object, TValue>?)member.Member.Setter
+                ? (XmlPropertySetter<TDeclaring, TValue>?)member.Member.Setter
                     ?? throw new InvalidOperationException($"The metadata of member '{member.Member.Name}' on type '{member.Member.DeclaringType}' has no setter.")
                 : null;
+            var unbox = XmlMemberAccess.RequireUnbox<TDeclaring>(member.Member, setter is not null);
             XmlCollectionBinding? collection = null;
             Type? collectionElement = null;
             if (member.IsCollection && member.Member.IsCollection(out var elementType))
@@ -945,7 +1036,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 polymorphism = BindChoices(member, collectionElement ?? member.ConverterType, choices, options);
             }
 
-            return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
+            return new XmlBoundProperty<TDeclaring, TValue>(info, index, utf8Name, utf8Ns, typeInfo, getter, setter, unbox, member.Ignore, constructorIndex, member.IsCData, collection, polymorphism)
             {
                 HeldBoxFactory = member.Member.CreateHeldBox,
                 NoNamespace = member.IsUnqualified,
@@ -1000,6 +1091,8 @@ namespace CloudNimble.Text.Xml.Serialization
                 facts.Setter ??= CreateSetter<TDeclaring, TValue>(info);
             }
 
+            facts.Unbox ??= CreateReflectedUnbox<TDeclaring>();
+
             if (Nullable.GetUnderlyingType(type) is { } underlying)
             {
                 facts.WrapNullable ??= converter => (XmlConverter)Activator.CreateInstance(typeof(XmlNullableConverter<>).MakeGenericType(underlying), converter)!;
@@ -1024,51 +1117,34 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <typeparam name="TDeclaring">The declaring type.</typeparam>
         /// <typeparam name="TValue">The member type.</typeparam>
         /// <param name="member">The property or field.</param>
-        /// <returns>The setter. The instance is passed boxed so struct setters can mutate the box.</returns>
+        /// <returns>The setter.</returns>
         [RequiresUnreferencedCode(XmlSerializer.RefMsg), RequiresDynamicCode(XmlSerializer.DynMsg)]
-        internal static Action<object, TValue>? CreateSetter<TDeclaring, TValue>(MemberInfo member)
+        internal static XmlPropertySetter<TDeclaring, TValue> CreateSetter<TDeclaring, TValue>(MemberInfo member)
         {
             if (member is PropertyInfo property)
             {
                 if (typeof(TDeclaring).IsValueType)
                 {
-                    return (Action<object, TValue>)CreateStructSetterMethod.MakeGenericMethod(typeof(TDeclaring), typeof(TValue)).Invoke(null, [property])!;
+                    // The set accessor of a struct takes the struct by reference, as the delegate does.
+                    return property.SetMethod!.CreateDelegate<XmlPropertySetter<TDeclaring, TValue>>();
                 }
 
                 var typed = property.SetMethod!.CreateDelegate<Action<TDeclaring, TValue>>();
-                return (obj, value) => typed((TDeclaring)obj, value);
+                return (ref TDeclaring instance, TValue value) => typed(instance, value);
             }
 
-            var field = (FieldInfo)member;
-            return (obj, value) => field.SetValue(obj, value);
+            return CreateFieldSetter<TDeclaring, TValue>((FieldInfo)member, RuntimeFeature.IsDynamicCodeCompiled);
         }
 
         /// <summary>
-        /// Builds a getter for a property of the struct <typeparamref name="TStruct"/>.
+        /// Creates the delegate that reaches the value inside a box of the struct <typeparamref name="TStruct"/>.
         /// </summary>
         /// <typeparam name="TStruct">The struct type.</typeparam>
-        /// <typeparam name="TValue">The property type.</typeparam>
-        /// <param name="property">The property.</param>
-        /// <returns>The getter. It reads from the boxed struct in place.</returns>
-        internal static Func<object, TValue> CreateStructGetter<TStruct, TValue>(PropertyInfo property)
+        /// <returns>The delegate.</returns>
+        internal static XmlUnbox<TStruct> CreateUnbox<TStruct>()
             where TStruct : struct
         {
-            var typed = property.GetMethod!.CreateDelegate<XmlStructGetter<TStruct, TValue>>();
-            return instance => typed(ref Unsafe.Unbox<TStruct>(instance));
-        }
-
-        /// <summary>
-        /// Builds a setter for a property of the struct <typeparamref name="TStruct"/>.
-        /// </summary>
-        /// <typeparam name="TStruct">The struct type.</typeparam>
-        /// <typeparam name="TValue">The property type.</typeparam>
-        /// <param name="property">The property.</param>
-        /// <returns>The setter. It changes the boxed struct in place.</returns>
-        internal static Action<object, TValue> CreateStructSetter<TStruct, TValue>(PropertyInfo property)
-            where TStruct : struct
-        {
-            var typed = property.SetMethod!.CreateDelegate<XmlStructSetter<TStruct, TValue>>();
-            return (instance, value) => typed(ref Unsafe.Unbox<TStruct>(instance), value);
+            return static (object instance) => ref Unsafe.Unbox<TStruct>(instance);
         }
 
         /// <summary>
@@ -1512,7 +1588,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 }
 
                 var extensionCanSet = member.HasSetter;
-                model = new XmlMemberModel(member, memberType, member.Name, "", -1, declarationIndex, false, true, XmlIgnoreCondition.Never, extensionCanSet, false, false, false);
+                model = new XmlMemberModel(member, memberType, member.Name, "", null, declarationIndex, false, true, XmlIgnoreCondition.Never, extensionCanSet, false, false, false);
                 return true;
             }
 
@@ -1640,11 +1716,7 @@ namespace CloudNimble.Text.Xml.Serialization
                 local = xmlName ?? options.ConvertElementName(member.Name);
             }
 
-            var order = member.GetCustomAttribute<XmlPropertyOrderAttribute>()?.Order ?? element?.Order ?? typed?[0].Order ?? -1;
-            if (order < 0)
-            {
-                order = -1;
-            }
+            var order = member.GetCustomAttribute<XmlPropertyOrderAttribute>()?.Order ?? element?.OrderIfSet ?? typed?[0].OrderIfSet;
 
             var isCollection = false;
             var isWrapped = false;
@@ -1684,10 +1756,7 @@ namespace CloudNimble.Text.Xml.Serialization
                         ?? (array.ElementName is { Length: > 0 } arrayName ? arrayName : options.ConvertElementName(member.Name));
                     ns = array.Namespace ?? ns;
                     isUnqualified = array.Namespace is { Length: 0 };
-                    if (order < 0 && array.Order >= 0)
-                    {
-                        order = array.Order;
-                    }
+                    order ??= array.OrderIfSet;
                 }
 
                 if (isWrapped && itemChoices is not null)

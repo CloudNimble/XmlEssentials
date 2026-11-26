@@ -59,12 +59,19 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets or sets the order of the element among the child elements of the containing type.
         /// </summary>
         /// <value>
-        /// The order of the element. Lower values are written first. A negative value means the order is not set. The default is <c>-1</c>.
+        /// The order of the element. Lower values are written first, and a negative value is written before the
+        /// members that set no order. The default is <c>0</c>.
         /// </value>
         /// <remarks>
-        /// An <see cref="XmlPropertyOrderAttribute"/> on the same member takes precedence over this property.
+        /// A member that sets no order is ordered as if it set <c>0</c>, and members with the same order keep the
+        /// order they are declared in. An <see cref="XmlPropertyOrderAttribute"/> on the same member takes precedence
+        /// over this property.
         /// </remarks>
-        public int Order { get; set; } = -1;
+        public int Order
+        {
+            get => OrderIfSet ?? 0;
+            set => OrderIfSet = value;
+        }
 
         /// <summary>
         /// Gets the type that is serialized with <see cref="ElementName"/>.
@@ -73,6 +80,11 @@ namespace CloudNimble.Text.Xml.Serialization
         /// The type that the element name applies to, or <see langword="null"/> if the type of the member is used.
         /// </value>
         public virtual Type? Type => null;
+
+        /// <summary>
+        /// Gets the order that <see cref="Order"/> was set to, or <see langword="null"/> when it was not set.
+        /// </summary>
+        internal int? OrderIfSet { get; private set; }
 
         #endregion
 

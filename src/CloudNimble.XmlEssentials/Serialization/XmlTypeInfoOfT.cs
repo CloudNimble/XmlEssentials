@@ -34,6 +34,15 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </value>
         public new XmlConverter<T> Converter { get; }
 
+        /// <summary>
+        /// Gets a parameterless factory that creates an instance of <typeparamref name="T"/> on deserialization.
+        /// </summary>
+        /// <value>
+        /// A factory that creates an instance of <typeparamref name="T"/>, or <see langword="null"/> if the type is not
+        /// mapped as an object or is created through a constructor that has parameters.
+        /// </value>
+        public virtual Func<T>? CreateObject => null;
+
         #endregion
 
         #region Constructors

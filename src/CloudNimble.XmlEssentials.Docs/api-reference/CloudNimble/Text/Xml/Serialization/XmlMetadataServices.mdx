@@ -134,23 +134,24 @@ Marks the metadata of an array member with the type of its items.
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TElement[]> CreateArrayPropertyInfo<TElement>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TElement[]> propertyInfo)
+public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TElement[]> CreateArrayPropertyInfo<TDeclaring, TElement>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TElement[]> propertyInfo)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TElement[]>` | The metadata of the member. |
+| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TElement[]>` | The metadata of the member. |
 
 #### Returns
 
-Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TElement[]>`
+Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TElement[]>`
 *propertyInfo*, which now reads and writes the member as an array of
 *TElement*.
 
 #### Type Parameters
 
+- `TDeclaring` - The type that declares the member.
 - `TElement` - The type of the items.
 
 #### Exceptions
@@ -249,23 +250,24 @@ Marks the metadata of a collection member with the type of its items.
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TCollection> CreateCollectionPropertyInfo<TCollection, TElement>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TCollection> propertyInfo)
+public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TCollection> CreateCollectionPropertyInfo<TDeclaring, TCollection, TElement>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TCollection> propertyInfo)
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TCollection>` | The metadata of the member. |
+| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TCollection>` | The metadata of the member. |
 
 #### Returns
 
-Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TCollection>`
+Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TCollection>`
 *propertyInfo*, which now reads and writes the member as a collection of
 *TElement*.
 
 #### Type Parameters
 
+- `TDeclaring` - The type that declares the member.
 - `TCollection` - The declared type of the member.
 - `TElement` - The type of the items.
 
@@ -434,22 +436,23 @@ Marks the metadata of a member whose type is a nullable value type and that name
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<T?> CreateNullablePropertyInfo<T>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<T?> propertyInfo) where T : struct
+public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, T?> CreateNullablePropertyInfo<TDeclaring, T>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, T?> propertyInfo) where T : struct
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<T?>` | The metadata of the member. |
+| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, T?>` | The metadata of the member. |
 
 #### Returns
 
-Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<T?>`
+Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, T?>`
 *propertyInfo*, which now wraps the member's converter so that it serves the nullable type.
 
 #### Type Parameters
 
+- `TDeclaring` - The type that declares the member.
 - `T` - The underlying value type, which the converter converts.
 
 #### Exceptions
@@ -509,6 +512,57 @@ trimmed application and under Native AOT.
 This method is for source-generated contexts only. It is analogous to
 `JsonMetadataServices.CreateObjectInfo<T>` in `System.Text.Json`.
 
+### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateStructPropertyInfo
+
+Marks the metadata of a member that a value type declares.
+
+#### Syntax
+
+```csharp
+public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue> CreateStructPropertyInfo<TDeclaring, TValue>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue> propertyInfo) where TDeclaring : struct
+```
+
+#### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue>` | The metadata of the member. |
+
+#### Returns
+
+Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue>`
+*propertyInfo*, whose setter can now change the value the serializer is reading.
+
+#### Type Parameters
+
+- `TDeclaring` - The value type that declares the member.
+- `TValue` - The type of the member.
+
+#### Exceptions
+
+| Exception | Description |
+|-----------|-------------|
+| `ArgumentNullException` | *propertyInfo* is [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null). |
+
+#### Examples
+
+```csharp
+XmlMetadataServices.CreateStructPropertyInfo(new XmlPropertyInfoValues<Point, int>
+{
+    PropertyName = nameof(Point.X),
+    Getter = static point => point.X,
+    Setter = static (ref Point point, int value) => point.X = value,
+});
+```
+
+#### Remarks
+
+The serializer holds the object it is reading as an [Object](https://learn.microsoft.com/dotnet/api/system.object), so a value type is in a box,
+and a setter has to change the value in that box. Reaching into a box takes a method that is constrained
+to value types, and this method supplies it where *TDeclaring* is known to be one.
+A member of a value type that has a setter and was not passed to this method is refused when its type is
+bound. This method is for source-generated contexts only.
+
 ### <Icon icon="thumbtack" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> CreateValueInfo
 
 Creates metadata for a type that is read and written with the specified converter.
@@ -548,23 +602,24 @@ Marks the metadata of a member whose type is a value type.
 #### Syntax
 
 ```csharp
-public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TValue> CreateValuePropertyInfo<TValue>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TValue> propertyInfo) where TValue : struct
+public static CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue> CreateValuePropertyInfo<TDeclaring, TValue>(CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue> propertyInfo) where TValue : struct
 ```
 
 #### Parameters
 
 | Name | Type | Description |
 |------|------|-------------|
-| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TValue>` | The metadata of the member. |
+| `propertyInfo` | `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue>` | The metadata of the member. |
 
 #### Returns
 
-Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TValue>`
+Type: `CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue>`
 *propertyInfo*, which can now hold a value for a constructor without boxing it again
 for each object.
 
 #### Type Parameters
 
+- `TDeclaring` - The type that declares the member.
 - `TValue` - The type of the member.
 
 #### Exceptions

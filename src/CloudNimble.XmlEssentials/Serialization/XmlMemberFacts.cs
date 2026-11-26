@@ -51,7 +51,13 @@ namespace CloudNimble.Text.Xml.Serialization
         internal Type? ElementType;
 
         /// <summary>
-        /// A <c>Func&lt;object, TValue&gt;</c> that reads the member, or null when the reflection resolver is to make one from <see cref="Member"/>.
+        /// Creates the binding of the extension-data member, closed over the declaring type. The arguments are the
+        /// facts of the member and whether it can be set.
+        /// </summary>
+        internal Func<XmlMemberFacts, bool, XmlExtensionDataBinding> CreateExtensionBinding = null!;
+
+        /// <summary>
+        /// A <c>Func&lt;TDeclaring, TValue&gt;</c> that reads the member, or null when the reflection resolver is to make one from <see cref="Member"/>.
         /// </summary>
         internal Delegate? Getter;
 
@@ -115,10 +121,16 @@ namespace CloudNimble.Text.Xml.Serialization
         internal readonly string Name;
 
         /// <summary>
-        /// An <c>Action&lt;object, TValue&gt;</c> that sets the member, or null when it cannot be set or the
-        /// reflection resolver is to make one from <see cref="Member"/>.
+        /// An <c>XmlPropertySetter&lt;TDeclaring, TValue&gt;</c> that sets the member, or null when it cannot be set
+        /// or the reflection resolver is to make one from <see cref="Member"/>.
         /// </summary>
         internal Delegate? Setter;
+
+        /// <summary>
+        /// An <c>XmlUnbox&lt;TDeclaring&gt;</c> that reaches the value inside a box of the declaring type, or null
+        /// when the declaring type is a reference type or the reflection resolver is to make one.
+        /// </summary>
+        internal Delegate? Unbox;
 
         /// <summary>
         /// Whether the nullable annotations of the member say it does not accept null.
@@ -184,8 +196,8 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="isField">Whether the member is a field.</param>
         /// <param name="isPublic">Whether the member, or its get accessor, is public.</param>
         /// <param name="isRequiredMember">Whether the member has the <see langword="required"/> modifier.</param>
-        /// <param name="getter">A <c>Func&lt;object, TValue&gt;</c> that reads the member, or null.</param>
-        /// <param name="setter">An <c>Action&lt;object, TValue&gt;</c> that sets the member, or null.</param>
+        /// <param name="getter">A <c>Func&lt;TDeclaring, TValue&gt;</c> that reads the member, or null.</param>
+        /// <param name="setter">An <c>XmlPropertySetter&lt;TDeclaring, TValue&gt;</c> that sets the member, or null.</param>
         /// <param name="attributes">The attributes on the member, or null.</param>
         internal XmlMemberFacts(string name, Type declaringType, Type memberType, bool isField, bool isPublic, bool isRequiredMember, Delegate? getter, Delegate? setter, Attribute[]? attributes)
         {

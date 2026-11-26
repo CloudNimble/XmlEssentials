@@ -1,6 +1,6 @@
 - `[XmlPropertyName]` on the same member takes precedence over `ElementName`, and `[XmlPropertyOrder]` takes precedence over `Order`.
 - A name set here isn't converted by a naming policy.
-- `Order` follows the rules of `[XmlPropertyOrder]`: values of zero or more are written first in ascending order, and a negative value, the default, means the order isn't set.
+- `Order` follows the rules of `[XmlPropertyOrder]`: members are written from the lowest order to the highest, and a member that sets no order is placed as if it set `0`. A negative order is written before the members that set none.
 - A member can't be both an element and something else. `[XmlElement]` together with `[XmlAttribute]`, `[XmlText]`, or `[XmlCData]` throws a `NotSupportedException` the first time the type is used.
 - Several `[XmlElement<T>]` on one member make a choice of elements: each element name stands for a type, a value is written under the element of its type, and an element is read as the type of its name. On a collection, each item is written under the element of its own type. A value of the member's own type is written under the member's name. When two elements hold the same type, declare the member as `XmlNamedValue`, or a collection of it, so each value carries the name of its element. See [Polymorphism](/guides/polymorphism).
 - A member can have one `[XmlElement]` without a type argument. A second one, or one next to `[XmlElement<T>]`, throws a `NotSupportedException` the first time the type is used.

@@ -3,7 +3,7 @@ title: XmlPropertyInfoValues
 description: "Provides serialization metadata about a property or field. This class cannot be inherited."
 icon: code-branch
 tag: "SEALED"
-keywords: ['XmlPropertyInfoValues', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TValue>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues']
+keywords: ['XmlPropertyInfoValues', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue>', 'CloudNimble.Text.Xml.Serialization', 'class', 'CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues']
 ---
 
 ## Definition
@@ -17,7 +17,7 @@ keywords: ['XmlPropertyInfoValues', 'CloudNimble.Text.Xml.Serialization.XmlPrope
 ## Syntax
 
 ```csharp
-CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TValue>
+CloudNimble.Text.Xml.Serialization.XmlPropertyInfoValues<TDeclaring, TValue>
 ```
 
 ## Summary
@@ -28,11 +28,12 @@ Provides serialization metadata about a property or field. This class cannot be 
 
 Source-generated contexts create instances of this class. It is analogous to
 `JsonPropertyInfoValues<T>` in `System.Text.Json`. The names, the ignore conditions and the
-mapping of the member are not given here: the serializer works them out from [XmlPropertyInfoValues`1.Attributes](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfoValues#attributes) and the
+mapping of the member are not given here: the serializer works them out from [XmlPropertyInfoValues`2.Attributes](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyInfoValues#attributes) and the
 options, exactly as it does for a member it finds through reflection.
 
 ## Type Parameters
 
+- `TDeclaring` - The type that declares the property or field.
 - `TValue` - The type of the property or field.
 
 ## Constructors
@@ -59,7 +60,7 @@ private protected XmlPropertyInfoValues()
 
 #### Remarks
 
-Only `XmlPropertyInfoValues`1` derives from this class: a class outside this library cannot.
+Only `XmlPropertyInfoValues`2` derives from this class: a class outside this library cannot.
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -93,21 +94,6 @@ The attributes, as instances constructed with the arguments the member declares 
 
 The serializer reads these as it reads the attributes it finds through reflection.
 
-### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> DeclaringType
-
-Gets or initializes the type that declares the member.
-
-#### Syntax
-
-```csharp
-public System.Type DeclaringType { get; init; }
-```
-
-#### Property Value
-
-Type: `System.Type`
-The declaring type.
-
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Getter
 
 Gets or initializes a method that gets the value of the member.
@@ -115,14 +101,14 @@ Gets or initializes a method that gets the value of the member.
 #### Syntax
 
 ```csharp
-public System.Func<object, TValue> Getter { get; init; }
+public System.Func<TDeclaring, TValue> Getter { get; init; }
 ```
 
 #### Property Value
 
-Type: `System.Func<object, TValue>?`
-A method that takes the object, boxed when it is a value type, and returns the value of the member; or
-[`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when the member cannot be read.
+Type: `System.Func<TDeclaring, TValue>?`
+A method that takes the object and returns the value of the member; or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when the
+member cannot be read.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> IsGetNullable
 
@@ -256,13 +242,13 @@ Gets or initializes a method that sets the value of the member.
 #### Syntax
 
 ```csharp
-public System.Action<object, TValue> Setter { get; init; }
+public CloudNimble.Text.Xml.Serialization.XmlPropertySetter<TDeclaring, TValue> Setter { get; init; }
 ```
 
 #### Property Value
 
-Type: `System.Action<object, TValue>?`
-A method that takes the object, boxed when it is a value type, and the value to set; or
+Type: `CloudNimble.Text.Xml.Serialization.XmlPropertySetter<TDeclaring, TValue>?`
+A method that takes the object by reference and the value to set; or
 [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when the member cannot be set after the object is created.
 
 ## Methods

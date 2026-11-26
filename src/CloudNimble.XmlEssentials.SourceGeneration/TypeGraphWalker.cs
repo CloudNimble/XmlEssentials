@@ -904,7 +904,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             var sorted = System.Linq.Enumerable.ToList(
                 System.Linq.Enumerable.ThenBy(
                     System.Linq.Enumerable.OrderBy(members, static member => Rank(member)),
-                    static member => member.Order >= 0 ? member.Order : int.MaxValue));
+                    static member => member.Order ?? 0));
             members.Clear();
             members.AddRange(sorted);
 
@@ -1312,7 +1312,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             {
                 // Extension data is kept by the runtime library; the write fast path does not write it.
                 FastPathBlocked = true;
-                spec = new MemberSpec(member.Name, SymbolHelpers.FullName(memberType!), member.Name, "", false, false, false, false, false, "", "", true, false, canSet, 0, -1, true, false);
+                spec = new MemberSpec(member.Name, SymbolHelpers.FullName(memberType!), member.Name, "", false, false, false, false, false, "", "", true, false, canSet, 0, null, true, false);
                 return true;
             }
 
@@ -1383,10 +1383,12 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
             }
 
             var orderAttr = SymbolHelpers.GetAttribute(member, SymbolHelpers.PropertyOrderAttribute);
-            var order = orderAttr is null ? -1 : SymbolHelpers.GetInt(orderAttr, "Order", SymbolHelpers.GetConstructorString(orderAttr, 0) is null && orderAttr.ConstructorArguments.Length > 0 && orderAttr.ConstructorArguments[0].Value is int o ? o : -1);
-            if (element is not null && order < 0)
+            // An order is what the member sets. A member that sets none has no order, which is not the same as zero
+            // to a reader of the contract, though it is placed as zero.
+            int? order = orderAttr is not null && orderAttr.ConstructorArguments.Length > 0 && orderAttr.ConstructorArguments[0].Value is int o ? o : null;
+            if (element is not null && order is null)
             {
-                order = SymbolHelpers.GetInt(element, "Order", -1);
+                order = SymbolHelpers.GetNullableInt(element, "Order");
             }
 
             var isCollection = false;
@@ -1409,10 +1411,7 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
                             ? arrayName
                             : Naming.Convert(member.Name, ElementPolicy(options)));
                     ns = SymbolHelpers.GetString(array, "Namespace") ?? ns;
-                    if (order < 0)
-                    {
-                        order = SymbolHelpers.GetInt(array, "Order", -1);
-                    }
+                    order ??= SymbolHelpers.GetNullableInt(array, "Order");
                 }
 
                 itemTypeName = SymbolHelpers.FullName(elementType);

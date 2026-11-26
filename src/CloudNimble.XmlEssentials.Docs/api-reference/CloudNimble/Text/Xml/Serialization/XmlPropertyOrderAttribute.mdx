@@ -34,10 +34,10 @@ public sealed class Address
 {
     public string? PostalCode { get; set; }
 
-    [XmlPropertyOrder(1)]
+    [XmlPropertyOrder(-1)]
     public string? City { get; set; }
 
-    [XmlPropertyOrder(0)]
+    [XmlPropertyOrder(-2)]
     public string? Street { get; set; }
 }
 ```
@@ -58,18 +58,20 @@ The code produces the following output:
 
 [View the complete sample on GitHub](https://github.com/CloudNimble/XmlEssentials/blob/main/src/CloudNimble.XmlEssentials.Samples/08_CustomizeNames.cs)
 
-Members with an order of zero or more are written first, lowest number first. Members with no order follow in declaration order, base class members before derived class members.
+Members are written from the lowest order to the highest. A member with no order, such as `PostalCode`, is placed as if its order were `0`, so the two negative orders come before it. Members with the same order keep their declaration order, base class members before derived class members.
 
 ## Remarks
 
-Members with an order greater than or equal to zero are written first, sorted by that value. Members with a negative
-order, or with no order, follow in declaration order from the most-base type to the most-derived type. Ordering
-applies within each kind of member: attributes are written first, then text content, then child elements.
-This attribute is analogous to `JsonPropertyOrderAttribute` in `System.Text.Json`.
+Members are written from the lowest order to the highest. A member with no order is placed as one whose order is
+`0`, so a member with a negative order is written before the members that set none, and a member with a
+positive order after them. Members with the same order keep the order they are declared in, from the most-base
+type to the most-derived type. Ordering applies within each kind of member: attributes are written first, then
+text content, then child elements. This attribute orders members as `JsonPropertyOrderAttribute` does in
+`System.Text.Json`.
 
 ## Considerations
 
-- A negative order means "not set". This differs from `[JsonPropertyOrder]`, where a negative number places a property before the unordered ones. To put a member first, give it `0` and give the others higher numbers, or leave the others without an order.
+- A member with no order is placed as if its order were `0`, as with `[JsonPropertyOrder]`. To put a member first, give it a negative order. To put one last, give it a positive order.
 - The order covers the whole type, base classes included. A member of a derived class can be placed between two members of its base class, which `System.Xml.Serialization.XmlSerializer` can't do.
 - XML attributes are always written before element text, and element text before child elements. The order sorts members within each of those groups.
 - Members with the same order keep their declaration order.
@@ -92,7 +94,7 @@ public XmlPropertyOrderAttribute(int order)
 
 | Name | Type | Description |
 |------|------|-------------|
-| `order` | `int` | The serialization order of the member. Use a value greater than or equal to zero to take part in explicit ordering. |
+| `order` | `int` | The serialization order of the member. Lower values are written first. |
 
 ### <Icon icon="hammer" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> .ctor <Badge color="gray">Inherited</Badge>
 
@@ -129,8 +131,8 @@ public int Order { get; }
 #### Property Value
 
 Type: `int`
-The serialization order of the member. Lower values are written first. A value greater than or equal to zero takes
-part in explicit ordering, and a negative value means the order is not set.
+The serialization order of the member. Lower values are written first, and a negative value is written before
+the members that set no order.
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> TypeId <Badge color="gray">Inherited</Badge> <Badge color="orange">Virtual</Badge>
 

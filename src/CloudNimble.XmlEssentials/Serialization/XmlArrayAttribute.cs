@@ -41,13 +41,24 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets or sets the order of the wrapper element among the child elements of the containing type.
         /// </summary>
         /// <value>
-        /// The order of the wrapper element. Lower values are written first. A negative value means the order is not set. The default is <c>-1</c>.
+        /// The order of the wrapper element. Lower values are written first, and a negative value is written before
+        /// the members that set no order. The default is <c>0</c>.
         /// </value>
         /// <remarks>
-        /// The value is used only when neither an <see cref="XmlPropertyOrderAttribute"/> nor an
-        /// <see cref="XmlElementAttribute.Order"/> on the same member sets an order.
+        /// A member that sets no order is ordered as if it set <c>0</c>, and members with the same order keep the
+        /// order they are declared in. The value is used only when neither an <see cref="XmlPropertyOrderAttribute"/>
+        /// nor an <see cref="XmlElementAttribute.Order"/> on the same member sets an order.
         /// </remarks>
-        public int Order { get; set; } = -1;
+        public int Order
+        {
+            get => OrderIfSet ?? 0;
+            set => OrderIfSet = value;
+        }
+
+        /// <summary>
+        /// Gets the order that <see cref="Order"/> was set to, or <see langword="null"/> when it was not set.
+        /// </summary>
+        internal int? OrderIfSet { get; private set; }
 
         #endregion
 

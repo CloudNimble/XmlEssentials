@@ -60,17 +60,27 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets the serialization order of the member among the members of its containing type.
         /// </summary>
         /// <value>
-        /// The order of the member, or <c>-1</c> if no order is set.
+        /// The order of the member, or <see langword="null"/> if the member sets no order.
         /// </value>
-        public int Order { get; }
+        /// <remarks>
+        /// Members are written from the lowest order to the highest. A member that sets no order is placed as one
+        /// that sets <c>0</c>, so a member with a negative order is written before it and one with a positive order
+        /// after. Members with the same order keep the order they are declared in.
+        /// </remarks>
+        public int? Order { get; }
 
         /// <summary>
-        /// Gets the metadata for the type of the member.
+        /// Gets the type of the member.
         /// </summary>
         /// <value>
-        /// The serialization metadata for the type of the member.
+        /// The type the property or field is declared with.
         /// </value>
-        public XmlTypeInfo PropertyType { get; }
+        /// <remarks>
+        /// The type is the declared one: a member declared as <c>int?</c> has the type <see cref="Nullable{T}"/> of
+        /// <see cref="int"/>, and a collection member has the type of the collection, not of its items. To get the
+        /// serialization metadata for the type, pass it to <see cref="XmlSerializerOptions.GetTypeInfo(Type)"/>.
+        /// </remarks>
+        public Type PropertyType { get; }
 
         #endregion
 
@@ -80,13 +90,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Creates property metadata.
         /// </summary>
         /// <param name="name">The XML name.</param>
-        /// <param name="propertyType">The member type info.</param>
+        /// <param name="propertyType">The declared type of the member.</param>
         /// <param name="isNillable">Whether null is representable.</param>
         /// <param name="isRequired">Whether the member must be present when deserializing.</param>
-        /// <param name="order">The order, or <c>-1</c> if unset.</param>
+        /// <param name="order">The order, or null if the member sets none.</param>
         /// <param name="isAttribute">Whether the member is an attribute.</param>
         /// <param name="isText">Whether the member is simple content.</param>
-        internal XmlPropertyInfo(XmlName name, XmlTypeInfo propertyType, bool isNillable, bool isRequired, int order, bool isAttribute, bool isText)
+        internal XmlPropertyInfo(XmlName name, Type propertyType, bool isNillable, bool isRequired, int? order, bool isAttribute, bool isText)
         {
             Name = name;
             PropertyType = propertyType;

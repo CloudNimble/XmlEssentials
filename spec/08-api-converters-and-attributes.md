@@ -184,7 +184,7 @@ public class XmlElementAttribute : Attribute
     public XmlElementAttribute(string elementName, string? namespaceUri);
     public string? ElementName { get; set; }
     public string? Namespace { get; set; }
-    public int Order { get; set; } // default -1 = unset (K36)
+    public int Order { get; set; } // reads 0 when unset; unset is placed as 0 (K36)
     public bool IsNullable { get; set; }
     public virtual Type? Type { get; }
 }
@@ -205,7 +205,7 @@ public sealed class XmlArrayAttribute : Attribute
     public XmlArrayAttribute(string elementName);
     public string? ElementName { get; set; }
     public string? Namespace { get; set; }
-    public int Order { get; set; } // default -1 = unset
+    public int Order { get; set; } // reads 0 when unset; unset is placed as 0 (K36)
 }
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]

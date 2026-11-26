@@ -83,7 +83,7 @@ A type and its base types may declare a member of the same name. The rules are S
 - Two members that are not related in one of these ways and map to one XML name are `InvalidOperationException`: "The type maps more than one member to the element name 'X'." For elements, a name is a local name and a namespace: two element members may share a local name when their namespaces differ (`link` and `atom:link`). An element then goes to the member that names its namespace, and a member with no namespace takes an element of that local name in any other namespace ([decision 63](24-doc-findings-resolution.md)). For attributes a name is also a local name and a namespace: two attribute members may share a local name when their namespaces differ (`href` and `xlink:href`), and the same local name in the same namespace is "The type maps more than one member to the attribute name 'X'." An unprefixed attribute is in no namespace (Namespaces in XML, section 6.2), so an attribute member with no namespace takes the unprefixed attribute only, and there is no counterpart of the element rule for other namespaces ([decision 84](24-doc-findings-resolution.md)). The exception is a base member whose C# name an ignored member of a more derived type has: it gives way without an error.
 - Among members that survive, the order is unchanged: base types first.
 
-The rule is applied once, in `XmlObjectBinder.CreateModels`, to the member facts of either resolver. Generated metadata says whether a property is virtual (`XmlPropertyInfoValues<TValue>.IsVirtual`, the name System.Text.Json uses).
+The rule is applied once, in `XmlObjectBinder.CreateModels`, to the member facts of either resolver. Generated metadata says whether a property is virtual (`XmlPropertyInfoValues<TDeclaring, TValue>.IsVirtual`, the name System.Text.Json uses).
 
 ## Name resolution
 
@@ -126,14 +126,14 @@ A type may have many `[XmlAttribute]` members, many element members, and **at mo
 
 ## Order
 
-1. XML attributes first. Attribute order: `[XmlPropertyOrder]` if `>= 0`, else declaration order.
+1. XML attributes first. Attribute order: the same rule as child elements, below.
 2. Then `[XmlText]` / `[XmlCData]` if simple content.
 3. Then child elements.
 
 Child element order ([K9](01-identity-and-decisions.md#key-decisions), [K36](01-identity-and-decisions.md#key-decisions)):
 
-1. Members with explicit order (`[XmlPropertyOrder]`, else `[XmlElement.Order]` / `[XmlArray.Order]`) where order **`>= 0`**, sorted by that integer (stable).
-2. Members with **unset** order (`-1`, the default — **not** `0`) in **flattened declaration order**: most-base to most-derived; within a type, source declaration order (source-gen: `INamedTypeSymbol` declaration order; reflection: metadata token). Within a type the properties come before the fields; `MemberOrder = FieldsFirst` puts the fields first, as `System.Xml.Serialization` does ([decision 71](24-doc-findings-resolution.md)).
+1. Members sort by order (stable), lowest first. The order is what the member sets (`[XmlPropertyOrder]`, else `[XmlElement.Order]`, else `[XmlArray.Order]`); a member that sets none is placed as one that sets `0`. So a negative order comes before the unordered members and a positive one after, as `[JsonPropertyOrder]` has it.
+2. Members with the **same** order, which includes every member that sets none, keep **flattened declaration order**: most-base to most-derived; within a type, source declaration order (source-gen: `INamedTypeSymbol` declaration order; reflection: metadata token). Within a type the properties come before the fields; `MemberOrder = FieldsFirst` puts the fields first, as `System.Xml.Serialization` does ([decision 71](24-doc-findings-resolution.md)).
 
 `[XmlPropertyOrder]` **may interleave** base and derived. Default walk without Order is base-then-derived (XSD-shaped). The break from BCL is that Order is **global** on the flattened type, not per-class.
 

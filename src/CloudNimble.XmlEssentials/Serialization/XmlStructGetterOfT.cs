@@ -8,7 +8,6 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <typeparam name="TValue">The property type.</typeparam>
     /// <param name="instance">The struct.</param>
     /// <returns>The property value.</returns>
-    internal delegate TValue XmlStructGetter<TStruct, TValue>(ref TStruct instance)
-        where TStruct : struct;
+    internal delegate TValue XmlStructGetter<TStruct, TValue>(ref TStruct instance);
 
 }

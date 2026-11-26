@@ -28,7 +28,7 @@ namespace CloudNimble.XmlEssentials.Tests.POCOs.Bcl
         /// <summary>
         /// Gets or sets a property that is written first, whatever the order of the others.
         /// </summary>
-        [XmlPropertyOrder(0)]
+        [XmlPropertyOrder(-1)]
         public int Lead { get; set; } = 7;
 
         /// <summary>

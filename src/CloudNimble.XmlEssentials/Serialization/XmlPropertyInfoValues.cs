@@ -7,7 +7,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// Provides serialization metadata about a property or field, whatever the type of its value.
     /// </summary>
     /// <remarks>
-    /// Use <see cref="XmlPropertyInfoValues{TValue}"/> to describe a member. This class is the form a list of members
+    /// Use <see cref="XmlPropertyInfoValues{TDeclaring, TValue}"/> to describe a member. This class is the form a list of members
     /// of different types is held in. It is analogous to <c>JsonPropertyInfo</c> in <c>System.Text.Json</c> as a
     /// source-generated context uses it.
     /// </remarks>
@@ -20,7 +20,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Initializes a new instance of the <see cref="XmlPropertyInfoValues"/> class.
         /// </summary>
         /// <remarks>
-        /// Only <see cref="XmlPropertyInfoValues{TValue}"/> derives from this class: a class outside this library cannot.
+        /// Only <see cref="XmlPropertyInfoValues{TDeclaring, TValue}"/> derives from this class: a class outside this library cannot.
         /// </remarks>
         private protected XmlPropertyInfoValues()
         {

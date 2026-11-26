@@ -1,0 +1,377 @@
+STJ types: 93; matched by name: 51; no counterpart: 42; members missing on matched types: 273
+## TYPES WITH NO COUNTERPART (namespace|type|member count)
+System.Text.Json.Serialization|IJsonOnDeserialized|1
+System.Text.Json.Serialization|IJsonOnDeserializing|1
+System.Text.Json.Serialization|IJsonOnSerialized|1
+System.Text.Json.Serialization|IJsonOnSerializing|1
+System.Text.Json.Nodes|JsonArray|15
+System.Text.Json.Serialization|JsonAttribute|1
+System.Text.Json.Serialization.Metadata|JsonCollectionInfoValues`1|8
+System.Text.Json.Serialization.Metadata|JsonDerivedType|5
+System.Text.Json|JsonElement.ArrayEnumerator|7
+System.Text.Json|JsonElement.ObjectEnumerator|7
+System.Text.Json.Serialization|JsonKnownReferenceHandler|3
+System.Runtime.InteropServices|JsonMarshal|2
+System.Text.Json.Serialization|JsonNamingPolicyAttribute|2
+System.Text.Json.Nodes|JsonNodeOptions|2
+System.Text.Json.Serialization|JsonNumberEnumConverter`1|3
+System.Text.Json.Serialization|JsonNumberHandlingAttribute|2
+System.Text.Json.Nodes|JsonObject|17
+System.Text.Json.Serialization.Metadata|JsonParameterInfo|10
+System.Text.Json.Serialization.Metadata|JsonPolymorphismOptions|5
+System.Text.Json|JsonProperty|7
+System.Text.Json.Schema|JsonSchemaExporter|1
+System.Text.Json.Schema|JsonSchemaExporterContext|6
+System.Text.Json.Schema|JsonSchemaExporterOptions|4
+System.Text.Json.Serialization|JsonSerializableAttribute|3
+System.Text.Json.Serialization|JsonStringEnumConverter|3
+System.Text.Json.Serialization|JsonStringEnumConverter`1|3
+System.Text.Json.Serialization|JsonStringEnumMemberNameAttribute|2
+System.Text.Json.Serialization|JsonTypeClassifierContext|6
+System.Text.Json.Serialization|JsonTypeClassifierFactory|3
+System.Text.Json.Serialization|JsonTypeClassifierFactory`1|2
+System.Text.Json.Serialization|JsonTypeClassifierKind|3
+System.Text.Json.Serialization.Metadata|JsonTypeInfoKind|5
+System.Text.Json.Serialization.Metadata|JsonTypeInfoResolver|2
+System.Text.Json.Serialization|JsonUnionAttribute|2
+System.Text.Json.Serialization.Metadata|JsonUnionCaseInfo|3
+System.Text.Json.Serialization.Metadata|JsonUnionInfoValues`1|6
+System.Text.Json.Serialization|JsonUnionTypeStructuralClassifier|3
+System.Text.Json.Serialization|JsonUnmappedMemberHandlingAttribute|2
+System.Text.Json.Nodes|JsonValue|3
+System.Text.Json.Serialization|ReferenceHandler|4
+System.Text.Json.Serialization|ReferenceHandler`1|2
+System.Text.Json.Serialization|ReferenceResolver|4
+## MEMBERS (type|member|status|stj overloads|xml overloads)
+DefaultJsonTypeInfoResolver|.ctor|missing|1|0
+DefaultJsonTypeInfoResolver|Modifiers|missing|1|0
+JsonConstructorAttribute|.ctor|missing|1|0
+JsonConverter|.ctor|missing|1|0
+JsonConverter|Type|missing|1|0
+JsonConverterAttribute|.ctor|fewer overloads|2|1
+JsonConverterAttribute|CreateConverter()|missing|1|0
+JsonConverterFactory|.ctor|missing|1|0
+JsonConverterFactory|Type|missing|1|0
+JsonConverter`1|.ctor|missing|1|0
+JsonConverter`1|ReadAsPropertyName()|missing|1|0
+JsonConverter`1|Type|missing|1|0
+JsonConverter`1|WriteAsPropertyName()|missing|1|0
+JsonDerivedTypeAttribute|.ctor|fewer overloads|3|1
+JsonDocument|.ctor|missing|1|0
+JsonDocumentOptions|AllowDuplicateProperties|missing|1|0
+JsonDocumentOptions|AllowTrailingCommas|missing|1|0
+JsonDocumentOptions|_dummyPrimitive|missing|1|0
+JsonElement|Clone()|missing|1|0
+JsonElement|DeepEquals()|missing|1|0
+JsonElement|EnumerateArray()|missing|1|0
+JsonElement|EnumerateObject()|missing|1|0
+JsonElement|GetArrayLength()|missing|1|0
+JsonElement|GetProperty()|missing|3|0
+JsonElement|GetPropertyCount()|missing|1|0
+JsonElement|GetRawText()|missing|1|0
+JsonElement|Parse()|missing|3|0
+JsonElement|ParseValue()|missing|1|0
+JsonElement|ToString()|missing|1|0
+JsonElement|TryGetProperty()|missing|3|0
+JsonElement|TryParseValue()|missing|1|0
+JsonElement|ValueEquals()|missing|3|0
+JsonElement|_dummy|missing|1|0
+JsonElement|_dummyPrimitive|missing|1|0
+JsonElement|this[]|missing|1|0
+JsonEncodedText|Value|missing|1|0
+JsonEncodedText|_dummy|missing|1|0
+JsonEncodedText|_dummyPrimitive|missing|1|0
+JsonException|.ctor|fewer overloads|6|3
+JsonException|BytePositionInLine|missing|1|0
+JsonException|GetObjectData()|missing|1|0
+JsonExtensionDataAttribute|.ctor|missing|1|0
+JsonIgnoreAttribute|.ctor|missing|1|0
+JsonIncludeAttribute|.ctor|missing|1|0
+JsonMetadataServices|BooleanConverter|missing|1|0
+JsonMetadataServices|ByteArrayConverter|missing|1|0
+JsonMetadataServices|ByteConverter|missing|1|0
+JsonMetadataServices|CharConverter|missing|1|0
+JsonMetadataServices|CreateConcurrentQueueInfo()|missing|1|0
+JsonMetadataServices|CreateConcurrentStackInfo()|missing|1|0
+JsonMetadataServices|CreateIAsyncEnumerableInfo()|missing|1|0
+JsonMetadataServices|CreateICollectionInfo()|missing|1|0
+JsonMetadataServices|CreateIDictionaryInfo()|missing|2|0
+JsonMetadataServices|CreateIEnumerableInfo()|missing|2|0
+JsonMetadataServices|CreateIListInfo()|missing|2|0
+JsonMetadataServices|CreateIReadOnlyDictionaryInfo()|missing|1|0
+JsonMetadataServices|CreateIReadOnlySetInfo()|missing|1|0
+JsonMetadataServices|CreateISetInfo()|missing|1|0
+JsonMetadataServices|CreateImmutableDictionaryInfo()|missing|1|0
+JsonMetadataServices|CreateImmutableEnumerableInfo()|missing|1|0
+JsonMetadataServices|CreateListInfo()|missing|1|0
+JsonMetadataServices|CreateMemoryInfo()|missing|1|0
+JsonMetadataServices|CreatePropertyInfo()|missing|1|0
+JsonMetadataServices|CreateQueueInfo()|missing|2|0
+JsonMetadataServices|CreateReadOnlyMemoryInfo()|missing|1|0
+JsonMetadataServices|CreateStackInfo()|missing|2|0
+JsonMetadataServices|CreateUnionInfo()|missing|1|0
+JsonMetadataServices|DateTimeConverter|missing|1|0
+JsonMetadataServices|DateTimeOffsetConverter|missing|1|0
+JsonMetadataServices|DecimalConverter|missing|1|0
+JsonMetadataServices|DoubleConverter|missing|1|0
+JsonMetadataServices|GetEnumConverter()|missing|1|0
+JsonMetadataServices|GetNullableConverter()|missing|2|0
+JsonMetadataServices|GetUnsupportedTypeConverter()|missing|1|0
+JsonMetadataServices|GuidConverter|missing|1|0
+JsonMetadataServices|Int16Converter|missing|1|0
+JsonMetadataServices|Int32Converter|missing|1|0
+JsonMetadataServices|Int64Converter|missing|1|0
+JsonMetadataServices|JsonArrayConverter|missing|1|0
+JsonMetadataServices|JsonDocumentConverter|missing|1|0
+JsonMetadataServices|JsonElementConverter|missing|1|0
+JsonMetadataServices|JsonNodeConverter|missing|1|0
+JsonMetadataServices|JsonObjectConverter|missing|1|0
+JsonMetadataServices|JsonValueConverter|missing|1|0
+JsonMetadataServices|MemoryByteConverter|missing|1|0
+JsonMetadataServices|ObjectConverter|missing|1|0
+JsonMetadataServices|ReadOnlyMemoryByteConverter|missing|1|0
+JsonMetadataServices|SByteConverter|missing|1|0
+JsonMetadataServices|SingleConverter|missing|1|0
+JsonMetadataServices|StringConverter|missing|1|0
+JsonMetadataServices|TimeSpanConverter|missing|1|0
+JsonMetadataServices|UInt16Converter|missing|1|0
+JsonMetadataServices|UInt32Converter|missing|1|0
+JsonMetadataServices|UInt64Converter|missing|1|0
+JsonMetadataServices|UriConverter|missing|1|0
+JsonMetadataServices|VersionConverter|missing|1|0
+JsonNode|.ctor|missing|1|0
+JsonNode|AsArray()|missing|1|0
+JsonNode|AsObject()|missing|1|0
+JsonNode|AsValue()|missing|1|0
+JsonNode|DeepEquals()|missing|1|0
+JsonNode|GetElementIndex()|missing|1|0
+JsonNode|GetPath()|missing|1|0
+JsonNode|GetPropertyName()|missing|1|0
+JsonNode|GetValue()|missing|1|0
+JsonNode|GetValueKind()|missing|1|0
+JsonNode|Options|missing|1|0
+JsonNode|Parse()|fewer overloads|4|2
+JsonNode|ParseAsync()|missing|1|0
+JsonNode|ReplaceWith()|missing|1|0
+JsonNode|Root|missing|1|0
+JsonNode|ToJsonString()|missing|1|0
+JsonNode|explicit operator System.DateTime|missing|1|0
+JsonNode|explicit operator System.DateTime?|missing|1|0
+JsonNode|explicit operator System.DateTimeOffset|missing|1|0
+JsonNode|explicit operator System.DateTimeOffset?|missing|1|0
+JsonNode|explicit operator System.Guid|missing|1|0
+JsonNode|explicit operator System.Guid?|missing|1|0
+JsonNode|explicit operator bool|missing|1|0
+JsonNode|explicit operator bool?|missing|1|0
+JsonNode|explicit operator byte|missing|1|0
+JsonNode|explicit operator byte?|missing|1|0
+JsonNode|explicit operator char|missing|1|0
+JsonNode|explicit operator char?|missing|1|0
+JsonNode|explicit operator decimal|missing|1|0
+JsonNode|explicit operator decimal?|missing|1|0
+JsonNode|explicit operator double|missing|1|0
+JsonNode|explicit operator double?|missing|1|0
+JsonNode|explicit operator float|missing|1|0
+JsonNode|explicit operator float?|missing|1|0
+JsonNode|explicit operator int|missing|1|0
+JsonNode|explicit operator int?|missing|1|0
+JsonNode|explicit operator long|missing|1|0
+JsonNode|explicit operator long?|missing|1|0
+JsonNode|explicit operator sbyte|missing|1|0
+JsonNode|explicit operator sbyte?|missing|1|0
+JsonNode|explicit operator short|missing|1|0
+JsonNode|explicit operator short?|missing|1|0
+JsonNode|explicit operator string?|missing|1|0
+JsonNode|explicit operator uint|missing|1|0
+JsonNode|explicit operator uint?|missing|1|0
+JsonNode|explicit operator ulong|missing|1|0
+JsonNode|explicit operator ulong?|missing|1|0
+JsonNode|explicit operator ushort|missing|1|0
+JsonNode|explicit operator ushort?|missing|1|0
+JsonNode|implicit operator System.Text.Json.Nodes.JsonNode|missing|16|0
+JsonNode|implicit operator System.Text.Json.Nodes.JsonNode?|missing|17|0
+JsonNode|this[]|missing|2|0
+JsonNumberHandling|AllowReadingFromString|missing|1|0
+JsonNumberHandling|WriteAsString|missing|1|0
+JsonObjectInfoValues`1|.ctor|missing|1|0
+JsonObjectInfoValues`1|ConstructorAttributeProviderFactory|missing|1|0
+JsonObjectInfoValues`1|NumberHandling|missing|1|0
+JsonObjectInfoValues`1|PolymorphismOptions|missing|1|0
+JsonObjectInfoValues`1|TypeClassifierFactory|missing|1|0
+JsonParameterInfoValues|.ctor|missing|1|0
+JsonParameterInfoValues|IsMemberInitializer|missing|1|0
+JsonPolymorphicAttribute|.ctor|missing|1|0
+JsonPolymorphicAttribute|IgnoreUnrecognizedTypeDiscriminators|missing|1|0
+JsonPolymorphicAttribute|TypeClassifier|missing|1|0
+JsonPropertyInfo|.ctor|missing|1|0
+JsonPropertyInfo|AssociatedParameter|missing|1|0
+JsonPropertyInfo|AttributeProvider|missing|1|0
+JsonPropertyInfo|CustomConverter|missing|1|0
+JsonPropertyInfo|DeclaringType|missing|1|0
+JsonPropertyInfo|Get|missing|1|0
+JsonPropertyInfo|IsExtensionData|missing|1|0
+JsonPropertyInfo|IsGetNullable|missing|1|0
+JsonPropertyInfo|IsSetNullable|missing|1|0
+JsonPropertyInfo|NumberHandling|missing|1|0
+JsonPropertyInfo|ObjectCreationHandling|missing|1|0
+JsonPropertyInfo|Options|missing|1|0
+JsonPropertyInfo|Set|missing|1|0
+JsonPropertyInfo|ShouldSerialize|missing|1|0
+JsonPropertyInfoValues`1|.ctor|missing|1|0
+JsonPropertyInfoValues`1|AttributeProviderFactory|missing|1|0
+JsonPropertyInfoValues`1|Converter|missing|1|0
+JsonPropertyInfoValues`1|HasJsonInclude|missing|1|0
+JsonPropertyInfoValues`1|IgnoreCondition|missing|1|0
+JsonPropertyInfoValues`1|IsExtensionData|missing|1|0
+JsonPropertyInfoValues`1|JsonPropertyName|missing|1|0
+JsonPropertyInfoValues`1|NumberHandling|missing|1|0
+JsonPropertyInfoValues`1|PropertyTypeInfo|missing|1|0
+JsonReaderOptions|AllowMultipleValues|missing|1|0
+JsonReaderOptions|AllowTrailingCommas|missing|1|0
+JsonReaderOptions|_dummyPrimitive|missing|1|0
+JsonReaderState|_dummy|missing|1|0
+JsonReaderState|_dummyPrimitive|missing|1|0
+JsonRequiredAttribute|.ctor|missing|1|0
+JsonSerializer|DeserializeAsync()|fewer overloads|10|7
+JsonSerializer|DeserializeAsyncEnumerable()|fewer overloads|8|6
+JsonSerializer|SerializeAsync()|fewer overloads|10|6
+JsonSerializerContext|GeneratedSerializerOptions|missing|1|0
+JsonSerializerOptions|AddContext()|missing|1|0
+JsonSerializerOptions|AllowOutOfOrderMetadataProperties|missing|1|0
+JsonSerializerOptions|AllowTrailingCommas|missing|1|0
+JsonSerializerOptions|Encoder|missing|1|0
+JsonSerializerOptions|IgnoreNullValues|missing|1|0
+JsonSerializerOptions|TypeClassifiers|missing|1|0
+JsonSourceGenerationOptionsAttribute|.ctor|missing|2|0
+JsonSourceGenerationOptionsAttribute|AllowDuplicateProperties|missing|1|0
+JsonSourceGenerationOptionsAttribute|AllowOutOfOrderMetadataProperties|missing|1|0
+JsonSourceGenerationOptionsAttribute|AllowTrailingCommas|missing|1|0
+JsonSourceGenerationOptionsAttribute|Converters|missing|1|0
+JsonSourceGenerationOptionsAttribute|DefaultBufferSize|missing|1|0
+JsonSourceGenerationOptionsAttribute|DictionaryKeyPolicy|missing|1|0
+JsonSourceGenerationOptionsAttribute|IndentCharacter|missing|1|0
+JsonSourceGenerationOptionsAttribute|IndentSize|missing|1|0
+JsonSourceGenerationOptionsAttribute|InferClosedTypePolymorphism|missing|1|0
+JsonSourceGenerationOptionsAttribute|NewLine|missing|1|0
+JsonSourceGenerationOptionsAttribute|NumberHandling|missing|1|0
+JsonSourceGenerationOptionsAttribute|ReadCommentHandling|missing|1|0
+JsonSourceGenerationOptionsAttribute|ReferenceHandler|missing|1|0
+JsonSourceGenerationOptionsAttribute|RespectRequiredConstructorParameters|missing|1|0
+JsonSourceGenerationOptionsAttribute|TypeClassifiers|missing|1|0
+JsonSourceGenerationOptionsAttribute|UnmappedMemberHandling|missing|1|0
+JsonSourceGenerationOptionsAttribute|UseStringEnumConverter|missing|1|0
+JsonTokenType|EndArray|missing|1|0
+JsonTokenType|EndObject|missing|1|0
+JsonTokenType|False|missing|1|0
+JsonTokenType|Null|missing|1|0
+JsonTokenType|Number|missing|1|0
+JsonTokenType|PropertyName|missing|1|0
+JsonTokenType|StartArray|missing|1|0
+JsonTokenType|StartObject|missing|1|0
+JsonTokenType|String|missing|1|0
+JsonTokenType|True|missing|1|0
+JsonTypeInfo|.ctor|missing|1|0
+JsonTypeInfo|ConstructorAttributeProvider|missing|1|0
+JsonTypeInfo|CreateJsonPropertyInfo()|missing|1|0
+JsonTypeInfo|CreateJsonTypeInfo()|missing|2|0
+JsonTypeInfo|ElementType|missing|1|0
+JsonTypeInfo|IsReadOnly|missing|1|0
+JsonTypeInfo|KeyType|missing|1|0
+JsonTypeInfo|Kind|missing|1|0
+JsonTypeInfo|MakeReadOnly()|missing|1|0
+JsonTypeInfo|NumberHandling|missing|1|0
+JsonTypeInfo|OnDeserialized|missing|1|0
+JsonTypeInfo|OnDeserializing|missing|1|0
+JsonTypeInfo|OnSerialized|missing|1|0
+JsonTypeInfo|OnSerializing|missing|1|0
+JsonTypeInfo|OriginatingResolver|missing|1|0
+JsonTypeInfo|PolymorphismOptions|missing|1|0
+JsonTypeInfo|PreferredPropertyObjectCreationHandling|missing|1|0
+JsonTypeInfo|TypeClassifier|missing|1|0
+JsonTypeInfo|UnionCases|missing|1|0
+JsonTypeInfo|UnionConstructor|missing|1|0
+JsonTypeInfo|UnionDeconstructor|missing|1|0
+JsonTypeInfo|UnmappedMemberHandling|missing|1|0
+JsonTypeInfo`1|.ctor|missing|1|0
+JsonTypeInfo`1|CreateObject|missing|1|0
+JsonTypeInfo`1|SerializeHandler|missing|1|0
+JsonTypeInfo`1|UnionConstructor|missing|1|0
+JsonTypeInfo`1|UnionDeconstructor|missing|1|0
+JsonValueKind|Array|missing|1|0
+JsonValueKind|False|missing|1|0
+JsonValueKind|Null|missing|1|0
+JsonValueKind|Number|missing|1|0
+JsonValueKind|Object|missing|1|0
+JsonValueKind|String|missing|1|0
+JsonValueKind|True|missing|1|0
+JsonWriterOptions|Encoder|missing|1|0
+JsonWriterOptions|_dummy|missing|1|0
+JsonWriterOptions|_dummyPrimitive|missing|1|0
+Utf8JsonReader|HasValueSequence|missing|1|0
+Utf8JsonReader|ValueSequence|missing|1|0
+Utf8JsonReader|_dummy|missing|1|0
+Utf8JsonReader|_dummyPrimitive|missing|1|0
+Utf8JsonWriter|Reset()|fewer overloads|5|3
+Utf8JsonWriter|WriteBase64String()|missing|4|0
+Utf8JsonWriter|WriteBoolean()|missing|4|0
+Utf8JsonWriter|WriteCommentValue()|missing|3|0
+Utf8JsonWriter|WriteEndArray()|missing|1|0
+Utf8JsonWriter|WriteEndObject()|missing|1|0
+Utf8JsonWriter|WriteNull()|missing|4|0
+Utf8JsonWriter|WriteNullValue()|missing|1|0
+Utf8JsonWriter|WriteNumber()|missing|28|0
+Utf8JsonWriter|WritePropertyName()|missing|4|0
+Utf8JsonWriter|WriteRawValue()|fewer overloads|4|3
+Utf8JsonWriter|WriteStartArray()|missing|5|0
+Utf8JsonWriter|WriteStartObject()|missing|5|0
+Utf8JsonWriter|WriteString()|missing|28|0
+## XML TYPES WITH NO STJ COUNTERPART
+KnownNamespaces
+XmlArrayAttribute
+XmlArrayItemAttribute
+XmlArrayItemAttribute`1
+XmlAttributeAttribute
+XmlAttributeNode
+XmlAttributeNodeList
+XmlAttributeStyle
+XmlAttributes
+XmlCDataAttribute
+XmlCDataNode
+XmlCharHandling
+XmlCollectionMapping
+XmlCommentNode
+XmlConverterAttribute`1
+XmlDeclarationInfo
+XmlDeclarationNode
+XmlDerivedTypeAttribute`1
+XmlDiscriminatorPlacement
+XmlElement.AttributeEnumerator
+XmlElement.Enumerator
+XmlElementAttribute
+XmlElementAttribute`1
+XmlElementNode
+XmlEmptyElementStyle
+XmlEnumHandling
+XmlExtensionData
+XmlMemberOrder
+XmlMixedAttribute
+XmlMixedContentItem
+XmlMixedElement
+XmlMixedText
+XmlName
+XmlNamedValue
+XmlNamespaceDeclarationAttribute
+XmlNamespaces
+XmlNodeList
+XmlProcessingInstructionNode
+XmlPropertyInfoValues
+XmlPropertyMapping
+XmlReferenceHandler
+XmlReferenceResolver
+XmlRootAttribute
+XmlSerializableAttribute`1
+XmlTextAttribute
+XmlTextNode
+XmlUtcOffsetHandling
+XmlVersion
+XmlWhitespaceHandling

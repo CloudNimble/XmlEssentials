@@ -675,6 +675,47 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void ValueType_IsSetInPlace_ThroughEveryKindOfMember()
+        {
+            // A value type is read in a box, and each of its setters has to change the value in that box: a field,
+            // a property, a property that can only be set as the object is created, and the extension data.
+            XmlSerializerGeneratorTests.RunGenerated("#nullable enable\n" + Usings + """
+                public struct Pin
+                {
+                    public int Row;
+                    public int Column { get; set; }
+                    public string? Label { get; init; }
+                    [XmlExtensionData] public XmlExtensionData? Extra { get; set; }
+                }
+
+                [XmlSerializable<Pin>]
+                internal partial class AppXmlContext : XmlSerializerContext
+                {
+                }
+
+                public static class Use
+                {
+                    private static string Round(bool generated)
+                    {
+                        const string xml = "<Pin other=\"o\"><Column>2</Column><Label>l</Label><Row>1</Row><Loose>x</Loose></Pin>";
+                        var options = new XmlSerializerOptions { OmitXmlDeclaration = true, IncludeFields = true };
+                        var info = generated ? new AppXmlContext(options).Pin : null;
+                        var pin = info is null ? XmlSerializer.Deserialize<Pin>(xml, options) : XmlSerializer.Deserialize(xml, info);
+                        var written = info is null ? XmlSerializer.Serialize(pin, options) : XmlSerializer.Serialize(pin, info);
+                        return pin.Row + "," + pin.Column + "," + pin.Label + "," + (pin.Extra is null ? "no extra" : "extra") + " " + written;
+                    }
+
+                    public static string Run()
+                    {
+                        var fromContext = Round(true);
+                        var fromReflection = Round(false);
+                        return fromContext == fromReflection ? fromContext : fromContext + " <> reflection: " + fromReflection;
+                    }
+                }
+                """).Should().Be("1,2,l,extra <Pin other=\"o\"><Column>2</Column><Label>l</Label><Row>1</Row><Loose>x</Loose></Pin>");
+        }
+
+        [TestMethod]
         public void Numbers_ThatAreEmpty_AreRejectedAsTheReflectionResolverRejectsThem()
         {
             XmlSerializerGeneratorTests.RunGenerated(Usings + """
@@ -1114,7 +1155,7 @@ namespace CloudNimble.XmlEssentials.Tests
                 "<H2><X>9</X></H2>",
                 "InvalidOperationException: The type maps more than one member to the element name 'X'.",
                 // The override does not take the name or the order of the property it overrides, so both are written.
-                "<J2><n>1</n><Y>2</Y><X>1</X></J2>",
+                "<J2><Y>2</Y><X>1</X><n>1</n></J2>",
                 "<K2><X>2</X></K2>",
                 "<L2><X>9</X></L2>",
                 "<M2><X>9</X></M2>",

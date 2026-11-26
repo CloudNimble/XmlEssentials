@@ -111,6 +111,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Marks the metadata of an array member with the type of its items.
         /// </summary>
+        /// <typeparam name="TDeclaring">
+        /// The type that declares the member.
+        /// </typeparam>
         /// <typeparam name="TElement">
         /// The type of the items.
         /// </typeparam>
@@ -123,13 +126,13 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <paramref name="propertyInfo"/> is <see langword="null"/>.
         /// </exception>
         /// <remarks>
-        /// An array has its own method because <see cref="CreateCollectionPropertyInfo{TCollection, TElement}"/> keeps
+        /// An array has its own method because <see cref="CreateCollectionPropertyInfo{TDeclaring, TCollection, TElement}"/> keeps
         /// the constructors and methods of the collection type for the trimmer, and those of <see cref="Array"/> cannot
         /// be kept under Native AOT. An array needs none of them: it is made from the items that were read. This
         /// method is for source-generated contexts only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static XmlPropertyInfoValues<TElement[]> CreateArrayPropertyInfo<TElement>(XmlPropertyInfoValues<TElement[]> propertyInfo)
+        public static XmlPropertyInfoValues<TDeclaring, TElement[]> CreateArrayPropertyInfo<TDeclaring, TElement>(XmlPropertyInfoValues<TDeclaring, TElement[]> propertyInfo)
         {
             ArgumentNullException.ThrowIfNull(propertyInfo);
             propertyInfo.ElementType = typeof(TElement);
@@ -197,6 +200,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Marks the metadata of a collection member with the type of its items.
         /// </summary>
+        /// <typeparam name="TDeclaring">
+        /// The type that declares the member.
+        /// </typeparam>
         /// <typeparam name="TCollection">
         /// The declared type of the member.
         /// </typeparam>
@@ -217,7 +223,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// a value-type item. This method is for source-generated contexts only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static XmlPropertyInfoValues<TCollection> CreateCollectionPropertyInfo<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.Interfaces)] TCollection, TElement>(XmlPropertyInfoValues<TCollection> propertyInfo)
+        public static XmlPropertyInfoValues<TDeclaring, TCollection> CreateCollectionPropertyInfo<TDeclaring, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.Interfaces)] TCollection, TElement>(XmlPropertyInfoValues<TDeclaring, TCollection> propertyInfo)
         {
             ArgumentNullException.ThrowIfNull(propertyInfo);
             XmlCollectionShape.Register(typeof(TCollection), typeof(TElement));
@@ -349,6 +355,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Marks the metadata of a member whose type is a nullable value type and that names its own converter.
         /// </summary>
+        /// <typeparam name="TDeclaring">
+        /// The type that declares the member.
+        /// </typeparam>
         /// <typeparam name="T">
         /// The underlying value type, which the converter converts.
         /// </typeparam>
@@ -365,7 +374,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <typeparamref name="T"/> is a type argument. This method is for source-generated contexts only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static XmlPropertyInfoValues<T?> CreateNullablePropertyInfo<T>(XmlPropertyInfoValues<T?> propertyInfo)
+        public static XmlPropertyInfoValues<TDeclaring, T?> CreateNullablePropertyInfo<TDeclaring, T>(XmlPropertyInfoValues<TDeclaring, T?> propertyInfo)
             where T : struct
         {
             ArgumentNullException.ThrowIfNull(propertyInfo);
@@ -438,6 +447,48 @@ namespace CloudNimble.Text.Xml.Serialization
         }
 
         /// <summary>
+        /// Marks the metadata of a member that a value type declares.
+        /// </summary>
+        /// <typeparam name="TDeclaring">
+        /// The value type that declares the member.
+        /// </typeparam>
+        /// <typeparam name="TValue">
+        /// The type of the member.
+        /// </typeparam>
+        /// <param name="propertyInfo">The metadata of the member.</param>
+        /// <returns>
+        /// <paramref name="propertyInfo"/>, whose setter can now change the value the serializer is reading.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="propertyInfo"/> is <see langword="null"/>.
+        /// </exception>
+        /// <example>
+        /// <code>
+        /// XmlMetadataServices.CreateStructPropertyInfo(new XmlPropertyInfoValues&lt;Point, int&gt;
+        /// {
+        ///     PropertyName = nameof(Point.X),
+        ///     Getter = static point =&gt; point.X,
+        ///     Setter = static (ref Point point, int value) =&gt; point.X = value,
+        /// });
+        /// </code>
+        /// </example>
+        /// <remarks>
+        /// The serializer holds the object it is reading as an <see cref="object"/>, so a value type is in a box,
+        /// and a setter has to change the value in that box. Reaching into a box takes a method that is constrained
+        /// to value types, and this method supplies it where <typeparamref name="TDeclaring"/> is known to be one.
+        /// A member of a value type that has a setter and was not passed to this method is refused when its type is
+        /// bound. This method is for source-generated contexts only.
+        /// </remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static XmlPropertyInfoValues<TDeclaring, TValue> CreateStructPropertyInfo<TDeclaring, TValue>(XmlPropertyInfoValues<TDeclaring, TValue> propertyInfo)
+            where TDeclaring : struct
+        {
+            ArgumentNullException.ThrowIfNull(propertyInfo);
+            propertyInfo.Unbox = XmlObjectBinder.CreateUnbox<TDeclaring>();
+            return propertyInfo;
+        }
+
+        /// <summary>
         /// Creates metadata for a type that is read and written with the specified converter.
         /// </summary>
         /// <typeparam name="T">
@@ -462,6 +513,9 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <summary>
         /// Marks the metadata of a member whose type is a value type.
         /// </summary>
+        /// <typeparam name="TDeclaring">
+        /// The type that declares the member.
+        /// </typeparam>
         /// <typeparam name="TValue">
         /// The type of the member.
         /// </typeparam>
@@ -480,7 +534,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// source-generated contexts only.
         /// </remarks>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static XmlPropertyInfoValues<TValue> CreateValuePropertyInfo<TValue>(XmlPropertyInfoValues<TValue> propertyInfo)
+        public static XmlPropertyInfoValues<TDeclaring, TValue> CreateValuePropertyInfo<TDeclaring, TValue>(XmlPropertyInfoValues<TDeclaring, TValue> propertyInfo)
             where TValue : struct
         {
             ArgumentNullException.ThrowIfNull(propertyInfo);

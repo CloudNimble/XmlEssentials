@@ -6,6 +6,9 @@ namespace CloudNimble.Text.Xml.Serialization
     /// <summary>
     /// Provides serialization metadata about a property or field. This class cannot be inherited.
     /// </summary>
+    /// <typeparam name="TDeclaring">
+    /// The type that declares the property or field.
+    /// </typeparam>
     /// <typeparam name="TValue">
     /// The type of the property or field.
     /// </typeparam>
@@ -15,7 +18,7 @@ namespace CloudNimble.Text.Xml.Serialization
     /// mapping of the member are not given here: the serializer works them out from <see cref="Attributes"/> and the
     /// options, exactly as it does for a member it finds through reflection.
     /// </remarks>
-    public sealed class XmlPropertyInfoValues<TValue> : XmlPropertyInfoValues
+    public sealed class XmlPropertyInfoValues<TDeclaring, TValue> : XmlPropertyInfoValues
     {
 
         #region Fields
@@ -41,6 +44,12 @@ namespace CloudNimble.Text.Xml.Serialization
         /// </summary>
         internal Func<object>? CreateHeldBox;
 
+        /// <summary>
+        /// Reaches the value inside a box of <typeparamref name="TDeclaring"/>, so a member of a value type is set
+        /// in place; or null when <typeparamref name="TDeclaring"/> is a reference type.
+        /// </summary>
+        internal XmlUnbox<TDeclaring>? Unbox;
+
         #endregion
 
         #region Public Properties
@@ -58,21 +67,13 @@ namespace CloudNimble.Text.Xml.Serialization
         public Attribute[]? Attributes { get; init; }
 
         /// <summary>
-        /// Gets or initializes the type that declares the member.
-        /// </summary>
-        /// <value>
-        /// The declaring type.
-        /// </value>
-        public Type DeclaringType { get; init; } = typeof(object);
-
-        /// <summary>
         /// Gets or initializes a method that gets the value of the member.
         /// </summary>
         /// <value>
-        /// A method that takes the object, boxed when it is a value type, and returns the value of the member; or
-        /// <see langword="null"/> when the member cannot be read.
+        /// A method that takes the object and returns the value of the member; or <see langword="null"/> when the
+        /// member cannot be read.
         /// </value>
-        public Func<object, TValue>? Getter { get; init; }
+        public Func<TDeclaring, TValue>? Getter { get; init; }
 
         /// <summary>
         /// Gets or initializes a value that indicates whether the member may return <see langword="null"/>.
@@ -151,10 +152,10 @@ namespace CloudNimble.Text.Xml.Serialization
         /// Gets or initializes a method that sets the value of the member.
         /// </summary>
         /// <value>
-        /// A method that takes the object, boxed when it is a value type, and the value to set; or
+        /// A method that takes the object by reference and the value to set; or
         /// <see langword="null"/> when the member cannot be set after the object is created.
         /// </value>
-        public Action<object, TValue>? Setter { get; init; }
+        public XmlPropertySetter<TDeclaring, TValue>? Setter { get; init; }
 
         #endregion
 
@@ -163,7 +164,7 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <inheritdoc />
         internal override XmlMemberFacts CreateFacts()
         {
-            var facts = new XmlMemberFacts(PropertyName, DeclaringType, typeof(TValue), !IsProperty, IsPublic, IsRequired, Getter, Setter, Attributes)
+            var facts = new XmlMemberFacts(PropertyName, typeof(TDeclaring), typeof(TValue), !IsProperty, IsPublic, IsRequired, Getter, Setter, Attributes)
             {
                 CreateCollectionBinding = CreateCollectionBinding,
                 ElementType = ElementType,
@@ -171,12 +172,14 @@ namespace CloudNimble.Text.Xml.Serialization
                 NeverReturnsNull = !IsGetNullable,
                 RefusesNull = !IsSetNullable,
                 CreateHeldBox = CreateHeldBox,
+                Unbox = Unbox,
                 WrapNullable = WrapNullable,
             };
 
-            // The bound member is generic over the member's type. It is closed here, where the type is a type
-            // argument, so nothing is closed over a type at run time.
-            facts.CreateBound = static (model, options, index, constructorIndex) => XmlObjectBinder.CreateProperty<object, TValue>(model, options, index, constructorIndex);
+            // The bound member is generic over the declaring type and the member's type. It is closed here, where
+            // both are type arguments, so nothing is closed over a type at run time.
+            facts.CreateBound = static (model, options, index, constructorIndex) => XmlObjectBinder.CreateProperty<TDeclaring, TValue>(model, options, index, constructorIndex);
+            facts.CreateExtensionBinding = static (member, canSet) => XmlObjectBinder.CreateExtensionBinding<TDeclaring>(member, canSet);
             return facts;
         }
 

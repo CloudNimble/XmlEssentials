@@ -54,6 +54,8 @@ using CloudNimble.Text.Xml.Serialization;
 | [24-doc-findings-resolution.md](24-doc-findings-resolution.md) | Defects found by the documentation pass, and their resolution |
 | [25-single-engine-metadata.md](25-single-engine-metadata.md) | Generated metadata and one runtime engine: design, public API, task list |
 | [26-expanded-encoding-support.md](26-expanded-encoding-support.md) | Reading UTF-16, UTF-32, US-ASCII and ISO-8859-1, and converting to UTF-8: design and task list |
+| [27-modifiers.md](27-modifiers.md) | Contract modifiers (`DefaultXmlTypeInfoResolver.Modifiers`, `WithAddedModifier`): design, public API, task list |
+| [28-typed-first.md](28-typed-first.md) | Typed first: the rule that code is generic wherever it can be, what is still untyped, and the plan to move it |
 
 ## How to read the spec
 

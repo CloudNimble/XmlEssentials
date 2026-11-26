@@ -77,7 +77,7 @@ The code produces the following output:
 
 - `[XmlPropertyName]` on the same member takes precedence over `ElementName`, and `[XmlPropertyOrder]` takes precedence over `Order`.
 - A name set here isn't converted by a naming policy.
-- `Order` follows the rules of `[XmlPropertyOrder]`: values of zero or more are written first in ascending order, and a negative value, the default, means the order isn't set.
+- `Order` follows the rules of `[XmlPropertyOrder]`: members are written from the lowest order to the highest, and a member that sets no order is placed as if it set `0`. A negative order is written before the members that set none.
 - A member can't be both an element and something else. `[XmlElement]` together with `[XmlAttribute]`, `[XmlText]`, or `[XmlCData]` throws a `NotSupportedException` the first time the type is used.
 - Several `[XmlElement<T>]` on one member make a choice of elements: each element name stands for a type, a value is written under the element of its type, and an element is read as the type of its name. On a collection, each item is written under the element of its own type. A value of the member's own type is written under the member's name. When two elements hold the same type, declare the member as `XmlNamedValue`, or a collection of it, so each value carries the name of its element. See [Polymorphism](/guides/polymorphism).
 - A member can have one `[XmlElement]` without a type argument. A second one, or one next to `[XmlElement<T>]`, throws a `NotSupportedException` the first time the type is used.
@@ -309,11 +309,30 @@ public int Order { get; set; }
 #### Property Value
 
 Type: `int`
-The order of the element. Lower values are written first. A negative value means the order is not set. The default is `-1`.
+The order of the element. Lower values are written first, and a negative value is written before the
+members that set no order. The default is `0`.
 
 #### Remarks
 
-An [XmlPropertyOrderAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyOrderAttribute) on the same member takes precedence over this property.
+A member that sets no order is ordered as if it set `0`, and members with the same order keep the
+order they are declared in. An [XmlPropertyOrderAttribute](/api-reference/CloudNimble/Text/Xml/Serialization/XmlPropertyOrderAttribute) on the same member takes precedence
+over this property.
+
+### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> OrderIfSet <Badge color="gray">Inherited</Badge>
+
+<Note>Inherited from `CloudNimble.Text.Xml.Serialization.XmlElementAttribute`</Note>
+
+Gets the order that [XmlElementAttribute.Order](/api-reference/CloudNimble/Text/Xml/Serialization/XmlElementAttribute#order) was set to, or [`null`](https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null) when it was not set.
+
+#### Syntax
+
+```csharp
+internal int? OrderIfSet { get; private set; }
+```
+
+#### Property Value
+
+Type: `int?`
 
 ### <Icon icon="tag" iconType="duotone" color="#419AC5" size={24} className="mr-2" /> Type <Badge color="blue">Override</Badge>
 

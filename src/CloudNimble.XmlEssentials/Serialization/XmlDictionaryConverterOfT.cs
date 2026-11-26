@@ -209,17 +209,29 @@ namespace CloudNimble.Text.Xml.Serialization
             if (key is string text)
             {
                 var mapped = policy is null ? text : policy.ConvertName(text);
-                if (mapped != "Key" && XmlCollectionShape.IsNcName(mapped))
+                if (mapped != "Key")
                 {
-                    if (_valueLeafConverter is not null && mapped.Length <= MaxLeafKeyLength && writer.CurrentDepth > 0 && !XmlConverterHelpers.IsNull(value))
+                    // A value that is formatted straight into the buffer is written with its tags in one step,
+                    // which checks the key as it copies it. So the usual entry, a short key with a number or a
+                    // date, has its key scanned once.
+                    var leaf = writer.CurrentDepth > 0 && !XmlConverterHelpers.IsNull(value);
+                    if (leaf && _valueFormattedConverter is not null && _valueFormattedConverter.TryWriteElement(writer, mapped, value, options))
                     {
-                        WriteLeafEntry(writer, mapped, value, options);
                         return;
                     }
 
-                    writer.WriteStartElement(mapped);
-                    WriteValue(writer, value, options);
-                    return;
+                    if (XmlCollectionShape.IsNcName(mapped))
+                    {
+                        if (leaf && _valueLeafConverter is not null && mapped.Length <= MaxLeafKeyLength)
+                        {
+                            WriteLeafEntry(writer, mapped, value, options);
+                            return;
+                        }
+
+                        writer.WriteStartElement(mapped);
+                        WriteValue(writer, value, options);
+                        return;
+                    }
                 }
             }
 
@@ -239,11 +251,6 @@ namespace CloudNimble.Text.Xml.Serialization
         /// <param name="options">The serializer options.</param>
         internal void WriteLeafEntry(Utf8XmlWriter writer, string name, TValue value, XmlSerializerOptions options)
         {
-            if (_valueFormattedConverter is not null && _valueFormattedConverter.TryWriteElement(writer, name, value, options))
-            {
-                return;
-            }
-
             // The buffer holds "<<name>". The start tag is everything after the first byte; changing the
             // second byte to '/' then makes the whole buffer the end tag.
             Span<byte> tags = stackalloc byte[MaxLeafKeyLength + 3];

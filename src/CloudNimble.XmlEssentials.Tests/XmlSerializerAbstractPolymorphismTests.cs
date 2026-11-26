@@ -99,14 +99,21 @@ namespace CloudNimble.XmlEssentials.Tests
         [TestMethod]
         public void AbstractType_TypeInfo_DescribesItsOwnMembersAndCreatesNothing()
         {
-            foreach (var type in new[] { typeof(NamedShape), typeof(INamedShape), typeof(KindShape), typeof(IKindShape), typeof(TypedShape), typeof(ITypedShape) })
+            static void Describes<T>()
             {
-                var info = Bare.GetTypeInfo(type);
-                info.Type.Should().Be(type);
-                info.CreateObject.Should().BeNull("{0} cannot be created", type);
+                var info = Bare.GetTypeInfo<T>();
+                info.Type.Should().Be(typeof(T));
+                info.CreateObject.Should().BeNull("{0} cannot be created", typeof(T));
                 info.Properties.Should().HaveCount(1);
                 info.Properties[0].Name.Should().Be(new XmlName("Label"));
             }
+
+            Describes<NamedShape>();
+            Describes<INamedShape>();
+            Describes<KindShape>();
+            Describes<IKindShape>();
+            Describes<TypedShape>();
+            Describes<ITypedShape>();
         }
 
         [TestMethod]

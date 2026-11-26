@@ -136,6 +136,25 @@ namespace CloudNimble.XmlEssentials.SourceGeneration
         }
 
         /// <summary>
+        /// Returns a named argument as an int, or null when the attribute does not set it.
+        /// </summary>
+        /// <param name="attribute">The attribute.</param>
+        /// <param name="name">The name of the argument.</param>
+        /// <returns>The value, or null.</returns>
+        internal static int? GetNullableInt(AttributeData attribute, string name)
+        {
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (argument.Key == name && argument.Value.Value is int value)
+                {
+                    return value;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Returns a named argument as a bool.
         /// </summary>
         /// <param name="attribute">The attribute.</param>

@@ -161,7 +161,7 @@ namespace CloudNimble.XmlEssentials.Tests
             WritesWithoutAllocating(new Price { Currency = "USD", Amount = 19.99m }, "<Price Currency=\"USD\">19.99</Price>");
             WritesWithoutAllocating(
                 new WrappedCatalog { Title = "t", Items = ["a", "b"] },
-                "<WrappedCatalog><Items><Item>a</Item><Item>b</Item></Items><Title>t</Title></WrappedCatalog>");
+                "<WrappedCatalog><Title>t</Title><Items><Item>a</Item><Item>b</Item></Items></WrappedCatalog>");
             WritesWithoutAllocating(new ArrayHolder { Values = [1, 2] }, "<ArrayHolder><Values>1</Values><Values>2</Values></ArrayHolder>");
             WritesWithoutAllocating(
                 new ProductCatalog { Items = [new Book { Title = "b", Author = "a" }, new Product { Title = "p" }] },
