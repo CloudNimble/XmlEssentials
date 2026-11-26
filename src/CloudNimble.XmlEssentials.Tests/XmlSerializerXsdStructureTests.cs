@@ -256,6 +256,7 @@ namespace CloudNimble.XmlEssentials.Tests
         {
             XmlSerializerXsdMappingTests.Execute(PagesSchema, "pages.xsd", """
                 using System;
+                using System.Globalization;
                 using System.Linq;
                 using CloudNimble.Text.Xml;
                 using CloudNimble.Text.Xml.Serialization;
@@ -263,6 +264,12 @@ namespace CloudNimble.XmlEssentials.Tests
 
                 public static class Use
                 {
+                    // Numbers are shown in the invariant culture, so the result is the same on every machine.
+                    private static string Join(params object?[] values)
+                    {
+                        return string.Join("|", values.Select(static value => Convert.ToString(value, CultureInfo.InvariantCulture)));
+                    }
+
                     private static string Show(object value)
                     {
                         return value switch
@@ -271,7 +278,7 @@ namespace CloudNimble.XmlEssentials.Tests
                             Square square => "square(" + square.Name + "," + square.Side + ")",
                             Shape shape => "shape(" + shape.Name + ")",
                             Para para => "para[" + para.lang + ":" + string.Join("", para.Content!.Select(item => item is XmlMixedText text ? text.Text : "<" + ((XmlMixedElement)item).Element.LocalName + ">")) + "]",
-                            _ => value.GetType().Name + ":" + value,
+                            _ => value.GetType().Name + ":" + Convert.ToString(value, CultureInfo.InvariantCulture),
                         };
                     }
 
@@ -289,8 +296,8 @@ namespace CloudNimble.XmlEssentials.Tests
                         var options = new XmlSerializerOptions { OmitXmlDeclaration = true, DefaultNamespace = "urn:pages" };
                         var context = new PagesXmlContext(options);
                         var read = XmlSerializer.Deserialize(document, context.page)!;
-                        var shown = string.Join("|",
-                            read.rev, read.title, read.ratio, read.when?.ToString() ?? "null", read.big, read.on, read.price, read.bad?.ToString() ?? "null", read.small, read.wide,
+                        var shown = Join(
+                            read.rev, read.title, read.ratio, read.when?.ToString(CultureInfo.InvariantCulture) ?? "null", read.big, read.on, read.price, read.bad?.ToString(CultureInfo.InvariantCulture) ?? "null", read.small, read.wide,
                             string.Join(",", read.shape!.Select(Show)), read.token, Show(read.Item!),
                             string.Join(",", read.Items!.Select(Show)), string.Join(",", read.Items2!.Select(Show)), read.Tone, read.Lead is null);
                         var written = XmlSerializer.Serialize(read, context.page);
@@ -298,15 +305,15 @@ namespace CloudNimble.XmlEssentials.Tests
                         var again = XmlSerializer.Serialize(XmlSerializer.Deserialize(written, context.page)!, context.page);
                         var fresh = new page();
                         return shown + "\n" + written + "\n" + (written == reflected ? "same" : "reflection: " + reflected) + "\n" + (written == again ? "stable" : "again: " + again)
-                            + "\n" + fresh.rev + "|" + fresh.title + "|" + fresh.ratio + "|" + fresh.big + "|" + fresh.on + "|" + fresh.price + "|" + fresh.small + "|" + fresh.wide + "|" + fresh.Tone;
+                            + "\n" + Join(fresh.rev, fresh.title, fresh.ratio, fresh.big, fresh.on, fresh.price, fresh.small, fresh.wide, fresh.Tone);
                     }
                 }
                 """).Should().Be(
-                    "4|x|∞|null|7|True|1.50|null|0.5|-9|circle(c,1),shape(s),square(q,2)|w|Decimal:2.5|String:a,para[en:one <b> three],Int32:5,String:b|String:k1,Int32:1,String:k2,Int32:2|warm|True\n" +
+                    "4|x|Infinity|null|7|True|1.50|null|0.5|-9|circle(c,1),shape(s),square(q,2)|w|Decimal:2.5|String:a,para[en:one <b> three],Int32:5,String:b|String:k1,Int32:1,String:k2,Int32:2|warm|True\n" +
                     "<page xmlns=\"urn:pages\" rev=\"4\" title=\"x\" ratio=\"INF\" big=\"7\" on=\"true\" price=\"1.50\" small=\"0.5\" wide=\"-9\"><circle><Name>c</Name><Radius>1</Radius></circle><shape><Name>s</Name></shape><square><Name>q</Name><Side>2</Side></square><word>w</word><Cash>2.5</Cash><Text>a</Text><Body lang=\"en\">one <p:b xmlns:p=\"urn:pages\">two</p:b> three</Body><Count>5</Count><Text>b</Text><Key>k1</Key><Value>1</Value><Key>k2</Key><Value>2</Value><Tone>warm</Tone></page>\n" +
                     "same\n" +
                     "stable\n" +
-                    "3|x|∞|7|True|1.50|0.5|-9|cold");
+                    "3|x|Infinity|7|True|1.50|0.5|-9|cold");
         }
 
         [TestMethod]

@@ -49,20 +49,18 @@ namespace CloudNimble.XmlEssentials.Tests
                 .Where(static line => line.Contains(" IL2", StringComparison.Ordinal) || line.Contains(" IL3", StringComparison.Ordinal))
                 .Should().BeEmpty();
 
-            var exe = Path.Combine(
-                src,
-                "CloudNimble.XmlEssentials.Tests.Aot",
-                "bin",
-                configuration,
-                "net11.0",
-                rid,
-                "publish",
-                "CloudNimble.XmlEssentials.Tests.Aot.exe");
+            // A native executable has the platform's name for one, and nothing beside it is managed code or the
+            // runtime that would run managed code.
+            var publishDirectory = Path.Combine(src, "CloudNimble.XmlEssentials.Tests.Aot", "bin", configuration, "net11.0", rid, "publish");
+            var (executable, runtimeLibrary) = OperatingSystem.IsWindows() ? (".exe", "coreclr.dll")
+                : OperatingSystem.IsMacOS() ? ("", "libcoreclr.dylib")
+                : ("", "libcoreclr.so");
+            var exe = Path.Combine(publishDirectory, "CloudNimble.XmlEssentials.Tests.Aot" + executable);
             File.Exists(exe).Should().BeTrue();
-            File.Exists(Path.ChangeExtension(exe, ".dll")).Should().BeFalse();
-            File.Exists(Path.Combine(Path.GetDirectoryName(exe)!, "coreclr.dll")).Should().BeFalse();
+            File.Exists(Path.Combine(publishDirectory, "CloudNimble.XmlEssentials.Tests.Aot.dll")).Should().BeFalse();
+            File.Exists(Path.Combine(publishDirectory, runtimeLibrary)).Should().BeFalse();
 
-            var smoke = Run(exe, "", Path.GetDirectoryName(exe)!, 60000);
+            var smoke = Run(exe, "", publishDirectory, 60000);
             smoke.ExitCode.Should().Be(0, smoke.StandardOutput + Environment.NewLine + smoke.StandardError);
             smoke.StandardError.Should().Be("");
             smoke.StandardOutput.Should().Be(
@@ -97,6 +95,20 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         /// <summary>
+        /// Returns whether <paramref name="name"/> is an environment variable that attaches a .NET profiler, or that
+        /// joins a process to the code coverage session of <c>Microsoft.Testing.Extensions.CodeCoverage</c>.
+        /// </summary>
+        /// <param name="name">The name of the environment variable.</param>
+        /// <returns><see langword="true"/> when a child process must not inherit the variable.</returns>
+        internal static bool IsCoverageVariable(string name)
+        {
+            return name.StartsWith("CORECLR_ENABLE_PROFILING", StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith("CORECLR_PROFILER", StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith("CODE_COVERAGE_", StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith("MicrosoftInstrumentationEngine_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Runs <paramref name="fileName"/> and captures stdout, stderr, and the exit code.
         /// </summary>
         /// <param name="fileName">The executable.</param>
@@ -123,6 +135,15 @@ namespace CloudNimble.XmlEssentials.Tests
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
+
+            // Under --coverage the test host is profiled, and a child would inherit the profiler and the coverage
+            // session: every .NET process it starts (MSBuild, the compiler, the program) would report into the
+            // test host's report, in place of the tests. The child runs as it would outside the test host.
+            foreach (var name in process.StartInfo.Environment.Keys.Where(IsCoverageVariable).ToArray())
+            {
+                process.StartInfo.Environment.Remove(name);
+            }
+
             process.OutputDataReceived += (_, e) =>
             {
                 if (e.Data is not null)
