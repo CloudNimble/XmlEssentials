@@ -85,9 +85,11 @@ What **did** work:
 After **each** behavioral or hot-path change:
 
 ```bash
-dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml
-dotnet run src/coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml
-dotnet run -c Release --project src/CloudNimble.XmlEssentials.Performance -f net11.0 -- --filter *Utf8XmlWriterBenchmarks*
+# from src/
+dotnet test CloudNimble.XmlEssentials.slnx -c Release
+dotnet test --project CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj -c Release -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "$PWD/../artifacts/coverage/coverage.cobertura.xml"
+dotnet run coverage-gate.cs -- ../artifacts/coverage/coverage.cobertura.xml
+dotnet run -c Release --project CloudNimble.XmlEssentials.Performance -f net11.0 -- --filter *Utf8XmlWriterBenchmarks*
 # or *Utf8XmlReaderBenchmarks* / --filter *
 ```
 

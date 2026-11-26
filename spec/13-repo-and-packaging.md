@@ -88,10 +88,14 @@ Also:
 **Exact CI commands** (GitHub Actions, same process as McpEssentials: `pr-validation.yml`, `build-and-deploy.yml`, `publish-ci-build.yml`):
 
 ```bash
-dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --no-build -f net10.0
-dotnet test src/CloudNimble.XmlEssentials.slnx -c Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output artifacts/coverage/coverage.cobertura.xml
-dotnet run src/coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml
+# from src/, so global.json selects Microsoft.Testing.Platform
+dotnet test CloudNimble.XmlEssentials.slnx -c Release --no-build -f net10.0
+dotnet test --project CloudNimble.XmlEssentials.Tests.Samples/CloudNimble.XmlEssentials.Tests.Samples.csproj -c Release --no-build -f net11.0
+dotnet test --project CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj -c Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "$GITHUB_WORKSPACE/artifacts/coverage/coverage.cobertura.xml"
+dotnet run coverage-gate.cs -- "$GITHUB_WORKSPACE/artifacts/coverage/coverage.cobertura.xml"
 ```
+
+Only `CloudNimble.XmlEssentials.Tests` collects coverage. Every test host given `--coverage-output` writes its own Cobertura report to that one path (a relative path resolves under the shared `src/TestResults/`, not per host), so a solution-wide coverage run leaves the gate reading whichever host finished last: the samples host alone covers about 81% of the library. The samples tests still run, without coverage; the number the gate reads is the library's own test project on net11.0.
 
 net11.0 also runs `XmlAotPublishTests` (Native AOT publish + exact Person/Order XML). The workflows then publish the `xmlessentials` CLI sample. Version stamps, NuGet Trusted Publishing, and GitHub releases: [`.github/RELEASE.md`](../.github/RELEASE.md).
 

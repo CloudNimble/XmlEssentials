@@ -91,13 +91,15 @@ If you create any temporary new files, scripts, or helper files for iteration, c
 
 ## Coverage gate
 
-The gate fails below **100% line** or **100% branch** on `CloudNimble.XmlEssentials.dll`. Run both commands from `/src` before calling a change done, and before writing a coverage number anywhere:
+The gate fails below **100% line** or **100% branch** on `CloudNimble.XmlEssentials.dll`, measured by `CloudNimble.XmlEssentials.Tests` on net11.0. Run all three commands from `/src` before calling a change done, and before writing a coverage number anywhere:
 
 ```bash
-dotnet test CloudNimble.XmlEssentials.slnx -c Release --coverage --coverage-output-format cobertura --coverage-output <absolute path>/artifacts/coverage/coverage.cobertura.xml
-dotnet run coverage-gate.cs -- artifacts/coverage/coverage.cobertura.xml
+dotnet test CloudNimble.XmlEssentials.slnx -c Release
+dotnet test --project CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj -c Release -f net11.0 --coverage --coverage-output-format cobertura --coverage-output <absolute path>/artifacts/coverage/coverage.cobertura.xml
+dotnet run coverage-gate.cs -- <absolute path>/artifacts/coverage/coverage.cobertura.xml
 ```
 
+* The first command runs every test host (both test projects, net10.0 and net11.0). The second collects coverage from one host only. Every host given `--coverage-output` writes its own report to that one path, so a solution-wide coverage run leaves the gate reading whichever host finished last. A relative `--coverage-output` does not help: it resolves under the shared `src/TestResults/`, so pass an absolute path.
 * Report the numbers the gate prints. Do not infer coverage from the tests passing.
 * A gap is closed by testing the real behavior, testing an internal precondition in `*InternalsTests`, or deleting a member that has no caller outside tests. Never by a coverage-only test, an exclusion, a lower threshold, or by removing a guard because the tool did not reach it.
 
