@@ -36,7 +36,7 @@ Each part of XmlEssentials has a System.Text.Json counterpart with the same shap
 
 ## Built for the future
 
-XmlEssentials targets .NET 10 and .NET 11 and nothing older. That means a batter developer experience that doesn't make you luck into success.
+XmlEssentials targets .NET 10 and .NET 11 and nothing older. That means a better developer experience that doesn't make you luck into success.
 
 - **Generic attributes.** `[XmlSerializable<T>]`, `[XmlDerivedType<T>]`, `[XmlConverter<TConverter>]`, `[XmlElement<T>]`, and `[XmlArrayItem<T>]` take the type as a type argument. The compiler checks it, and there is no `typeof`.
 - **Closed types.** On .NET 11, `InferClosedTypePolymorphism` takes the derived types of a `closed` hierarchy from the compiler, so you register none.
