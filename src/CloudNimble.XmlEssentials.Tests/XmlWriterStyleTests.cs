@@ -408,6 +408,42 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        [DataRow(XmlVersion.Version10, DisplayName = "XML 1.0")]
+        [DataRow(XmlVersion.Version11, DisplayName = "XML 1.1")]
+        public void NewLine_IsWrittenForEveryLineBreak_InLongUtf8Text(XmlVersion version)
+        {
+            // Text longer than a few dozen bytes, given as UTF-8, whose first character that needs care is a line
+            // feed: the white space and paragraphs of a real document.
+            var crlf = new XmlWriterOptions { NewLine = "\r\n", OmitXmlDeclaration = true, Version = version };
+            var (nel, ls) = version is XmlVersion.Version11 ? ("&#x85;", "&#x2028;") : ("\u0085", "\u2028");
+            var written = XmlWriterHarness.ToXml(writer =>
+            {
+                writer.WriteStartElement("r");
+                writer.WriteStartElement("plain");
+                writer.WriteStringValue("\nThe first line of a long text,\n\nthen a blank one,\tand a last line\n"u8);
+                writer.WriteEndElement();
+                writer.WriteStartElement("escaped");
+                writer.WriteStringValue("A line feed comes first,\nthen a line that needs escaping: a < b & c\n"u8);
+                writer.WriteEndElement();
+                writer.WriteStartElement("wide");
+                writer.WriteStringValue("A line feed comes first,\nthen a line that is not ASCII: caf\u00e9, \u0085 and \u2028\n"u8);
+                writer.WriteEndElement();
+                writer.WriteEndElement();
+            }, crlf);
+            written.Should().Be(
+                "<r><plain>\r\nThe first line of a long text,\r\n\r\nthen a blank one,\tand a last line\r\n</plain>" +
+                "<escaped>A line feed comes first,\r\nthen a line that needs escaping: a &lt; b &amp; c\r\n</escaped>" +
+                "<wide>A line feed comes first,\r\nthen a line that is not ASCII: caf\u00e9, " + nel + " and " + ls + "\r\n</wide></r>");
+
+            // A reader gives each carriage return and line feed back as the line feed it was written from.
+            using var document = XmlDocument.Parse(written);
+            document.RootElement.GetChild("plain").GetString().Should().Be("\nThe first line of a long text,\n\nthen a blank one,\tand a last line\n");
+            document.RootElement.GetChild("escaped").GetString().Should().Be("A line feed comes first,\nthen a line that needs escaping: a < b & c\n");
+            document.RootElement.GetChild("wide").GetString().Should().Be("A line feed comes first,\nthen a line that is not ASCII: caf\u00e9, \u0085 and \u2028\n");
+            XmlWriterHarness.ToXml(document.WriteTo, crlf).Should().Be(written);
+        }
+
+        [TestMethod]
         public void NewLine_IsFollowedByTheSerializer()
         {
             var value = new StyledOrder { Code = "c", Id = 7, Region = "r", Note = "one\ntwo", Lines = ["a\nb"] };
