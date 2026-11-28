@@ -791,6 +791,49 @@ namespace CloudNimble.XmlEssentials.Tests
         }
 
         [TestMethod]
+        public void Read_EqualsHelpers_LongTextIsComparedWithoutOverflowingTheStack()
+        {
+            var value = new string('a', 100_000);
+            var reader = new Utf8XmlReader(Encoding.UTF8.GetBytes($"<e xmlns=\"urn:{value}\">{value}</e>"));
+            reader.Read();
+            reader.LocalNameEquals(new string('e', 1_000_000).AsSpan()).Should().BeFalse();
+            reader.NamespaceUriEquals($"urn:{value}".AsSpan()).Should().BeTrue();
+            reader.NamespaceUriEquals(new string('u', 1_000_000).AsSpan()).Should().BeFalse();
+            reader.Read();
+            reader.ValueTextEquals(value.AsSpan()).Should().BeTrue();
+            reader.ValueTextEquals(new string('a', 1_000_000).AsSpan()).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void Read_EqualsHelpers_NonAsciiText()
+        {
+            var reader = new Utf8XmlReader("<é xmlns=\"urn:ü\">ß€😀</é>"u8);
+            reader.Read();
+            reader.LocalNameEquals("é".AsSpan()).Should().BeTrue();
+            reader.LocalNameEquals("e".AsSpan()).Should().BeFalse();
+            reader.NamespaceUriEquals("urn:ü".AsSpan()).Should().BeTrue();
+            reader.NamespaceUriEquals("urn:u".AsSpan()).Should().BeFalse();
+            reader.Read();
+            reader.ValueTextEquals("ß€😀".AsSpan()).Should().BeTrue();
+            reader.ValueTextEquals("ß€😁".AsSpan()).Should().BeFalse();
+        }
+
+        [TestMethod]
+        public void Read_EqualsHelpers_UnpairedSurrogateNeverMatches()
+        {
+            // U+FFFD is what an encoder puts in place of an unpaired surrogate. The reader does not.
+            var reader = new Utf8XmlReader("<� xmlns=\"urn:�\">�</�>"u8);
+            reader.Read();
+            reader.LocalNameEquals("�".AsSpan()).Should().BeTrue();
+            reader.LocalNameEquals("\uD800".AsSpan()).Should().BeFalse();
+            reader.NamespaceUriEquals("urn:�".AsSpan()).Should().BeTrue();
+            reader.NamespaceUriEquals("urn:\uDC00".AsSpan()).Should().BeFalse();
+            reader.Read();
+            reader.ValueTextEquals("�".AsSpan()).Should().BeTrue();
+            reader.ValueTextEquals("\uD800".AsSpan()).Should().BeFalse();
+        }
+
+        [TestMethod]
         public void Read_MoveToNextAttribute_WhenNotOnElement()
         {
             var reader = new Utf8XmlReader("<e>hi</e>"u8);

@@ -1334,11 +1334,12 @@ namespace CloudNimble.Text.Xml
         /// <see langword="true"/> if the local name matches <paramref name="localName"/>; otherwise,
         /// <see langword="false"/>.
         /// </returns>
+        /// <remarks>
+        /// Text with an unpaired surrogate never matches.
+        /// </remarks>
         public readonly bool LocalNameEquals(ReadOnlySpan<char> localName)
         {
-            Span<byte> utf8 = stackalloc byte[Encoding.UTF8.GetMaxByteCount(localName.Length)];
-            var n = Encoding.UTF8.GetBytes(localName, utf8);
-            return LocalNameSpan.SequenceEqual(utf8[..n]);
+            return XmlDocument.Utf8Equals(LocalNameSpan, localName);
         }
 
         /// <summary>
@@ -1414,6 +1415,9 @@ namespace CloudNimble.Text.Xml
         /// <see langword="true"/> if the namespace URI matches <paramref name="namespaceUri"/>; otherwise,
         /// <see langword="false"/>.
         /// </returns>
+        /// <remarks>
+        /// Text with an unpaired surrogate never matches.
+        /// </remarks>
         public readonly bool NamespaceUriEquals(ReadOnlySpan<char> namespaceUri)
         {
             if (namespaceUri.IsEmpty)
@@ -1421,9 +1425,7 @@ namespace CloudNimble.Text.Xml
                 return NamespaceUriSpan.IsEmpty;
             }
 
-            Span<byte> utf8 = stackalloc byte[Encoding.UTF8.GetMaxByteCount(namespaceUri.Length)];
-            var n = Encoding.UTF8.GetBytes(namespaceUri, utf8);
-            return NamespaceUriSpan.SequenceEqual(utf8[..n]);
+            return XmlDocument.Utf8Equals(NamespaceUriSpan, namespaceUri);
         }
 
         /// <summary>
@@ -1947,12 +1949,12 @@ namespace CloudNimble.Text.Xml
         /// <see langword="true"/> if the XML token value in the source matches the lookup text; otherwise,
         /// <see langword="false"/>.
         /// </returns>
+        /// <remarks>
+        /// Text with an unpaired surrogate never matches.
+        /// </remarks>
         public readonly bool ValueTextEquals(ReadOnlySpan<char> text)
         {
-            var max = Encoding.UTF8.GetMaxByteCount(text.Length);
-            Span<byte> utf8 = max <= 512 ? stackalloc byte[max] : new byte[max];
-            var n = Encoding.UTF8.GetBytes(text, utf8);
-            return ValueSpan.SequenceEqual(utf8[..n]);
+            return XmlDocument.Utf8Equals(ValueSpan, text);
         }
 
         /// <summary>
