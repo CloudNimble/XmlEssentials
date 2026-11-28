@@ -86,9 +86,15 @@ jobs:
       working-directory: src
       run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net10.0
 
+    - name: Test net11.0 samples
+      working-directory: src
+      run: dotnet test --project CloudNimble.XmlEssentials.Tests.Samples/CloudNimble.XmlEssentials.Tests.Samples.csproj --configuration Release --no-build -f net11.0
+
+    # Only the library's test host collects coverage: every host writes its own report to the
+    # --coverage-output path, so a solution-wide run leaves the gate reading whichever finished last.
     - name: Test net11.0 with coverage
       working-directory: src
-      run: dotnet test CloudNimble.XmlEssentials.slnx --configuration Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
+      run: dotnet test --project CloudNimble.XmlEssentials.Tests/CloudNimble.XmlEssentials.Tests.csproj --configuration Release --no-build -f net11.0 --coverage --coverage-output-format cobertura --coverage-output "${{ github.workspace }}/artifacts/coverage/coverage.cobertura.xml"
 
     - name: Coverage gate
       working-directory: src
